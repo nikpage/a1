@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Dashboard - CVPro</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="admin-container">
+    <h1>Admin Dashboard 📊</h1>
+
+    <section class="stats">
+      <h2>Document Generation</h2>
+      <p>CVs Generated: <span id="cv-count">0</span></p>
+      <p>Cover Letters Generated: <span id="cover-count">0</span></p>
+    </section>
+
+    <section class="stats">
+      <h2>Job Description Extractions</h2>
+      <p>Total Extractions: <span id="extract-count">0</span></p>
+    </section>
+
+    <section class="stats">
+      <h2>Tone Usage</h2>
+      <ul>
+        <li>Formal: <span id="tone-formal">0</span></li>
+        <li>Neutral: <span id="tone-neutral">0</span></li>
+        <li>Casual: <span id="tone-casual">0</span></li>
+        <li>Cocky: <span id="tone-cocky">0</span></li>
+      </ul>
+    </section>
+
+    <section class="stats">
+      <h2>Tokens Spent</h2>
+      <p>Total Tokens Spent: <span id="tokens-spent">0</span></p>
+    </section>
+
+  </main>
+
+  <script src="/js/script-admin.js"></script>
+</body>
+</html>
