@@ -89,4 +89,5 @@ generateBtn.onclick = async () => {
   } else {
     alert('Generation failed.');
   }
+
 };
