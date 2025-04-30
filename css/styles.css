@@ -1,0 +1,171 @@
+/* General Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f4f4f4;
+  color: #333;
+  line-height: 1.6;
+  padding: 20px;
+}
+
+/* Header */
+header {
+  background: #0070f3;
+  color: #fff;
+  padding: 20px;
+  text-align: center;
+  position: relative;
+}
+
+.user-info {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  font-size: 0.9em;
+}
+
+/* Main Content */
+main {
+  margin-top: 30px;
+}
+
+/* Upload Section */
+.upload-section {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.upload-section h2, h3 {
+  margin-bottom: 10px;
+}
+
+input[type="file"], textarea {
+  width: 100%;
+  margin: 10px 0 20px;
+  padding: 10px;
+}
+
+textarea {
+  height: 120px;
+  resize: vertical;
+}
+
+button {
+  background: #0070f3;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px 5px 0 0;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+button:hover {
+  background: #005bb5;
+}
+
+.language-options .lang-btn {
+  font-size: 20px;
+  margin: 5px;
+  padding: 5px 10px;
+  background: #eee;
+}
+
+.language-options .lang-btn.active {
+  background: #0070f3;
+  color: #fff;
+}
+
+.output-options button {
+  margin-right: 10px;
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* Show modal */
+.modal.show {
+  display: flex;
+}
+
+/* Admin Panel */
+.admin-container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.stats {
+  margin-bottom: 20px;
+}
+
+.stats h2 {
+  margin-bottom: 10px;
+}
+
+/* Game Zone */
+#game-zone {
+  margin-top: 30px;
+  background: #eee;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+/* View Page */
+.generated-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.output-box {
+  background: #f0f0f0;
+  padding: 20px;
+  margin: 10px 0;
+  white-space: pre-wrap;
+  border-radius: 5px;
+}
+
+/* Success Page */
+.success-container {
+  text-align: center;
+  margin-top: 50px;
+}
+
+.btn {
+  background: #0070f3;
+  color: white;
+  padding: 10px 20px;
+  margin-top: 20px;
+  display: inline-block;
+  text-decoration: none;
+  border-radius: 5px;
+}
+
+.btn:hover {
+  background: #005bb5;
+}
