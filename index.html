@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CVPro - Create your CV and Cover Letter</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>CVPro</h1>
+    <div class="user-info">Welcome, User | <span id="token-count">10</span> tokens left</div>
+  </header>
+
+  <div id="welcome-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Welcome! Start your journey.</h2>
+      <button id="start-btn">Start Using CVPro</button>
+    </div>
+  </div>
+
+  <main>
+    <section class="upload-section">
+      <h2>Upload Your Resume</h2>
+      <input type="file" id="resume-upload" accept=".pdf,.doc,.docx,.md">
+      <p id="uploaded-file-name">No file selected</p>
+
+      <h3>Choose Tone</h3>
+      <div class="tone-options">
+        <label><input type="radio" name="tone" value="Formal" checked> Formal</label>
+        <label><input type="radio" name="tone" value="Neutral"> Neutral</label>
+        <label><input type="radio" name="tone" value="Casual"> Casual</label>
+        <label><input type="radio" name="tone" value="Cocky"> Cocky</label>
+      </div>
+
+      <h3>What to Generate</h3>
+      <div class="output-options">
+        <button id="cv-only">CV Only</button>
+        <button id="cover-only">Cover Letter Only</button>
+        <button id="both">Both</button>
+      </div>
+
+      <div class="language-options">
+        <button class="lang-btn active" data-lang="en">🇬🇧</button>
+        <button class="lang-btn" data-lang="de">🇩🇪</button>
+        <button class="lang-btn" data-lang="es">🇪🇸</button>
+        <button class="lang-btn" data-lang="fr">🇫🇷</button>
+        <button class="lang-btn" data-lang="nl">🇳🇱</button>
+        <button class="lang-btn" data-lang="pl">🇵🇱</button>
+        <button class="lang-btn" data-lang="ro">🇷🇴</button>
+        <button class="lang-btn" data-lang="cz">🇨🇿</button>
+        <button class="lang-btn" data-lang="hu">🇭🇺</button>
+        <button class="lang-btn" data-lang="ua">🇺🇦</button>
+      </div>
+
+      <h3>Paste Job Description</h3>
+      <textarea id="job-description" placeholder="Paste job description here..."></textarea>
+      <button id="extract-btn">Extract Details</button>
+      <p id="status-message"></p>
+
+      <details id="job-details" open>
+        <summary>Edit Job Details</summary>
+        <div class="field"><input type="checkbox" checked> Job Title: <input type="text" id="job-title"></div>
+        <div class="field"><input type="checkbox" checked> Company Name: <input type="text" id="company-name"></div>
+        <div class="field"><input type="checkbox" checked> HR Contact: <input type="text" id="hr-contact"></div>
+        <div class="keywords">
+          <div><input type="checkbox" checked> Keyword 1: <input type="text" id="kw1"></div>
+          <div><input type="checkbox" checked> Keyword 2: <input type="text" id="kw2"></div>
+          <div><input type="checkbox" checked> Keyword 3: <input type="text" id="kw3"></div>
+          <div><input type="checkbox" checked> Keyword 4: <input type="text" id="kw4"></div>
+          <div><input type="checkbox" checked> Keyword 5: <input type="text" id="kw5"></div>
+          <div><input type="checkbox" checked> Keyword 6: <input type="text" id="kw6"></div>
+        </div>
+      </details>
+
+      <button id="magic-btn">Do AI Magic</button>
+
+      <div id="game-zone" class="hidden">
+        <h2>Waiting Game! 🎮</h2>
+        <button id="clicker-btn">Click Me!</button>
+        <p>Clicks: <span id="click-count">0</span></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/script-index.js"></script>
+</body>
+</html>
