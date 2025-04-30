@@ -1,0 +1,59 @@
+<!-- /public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI CV Builder</title>
+  <link rel="stylesheet" href="/css/styles.css"/>
+</head>
+<body>
+  <div id="welcome-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Welcome!</h2>
+      <p>This tool creates CVs and cover letters tailored to job ads.</p>
+      <button id="close-welcome">Start</button>
+    </div>
+  </div>
+
+  <main class="app">
+    <h1>Upload Your Resume</h1>
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.md"/>
+    <textarea id="jobAd" placeholder="Paste job ad here..."></textarea>
+    <button id="extractBtn">Extract Details</button>
+
+    <div id="jobDetails" class="hidden">
+      <h2>Extracted Job Details</h2>
+      <div id="editableFields"></div>
+    </div>
+
+    <label for="tone">Tone:</label>
+    <select id="tone">
+      <option value="formal">Formal</option>
+      <option value="neutral">Neutral</option>
+      <option value="casual">Casual</option>
+      <option value="cocky">Cocky</option>
+    </select>
+
+    <label for="docType">Document Type:</label>
+    <select id="docType">
+      <option value="cv">CV</option>
+      <option value="cover">Cover Letter</option>
+      <option value="both">Both</option>
+    </select>
+
+    <div id="langSelector" class="flags">
+      <button data-lang="en" class="flag selected">🇬🇧</button>
+      <button data-lang="es" class="flag">🇪🇸</button>
+      <button data-lang="fr" class="flag">🇫🇷</button>
+      <button data-lang="de" class="flag">🇩🇪</button>
+      <button data-lang="zh" class="flag">🇨🇳</button>
+    </div>
+
+    <button id="generateBtn">Do AI Magic</button>
+    <p id="statusText"></p>
+  </main>
+
+  <script src="/js/script-index.js" type="module"></script>
+</body>
+</html>
