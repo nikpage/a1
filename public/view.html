@@ -2,11 +2,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- SES lockdown: must be first in head -->
-  <script src="https://cdn.jsdelivr.net/npm/ses@latest/dist/ses.umd.min.js"></script>
-<script>lockdown();</script>
-
-
+  <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self';">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>View Results</title>
