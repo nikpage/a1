@@ -1,29 +1,49 @@
-// /api/extract.js
+// /api/extract.js (fixed)
 
-import { buildExtractionPrompt } from '../../js/prompt-builder.js';
-import { DeepSeekClient } from 'deepseek'; // assumes installed + configured
-import { getUID } from '../../utils/auth.js'; // custom util for user ID auth
+import { Configuration, OpenAIApi } from 'openai';
+
+const config = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openai = new OpenAIApi(config);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
+  if (req.method !== 'POST') {
+    res.status(405).send({ error: 'Method not allowed' });
+    return;
+  }
+
+  const { resume, jobAd } = req.body;
+
+  if (!resume || !jobAd) {
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+
+  const prompt = `Extract the relevant skills, experience, and keywords from the following job advertisement, based on the provided resume.
+Highlight any gaps between the resume and the job requirements.
+
+Resume:
+${resume}
+
+Job Advertisement:
+${jobAd}`;
 
   try {
-    const { input } = req.body;
-    const uid = getUID(req);
-    if (!uid || !input) return res.status(400).json({ error: 'Missing uid or input' });
+    const response = await openai.createChatCompletion({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: 'You are a professional HR assistant.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.7,
+    });
 
-    const prompt = buildExtractionPrompt() + "\n\n" + input;
-
-    const client = new DeepSeekClient(process.env.DEEPSEEK_API_KEY);
-    const result = await client.chat({ prompt });
-
-    const match = result.match(/\{.*\}/s);
-    if (!match) return res.status(500).json({ error: 'Invalid JSON output' });
-
-    const jobDetails = JSON.parse(match[0]);
-    res.status(200).json(jobDetails);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Extraction failed' });
+    const aiText = response.data.choices[0].message.content;
+    res.status(200).json({ text: aiText });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to extract information' });
   }
 }
