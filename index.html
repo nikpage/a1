@@ -3,212 +3,1281 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resume Booster MVP</title>
+  <title>CV & Cover Letter Writer</title>
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 0; background: #f4f4f9; }
-    .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    h2 { margin-top: 0; }
-    .hidden { display: none; }
-    /* Step buttons */
-    .btn { background: #007bff; color: #fff; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-size: 16px; }
-    .btn:disabled { background: #aaa; cursor: default; }
-    .btn-secondary { background: transparent; color: #007bff; }
-    /* File upload */
-    #file-drop { border: 2px dashed #ccc; padding: 40px; text-align: center; cursor: pointer; }
-    #file-drop.hover { border-color: #007bff; }
-    /* Tone cards */
-    .cards { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
-    .card { padding: 16px; border: 2px solid #ddd; border-radius: 6px; text-align: center; cursor: pointer; user-select: none; }
-    .card.selected { border-color: #007bff; background: rgba(0,123,255,0.1); }
-    /* Pills */
-    .pills { display: flex; gap: 8px; margin: 10px 0; }
-    .pill { padding: 6px 12px; border: 2px solid #ddd; border-radius: 16px; cursor: pointer; user-select: none; }
-    .pill.selected { border-color: #007bff; background: rgba(0,123,255,0.1); }
-    /* More options */
-    #more-options { margin-top: 10px; }
-    #more-toggle { color: #007bff; background: none; border: none; cursor: pointer; padding: 0; font-size: 14px; }
-    /* Spinner/marketing */
-    #spinner-container { position: relative; width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; }
-    #skip-btn { position: absolute; top: 8px; right: 12px; font-size: 24px; cursor: pointer; }
-    #spinner { width: 40px; height: 40px; border: 4px solid #ccc; border-top-color: #007bff; border-radius: 50%; animation: spin 1s linear infinite; position: absolute; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #balloon-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-    #tooltip-fallback { position: absolute; bottom: 16px; font-size: 14px; opacity: 0.9; text-align: center; padding: 4px 8px; background: rgba(0,0,0,0.1); border-radius: 4px; }
-    /* Result */
-    #result-text { white-space: pre-wrap; background: #fafafa; padding: 16px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 20px; }
+    /* Global Styles */
+    :root {
+      --primary: #3a86ff;
+      --primary-dark: #2667cc;
+      --secondary: #8338ec;
+      --success: #38b000;
+      --warning: #ffbe0b;
+      --danger: #ff006e;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --border-radius: 8px;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: #f4f7fa;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    /* Header */
+    header {
+      background-color: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      padding: 1rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .user-menu {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-size: 1rem;
+      text-align: center;
+      text-decoration: none;
+      transition: background-color 0.3s;
+    }
+    
+    .btn:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .btn-secondary {
+      background-color: white;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    
+    .btn-secondary:hover {
+      background-color: var(--light);
+    }
+    
+    .btn-success {
+      background-color: var(--success);
+    }
+    
+    .btn-warning {
+      background-color: var(--warning);
+      color: var(--dark);
+    }
+    
+    .btn-danger {
+      background-color: var(--danger);
+    }
+    
+    .btn-full {
+      width: 100%;
+    }
+    
+    /* Forms and Inputs */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    
+    /* Cards */
+    .card {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .card-title {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: var(--dark);
+    }
+    
+    /* Option Selectors */
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .option-card {
+      background-color: white;
+      border: 2px solid #ddd;
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .option-card:hover {
+      border-color: var(--primary);
+    }
+    
+    .option-card.selected {
+      border-color: var(--primary);
+      background-color: rgba(58, 134, 255, 0.05);
+    }
+    
+    .option-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    /* File Upload */
+    .file-upload {
+      border: 2px dashed #ddd;
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .file-upload:hover {
+      border-color: var(--primary);
+    }
+    
+    .file-upload.drag-over {
+      border-color: var(--primary);
+      background-color: rgba(58, 134, 255, 0.05);
+    }
+    
+    .file-input {
+      display: none;
+    }
+    
+    /* Wizard Steps */
+    .wizard-steps {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+    
+    .wizard-steps::before {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #ddd;
+      z-index: 1;
+    }
+    
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .step-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      background-color: white;
+      border: 2px solid #ddd;
+      border-radius: 50%;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    
+    .step.active .step-number {
+      border-color: var(--primary);
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .step.completed .step-number {
+      border-color: var(--success);
+      background-color: var(--success);
+      color: white;
+    }
+    
+    .step-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-align: center;
+    }
+    
+    /* Payment */
+    .price-box {
+      background-color: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .price {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    /* Preview */
+    .document-preview {
+      background-color: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      min-height: 300px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .watermark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 5rem;
+      opacity: 0.1;
+      transform: rotate(-45deg);
+      pointer-events: none;
+    }
+    
+    /* Loading */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+    }
+    
+    .tooltip-text {
+      visibility: hidden;
+      width: 200px;
+      background-color: var(--dark);
+      color: white;
+      text-align: center;
+      border-radius: 6px;
+      padding: 0.5rem;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    /* Utility Classes */
+    .text-center {
+      text-align: center;
+    }
+    
+    .mt-1 {
+      margin-top: 0.5rem;
+    }
+    
+    .mt-2 {
+      margin-top: 1rem;
+    }
+    
+    .mt-3 {
+      margin-top: 1.5rem;
+    }
+    
+    .mt-4 {
+      margin-top: 2rem;
+    }
+    
+    .mb-1 {
+      margin-bottom: 0.5rem;
+    }
+    
+    .mb-2 {
+      margin-bottom: 1rem;
+    }
+    
+    .mb-3 {
+      margin-bottom: 1.5rem;
+    }
+    
+    .mb-4 {
+      margin-bottom: 2rem;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .d-flex {
+      display: flex;
+    }
+    
+    .justify-between {
+      justify-content: space-between;
+    }
+    
+    .items-center {
+      align-items: center;
+    }
+    
+    .flex-wrap {
+      flex-wrap: wrap;
+    }
+    
+    .gap-1 {
+      gap: 0.5rem;
+    }
+    
+    .gap-2 {
+      gap: 1rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .option-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .wizard-steps {
+        flex-wrap: wrap;
+      }
+      
+      .step {
+        flex: 0 0 33.333%;
+        margin-bottom: 1rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .option-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .step {
+        flex: 0 0 50%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div id="step1">
-      <h2>Step 1 of 3: Upload Resume</h2>
-      <div id="file-drop">Drag & drop PDF/DOCX here or click to browse</div>
-      <input id="file-input" type="file" accept=".pdf,.docx" class="hidden" />
-      <button id="to-step2" class="btn" disabled>Next</button>
+  <!-- Header -->
+  <header>
+    <div class="container header-content">
+      <div class="logo">CV & Cover Letter Writer</div>
+      <div class="user-menu" id="auth-section">
+        <button class="btn btn-secondary" id="login-btn">Login</button>
+        <button class="btn" id="signup-btn">Sign Up</button>
+      </div>
     </div>
-
-    <div id="step2" class="hidden">
-      <h2>Step 2 of 3: Choose Options</h2>
-      <h3>Tone</h3>
-      <div class="cards" id="tone-cards">
-        <div class="card" data-value="Formal">🤵 Formal</div>
-        <div class="card" data-value="Casual">😎 Casual</div>
-        <div class="card" data-value="Technical">💻 Technical</div>
-        <div class="card" data-value="Creative">🎨 Creative</div>
-      </div>
-      <h3>Format</h3>
-      <div class="pills" id="format-pills">
-        <div class="pill" data-value="pdf">PDF</div>
-        <div class="pill" data-value="docx">DOCX</div>
-        <div class="pill" data-value="txt">TXT</div>
-      </div>
-      <div id="more-options">
-        <button id="more-toggle">More options...</button>
-        <div id="more-content" class="hidden">
-          <label>Job Title<br/><input id="job-title" type="text" placeholder="e.g. Senior Engineer" /></label><br/>
-          <label>Company<br/><input id="company" type="text" placeholder="e.g. Acme Corp" /></label>
+  </header>
+  
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Landing Content (Hidden when wizard starts) -->
+    <section id="landing-section">
+      <div class="card">
+        <h1 class="text-center mb-3">Professional CV & Cover Letter in Minutes</h1>
+        <p class="text-center mb-3">Upload your current document and let AI enhance it for your next career move.</p>
+        <div class="text-center">
+          <button class="btn" id="start-btn">Get Started</button>
         </div>
       </div>
-      <button id="back1" class="btn-secondary btn">Back</button>
-      <button id="to-step3" class="btn" disabled>Generate</button>
-    </div>
-
-    <div id="step3" class="hidden">
-      <h2>Step 3 of 3: Generating… <span id="skip-btn" title="Skip tips">×</span></h2>
-      <div id="spinner-container">
-        <canvas id="balloon-canvas"></canvas>
-        <div id="spinner"></div>
-        <div id="tooltip-fallback" class="hidden"></div>
+      
+      <div class="card">
+        <div class="card-title">How It Works</div>
+        <div class="d-flex flex-wrap mb-3">
+          <div style="flex: 1; min-width: 180px; text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+            <h3 class="mb-1">Upload Document</h3>
+            <p>Upload your current CV or resume in PDF or Word format</p>
+          </div>
+          <div style="flex: 1; min-width: 180px; text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚙️</div>
+            <h3 class="mb-1">Choose Options</h3>
+            <p>Select your preferred tone and output type</p>
+          </div>
+          <div style="flex: 1; min-width: 180px; text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">✨</div>
+            <h3 class="mb-1">Get Results</h3>
+            <p>Receive your enhanced documents ready for download</p>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div id="result" class="hidden">
-      <h2>Your Enhanced Resume</h2>
-      <div id="result-text"></div>
-      <button id="download-btn" class="btn">Download</button>
-      <button id="restart-btn" class="btn-secondary btn">Start Over</button>
-    </div>
+    </section>
+    
+    <!-- Wizard Section -->
+    <section id="wizard-section" class="hidden">
+      <!-- Progress Steps -->
+      <div class="wizard-steps">
+        <div class="step active" data-step="1">
+          <div class="step-number">1</div>
+          <div class="step-label">Upload</div>
+        </div>
+        <div class="step" data-step="2">
+          <div class="step-number">2</div>
+          <div class="step-label">Options</div>
+        </div>
+        <div class="step" data-step="3">
+          <div class="step-number">3</div>
+          <div class="step-label">Payment</div>
+        </div>
+        <div class="step" data-step="4">
+          <div class="step-number">4</div>
+          <div class="step-label">Result</div>
+        </div>
+      </div>
+      
+      <!-- Step 1: Upload Document -->
+      <div class="step-content" id="step-1">
+        <div class="card">
+          <div class="card-title">Upload Your Document</div>
+          <div class="file-upload" id="file-drop-area">
+            <div class="mb-2">Drop your CV or resume here or click to browse</div>
+            <div>Accepts PDF or Word documents</div>
+            <input type="file" id="file-input" class="file-input" accept=".pdf,.docx,.doc">
+          </div>
+          <div id="file-info" class="mt-2 hidden">
+            <div class="d-flex justify-between items-center">
+              <div id="file-name"></div>
+              <button class="btn btn-secondary" id="change-file-btn">Change</button>
+            </div>
+          </div>
+          <div class="mt-3 text-center">
+            <button class="btn" id="step-1-next" disabled>Next</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Step 2: Options -->
+      <div class="step-content hidden" id="step-2">
+        <div class="card">
+          <div class="card-title">Choose Output Type</div>
+          <div class="option-grid" id="output-type-options">
+            <div class="option-card" data-value="cv">
+              <div class="option-icon">📄</div>
+              <div>CV / Resume</div>
+            </div>
+            <div class="option-card" data-value="cover-letter">
+              <div class="option-icon">✉️</div>
+              <div>Cover Letter</div>
+            </div>
+            <div class="option-card" data-value="both">
+              <div class="option-icon">📑</div>
+              <div>Both</div>
+            </div>
+          </div>
+          
+          <div class="card-title">Select Tone</div>
+          <div class="option-grid" id="tone-options">
+            <div class="option-card" data-value="formal">
+              <div class="option-icon">👔</div>
+              <div>Formal</div>
+            </div>
+            <div class="option-card" data-value="neutral">
+              <div class="option-icon">🔄</div>
+              <div>Neutral</div>
+            </div>
+            <div class="option-card" data-value="casual">
+              <div class="option-icon">😎</div>
+              <div>Casual</div>
+            </div>
+            <div class="option-card" data-value="cocky">
+              <div class="option-icon">🚀</div>
+              <div>Cocky</div>
+            </div>
+          </div>
+          
+          <div class="form-group mt-3">
+            <label for="language-select">Translation (Optional)</label>
+            <select id="language-select">
+              <option value="">No translation needed</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="it">Italian</option>
+              <option value="pt">Portuguese</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="job-description">
+              Job Description for Keyword Analysis (Optional)
+              <span class="tooltip">ℹ️
+                <span class="tooltip-text">Add a job posting to extract keywords and tailor your document</span>
+              </span>
+            </label>
+            <textarea id="job-description" rows="4" placeholder="Paste job posting here for keyword optimization"></textarea>
+          </div>
+          
+          <div class="d-flex justify-between mt-3">
+            <button class="btn btn-secondary" id="step-2-prev">Back</button>
+            <button class="btn" id="step-2-next" disabled>Next</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Step 3: Payment -->
+      <div class="step-content hidden" id="step-3">
+        <div class="card">
+          <div class="card-title">Review & Payment</div>
+          
+          <div class="mb-3">
+            <h3 class="mb-1">Your Selection</h3>
+            <div id="selection-summary"></div>
+          </div>
+          
+          <div class="price-box mb-3">
+            <div class="d-flex justify-between items-center">
+              <div>
+                <div class="mb-1">Price</div>
+                <div class="price" id="price-display">$0.00</div>
+              </div>
+              <div>
+                <div class="mb-1">Document Tokens</div>
+                <div id="token-display">0 tokens</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <div class="card-title">Payment Method</div>
+            <div id="payment-element">
+              <!-- Stripe payment element will be inserted here -->
+              <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem;">
+                <p class="mb-1">Card Information</p>
+                <div style="height: 40px; background: #f8f9fa; border-radius: 4px; margin-bottom: 0.5rem;"></div>
+                <div class="d-flex gap-1">
+                  <div style="flex: 1; height: 40px; background: #f8f9fa; border-radius: 4px;"></div>
+                  <div style="flex: 1; height: 40px; background: #f8f9fa; border-radius: 4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="d-flex justify-between">
+            <button class="btn btn-secondary" id="step-3-prev">Back</button>
+            <button class="btn" id="step-3-next">Pay & Generate</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Step 4: Results -->
+      <div class="step-content hidden" id="step-4">
+        <div class="card">
+          <div class="card-title">Your Enhanced Document</div>
+          
+          <div class="document-preview" id="document-preview">
+            <div class="watermark">PREVIEW</div>
+            <div id="preview-content">
+              <!-- Document content will be displayed here -->
+            </div>
+          </div>
+          
+          <div class="d-flex justify-between">
+            <button class="btn btn-secondary" id="start-over-btn">Start Over</button>
+            <button class="btn" id="download-btn">Download</button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-title">Account Created</div>
+          <p>An account has been created for you to access your documents again in the future.</p>
+          <div class="mb-2">
+            <strong>Email:</strong> <span id="user-email-display"></span>
+          </div>
+          <p>Your document tokens have been added to your account. Login anytime to access your documents.</p>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Account Section -->
+    <section id="account-section" class="hidden">
+      <div class="card">
+        <div class="card-title">Account Dashboard</div>
+        <div class="mb-3">
+          <h3 class="mb-1">Your Document Tokens</h3>
+          <div class="price-box">
+            <div class="d-flex justify-between items-center">
+              <div id="account-tokens">0 tokens</div>
+              <button class="btn">Buy More</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <h3 class="mb-1">Recent Documents</h3>
+          <div id="recent-documents">
+            <p>No documents yet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Admin Section -->
+    <section id="admin-section" class="hidden">
+      <div class="card">
+        <div class="card-title">Admin Dashboard</div>
+        
+        <div class="mb-3">
+          <h3 class="mb-1">Usage Statistics</h3>
+          <div class="d-flex flex-wrap gap-2">
+            <div style="flex: 1; min-width: 150px; background: #f8f9fa; border-radius: 8px; padding: 1rem;">
+              <div>Total Documents</div>
+              <div style="font-size: 1.5rem; font-weight: bold;">0</div>
+            </div>
+            <div style="flex: 1; min-width: 150px; background: #f8f9fa; border-radius: 8px; padding: 1rem;">
+              <div>Total Users</div>
+              <div style="font-size: 1.5rem; font-weight: bold;">0</div>
+            </div>
+            <div style="flex: 1; min-width: 150px; background: #f8f9fa; border-radius: 8px; padding: 1rem;">
+              <div>Revenue</div>
+              <div style="font-size: 1.5rem; font-weight: bold;">$0.00</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <h3 class="mb-1">Recent Transactions</h3>
+          <div id="recent-transactions">
+            <p>No transactions yet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <!-- Loading Overlay -->
+  <div class="loading-overlay hidden" id="loading-overlay">
+    <div class="spinner"></div>
   </div>
-
+  
+  <!-- Scripts -->
   <script>
-  (function(){
-    // STATE
-    let uploadedFile;
-    let selectedTone;
-    let selectedFormat;
-    let jobData = {};
-
-    // ELEMS
-    const step1 = document.getElementById('step1');
-    const step2 = document.getElementById('step2');
-    const step3 = document.getElementById('step3');
-    const result = document.getElementById('result');
-    const fileDrop = document.getElementById('file-drop');
-    const fileInput = document.getElementById('file-input');
-    const toStep2Btn = document.getElementById('to-step2');
-    const toneCards = document.getElementById('tone-cards');
-    const formatPills = document.getElementById('format-pills');
-    const toStep3Btn = document.getElementById('to-step3');
-    const back1Btn = document.getElementById('back1');
-    const moreToggle = document.getElementById('more-toggle');
-    const moreContent = document.getElementById('more-content');
-
-    // STEP 1: file upload
-    fileDrop.addEventListener('click', ()=> fileInput.click());
-    fileDrop.addEventListener('dragover', e=>{ e.preventDefault(); fileDrop.classList.add('hover'); });
-    fileDrop.addEventListener('dragleave', e=>{ fileDrop.classList.remove('hover'); });
-    fileDrop.addEventListener('drop', e=>{
-      e.preventDefault(); fileDrop.classList.remove('hover');
-      handleFile(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener('change', ()=> handleFile(fileInput.files[0]));
-
-    function handleFile(file) {
-      if (!file) return;
-      if (!['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)) {
-        alert('Use PDF or DOCX'); return;
+    // State Management
+    const state = {
+      currentStep: 1,
+      file: null,
+      fileName: '',
+      outputType: '',
+      tone: '',
+      language: '',
+      jobDescription: '',
+      user: null,
+      isAuthenticated: false,
+      isAdmin: false
+    };
+    
+    // Pricing
+    const pricing = {
+      cv: 1,
+      'cover-letter': 1,
+      both: 2,
+      getPrice: function(type) {
+        return this[type] * 5; // $5 per token
       }
-      uploadedFile = file;
-      fileDrop.textContent = file.name;
-      toStep2Btn.disabled = false;
+    };
+    
+    // DOM Elements
+    const elements = {
+      // Sections
+      landingSection: document.getElementById('landing-section'),
+      wizardSection: document.getElementById('wizard-section'),
+      accountSection: document.getElementById('account-section'),
+      adminSection: document.getElementById('admin-section'),
+      authSection: document.getElementById('auth-section'),
+      
+      // Wizard Steps
+      stepElements: document.querySelectorAll('.step'),
+      stepContents: document.querySelectorAll('.step-content'),
+      
+      // Step 1
+      fileDropArea: document.getElementById('file-drop-area'),
+      fileInput: document.getElementById('file-input'),
+      fileInfo: document.getElementById('file-info'),
+      fileName: document.getElementById('file-name'),
+      changeFileBtn: document.getElementById('change-file-btn'),
+      step1Next: document.getElementById('step-1-next'),
+      
+      // Step 2
+      outputTypeOptions: document.getElementById('output-type-options'),
+      toneOptions: document.getElementById('tone-options'),
+      languageSelect: document.getElementById('language-select'),
+      jobDescription: document.getElementById('job-description'),
+      step2Prev: document.getElementById('step-2-prev'),
+      step2Next: document.getElementById('step-2-next'),
+      
+      // Step 3
+      selectionSummary: document.getElementById('selection-summary'),
+      priceDisplay: document.getElementById('price-display'),
+      tokenDisplay: document.getElementById('token-display'),
+      step3Prev: document.getElementById('step-3-prev'),
+      step3Next: document.getElementById('step-3-next'),
+      
+      // Step 4
+      documentPreview: document.getElementById('document-preview'),
+      previewContent: document.getElementById('preview-content'),
+      startOverBtn: document.getElementById('start-over-btn'),
+      downloadBtn: document.getElementById('download-btn'),
+      userEmailDisplay: document.getElementById('user-email-display'),
+      
+      // Buttons
+      startBtn: document.getElementById('start-btn'),
+      loginBtn: document.getElementById('login-btn'),
+      signupBtn: document.getElementById('signup-btn'),
+      
+      // Overlays
+      loadingOverlay: document.getElementById('loading-overlay')
+    };
+    
+    // Initialize
+    function init() {
+      bindEvents();
+      checkAuthState();
     }
-    toStep2Btn.addEventListener('click', ()=>{
-      step1.classList.add('hidden'); step2.classList.remove('hidden');
-    });
-
-    // STEP2: options
-    toneCards.addEventListener('click', e=>{
-      if (!e.target.dataset.value) return;
-      selectedTone = e.target.dataset.value;
-      Array.from(toneCards.children).forEach(c=> c.classList.toggle('selected', c===e.target));
-      checkStep2Ready();
-    });
-    formatPills.addEventListener('click', e=>{
-      if (!e.target.dataset.value) return;
-      selectedFormat = e.target.dataset.value;
-      Array.from(formatPills.children).forEach(p=> p.classList.toggle('selected', p===e.target));
-      checkStep2Ready();
-    });
-    function checkStep2Ready() {
-      toStep3Btn.disabled = !(selectedTone && selectedFormat);
+    
+    // Event Bindings
+    function bindEvents() {
+      // Navigation
+      elements.startBtn.addEventListener('click', startWizard);
+      elements.loginBtn.addEventListener('click', showLogin);
+      elements.signupBtn.addEventListener('click', showSignup);
+      
+      // Step 1
+      elements.fileDropArea.addEventListener('click', () => elements.fileInput.click());
+      elements.fileDropArea.addEventListener('dragover', handleDragOver);
+      elements.fileDropArea.addEventListener('dragleave', handleDragLeave);
+      elements.fileDropArea.addEventListener('drop', handleFileDrop);
+      elements.fileInput.addEventListener('change', handleFileSelect);
+      elements.changeFileBtn.addEventListener('click', () => elements.fileInput.click());
+      elements.step1Next.addEventListener('click', () => goToStep(2));
+      
+      // Step 2
+      bindOptionSelectors(elements.outputTypeOptions, 'outputType');
+      bindOptionSelectors(elements.toneOptions, 'tone');
+      elements.languageSelect.addEventListener('change', () => {
+        state.language = elements.languageSelect.value;
+      });
+      elements.jobDescription.addEventListener('input', () => {
+        state.jobDescription = elements.jobDescription.value;
+      });
+      elements.step2Prev.addEventListener('click', () => goToStep(1));
+      elements.step2Next.addEventListener('click', () => goToStep(3));
+      
+      // Step 3
+      elements.step3Prev.addEventListener('click', () => goToStep(2));
+      elements.step3Next.addEventListener('click', processPayment);
+      
+      // Step 4
+      elements.startOverBtn.addEventListener('click', resetWizard);
+      elements.downloadBtn.addEventListener('click', downloadDocument);
     }
-    back1Btn.addEventListener('click', ()=>{ step2.classList.add('hidden'); step1.classList.remove('hidden'); });
-    moreToggle.addEventListener('click', ()=>{ moreContent.classList.toggle('hidden'); });
-    toStep3Btn.addEventListener('click', ()=> startGeneration());
-
-    // STEP3 & spinner + marketing canvas
-    function startGeneration(){
-      step2.classList.add('hidden'); step3.classList.remove('hidden');
-      window.selectedTone = selectedTone;
-      runBalloonTips();
-      // call back-end
-      const form = new FormData();
-      form.append('file', uploadedFile);
-      form.append('tone', selectedTone);
-      form.append('format', selectedFormat);
-      form.append('jobTitle', document.getElementById('job-title').value);
-      form.append('company', document.getElementById('company').value);
-      fetch('/api/generate', { method: 'POST', body: form })
-        .then(res => res.json())
-        .then(data => showResult(data.text))
-        .catch(err => alert('Generation error'));
+    
+    function bindOptionSelectors(container, stateProperty) {
+      const options = container.querySelectorAll('.option-card');
+      options.forEach(option => {
+        option.addEventListener('click', () => {
+          options.forEach(o => o.classList.remove('selected'));
+          option.classList.add('selected');
+          state[stateProperty] = option.dataset.value;
+          updateStep2Validation();
+          
+          // If we're on the output type selection, update pricing
+          if (stateProperty === 'outputType') {
+            updatePricing();
+          }
+        });
+      });
     }
-
-    // BALLOON / FALLBACK (reuse spinner code)
-    function runBalloonTips(){
-      const messagesByTone = {
-        Formal: [ { text: 'Recruiters spend 7s per resume.' },{ text:'Upgrade: templates & analytics!', code:'USEFORMAL10'} ],
-        Casual: [ { text:'Casual tone doubles callbacks!' },{ text:'20% off code CASUAL20', code:'CASUAL20'} ],
-        Technical: [ { text:'ATS keywords boost scans 40%.' },{ text:'Speed up with TECHPRO'} ],
-        Creative: [ { text:'Creative resumes stand out 75%.' },{ text:'Unlock icons CREATIVE5'} ]
-      };
-      const msgs = messagesByTone[selectedTone] || messagesByTone.Formal;
-      const canvas = document.getElementById('balloon-canvas');
-      const fallback = document.getElementById('tooltip-fallback');
-      if(!canvas.getContext){
-        canvas.remove(); fallback.classList.remove('hidden'); let idx=0; fallback.textContent=msgs[0].text;
-        setInterval(()=>{ idx=(idx+1)%msgs.length; fallback.textContent=msgs[idx].text; },3000);
-        document.getElementById('skip-btn').onclick = ()=> showResult();
+    
+    // Authentication
+    function checkAuthState() {
+      // In a real implementation, this would check with Supabase
+      // For this MVP, we'll just use local state
+      updateAuthUI();
+    }
+    
+    function updateAuthUI() {
+      if (state.isAuthenticated) {
+        elements.authSection.innerHTML = `
+          <span id="user-email">${state.user?.email || 'User'}</span>
+          <button class="btn btn-secondary" id="account-btn">Account</button>
+          <button class="btn btn-danger" id="logout-btn">Logout</button>
+        `;
       } else {
-        const ctx = canvas.getContext('2d'); let popped=false; let balloons=[];
-        function resize(){ canvas.width=canvas.offsetWidth; canvas.height=canvas.offsetHeight; }
-        window.addEventListener('resize', resize); resize(); for(let i=0;i<5;i++) balloons.push(makeBalloon());
-        function makeBalloon(){ return { x:Math.random()*canvas.width, y:canvas.height+20, r:20+Math.random()*10, speed:0.5+Math.random(), msg:msgs[Math.floor(Math.random()*msgs.length)] }; }
-        function anim(){ ctx.clearRect(0,0,canvas.width,canvas.height); balloons.forEach((b,i)=>{ b.y-=b.speed; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fillStyle='rgba(0,123,255,0.3)'; ctx.fill(); ctx.fillStyle='#0056b3'; ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.fillText('🎈',b.x,b.y+4); if(b.y+b.r<0) balloons[i]=makeBalloon(); }); if(!popped) requestAnimationFrame(anim); }
-        anim(); canvas.addEventListener('click',e=>{ if(popped) return; const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top; balloons.forEach(b=>{ if((x-b.x)**2+(y-b.y)**2<b.r*b.r){ popped=true; showTip(b.msg); } }); });
+        elements.authSection.innerHTML = `
+          <button class="btn btn-secondary" id="login-btn">Login</button>
+          <button class="btn" id="signup-btn">Sign Up</button>
+        `;
+        
+        // Re-bind auth buttons after changing the HTML
+        document.getElementById('login-btn')?.addEventListener('click', showLogin);
+        document.getElementById('signup-btn')?.addEventListener('click', showSignup);
       }
-      document.getElementById('skip-btn').onclick = ()=> showResult();
-
-      function showTip(msgObj){ document.getElementById('spinner').classList.add('hidden'); canvas.remove(); fallback.remove(); document.getElementById('skip-btn').remove(); const el=document.createElement('div'); Object.assign(el.style,{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',padding:'16px',background:'#fff',border:'1px solid #ccc',borderRadius:'8px',textAlign:'center'}); el.innerHTML=`<p>${msgObj.text}</p>${msgObj.code?`<p><strong>Code:</strong> ${msgObj.code}</p>`:''}<button id='close-tip'>Continue</button>`; document.getElementById('spinner-container').appendChild(el); document.getElementById('close-tip').onclick=()=> showResult(); }
+      
+      // If user is admin, show admin link
+      if (state.isAdmin) {
+        const adminBtn = document.createElement('button');
+        adminBtn.className = 'btn btn-secondary';
+        adminBtn.id = 'admin-btn';
+        adminBtn.textContent = 'Admin';
+        adminBtn.addEventListener('click', showAdminPanel);
+        elements.authSection.prepend(adminBtn);
+      }
+      
+      // Re-bind account and logout buttons if authenticated
+      if (state.isAuthenticated) {
+        document.getElementById('account-btn')?.addEventListener('click', showAccountPanel);
+        document.getElementById('logout-btn')?.addEventListener('click', logout);
+      }
     }
-
-    // SHOW RESULT
-    const resultText = document.getElementById('result-text');
-    const downloadBtn = document.getElementById('download-btn');
-    const restartBtn  = document.getElementById('restart-btn');
-    function showResult(text=''){ step3.classList.add('hidden'); result.classList.remove('hidden'); resultText.textContent = text || 'Here is your boosted resume.'; downloadBtn.onclick = ()=> alert('Trigger download of formatted ' + selectedFormat); restartBtn.onclick = ()=> location.reload(); }
-
-  })();
+    
+    function showLogin() {
+      // In a real implementation, this would show a Supabase login form
+      // For this MVP, we'll simulate a successful login
+      elements.loadingOverlay.classList.remove('hidden');
+      
+      setTimeout(() => {
+        state.isAuthenticated = true;
+        state.user = { email: 'user@example.com', tokens: 2 };
+        updateAuthUI();
+        elements.loadingOverlay.classList.add('hidden');
+        showAccountPanel();
+      }, 1000);
+    }
+    
+    function showSignup() {
+      // In a real implementation, this would show a Supabase signup form
+      // For this MVP, we'll simulate a successful signup
+      elements.loadingOverlay.classList.remove('hidden');
+      
+      setTimeout(() => {
+        state.isAuthenticated = true;
+        state.user = { email: 'user@example.com', tokens: 0 };
+        updateAuthUI();
+        elements.loadingOverlay.classList.add('hidden');
+        showAccountPanel();
+      }, 1000);
+    }
+    
+    function logout() {
+      // In a real implementation, this would call Supabase signOut
+      state.isAuthenticated = false;
+      state.user = null;
+      state.isAdmin = false;
+      updateAuthUI();
+      showLandingPage();
+    }
+    
+    function showAccountPanel() {
+      hideAllSections();
+      elements.accountSection.classList.remove('hidden');
+      
+      // Update account info
+      document.getElementById('account-tokens').textContent = `${state.user?.tokens || 0} tokens`;
+      
+      // In a real implementation, this would fetch documents from Supabase
+      const documentsContainer = document.getElementById('recent-documents');
+      if ((state.user?.tokens || 0) > 0) {
+        documentsContainer.innerHTML = `
+          <div style="border-bottom: 1px solid #eee; padding: 0.5rem 0;">
+            <div class="d-flex justify-between">
+              <div>Resume - Formal.pdf</div>
+              <div>
+                <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">View</button>
+                <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Download</button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        documentsContainer.innerHTML = `<p>No documents yet.</p>`;
+      }
+    }
+    
+    function showAdminPanel() {
+      hideAllSections();
+      elements.adminSection.classList.remove('hidden');
+      
+      // In a real implementation, this would fetch stats from Supabase
+    }
+    
+    // Navigation
+    function hideAllSections() {
+      elements.landingSection.classList.add('hidden');
+      elements.wizardSection.classList.add('hidden');
+      elements.accountSection.classList.add('hidden');
+      elements.adminSection.classList.add('hidden');
+      
+      // Hide all step contents
+      elements.stepContents.forEach(content => {
+        content.classList.add('hidden');
+      });
+    }
+    
+    function showLandingPage() {
+      hideAllSections();
+      elements.landingSection.classList.remove('hidden');
+    }
+    
+    function startWizard() {
+      hideAllSections();
+      elements.wizardSection.classList.remove('hidden');
+      goToStep(1);
+    }
+    
+    function goToStep(step) {
+      state.currentStep = step;
+      
+      // Update step indicators
+      elements.stepElements.forEach(stepElem => {
+        const stepNum = parseInt(stepElem.dataset.step);
+        stepElem.classList.toggle('active', stepNum === step);
+        stepElem.classList.toggle('completed', stepNum < step);
+      });
+      
+      // Show current step content
+      elements.stepContents.forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`step-${step}`).classList.remove('hidden');
+      
+      // Perform step-specific actions
+      if (step === 3) {
+        updateSelectionSummary();
+      }
+    }
+    
+    // File Handling
+    function handleDragOver(e) {
+      e.preventDefault();
+      elements.fileDropArea.classList.add('drag-over');
+    }
+    
+    function handleDragLeave() {
+      elements.fileDropArea.classList.remove('drag-over');
+    }
+    
+    function handleFileDrop(e) {
+      e.preventDefault();
+      elements.fileDropArea.classList.remove('drag-over');
+      
+      const file = e.dataTransfer.files[0];
+      validateAndSetFile(file);
+    }
+    
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      validateAndSetFile(file);
+    }
+    
+    function validateAndSetFile(file) {
+      if (!file) return;
+      
+      const validTypes = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword'
+      ];
+      
+      if (!validTypes.includes(file.type)) {
+        alert('Please upload a PDF or Word document.');
+        return;
+      }
+      
+      // Set file in state
+      state.file = file;
+      state.fileName = file.name;
+      
+      // Update UI
+      elements.fileName.textContent = file.name;
+      elements.fileInfo.classList.remove('hidden');
+      elements.step1Next.disabled = false;
+    }
+    
+    // Step 2 Validation
+    function updateStep2Validation() {
+      // Enable next button only if both tone and output type are selected
+      elements.step2Next.disabled = !(state.tone && state.outputType);
+    }
+    
+    // Pricing
+    function updatePricing() {
+      if (!state.outputType) return;
+      
+      const tokens = pricing[state.outputType];
+      const price = pricing.getPrice(state.outputType);
+      
+      // Update displays
+      elements.tokenDisplay.textContent = `${tokens} token${tokens !== 1 ? 's' : ''}`;
+      elements.priceDisplay.textContent = `${price.toFixed(2)}`;
+    }
+    
+    function updateSelectionSummary() {
+      if (!state.outputType || !state.tone) return;
+      
+      const outputTypeLabels = {
+        'cv': 'CV / Resume',
+        'cover-letter': 'Cover Letter',
+        'both': 'CV & Cover Letter'
+      };
+      
+      const toneLabels = {
+        'formal': 'Formal',
+        'neutral': 'Neutral',
+        'casual': 'Casual',
+        'cocky': 'Cocky'
+      };
+      
+      let summary = `
+        <div class="mb-2">
+          <strong>Document:</strong> ${outputTypeLabels[state.outputType]}
+        </div>
+        <div class="mb-2">
+          <strong>Tone:</strong> ${toneLabels[state.tone]}
+        </div>
+      `;
+      
+      if (state.language) {
+        const languageLabels = {
+          'es': 'Spanish',
+          'fr': 'French',
+          'de': 'German',
+          'it': 'Italian',
+          'pt': 'Portuguese'
+        };
+        
+        summary += `
+          <div class="mb-2">
+            <strong>Translation:</strong> ${languageLabels[state.language]}
+          </div>
+        `;
+      }
+      
+      if (state.jobDescription) {
+        summary += `
+          <div class="mb-2">
+            <strong>Job Analysis:</strong> Enabled
+          </div>
+        `;
+      }
+      
+      elements.selectionSummary.innerHTML = summary;
+    }
+    
+    // Payment & Generation
+    function processPayment() {
+      // In a real implementation, this would process the Stripe payment
+      // For this MVP, we'll simulate a successful payment
+      elements.loadingOverlay.classList.remove('hidden');
+      
+      setTimeout(() => {
+        // Create account if not authenticated
+        if (!state.isAuthenticated) {
+          state.isAuthenticated = true;
+          state.user = { email: 'new-user@example.com', tokens: pricing[state.outputType] };
+          updateAuthUI();
+          elements.userEmailDisplay.textContent = state.user.email;
+        } else {
+          // Add tokens to existing account
+          state.user.tokens += pricing[state.outputType];
+        }
+        
+        // Generate the document
+        generateDocument();
+      }, 2000);
+    }
+    
+    function generateDocument() {
+      // In a real implementation, this would call the DeepSeek AI API
+      // For this MVP, we'll simulate document generation
+      
+      setTimeout(() => {
+        const fakeContent = getSampleContent();
+        elements.previewContent.innerHTML = fakeContent;
+        elements.loadingOverlay.classList.add('hidden');
+        goToStep(4);
+      }, 3000);
+    }
+    
+    function getSampleContent() {
+      // Return sample content based on selected options
+      const samples = {
+        'cv': {
+          'formal': `<h3>Professional Experience</h3>
+<p>Senior Software Engineer, Acme Corporation (2020-Present)</p>
+<ul>
+  <li>Architected and implemented scalable cloud-based solutions resulting in 40% improvement in system performance</li>
+  <li>Led a team of 5 developers in the successful delivery of the company's flagship product</li>
+  <li>Established robust CI/CD pipelines that reduced deployment time by 60%</li>
+</ul>`,
+          'neutral': `<h3>Work Experience</h3>
+<p>Software Engineer, Acme Corporation (2020-Present)</p>
+<ul>
+  <li>Built cloud solutions that improved system performance by 40%</li>
+  <li>Led a team of 5 developers to deliver the main product</li>
+  <li>Created CI/CD pipelines that made deployments 60% faster</li>
+</ul>`,
+          'casual': `<h3>What I've Been Up To</h3>
+<p>Coding at Acme Corporation (2020-Now)</p>
+<ul>
+  <li>Built some cool cloud stuff that made everything run 40% faster</li>
+  <li>Took charge of a small team to ship our main product</li>
+  <li>Set up pipelines that let us push updates super quickly</li>
+</ul>`,
+          'cocky': `<h3>How I've Dominated</h3>
+<p>Software Wizard, Acme Corporation (2020-Present)</p>
+<ul>
+  <li>Engineered revolutionary cloud solutions that crushed performance limits by 40%</li>
+  <li>Commanded an elite squad of developers to triumphantly launch our flagship product</li>
+  <li>Masterminded deployment systems that obliterated inefficiency by 60%</li>
+</ul>`
+        },
+        'cover-letter': {
+          'formal': `<p>Dear Hiring Manager,</p>
+<p>I am writing to express my interest in the Software Engineer position at your esteemed organization. With over 5 years of experience in developing scalable applications and a proven track record of leading successful projects, I believe I would be a valuable addition to your team.</p>
+<p>Throughout my career, I have consistently demonstrated the ability to architect robust solutions that address complex business challenges. My expertise in cloud technologies and CI/CD methodologies has enabled me to deliver high-quality software that exceeds client expectations.</p>`,
+          'neutral': `<p>Dear Hiring Manager,</p>
+<p>I'm interested in the Software Engineer position at your company. I have 5 years of experience building applications and leading projects successfully.</p>
+<p>In my career, I've created effective solutions for business problems. I know cloud technologies and CI/CD methods well, which helps me deliver quality software that clients appreciate.</p>`,
+          'casual': `<p>Hi there,</p>
+<p>I'm excited about the Software Engineer role you've got open! I've spent 5 years coding and leading projects, and I think we'd be a great match.</p>
+<p>I've built all sorts of solutions that solve real problems. I'm pretty good with cloud stuff and know how to ship code quickly, which means happy clients and happy teams.</p>`,
+          'cocky': `<p>To Whom It May Concern,</p>
+<p>You're looking for a Software Engineer? Look no further. With 5 years crushing code and dominating project deliveries, I'm exactly what your team needs to level up.</p>
+<p>I don't just build solutions—I craft masterpieces that demolish business problems. My cloud skills are unmatched, and my deployment pipelines are so efficient they'll make your head spin.</p>`
+        }
+      };
+      
+      return samples[state.outputType][state.tone] || `<p>Sample content for ${state.outputType} in ${state.tone} tone.</p>`;
+    }
+    
+    function downloadDocument() {
+      // In a real implementation, this would generate and download the document
+      // For this MVP, we'll just show an alert
+      alert(`Downloading your ${state.outputType} in ${state.tone} tone...`);
+    }
+    
+    // Reset
+    function resetWizard() {
+      // Reset state
+      state.file = null;
+      state.fileName = '';
+      state.outputType = '';
+      state.tone = '';
+      state.language = '';
+      state.jobDescription = '';
+      
+      // Reset UI
+      elements.fileInfo.classList.add('hidden');
+      elements.step1Next.disabled = true;
+      
+      // Reset selections
+      document.querySelectorAll('.option-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      elements.languageSelect.value = '';
+      elements.jobDescription.value = '';
+      
+      // Start over
+      showLandingPage();
+    }
+    
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
