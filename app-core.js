@@ -1,15 +1,28 @@
 // Main application initialization
+function initSupabase() {
+  console.log("Stub");
+}
+
+function initStripe() {
+  console.log("Stub");
+}function initSupabase() {
+  console.log("Stub");
+}
+
+function initStripe() {
+  console.log("Stub");
+}
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize services
     initSupabase();
     initStripe();
-    
+
     // Render initial page
     renderPage('landing');
-    
+
     // Setup event listeners
     setupEventListeners();
-    
+
     // Check auth status
     checkAuthStatus();
 });
