@@ -1,15 +1,15 @@
 // /api/generate.js
 
-export default async function handler(req, res) {
+const { buildCVPrompt, buildCoverLetterPrompt } = require('../../js/prompt-builder.js');
+const { DeepSeekClient } = require('deepseek');
+const { getUID, requireVerified } = require('../../utils/auth.js');
+const { logGeneration, deductTokens } = require('../../utils/supabase.js');
+
+module.exports = async function handler(req, res) {
   console.log('Received fileContent:', req.body.fileContent);
 
-import { buildCVPrompt, buildCoverLetterPrompt } from '../../js/prompt-builder.js';
-import { DeepSeekClient } from 'deepseek';
-import { getUID, requireVerified } from '../../utils/auth.js';
-import { logGeneration, deductTokens } from '../../utils/supabase.js';
-
-export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
+
 
   try {
     const { fileContent, jobDetails, tone, docType, lang } = req.body;
