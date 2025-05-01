@@ -1,43 +1,31 @@
-// /api/create-checkout-session.js
-
 import Stripe from 'stripe';
-import { getUID } from '../../utils/auth.js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const DOMAIN = process.env.SITE_URL || 'http://localhost:3000'; // your frontend domain
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2022-11-15',
+});
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
-
-  const uid = getUID(req);
-  if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
+      mode: 'payment',
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Token Pack',
-            },
-            unit_amount: 500, // $5.00 for example
-          },
+          price: process.env.STRIPE_PRICE_ID,
           quantity: 1,
         },
       ],
-      mode: 'payment',
-      success_url: `${DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${DOMAIN}/index.html`,
-      metadata: {
-        uid,
-      },
+      success_url: `${req.headers.origin}/success.html`,
+      cancel_url: `${req.headers.origin}/cancel.html`,
     });
 
-    res.status(200).json({ url: session.url });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Stripe session creation failed' });
+    res.status(200).json({ sessionId: session.id });
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    res.status(500).json({ error: 'Failed to create session' });
   }
 }
