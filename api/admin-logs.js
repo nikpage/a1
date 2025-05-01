@@ -1,24 +1,24 @@
-// /api/admin-logs.js
-
-import { createClient } from '@supabase/supabase-js';
-import { getUID } from '../../utils/auth.js';
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const ADMIN_UID = 'your-admin-id'; // replace with actual UID
+import { supabase } from '../../utils/supabaseClient';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
-
-  const uid = getUID(req);
-  if (uid !== ADMIN_UID) return res.status(403).json({ error: 'Forbidden' });
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    const { data, error } = await supabase.from('logs').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('admin_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-    if (error) return res.status(500).json({ error: 'Failed to fetch logs' });
-    res.status(200).json(data);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    if (error) {
+      throw error;
+    }
+
+    res.status(200).json({ logs: data });
+  } catch (error) {
+    console.error('Error fetching admin logs:', error);
+    res.status(500).json({ error: 'Failed to fetch admin logs' });
   }
 }

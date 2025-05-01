@@ -1,34 +1,27 @@
-// /api/generate.js (fixed)
-
 import { Configuration, OpenAIApi } from 'openai';
 
-const config = new Configuration({
+const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const openai = new OpenAIApi(config);
+const openai = new OpenAIApi(configuration);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.status(405).send({ error: 'Method not allowed' });
-    return;
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { resume, jobAd, tone, docType, lang } = req.body;
 
   if (!resume || !jobAd) {
-    res.status(400).json({ error: 'Missing required fields' });
-    return;
+    return res.status(400).json({ error: 'Missing resume or job ad' });
   }
 
-  const prompt = `Create a ${docType} based on the following resume and job advertisement.
-Tone: ${tone}
-Language: ${lang}
-
+  const prompt = `Create a ${docType} document in ${lang} with a ${tone} tone, based on the following:
 Resume:
 ${resume}
 
-Job Advertisement:
+Job Ad:
 ${jobAd}`;
 
   try {
@@ -41,10 +34,10 @@ ${jobAd}`;
       temperature: 0.7,
     });
 
-    const aiText = response.data.choices[0].message.content;
-    res.status(200).json({ text: aiText });
+    const content = response.data.choices[0].message.content;
+    return res.status(200).json({ text: content });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to generate document' });
+    return res.status(500).json({ error: 'Failed to generate content.' });
   }
 }

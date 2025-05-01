@@ -1,28 +1,23 @@
-// /api/extract.js (fixed)
-
 import { Configuration, OpenAIApi } from 'openai';
 
-const config = new Configuration({
+const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const openai = new OpenAIApi(config);
+const openai = new OpenAIApi(configuration);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.status(405).send({ error: 'Method not allowed' });
-    return;
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { resume, jobAd } = req.body;
 
   if (!resume || !jobAd) {
-    res.status(400).json({ error: 'Missing required fields' });
-    return;
+    return res.status(400).json({ error: 'Missing resume or job ad' });
   }
 
-  const prompt = `Extract the relevant skills, experience, and keywords from the following job advertisement, based on the provided resume.
-Highlight any gaps between the resume and the job requirements.
+  const prompt = `Analyze the following job ad and resume. Extract required skills, experience, and match them.
 
 Resume:
 ${resume}
@@ -37,13 +32,13 @@ ${jobAd}`;
         { role: 'system', content: 'You are a professional HR assistant.' },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.7,
+      temperature: 0.5,
     });
 
     const aiText = response.data.choices[0].message.content;
-    res.status(200).json({ text: aiText });
+    res.status(200).json({ extracted: aiText });
   } catch (error) {
-    console.error(error);
+    console.error('Error extracting information:', error);
     res.status(500).json({ error: 'Failed to extract information' });
   }
 }
