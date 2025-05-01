@@ -1,9 +1,5 @@
-// /js/pdf-parse.js
-
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.entry';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+import * as pdfjsLib from 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
 export async function parsePDF(file) {
   const arrayBuffer = await file.arrayBuffer();
