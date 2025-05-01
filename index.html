@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Booster MVP</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; background: #f4f4f9; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h2 { margin-top: 0; }
+    .hidden { display: none; }
+    /* Step buttons */
+    .btn { background: #007bff; color: #fff; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+    .btn:disabled { background: #aaa; cursor: default; }
+    .btn-secondary { background: transparent; color: #007bff; }
+    /* File upload */
+    #file-drop { border: 2px dashed #ccc; padding: 40px; text-align: center; cursor: pointer; }
+    #file-drop.hover { border-color: #007bff; }
+    /* Tone cards */
+    .cards { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+    .card { padding: 16px; border: 2px solid #ddd; border-radius: 6px; text-align: center; cursor: pointer; user-select: none; }
+    .card.selected { border-color: #007bff; background: rgba(0,123,255,0.1); }
+    /* Pills */
+    .pills { display: flex; gap: 8px; margin: 10px 0; }
+    .pill { padding: 6px 12px; border: 2px solid #ddd; border-radius: 16px; cursor: pointer; user-select: none; }
+    .pill.selected { border-color: #007bff; background: rgba(0,123,255,0.1); }
+    /* More options */
+    #more-options { margin-top: 10px; }
+    #more-toggle { color: #007bff; background: none; border: none; cursor: pointer; padding: 0; font-size: 14px; }
+    /* Spinner/marketing */
+    #spinner-container { position: relative; width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; }
+    #skip-btn { position: absolute; top: 8px; right: 12px; font-size: 24px; cursor: pointer; }
+    #spinner { width: 40px; height: 40px; border: 4px solid #ccc; border-top-color: #007bff; border-radius: 50%; animation: spin 1s linear infinite; position: absolute; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #balloon-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #tooltip-fallback { position: absolute; bottom: 16px; font-size: 14px; opacity: 0.9; text-align: center; padding: 4px 8px; background: rgba(0,0,0,0.1); border-radius: 4px; }
+    /* Result */
+    #result-text { white-space: pre-wrap; background: #fafafa; padding: 16px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="step1">
+      <h2>Step 1 of 3: Upload Resume</h2>
+      <div id="file-drop">Drag & drop PDF/DOCX here or click to browse</div>
+      <input id="file-input" type="file" accept=".pdf,.docx" class="hidden" />
+      <button id="to-step2" class="btn" disabled>Next</button>
+    </div>
+
+    <div id="step2" class="hidden">
+      <h2>Step 2 of 3: Choose Options</h2>
+      <h3>Tone</h3>
+      <div class="cards" id="tone-cards">
+        <div class="card" data-value="Formal">🤵 Formal</div>
+        <div class="card" data-value="Casual">😎 Casual</div>
+        <div class="card" data-value="Technical">💻 Technical</div>
+        <div class="card" data-value="Creative">🎨 Creative</div>
+      </div>
+      <h3>Format</h3>
+      <div class="pills" id="format-pills">
+        <div class="pill" data-value="pdf">PDF</div>
+        <div class="pill" data-value="docx">DOCX</div>
+        <div class="pill" data-value="txt">TXT</div>
+      </div>
+      <div id="more-options">
+        <button id="more-toggle">More options...</button>
+        <div id="more-content" class="hidden">
+          <label>Job Title<br/><input id="job-title" type="text" placeholder="e.g. Senior Engineer" /></label><br/>
+          <label>Company<br/><input id="company" type="text" placeholder="e.g. Acme Corp" /></label>
+        </div>
+      </div>
+      <button id="back1" class="btn-secondary btn">Back</button>
+      <button id="to-step3" class="btn" disabled>Generate</button>
+    </div>
+
+    <div id="step3" class="hidden">
+      <h2>Step 3 of 3: Generating… <span id="skip-btn" title="Skip tips">×</span></h2>
+      <div id="spinner-container">
+        <canvas id="balloon-canvas"></canvas>
+        <div id="spinner"></div>
+        <div id="tooltip-fallback" class="hidden"></div>
+      </div>
+    </div>
+
+    <div id="result" class="hidden">
+      <h2>Your Enhanced Resume</h2>
+      <div id="result-text"></div>
+      <button id="download-btn" class="btn">Download</button>
+      <button id="restart-btn" class="btn-secondary btn">Start Over</button>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    // STATE
+    let uploadedFile;
+    let selectedTone;
+    let selectedFormat;
+    let jobData = {};
+
+    // ELEMS
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    const result = document.getElementById('result');
+    const fileDrop = document.getElementById('file-drop');
+    const fileInput = document.getElementById('file-input');
+    const toStep2Btn = document.getElementById('to-step2');
+    const toneCards = document.getElementById('tone-cards');
+    const formatPills = document.getElementById('format-pills');
+    const toStep3Btn = document.getElementById('to-step3');
+    const back1Btn = document.getElementById('back1');
+    const moreToggle = document.getElementById('more-toggle');
+    const moreContent = document.getElementById('more-content');
+
+    // STEP 1: file upload
+    fileDrop.addEventListener('click', ()=> fileInput.click());
+    fileDrop.addEventListener('dragover', e=>{ e.preventDefault(); fileDrop.classList.add('hover'); });
+    fileDrop.addEventListener('dragleave', e=>{ fileDrop.classList.remove('hover'); });
+    fileDrop.addEventListener('drop', e=>{
+      e.preventDefault(); fileDrop.classList.remove('hover');
+      handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', ()=> handleFile(fileInput.files[0]));
+
+    function handleFile(file) {
+      if (!file) return;
+      if (!['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)) {
+        alert('Use PDF or DOCX'); return;
+      }
+      uploadedFile = file;
+      fileDrop.textContent = file.name;
+      toStep2Btn.disabled = false;
+    }
+    toStep2Btn.addEventListener('click', ()=>{
+      step1.classList.add('hidden'); step2.classList.remove('hidden');
+    });
+
+    // STEP2: options
+    toneCards.addEventListener('click', e=>{
+      if (!e.target.dataset.value) return;
+      selectedTone = e.target.dataset.value;
+      Array.from(toneCards.children).forEach(c=> c.classList.toggle('selected', c===e.target));
+      checkStep2Ready();
+    });
+    formatPills.addEventListener('click', e=>{
+      if (!e.target.dataset.value) return;
+      selectedFormat = e.target.dataset.value;
+      Array.from(formatPills.children).forEach(p=> p.classList.toggle('selected', p===e.target));
+      checkStep2Ready();
+    });
+    function checkStep2Ready() {
+      toStep3Btn.disabled = !(selectedTone && selectedFormat);
+    }
+    back1Btn.addEventListener('click', ()=>{ step2.classList.add('hidden'); step1.classList.remove('hidden'); });
+    moreToggle.addEventListener('click', ()=>{ moreContent.classList.toggle('hidden'); });
+    toStep3Btn.addEventListener('click', ()=> startGeneration());
+
+    // STEP3 & spinner + marketing canvas
+    function startGeneration(){
+      step2.classList.add('hidden'); step3.classList.remove('hidden');
+      window.selectedTone = selectedTone;
+      runBalloonTips();
+      // call back-end
+      const form = new FormData();
+      form.append('file', uploadedFile);
+      form.append('tone', selectedTone);
+      form.append('format', selectedFormat);
+      form.append('jobTitle', document.getElementById('job-title').value);
+      form.append('company', document.getElementById('company').value);
+      fetch('/api/generate', { method: 'POST', body: form })
+        .then(res => res.json())
+        .then(data => showResult(data.text))
+        .catch(err => alert('Generation error'));
+    }
+
+    // BALLOON / FALLBACK (reuse spinner code)
+    function runBalloonTips(){
+      const messagesByTone = {
+        Formal: [ { text: 'Recruiters spend 7s per resume.' },{ text:'Upgrade: templates & analytics!', code:'USEFORMAL10'} ],
+        Casual: [ { text:'Casual tone doubles callbacks!' },{ text:'20% off code CASUAL20', code:'CASUAL20'} ],
+        Technical: [ { text:'ATS keywords boost scans 40%.' },{ text:'Speed up with TECHPRO'} ],
+        Creative: [ { text:'Creative resumes stand out 75%.' },{ text:'Unlock icons CREATIVE5'} ]
+      };
+      const msgs = messagesByTone[selectedTone] || messagesByTone.Formal;
+      const canvas = document.getElementById('balloon-canvas');
+      const fallback = document.getElementById('tooltip-fallback');
+      if(!canvas.getContext){
+        canvas.remove(); fallback.classList.remove('hidden'); let idx=0; fallback.textContent=msgs[0].text;
+        setInterval(()=>{ idx=(idx+1)%msgs.length; fallback.textContent=msgs[idx].text; },3000);
+        document.getElementById('skip-btn').onclick = ()=> showResult();
+      } else {
+        const ctx = canvas.getContext('2d'); let popped=false; let balloons=[];
+        function resize(){ canvas.width=canvas.offsetWidth; canvas.height=canvas.offsetHeight; }
+        window.addEventListener('resize', resize); resize(); for(let i=0;i<5;i++) balloons.push(makeBalloon());
+        function makeBalloon(){ return { x:Math.random()*canvas.width, y:canvas.height+20, r:20+Math.random()*10, speed:0.5+Math.random(), msg:msgs[Math.floor(Math.random()*msgs.length)] }; }
+        function anim(){ ctx.clearRect(0,0,canvas.width,canvas.height); balloons.forEach((b,i)=>{ b.y-=b.speed; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fillStyle='rgba(0,123,255,0.3)'; ctx.fill(); ctx.fillStyle='#0056b3'; ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.fillText('🎈',b.x,b.y+4); if(b.y+b.r<0) balloons[i]=makeBalloon(); }); if(!popped) requestAnimationFrame(anim); }
+        anim(); canvas.addEventListener('click',e=>{ if(popped) return; const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top; balloons.forEach(b=>{ if((x-b.x)**2+(y-b.y)**2<b.r*b.r){ popped=true; showTip(b.msg); } }); });
+      }
+      document.getElementById('skip-btn').onclick = ()=> showResult();
+
+      function showTip(msgObj){ document.getElementById('spinner').classList.add('hidden'); canvas.remove(); fallback.remove(); document.getElementById('skip-btn').remove(); const el=document.createElement('div'); Object.assign(el.style,{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',padding:'16px',background:'#fff',border:'1px solid #ccc',borderRadius:'8px',textAlign:'center'}); el.innerHTML=`<p>${msgObj.text}</p>${msgObj.code?`<p><strong>Code:</strong> ${msgObj.code}</p>`:''}<button id='close-tip'>Continue</button>`; document.getElementById('spinner-container').appendChild(el); document.getElementById('close-tip').onclick=()=> showResult(); }
+    }
+
+    // SHOW RESULT
+    const resultText = document.getElementById('result-text');
+    const downloadBtn = document.getElementById('download-btn');
+    const restartBtn  = document.getElementById('restart-btn');
+    function showResult(text=''){ step3.classList.add('hidden'); result.classList.remove('hidden'); resultText.textContent = text || 'Here is your boosted resume.'; downloadBtn.onclick = ()=> alert('Trigger download of formatted ' + selectedFormat); restartBtn.onclick = ()=> location.reload(); }
+
+  })();
+  </script>
+</body>
+</html>
