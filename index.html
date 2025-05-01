@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CV & Cover Letter Writer</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- No defer needed here - we check for Stripe in code -->
     <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <div class="app-container">
-        <!-- Navigation -->
         <nav class="main-nav">
             <div class="logo">CV & Cover Letter Writer</div>
             <div class="nav-links">
@@ -18,10 +16,7 @@
             </div>
         </nav>
 
-        <!-- Main Content Area -->
-        <main id="main-content">
-            <!-- Will be replaced with sections based on current step -->
-        </main>
+        <main id="main-content"></main>
 
         <!-- Login Modal -->
         <div id="login-modal" class="modal">
@@ -43,7 +38,7 @@
             </div>
         </div>
 
-        <!-- Document Preview Modal (For account history only) -->
+        <!-- Document Preview Modal -->
         <div id="preview-modal" class="modal">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
@@ -66,9 +61,7 @@
                     <p>Price: <span id="price-display">$0.00</span></p>
                 </div>
                 <form id="payment-form">
-                    <div id="card-element">
-                        <!-- Stripe Card Element will be inserted here -->
-                    </div>
+                    <div id="card-element"></div>
                     <div id="card-errors" role="alert"></div>
                     <button type="submit" id="payment-submit" class="btn-primary">Pay Now</button>
                 </form>
@@ -132,252 +125,245 @@
             <div class="spinner"></div>
             <p id="loading-message">Processing...</p>
         </div>
+
+        <!-- Templates -->
+        <template id="landing-template">
+            <section class="landing-section">
+                <div class="hero">
+                    <h1>Transform Your Career Documents in Minutes</h1>
+                    <p>Our AI-powered tool creates professional CVs and cover letters tailored to your experience and desired job.</p>
+                    <button id="start-btn" class="btn-primary">Get Started</button>
+                </div>
+                <div class="features">
+                    <div class="feature">
+                        <h3>Upload Your Current Documents</h3>
+                        <p>We'll extract the relevant information from your existing CV or resume.</p>
+                    </div>
+                    <div class="feature">
+                        <h3>Customize Your Style</h3>
+                        <p>Choose from different tones and styles to match your personality and the job.</p>
+                    </div>
+                    <div class="feature">
+                        <h3>Analyze Job Listings</h3>
+                        <p>Optional job ad analysis to highlight key skills and keywords.</p>
+                    </div>
+                </div>
+            </section>
+        </template>
+
+        <template id="wizard-template">
+            <section class="wizard-section">
+                <div class="wizard-progress">
+                    <div class="progress-step" data-step="1">Upload</div>
+                    <div class="progress-step" data-step="2">Options</div>
+                    <div class="progress-step" data-step="3">Preview</div>
+                    <div class="progress-step" data-step="4">Payment</div>
+                </div>
+                <div class="wizard-content">
+                    <!-- Step 1: Document Upload -->
+                    <div class="wizard-step" id="step-upload">
+                        <h2>Upload Your Documents</h2>
+                        <div class="upload-area" id="upload-area">
+                            <p>Drag & drop your CV/resume or click to browse</p>
+                            <input type="file" id="file-input" accept=".pdf,.doc,.docx" hidden>
+                        </div>
+                        <div class="upload-info">
+                            <p>Accepted formats: PDF, DOC, DOCX</p>
+                        </div>
+                        <div class="job-description">
+                            <h3>Optional: Add Job Description</h3>
+                            <p>Add a job description to analyze keywords and tailor your documents.</p>
+                            <textarea id="job-description" placeholder="Paste job description here..."></textarea>
+                        </div>
+                        <div class="wizard-buttons">
+                            <button id="next-btn-upload" class="btn-primary" disabled>Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Options -->
+                    <div class="wizard-step" id="step-options" style="display: none;">
+                        <h2>Customize Your Documents</h2>
+                        <div class="options-container">
+                            <div class="option-group">
+                                <h3>Document Type</h3>
+                                <div class="radio-group">
+                                    <label>
+                                        <input type="radio" name="doc-type" value="cv" checked>
+                                        CV/Resume
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="doc-type" value="cover">
+                                        Cover Letter
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="doc-type" value="both">
+                                        Both
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="option-group">
+                                <h3>Tone</h3>
+                                <div class="radio-group">
+                                    <label>
+                                        <input type="radio" name="tone" value="formal" checked>
+                                        Formal
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="tone" value="neutral">
+                                        Neutral
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="tone" value="casual">
+                                        Casual
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="tone" value="cocky">
+                                        Cocky
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="option-group">
+                                <h3>Language</h3>
+                                <select id="language-select">
+                                    <option value="english">English</option>
+                                    <option value="spanish">Spanish</option>
+                                    <option value="french">French</option>
+                                    <option value="german">German</option>
+                                    <option value="chinese">Chinese</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="wizard-buttons">
+                            <button id="back-btn-options" class="btn-secondary">Back</button>
+                            <button id="next-btn-options" class="btn-primary">Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Preview & Payment -->
+                    <div class="wizard-step" id="step-payment" style="display: none;">
+                        <h2>Document Preview</h2>
+                        <div class="preview-section">
+                            <div id="document-toggle-container" style="display: none;">
+                                <button id="toggle-cv-btn" class="btn-secondary active">View CV</button>
+                                <button id="toggle-cover-btn" class="btn-secondary">View Cover Letter</button>
+                            </div>
+                            <div class="document-preview-area" id="document-preview-area">
+                                <div class="watermark">Preview</div>
+                            </div>
+                        </div>
+                        <div class="payment-summary">
+                            <h3>Order Summary</h3>
+                            <div class="summary-item">
+                                <span>Document Type:</span>
+                                <span id="summary-type"></span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Tone:</span>
+                                <span id="summary-tone"></span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Language:</span>
+                                <span id="summary-language"></span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Estimated Tokens:</span>
+                                <span id="summary-tokens"></span>
+                            </div>
+                            <div class="summary-item total">
+                                <span>Total Price:</span>
+                                <span id="summary-price"></span>
+                            </div>
+                        </div>
+                        <div class="wizard-buttons">
+                            <button id="back-btn-payment" class="btn-secondary">Back</button>
+                            <button id="proceed-payment-btn" class="btn-primary">Proceed to Payment</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Results -->
+                    <div class="wizard-step" id="step-results" style="display: none;">
+                        <h2>Your Documents Are Ready!</h2>
+                        <div class="results-container">
+                            <div id="result-toggle-container" style="display: none; margin-bottom: 1rem;">
+                                <button id="result-cv-btn" class="btn-secondary active">View CV</button>
+                                <button id="result-cover-btn" class="btn-secondary">View Cover Letter</button>
+                            </div>
+                            <div class="result-preview">
+                                <div class="preview-box" id="preview-box"></div>
+                            </div>
+                            <div class="result-actions">
+                                <button id="download-doc-btn" class="btn-primary">Download</button>
+                                <button id="create-account-btn" class="btn-accent">Create Account to Save</button>
+                            </div>
+                        </div>
+                        <div class="wizard-buttons">
+                            <button id="new-document-btn" class="btn-secondary">Create Another Document</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </template>
+
+        <template id="account-template">
+            <section class="account-section">
+                <h2>My Account</h2>
+                <div class="account-info">
+                    <div class="info-card">
+                        <h3>Account Details</h3>
+                        <p>Email: <span id="account-email"></span></p>
+                        <p>Token Balance: <span id="account-tokens"></span></p>
+                        <button id="buy-tokens-btn" class="btn-primary">Buy More Tokens</button>
+                    </div>
+                </div>
+                <div class="document-history">
+                    <h3>Document History</h3>
+                    <table id="history-table">
+                        <thead>
+                            <tr>
+                                <th>Document</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </template>
+
+        <template id="success-template">
+            <section class="success-section">
+                <div class="success-card">
+                    <h2>Payment Successful!</h2>
+                    <p>Your documents have been created and are ready for download.</p>
+                    <div class="success-actions">
+                        <button id="view-docs-btn" class="btn-primary">View Documents</button>
+                        <div class="account-create">
+                            <h3>Save Your Documents</h3>
+                            <p>Create an account to access your documents anytime.</p>
+                            <form id="create-account-form">
+                                <div class="form-group">
+                                    <label for="new-email">Email</label>
+                                    <input type="email" id="new-email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-password">Password</label>
+                                    <input type="password" id="new-password" required>
+                                </div>
+                                <button type="submit" class="btn-primary">Create Account</button>
+                            </form>
+                            <p>Already have an account? <a href="#" id="login-link">Login</a></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </template>
     </div>
 
-    <!-- Templates for Main Content Sections -->
-    <template id="landing-template">
-        <section class="landing-section">
-            <div class="hero">
-                <h1>Transform Your Career Documents in Minutes</h1>
-                <p>Our AI-powered tool creates professional CVs and cover letters tailored to your experience and desired job.</p>
-                <button id="start-btn" class="btn-primary">Get Started</button>
-            </div>
-            <div class="features">
-                <div class="feature">
-                    <h3>Upload Your Current Documents</h3>
-                    <p>We'll extract the relevant information from your existing CV or resume.</p>
-                </div>
-                <div class="feature">
-                    <h3>Customize Your Style</h3>
-                    <p>Choose from different tones and styles to match your personality and the job.</p>
-                </div>
-                <div class="feature">
-                    <h3>Analyze Job Listings</h3>
-                    <p>Optional job ad analysis to highlight key skills and keywords.</p>
-                </div>
-            </div>
-        </section>
-    </template>
-
-    <template id="wizard-template">
-        <section class="wizard-section">
-            <div class="wizard-progress">
-                <div class="progress-step" data-step="1">Upload</div>
-                <div class="progress-step" data-step="2">Options</div>
-                <div class="progress-step" data-step="3">Preview</div>
-                <div class="progress-step" data-step="4">Payment</div>
-            </div>
-            <div class="wizard-content">
-                <!-- Step 1: Document Upload -->
-                <div class="wizard-step" id="step-upload">
-                    <h2>Upload Your Documents</h2>
-                    <div class="upload-area" id="upload-area">
-                        <p>Drag & drop your CV/resume or click to browse</p>
-                        <input type="file" id="file-input" accept=".pdf,.doc,.docx" hidden>
-                    </div>
-                    <div class="upload-info">
-                        <p>Accepted formats: PDF, DOC, DOCX</p>
-                    </div>
-                    <div class="job-description">
-                        <h3>Optional: Add Job Description</h3>
-                        <p>Add a job description to analyze keywords and tailor your documents.</p>
-                        <textarea id="job-description" placeholder="Paste job description here..."></textarea>
-                    </div>
-                    <div class="wizard-buttons">
-                        <button id="next-btn-upload" class="btn-primary" disabled>Next</button>
-                    </div>
-                </div>
-                <!-- Step 2: Options -->
-                <div class="wizard-step" id="step-options" style="display: none;">
-                    <h2>Customize Your Documents</h2>
-                    <div class="options-container">
-                        <div class="option-group">
-                            <h3>Document Type</h3>
-                            <div class="radio-group">
-                                <label>
-                                    <input type="radio" name="tone" value="formal" checked>
-                                    Formal
-                                </label>
-                                <label>
-                                    <input type="radio" name="tone" value="neutral">
-                                    Neutral
-                                </label>
-                                <label>
-                                    <input type="radio" name="tone" value="casual">
-                                    Casual
-                                </label>
-                                <label>
-                                    <input type="radio" name="tone" value="cocky">
-                                    Cocky
-                                </label>
-                            </div>
-                        </div>
-                        <div class="option-group">
-                            <h3>Language</h3>
-                            <select id="language-select">
-                                <option value="english">English</option>
-                                <option value="spanish">Spanish</option>
-                                <option value="french">French</option>
-                                <option value="german">German</option>
-                                <option value="chinese">Chinese</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="wizard-buttons">
-                        <button id="back-btn-options" class="btn-secondary">Back</button>
-                        <button id="next-btn-options" class="btn-primary">Next</button>
-                    </div>
-                </div>
-                <!-- Step 3: Preview & Payment -->
-                <div class="wizard-step" id="step-payment" style="display: none;">
-                    <h2>Document Preview</h2>
-                    <div class="preview-section">
-                        <!-- Document toggle for both CV and cover letter -->
-                        <div id="document-toggle-container" style="display: none;">
-                            <button id="toggle-cv-btn" class="btn-secondary active">View CV</button>
-                            <button id="toggle-cover-btn" class="btn-secondary">View Cover Letter</button>
-                        </div>
-
-                        <!-- Preview content area -->
-                        <div class="document-preview-area" id="document-preview-area">
-                            <div class="watermark">Preview</div>
-                            <!-- Document content will be inserted here -->
-                        </div>
-                    </div>
-
-                    <div class="payment-summary">
-                        <h3>Order Summary</h3>
-                        <div class="summary-item">
-                            <span>Document Type:</span>
-                            <span id="summary-type"></span>
-                        </div>
-                        <div class="summary-item">
-                            <span>Tone:</span>
-                            <span id="summary-tone"></span>
-                        </div>
-                        <div class="summary-item">
-                            <span>Language:</span>
-                            <span id="summary-language"></span>
-                        </div>
-                        <div class="summary-item">
-                            <span>Estimated Tokens:</span>
-                            <span id="summary-tokens"></span>
-                        </div>
-                        <div class="summary-item total">
-                            <span>Total Price:</span>
-                            <span id="summary-price"></span>
-                        </div>
-                    </div>
-                    <div class="wizard-buttons">
-                        <button id="back-btn-payment" class="btn-secondary">Back</button>
-                        <button id="proceed-payment-btn" class="btn-primary">Proceed to Payment</button>
-                    </div>
-                </div>
-                <!-- Step 4: Results -->
-                <div class="wizard-step" id="step-results" style="display: none;">
-                    <h2>Your Documents Are Ready!</h2>
-                    <div class="results-container">
-                        <!-- Document toggle for both CV and cover letter -->
-                        <div id="result-toggle-container" style="display: none; margin-bottom: 1rem;">
-                            <button id="result-cv-btn" class="btn-secondary active">View CV</button>
-                            <button id="result-cover-btn" class="btn-secondary">View Cover Letter</button>
-                        </div>
-
-                        <div class="result-preview">
-                            <div class="preview-box" id="preview-box">
-                                <!-- Document content will be inserted here -->
-                            </div>
-                        </div>
-                        <div class="result-actions">
-                            <button id="download-doc-btn" class="btn-primary">Download</button>
-                            <button id="create-account-btn" class="btn-accent">Create Account to Save</button>
-                        </div>
-                    </div>
-                    <div class="wizard-buttons">
-                        <button id="new-document-btn" class="btn-secondary">Create Another Document</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </template>
-
-    <template id="account-template">
-        <section class="account-section">
-            <h2>My Account</h2>
-            <div class="account-info">
-                <div class="info-card">
-                    <h3>Account Details</h3>
-                    <p>Email: <span id="account-email"></span></p>
-                    <p>Token Balance: <span id="account-tokens"></span></p>
-                    <button id="buy-tokens-btn" class="btn-primary">Buy More Tokens</button>
-                </div>
-            </div>
-            <div class="document-history">
-                <h3>Document History</h3>
-                <table id="history-table">
-                    <thead>
-                        <tr>
-                            <th>Document</th>
-                            <th>Type</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-body"></tbody>
-                </table>
-            </div>
-        </section>
-    </template>
-
-    <template id="success-template">
-        <section class="success-section">
-            <div class="success-card">
-                <h2>Payment Successful!</h2>
-                <p>Your documents have been created and are ready for download.</p>
-                <div class="success-actions">
-                    <button id="view-docs-btn" class="btn-primary">View Documents</button>
-                    <div class="account-create">
-                        <h3>Save Your Documents</h3>
-                        <p>Create an account to access your documents anytime.</p>
-                        <form id="create-account-form">
-                            <div class="form-group">
-                                <label for="new-email">Email</label>
-                                <input type="email" id="new-email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="new-password">Password</label>
-                                <input type="password" id="new-password" required>
-                            </div>
-                            <button type="submit" class="btn-primary">Create Account</button>
-                        </form>
-                        <p>Already have an account? <a href="#" id="login-link">Login</a></p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </template>
-
-    <!-- Load JavaScript -->
-  <script src="prompt-builder.js"></script>
-  <script src="app-core.js"></script>
-<script src="document-wizard.js"></script>
-<script src="user-management.js"></script>
+    <script src="prompt-builder.js"></script>
+    <script src="app-core.js"></script>
+    <script src="document-wizard.js"></script>
+    <script src="user-management.js"></script>
 </body>
 </html>
-                                <label>
-                                    <input type="radio" name="doc-type" value="cv" checked>
-                                    CV/Resume
-                                </label>
-                                <label>
-                                    <input type="radio" name="doc-type" value="cover">
-                                    Cover Letter
-                                </label>
-                                <label>
-                                    <input type="radio" name="doc-type" value="both">
-                                    Both
-                                </label>
-                            </div>
-                        </div>
-                        <div class="option-group">
-                            <h3>Tone</h3>
-                            <div class="radio-group">
