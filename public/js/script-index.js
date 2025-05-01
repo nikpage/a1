@@ -1,7 +1,5 @@
 // /js/script-index.js
 
-import { parsePDF } from './pdf-parse.js';
-
 const fileInput = document.getElementById('fileInput');
 const jobAd = document.getElementById('jobAd');
 const extractBtn = document.getElementById('extractBtn');
@@ -51,12 +49,6 @@ function showEditableFields({ title, company, hiringManager, keywords }) {
     <label>Keywords: <input value="${keywords.join(', ')}" data-key="keywords"></label>
   `;
 }
-
-fileInput.onchange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  resumeText = await parsePDF(file);
-};
 
 generateBtn.onclick = async () => {
   statusText.textContent = 'Generating...';
