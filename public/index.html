@@ -2,8 +2,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://unpkg.com/ses@^1.12.0/dist/ses.umd.min.js"></script>    <script>lockdown();</script>
-  <meta charset="UTF-8" />
+  <!-- SES lockdown: must come before everything else -->
+  <script src="https://cdn.jsdelivr.net/npm/ses@1.12.0/dist/ses.umd.min.js"></script>
+  <script>lockdown();</script>
+
+  <!-- Your existing head content -->
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI CV Builder</title>
   <link rel="stylesheet" href="/css/styles.css"/>
@@ -56,7 +60,5 @@
   </main>
 
   <script src="/js/script-index.js" type="module"></script>
-
-
 </body>
 </html>
