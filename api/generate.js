@@ -1,5 +1,8 @@
 // /api/generate.js
 
+export default async function handler(req, res) {
+  console.log('Received fileContent:', req.body.fileContent);
+
 import { buildCVPrompt, buildCoverLetterPrompt } from '../../js/prompt-builder.js';
 import { DeepSeekClient } from 'deepseek';
 import { getUID, requireVerified } from '../../utils/auth.js';
