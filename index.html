@@ -1,905 +1,361 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CV & Cover Letter Writer</title>
-  <style>
-    /* Global Styles */
-    :root {
-      --primary: #3a86ff;
-      --primary-dark: #2667cc;
-      --secondary: #8338ec;
-      --success: #38b000;
-      --warning: #ffbe0b;
-      --danger: #ff006e;
-      --light: #f8f9fa;
-      --dark: #212529;
-      --gray: #6c757d;
-      --border-radius: 8px;
-    }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
-      line-height: 1.6;
-      color: var(--dark);
-      background-color: #f4f7fa;
-    }
-    
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 1rem;
-    }
-    
-    /* Header */
-    header {
-      background-color: white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      padding: 1rem 0;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    
-    .header-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .logo {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: var(--primary);
-    }
-    
-    .user-menu {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    
-    /* Buttons */
-    .btn {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      font-size: 1rem;
-      text-align: center;
-      text-decoration: none;
-      transition: background-color 0.3s;
-    }
-    
-    .btn:hover {
-      background-color: var(--primary-dark);
-    }
-    
-    .btn-secondary {
-      background-color: white;
-      color: var(--primary);
-      border: 1px solid var(--primary);
-    }
-    
-    .btn-secondary:hover {
-      background-color: var(--light);
-    }
-    
-    .btn-success {
-      background-color: var(--success);
-    }
-    
-    .btn-warning {
-      background-color: var(--warning);
-      color: var(--dark);
-    }
-    
-    .btn-danger {
-      background-color: var(--danger);
-    }
-    
-    .btn-full {
-      width: 100%;
-    }
-    
-    .btn:disabled {
-      background-color: var(--gray);
-      cursor: not-allowed;
-    }
-    
-    /* Forms and Inputs */
-    .form-group {
-      margin-bottom: 1rem;
-    }
-    
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-    
-    input, select, textarea {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: var(--border-radius);
-      font-size: 1rem;
-      font-family: inherit;
-    }
-    
-    /* Cards */
-    .card {
-      background-color: white;
-      border-radius: var(--border-radius);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .card-title {
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
-      color: var(--dark);
-    }
-    
-    /* Option Selectors */
-    .option-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .option-card {
-      background-color: white;
-      border: 2px solid #ddd;
-      border-radius: var(--border-radius);
-      padding: 1rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .option-card:hover {
-      border-color: var(--primary);
-    }
-    
-    .option-card.selected {
-      border-color: var(--primary);
-      background-color: rgba(58, 134, 255, 0.05);
-    }
-    
-    .option-icon {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-    
-    /* File Upload */
-    .file-upload {
-      border: 2px dashed #ddd;
-      border-radius: var(--border-radius);
-      padding: 2rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .file-upload:hover {
-      border-color: var(--primary);
-    }
-    
-    .file-upload.drag-over {
-      border-color: var(--primary);
-      background-color: rgba(58, 134, 255, 0.05);
-    }
-    
-    .file-input {
-      display: none;
-    }
-    
-    /* Wizard Steps */
-    .wizard-steps {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 2rem;
-      position: relative;
-    }
-    
-    .wizard-steps::before {
-      content: '';
-      position: absolute;
-      top: 16px;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background-color: #ddd;
-      z-index: 1;
-    }
-    
-    .step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-      z-index: 2;
-    }
-    
-    .step-number {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 34px;
-      height: 34px;
-      background-color: white;
-      border: 2px solid #ddd;
-      border-radius: 50%;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      transition: all 0.3s;
-    }
-    
-    .step.active .step-number {
-      border-color: var(--primary);
-      background-color: var(--primary);
-      color: white;
-    }
-    
-    .step.completed .step-number {
-      border-color: var(--success);
-      background-color: var(--success);
-      color: white;
-    }
-    
-    .step-label {
-      font-size: 0.85rem;
-      font-weight: 500;
-      text-align: center;
-    }
-    
-    /* Toggle switches */
-    .toggle-container {
-      display: flex;
-      align-items: center;
-    }
-    
-    .toggle {
-      position: relative;
-      display: inline-block;
-      width: 50px;
-      height: 24px;
-      margin-right: 10px;
-    }
-    
-    .toggle input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      border-radius: 34px;
-      transition: .4s;
-    }
-    
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      border-radius: 50%;
-      transition: .4s;
-    }
-    
-    input:checked + .toggle-slider {
-      background-color: var(--primary);
-    }
-    
-    input:checked + .toggle-slider:before {
-      transform: translateX(26px);
-    }
-    
-    /* Keywords */
-    .keyword-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-    
-    .keyword-text {
-      flex-grow: 1;
-      padding: 0.5rem;
-      margin-right: 0.5rem;
-      border: 1px solid #ddd;
-      border-radius: var(--border-radius);
-    }
-    
-    /* Payment */
-    .price-box {
-      background-color: #f8f9fa;
-      border: 1px solid #ddd;
-      border-radius: var(--border-radius);
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    
-    .price {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: var(--primary);
-    }
-    
-    /* Document Preview */
-    .document-preview {
-      background-color: #f8f9fa;
-      border: 1px solid #ddd;
-      border-radius: var(--border-radius);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      min-height: 300px;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .watermark {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 5rem;
-      opacity: 0.1;
-      transform: rotate(-45deg);
-      pointer-events: none;
-    }
-    
-    /* Progress bar */
-    .progress-container {
-      width: 100%;
-      background-color: #f1f1f1;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-    
-    .progress-bar {
-      height: 20px;
-      background-color: var(--primary);
-      width: 0%;
-      border-radius: 4px;
-      transition: width 0.5s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 0.75rem;
-    }
-    
-    /* Loading */
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(255, 255, 255, 0.8);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(0, 0, 0, 0.1);
-      border-radius: 50%;
-      border-top-color: var(--primary);
-      animation: spin 1s linear infinite;
-      margin-bottom: 1rem;
-    }
-    
-    .loading-message {
-      font-size: 1rem;
-      text-align: center;
-    }
-    
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-    
-    /* Tooltip */
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      cursor: pointer;
-    }
-    
-    .tooltip-text {
-      visibility: hidden;
-      width: 200px;
-      background-color: var(--dark);
-      color: white;
-      text-align: center;
-      border-radius: 6px;
-      padding: 0.5rem;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%;
-      left: 50%;
-      transform: translateX(-50%);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    
-    .tooltip:hover .tooltip-text {
-      visibility: visible;
-      opacity: 1;
-    }
-    
-    /* Utility Classes */
-    .text-center {
-      text-align: center;
-    }
-    
-    .text-muted {
-      color: #6c757d;
-    }
-    
-    .mt-1 {
-      margin-top: 0.5rem;
-    }
-    
-    .mt-2 {
-      margin-top: 1rem;
-    }
-    
-    .mt-3 {
-      margin-top: 1.5rem;
-    }
-    
-    .mt-4 {
-      margin-top: 2rem;
-    }
-    
-    .mb-1 {
-      margin-bottom: 0.5rem;
-    }
-    
-    .mb-2 {
-      margin-bottom: 1rem;
-    }
-    
-    .mb-3 {
-      margin-bottom: 1.5rem;
-    }
-    
-    .mb-4 {
-      margin-bottom: 2rem;
-    }
-    
-    .px-2 {
-      padding-left: 1rem;
-      padding-right: 1rem;
-    }
-    
-    .py-2 {
-      padding-top: 1rem;
-      padding-bottom: 1rem;
-    }
-    
-    .hidden {
-      display: none;
-    }
-    
-    .d-flex {
-      display: flex;
-    }
-    
-    .justify-between {
-      justify-content: space-between;
-    }
-    
-    .items-center {
-      align-items: center;
-    }
-    
-    .flex-wrap {
-      flex-wrap: wrap;
-    }
-    
-    .gap-1 {
-      gap: 0.5rem;
-    }
-    
-    .gap-2 {
-      gap: 1rem;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .option-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      
-      .wizard-steps {
-        flex-wrap: wrap;
-      }
-      
-      .step {
-        flex: 0 0 33.333%;
-        margin-bottom: 1rem;
-      }
-    }
-    
-    @media (max-width: 480px) {
-      .option-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .step {
-        flex: 0 0 50%;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV & Cover Letter Writer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-  <!-- Header -->
-  <header>
-    <div class="container header-content">
-      <div class="logo">CV & Cover Letter Writer</div>
-      <div class="user-menu" id="auth-section">
-        <button class="btn btn-secondary" id="login-btn">Login</button>
-        <button class="btn" id="signup-btn">Sign Up</button>
-      </div>
-    </div>
-  </header>
-  
-  <!-- Main Content -->
-  <main class="container">
-    <!-- Landing Content (Hidden when wizard starts) -->
-    <section id="landing-section">
-      <div class="card">
-        <h1 class="text-center mb-3">Professional CV & Cover Letter in Minutes</h1>
-        <p class="text-center mb-3">Upload your current document and let AI enhance it for your next career move.</p>
-        <div class="text-center">
-          <button class="btn" id="start-btn">Get Started</button>
+    <div class="app-container">
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <div class="logo">CV & Cover Letter Writer</div>
+            <div class="nav-links">
+                <button id="login-btn" class="btn-secondary">Login</button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Will be replaced with sections based on current step -->
+        </main>
+
+        <!-- Login Modal -->
+        <div id="login-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Login / Sign Up</h2>
+                <form id="auth-form">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    <button type="submit" id="auth-submit" class="btn-primary">Login</button>
+                    <p id="auth-toggle">Don't have an account? <a href="#" id="auth-switch">Sign Up</a></p>
+                </form>
+            </div>
         </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-title">How It Works</div>
-        <div class="d-flex flex-wrap mb-3">
-          <div style="flex: 1; min-width: 180px; text-align: center; padding: 1rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
-            <h3 class="mb-1">Upload Document</h3>
-            <p>Upload your current CV or resume in PDF or Word format</p>
-          </div>
-          <div style="flex: 1; min-width: 180px; text-align: center; padding: 1rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚙️</div>
-            <h3 class="mb-1">Choose Options</h3>
-            <p>Select your preferred tone and output type</p>
-          </div>
-          <div style="flex: 1; min-width: 180px; text-align: center; padding: 1rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">✨</div>
-            <h3 class="mb-1">Get Results</h3>
-            <p>Receive your enhanced documents ready for download</p>
-          </div>
-        </div>
-      </div>
-    </section>
-    
-    <!-- Wizard Section -->
-    <section id="wizard-section" class="hidden">
-      <!-- Progress Steps -->
-      <div class="wizard-steps">
-        <div class="step active" data-step="1">
-          <div class="step-number">1</div>
-          <div class="step-label">Upload</div>
-        </div>
-        <div class="step" data-step="2">
-          <div class="step-number">2</div>
-          <div class="step-label">Options</div>
-        </div>
-        <div class="step" data-step="3">
-          <div class="step-number">3</div>
-          <div class="step-label">Job Analysis</div>
-        </div>
-        <div class="step" data-step="4">
-          <div class="step-number">4</div>
-          <div class="step-label">Generate</div>
-        </div>
-        <div class="step" data-step="5">
-          <div class="step-number">5</div>
-          <div class="step-label">Results</div>
-        </div>
-      </div>
-      
-      <!-- Step 1: Upload Document -->
-      <div class="step-content" id="step-1">
-        <div class="card">
-          <div class="card-title">Upload Your Document</div>
-          <div class="file-upload" id="file-drop-area">
-            <div class="mb-2">Drop your CV or resume here or click to browse</div>
-            <div>Accepts PDF or Word documents</div>
-            <input type="file" id="file-input" class="file-input" accept=".pdf,.docx,.doc">
-          </div>
-          <div id="file-info" class="mt-2 hidden">
-            <div class="d-flex justify-between items-center">
-              <div id="file-name"></div>
-              <button class="btn btn-secondary" id="change-file-btn">Change</button>
-            </div>
-          </div>
-          <div class="mt-3 text-center">
-            <button class="btn" id="step-1-next" disabled>Next</button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Step 2: Options -->
-      <div class="step-content hidden" id="step-2">
-        <div class="card">
-          <div class="card-title">Choose Output Type</div>
-          <div class="option-grid" id="output-type-options">
-            <div class="option-card" data-value="cv">
-              <div class="option-icon">📄</div>
-              <div>CV / Resume</div>
-            </div>
-            <div class="option-card" data-value="cover-letter">
-              <div class="option-icon">✉️</div>
-              <div>Cover Letter</div>
-            </div>
-            <div class="option-card" data-value="both">
-              <div class="option-icon">📑</div>
-              <div>Both</div>
-            </div>
-          </div>
-          
-          <div class="card-title">Select Tone</div>
-          <div class="option-grid" id="tone-options">
-            <div class="option-card" data-value="formal">
-              <div class="option-icon">👔</div>
-              <div>Formal</div>
-            </div>
-            <div class="option-card" data-value="neutral">
-              <div class="option-icon">🔄</div>
-              <div>Neutral</div>
-            </div>
-            <div class="option-card" data-value="casual">
-              <div class="option-icon">😎</div>
-              <div>Casual</div>
-            </div>
-            <div class="option-card" data-value="cocky">
-              <div class="option-icon">🚀</div>
-              <div>Cocky</div>
-            </div>
-          </div>
-          
-          <div class="form-group mt-3">
-            <label for="language-select">Translation (Optional)</label>
-            <select id="language-select">
-              <option value="">No translation needed</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="it">Italian</option>
-              <option value="pt">Portuguese</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="job-description">
-              Job Description for Analysis
-              <span class="tooltip">ℹ️
-                <span class="tooltip-text">Add a job posting to extract keywords and tailor your document</span>
-              </span>
-            </label>
-            <textarea id="job-description" rows="4" placeholder="Paste job posting here for keyword optimization"></textarea>
-          </div>
-          
-          <div class="d-flex justify-between mt-3">
-            <button class="btn btn-secondary" id="step-2-prev">Back</button>
-            <button class="btn" id="step-2-next" disabled>Next</button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Step 3: Job Analysis -->
-      <div class="step-content hidden" id="step-3">
-        <div class="card">
-          <div class="card-title">Job Details Analysis</div>
-          
-          <div id="job-analysis-loading" class="text-center py-2">
-            <div class="spinner" style="margin: 0 auto;"></div>
-            <p class="mt-2">Analyzing job description...</p>
-          </div>
-          
-          <div id="job-analysis-results" class="hidden">
-            <div class="form-group">
-              <label for="company-name">Company Name</label>
-              <input type="text" id="company-name" placeholder="Not Found" class="text-muted">
-            </div>
-            
-            <div class="form-group">
-              <label for="job-title">Job Title</label>
-              <input type="text" id="job-title" placeholder="Not Found" class="text-muted">
-            </div>
-            
-            <div class="form-group">
-              <label for="hr-contact">HR Contact</label>
-              <input type="text" id="hr-contact" placeholder="Not Found" class="text-muted">
-            </div>
-            
-            <div class="form-group">
-              <label>Keywords</label>
-              <div id="keywords-container">
-                <!-- Keywords will be inserted here -->
-              </div>
-            </div>
-          </div>
-          
-          <div class="d-flex justify-between mt-3">
-            <button class="btn btn-secondary" id="step-3-prev">Back</button>
-            <button class="btn" id="step-3-next">Next</button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Step 4: Generate -->
-      <div class="step-content hidden" id="step-4">
-        <div class="card">
-          <div class="card-title">Generating Your Documents</div>
-          
-          <div class="progress-container">
-            <div class="progress-bar" id="generation-progress">0%</div>
-          </div>
-          
-          <div id="generation-status" class="text-center mb-3">
-            Preparing document analysis...
-          </div>
-          
-          <div class="document-preview hidden" id="document-preview-generating">
-            <div class="watermark">PREVIEW</div>
-            <div id="preview-content-generating">
-              <!-- Generated content will appear here -->
-            </div>
-          </div>
-          
-          <div class="d-flex justify-between mt-3">
-            <button class="btn btn-secondary" id="step-4-prev" disabled>Back</button>
-            <button class="btn" id="step-4-next" disabled>View Results</button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Step 5: Results -->
-      <div class="step-content hidden" id="step-5">
-        <div class="card">
-          <div class="card-title">Your Enhanced Document</div>
-          
-          <div class="document-preview" id="document-preview-final">
-            <div class="watermark">PREVIEW</div>
-            <div id="preview-content-final">
-              <!-- Final document content will be displayed here -->
-            </div>
-          </div>
-          
-          <div class="price-box mb-3" id="payment-section">
-            <div class="d-flex justify-between items-center">
-              <div>
-                <div class="mb-1">Price to download</div>
-                <div class="price" id="price-display">$0.00</div>
-              </div>
-              <div>
-                <div class="mb-1">Document Tokens</div>
-                <div id="token-display">0 tokens</div>
-              </div>
-            </div>
-            
-            <div class="mt-2" id="payment-element">
-              <!-- Stripe payment element will be inserted here -->
-              <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem;">
-                <p class="mb-1">Card Information</p>
-                <div style="height: 40px; background: #f8f9fa; border-radius: 4px; margin-bottom: 0.5rem;"></div>
-                <div class="d-flex gap-1">
-                  <div style="flex: 1; height: 40px; background: #f8f9fa; border-radius: 4px;"></div>
-                  <div style="flex: 1; height: 40px; background: #f8f9fa; border-radius: 4px;"></div>
+
+        <!-- Document Preview Modal -->
+        <div id="preview-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Document Preview</h2>
+                <div id="document-preview"></div>
+                <div class="modal-actions">
+                    <button id="download-btn" class="btn-primary">Download</button>
+                    <button id="edit-btn" class="btn-secondary">Edit</button>
                 </div>
-              </div>
             </div>
-            
-            <div class="mt-2 text-center">
-              <button class="btn" id="pay-download-btn">Pay & Download</button>
-            </div>
-          </div>
-          
-          <div id="download-success" class="hidden">
-            <div class="text-center py-2" style="background-color: #d4edda; color: #155724; border-radius: 4px; margin-bottom: 1rem;">
-              Payment successful! You can now download your document.
-            </div>
-            
-            <div class="d-flex justify-between">
-              <button class="btn btn-secondary" id="start-over-btn">Start Over</button>
-              <button class="btn" id="download-btn">Download</button>
-            </div>
-          </div>
         </div>
-        
-        <div class="card hidden" id="account-created-card">
-          <div class="card-title">Account Created</div>
-          <p>An account has been created for you to access your documents again in the future.</p>
-          <div class="mb-2">
-            <strong>Email:</strong> <span id="user-email-display"></span>
-          </div>
-          <p>Your document tokens have been added to your account. Login anytime to access your documents.</p>
+
+        <!-- Payment Modal -->
+        <div id="payment-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Payment</h2>
+                <div class="payment-details">
+                    <p>Total tokens: <span id="token-count">0</span></p>
+                    <p>Price: <span id="price-display">$0.00</span></p>
+                </div>
+                <form id="payment-form">
+                    <div id="card-element">
+                        <!-- Stripe Card Element will be inserted here -->
+                    </div>
+                    <div id="card-errors" role="alert"></div>
+                    <button type="submit" id="payment-submit" class="btn-primary">Pay Now</button>
+                </form>
+            </div>
         </div>
-      </div>
-    </section>
-    
-    <!-- Account Section -->
-    <section id="account-section" class="hidden">
-      <div class="card">
-        <div class="card-title">Account Dashboard</div>
-        <div class="mb-3">
-          <h3 class="mb-1">Your Document Tokens</h3>
-          <div class="price-box">
-            <div class="d-flex justify-between items-center">
-              <div id="account-tokens">0 tokens</div>
-              <button class="btn">Buy More</button>
+
+        <!-- Admin Dashboard Modal -->
+        <div id="admin-modal" class="modal">
+            <div class="modal-content admin-content">
+                <span class="close-modal">&times;</span>
+                <h2>Admin Dashboard</h2>
+                <div class="dashboard-stats">
+                    <div class="stat-box">
+                        <h3>Users</h3>
+                        <p id="user-count">0</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>Documents</h3>
+                        <p id="doc-count">0</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>Revenue</h3>
+                        <p id="revenue">$0</p>
+                    </div>
+                </div>
+                <div class="dashboard-tables">
+                    <div class="table-container">
+                        <h3>Recent Transactions</h3>
+                        <table id="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="table-container">
+                        <h3>Recent Documents</h3>
+                        <table id="documents-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documents-body"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-        
-        <div class="mb-3">
-          <h3 class="mb-1">Recent Documents</h3>
-          <div id="recent-documents">
-            <p>No documents yet.</p>
-          </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+            <p id="loading-message">Processing...</p>
         </div>
-      </div>
-    </section>
-    
-    <!-- Admin Section -->
-    <section id="admin-section" class="hidden">
-      <div class="card">
-        <div class="card-title">Admin Dashboard</div>
-        
-        <div class="mb-3">
-          <h3 class="mb-1">Usage Statistics</h3>
-          <div class="d-flex flex-wrap gap-2">
-            <div style="flex: 1; min-width: 150px; background: #f8f9fa; border-radius: 8px; padding: 1rem;">
-              <div>Total Documents</div>
-              <div style="font-size: 1.5rem; font-weight: bold;">0</div>
+    </div>
+
+    <!-- Templates for Main Content Sections -->
+    <template id="landing-template">
+        <section class="landing-section">
+            <div class="hero">
+                <h1>Transform Your Career Documents in Minutes</h1>
+                <p>Our AI-powered tool creates professional CVs and cover letters tailored to your experience and desired job.</p>
+                <button id="start-btn" class="btn-primary">Get Started</button>
             </div>
-            <div style="flex: 1; min-width: 150px; background: #f8f9fa; border-radius: 8px; padding: 1rem;">
-              <div>Total Users</div>
-              <div style="font-size: 1.5rem; font-weight: bold;">0</div>
+            <div class="features">
+                <div class="feature">
+                    <h3>Upload Your Current Documents</h3>
+                    <p>We'll extract the relevant information from your existing CV or resume.</p>
+                </div>
+                <div class="feature">
+                    <h3>Customize Your Style</h3>
+                    <p>Choose from different tones and styles to match your personality and the job.</p>
+                </div>
+                <div class="feature">
+                    <h3>Analyze Job Listings</h3>
+                    <p>Optional job ad analysis to highlight key skills and keywords.</p>
+                </div>
             </div>
-            <div style="flex: 1; min-width: 150px; background: #f8f9fa; border-radius: 8px; padding: 1rem;">
-              <div>Revenue</div>
-              <div style="font-size: 1.5rem; font-weight: bold;">$0.00</div>
+        </section>
+    </template>
+
+    <template id="wizard-template">
+        <section class="wizard-section">
+            <div class="wizard-progress">
+                <div class="progress-step" data-step="1">Upload</div>
+                <div class="progress-step" data-step="2">Options</div>
+                <div class="progress-step" data-step="3">Payment</div>
+                <div class="progress-step" data-step="4">Results</div>
             </div>
+            <div class="wizard-content">
+                <!-- Step 1: Document Upload -->
+                <div class="wizard-step" id="step-upload">
+                    <h2>Upload Your Documents</h2>
+                    <div class="upload-area" id="upload-area">
+                        <p>Drag & drop your CV/resume or click to browse</p>
+                        <input type="file" id="file-input" accept=".pdf,.doc,.docx" hidden>
+                    </div>
+                    <div class="upload-info">
+                        <p>Accepted formats: PDF, DOC, DOCX</p>
+                    </div>
+                    <div class="job-description">
+                        <h3>Optional: Add Job Description</h3>
+                        <p>Add a job description to analyze keywords and tailor your documents.</p>
+                        <textarea id="job-description" placeholder="Paste job description here..."></textarea>
+                    </div>
+                    <div class="wizard-buttons">
+                        <button id="next-btn-upload" class="btn-primary" disabled>Next</button>
+                    </div>
+                </div>
+                <!-- Step 2: Options -->
+                <div class="wizard-step" id="step-options" style="display: none;">
+                    <h2>Customize Your Documents</h2>
+                    <div class="options-container">
+                        <div class="option-group">
+                            <h3>Document Type</h3>
+                            <div class="radio-group">
+                                <label>
+                                    <input type="radio" name="doc-type" value="cv" checked>
+                                    CV/Resume
+                                </label>
+                                <label>
+                                    <input type="radio" name="doc-type" value="cover">
+                                    Cover Letter
+                                </label>
+                                <label>
+                                    <input type="radio" name="doc-type" value="both">
+                                    Both
+                                </label>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <h3>Tone</h3>
+                            <div class="radio-group">
+                                <label>
+                                    <input type="radio" name="tone" value="formal" checked>
+                                    Formal
+                                </label>
+                                <label>
+                                    <input type="radio" name="tone" value="neutral">
+                                    Neutral
+                                </label>
+                                <label>
+                                    <input type="radio" name="tone" value="casual">
+                                    Casual
+                                </label>
+                                <label>
+                                    <input type="radio" name="tone" value="cocky">
+                                    Cocky
+                                </label>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <h3>Language</h3>
+                            <select id="language-select">
+                                <option value="english">English</option>
+                                <option value="spanish">Spanish</option>
+                                <option value="french">French</option>
+                                <option value="german">German</option>
+                                <option value="chinese">Chinese</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="wizard-buttons">
+                        <button id="back-btn-options" class="btn-secondary">Back</button>
+                        <button id="next-btn-options" class="btn-primary">Next</button>
+                    </div>
+                </div>
+                <!-- Step 3: Payment Preview -->
+                <div class="wizard-step" id="step-payment" style="display: none;">
+                    <h2>Review & Payment</h2>
+                    <div class="payment-summary">
+                        <div class="summary-item">
+                            <span>Document Type:</span>
+                            <span id="summary-type"></span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Tone:</span>
+                            <span id="summary-tone"></span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Language:</span>
+                            <span id="summary-language"></span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Estimated Tokens:</span>
+                            <span id="summary-tokens"></span>
+                        </div>
+                        <div class="summary-item total">
+                            <span>Total Price:</span>
+                            <span id="summary-price"></span>
+                        </div>
+                    </div>
+                    <div class="wizard-buttons">
+                        <button id="back-btn-payment" class="btn-secondary">Back</button>
+                        <button id="proceed-payment-btn" class="btn-primary">Proceed to Payment</button>
+                    </div>
+                </div>
+                <!-- Step 4: Results -->
+                <div class="wizard-step" id="step-results" style="display: none;">
+                    <h2>Your Documents Are Ready!</h2>
+                    <div class="results-container">
+                        <div class="result-preview">
+                            <h3>Document Preview</h3>
+                            <div class="preview-box" id="preview-box">
+                                <p>Click "Preview" to see your document.</p>
+                            </div>
+                        </div>
+                        <div class="result-actions">
+                            <button id="preview-doc-btn" class="btn-secondary">Preview</button>
+                            <button id="download-doc-btn" class="btn-primary">Download</button>
+                            <button id="create-account-btn" class="btn-accent">Create Account to Save</button>
+                        </div>
+                    </div>
+                    <div class="wizard-buttons">
+                        <button id="new-document-btn" class="btn-secondary">Create Another Document</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <template id="account-template">
+        <section class="account-section">
+            <h2>My Account</h2>
+            <div class="account-info">
+                <div class="info-card">
+                    <h3>Account Details</h3>
+                    <p>Email: <span id="account-email"></span></p>
+                    <p>Token Balance: <span id="account-tokens"></span></p>
+                    <button id="buy-tokens-btn" class="btn-primary">Buy More Tokens</button>
+                </div>
+            </div>
+            <div class="document-history">
+                <h3>Document History</h3>
+                <table id="history-table">
+                    <thead>
+                        <tr>
+                            <th>Document</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+        </section>
+    </template>
+
+    <template id="success-template">
+        <section class="success-section">
+            <div class="success-card">
+                <h2>Payment Successful!</h2>
+                <p>Your documents have been created and are ready for download.</p>
+                <div class="success-actions">
+                    <button id="view-docs-btn" class="btn-primary">View Documents</button>
+                    <div class="account-create">
+                        <h3>Save Your Documents</h3>
+                        <p>Create an account to access your documents anytime.</p>
+                        <form id="create-account-form">
+                            <div class="form-group">
+                                <label for="new-email">Email</label>
+                                <input type="email" id="new-email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">Password</label>
+                                <input type="password" id="new-password" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Create Account</button>
+                        </form>
+                        <p>Already have an account? <a href="#" id="login-link">Login</a></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <!-- Load JavaScript -->
+    <script src="prompt-builder.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
