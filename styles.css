@@ -72,6 +72,11 @@ button {
     background-color: #f1f1f1;
 }
 
+.btn-secondary.active {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
 .btn-accent {
     background-color: var(--accent-color);
     color: white;
@@ -290,6 +295,39 @@ main {
     margin-right: 0.5rem;
 }
 
+/* Document Preview */
+.preview-section {
+    margin-bottom: 2rem;
+}
+
+#document-toggle-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.document-preview-area {
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+    min-height: 500px;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: auto;
+}
+
+.watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 10rem;
+    color: rgba(0, 0, 0, 0.05);
+    pointer-events: none;
+    z-index: 1;
+}
+
 /* Payment Summary */
 .payment-summary {
     background-color: #f9f9f9;
@@ -329,21 +367,25 @@ main {
 }
 
 .preview-box {
-    background-color: #f9f9f9;
+    background-color: white;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 1.5rem;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    min-height: 400px;
+    overflow: auto;
 }
 
 .result-actions {
     display: flex;
     gap: 1rem;
     margin-top: 1rem;
+}
+
+/* Document Toggle */
+#result-toggle-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 /* Account Page */
@@ -565,5 +607,10 @@ th {
 
     th, td {
         padding: 0.5rem;
+    }
+
+    .document-preview-area {
+        padding: 1rem;
+        min-height: 300px;
     }
 }
