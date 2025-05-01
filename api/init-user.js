@@ -1,27 +1,23 @@
-// /api/init-user.js
-
-import { createClient } from '@supabase/supabase-js';
-import { getUID } from '../../utils/auth.js';
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const DEFAULT_TOKENS = 500;
+import { supabase } from '../../utils/supabaseClient';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
 
-  const uid = getUID(req);
-  if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+  const { email } = req.body;
 
-  try {
-    const { data: existing } = await supabase.from('users').select('id').eq('id', uid).single();
+  if (!email) {
+    res.status(400).json({ error: 'Missing email' });
+    return;
+  }
 
-    if (!existing) {
-      await supabase.from('users').insert({ id: uid, tokens: DEFAULT_TOKENS });
-    }
+  const { data, error } = await supabase.from('users').insert([{ email }]);
 
-    res.status(200).json({ status: 'initialized' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Init failed' });
+  if (error) {
+    res.status(500).json({ error: error.message });
+  } else {
+    res.status(200).json({ data });
   }
 }
