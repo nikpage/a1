@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CV & Cover Letter Writer</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Load Stripe from CDN - optional, can be removed if not used immediately -->
-    <script src="https://js.stripe.com/v3/" defer></script>
+    <!-- No defer needed here - we check for Stripe in code -->
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <div class="app-container">
@@ -43,7 +43,7 @@
             </div>
         </div>
 
-        <!-- Document Preview Modal -->
+        <!-- Document Preview Modal (For account history only) -->
         <div id="preview-modal" class="modal">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
@@ -164,8 +164,8 @@
             <div class="wizard-progress">
                 <div class="progress-step" data-step="1">Upload</div>
                 <div class="progress-step" data-step="2">Options</div>
-                <div class="progress-step" data-step="3">Payment</div>
-                <div class="progress-step" data-step="4">Results</div>
+                <div class="progress-step" data-step="3">Preview</div>
+                <div class="progress-step" data-step="4">Payment</div>
             </div>
             <div class="wizard-content">
                 <!-- Step 1: Document Upload -->
@@ -193,23 +193,6 @@
                     <div class="options-container">
                         <div class="option-group">
                             <h3>Document Type</h3>
-                            <div class="radio-group">
-                                <label>
-                                    <input type="radio" name="doc-type" value="cv" checked>
-                                    CV/Resume
-                                </label>
-                                <label>
-                                    <input type="radio" name="doc-type" value="cover">
-                                    Cover Letter
-                                </label>
-                                <label>
-                                    <input type="radio" name="doc-type" value="both">
-                                    Both
-                                </label>
-                            </div>
-                        </div>
-                        <div class="option-group">
-                            <h3>Tone</h3>
                             <div class="radio-group">
                                 <label>
                                     <input type="radio" name="tone" value="formal" checked>
@@ -245,10 +228,25 @@
                         <button id="next-btn-options" class="btn-primary">Next</button>
                     </div>
                 </div>
-                <!-- Step 3: Payment Preview -->
+                <!-- Step 3: Preview & Payment -->
                 <div class="wizard-step" id="step-payment" style="display: none;">
-                    <h2>Review & Payment</h2>
+                    <h2>Document Preview</h2>
+                    <div class="preview-section">
+                        <!-- Document toggle for both CV and cover letter -->
+                        <div id="document-toggle-container" style="display: none;">
+                            <button id="toggle-cv-btn" class="btn-secondary active">View CV</button>
+                            <button id="toggle-cover-btn" class="btn-secondary">View Cover Letter</button>
+                        </div>
+
+                        <!-- Preview content area -->
+                        <div class="document-preview-area" id="document-preview-area">
+                            <div class="watermark">Preview</div>
+                            <!-- Document content will be inserted here -->
+                        </div>
+                    </div>
+
                     <div class="payment-summary">
+                        <h3>Order Summary</h3>
                         <div class="summary-item">
                             <span>Document Type:</span>
                             <span id="summary-type"></span>
@@ -279,14 +277,18 @@
                 <div class="wizard-step" id="step-results" style="display: none;">
                     <h2>Your Documents Are Ready!</h2>
                     <div class="results-container">
+                        <!-- Document toggle for both CV and cover letter -->
+                        <div id="result-toggle-container" style="display: none; margin-bottom: 1rem;">
+                            <button id="result-cv-btn" class="btn-secondary active">View CV</button>
+                            <button id="result-cover-btn" class="btn-secondary">View Cover Letter</button>
+                        </div>
+
                         <div class="result-preview">
-                            <h3>Document Preview</h3>
                             <div class="preview-box" id="preview-box">
-                                <p>Click "Preview" to see your document.</p>
+                                <!-- Document content will be inserted here -->
                             </div>
                         </div>
                         <div class="result-actions">
-                            <button id="preview-doc-btn" class="btn-secondary">Preview</button>
                             <button id="download-doc-btn" class="btn-primary">Download</button>
                             <button id="create-account-btn" class="btn-accent">Create Account to Save</button>
                         </div>
@@ -356,8 +358,24 @@
     </template>
 
     <!-- Load JavaScript -->
+    <script src="prompt-builder.js"></script>
     <script src="main.js"></script>
-    <!-- Optional: Include your prompt-builder.js here -->
-    <!-- <script src="prompt-builder.js"></script> -->
 </body>
 </html>
+                                <label>
+                                    <input type="radio" name="doc-type" value="cv" checked>
+                                    CV/Resume
+                                </label>
+                                <label>
+                                    <input type="radio" name="doc-type" value="cover">
+                                    Cover Letter
+                                </label>
+                                <label>
+                                    <input type="radio" name="doc-type" value="both">
+                                    Both
+                                </label>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <h3>Tone</h3>
+                            <div class="radio-group">
