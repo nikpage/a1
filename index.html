@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CV & Cover Letter Writer</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://js.stripe.com/v3/"></script>
+    <!-- Load Stripe from CDN - optional, can be removed if not used immediately -->
+    <script src="https://js.stripe.com/v3/" defer></script>
 </head>
 <body>
     <div class="app-container">
@@ -355,7 +356,8 @@
     </template>
 
     <!-- Load JavaScript -->
-    <script src="prompt-builder.js"></script>
     <script src="main.js"></script>
+    <!-- Optional: Include your prompt-builder.js here -->
+    <!-- <script src="prompt-builder.js"></script> -->
 </body>
 </html>
