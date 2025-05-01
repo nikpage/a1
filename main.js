@@ -860,9 +860,19 @@ function showPaymentModal() {
     const modal = document.getElementById('payment-modal');
     if (!modal) return;
 
-    // Setup payment details
-    const tokenCount = TOKEN_ESTIMATE[documentType];
-    const price = (tokenCount * PRICE_PER_TOKEN).toFixed(2);
+    // For preview/summary step
+    getTokenUsage(payload, function(realTokenCount) {
+      const summaryTokens = document.getElementById('summary-tokens');
+      if (summaryTokens) {
+        summaryTokens.textContent = realTokenCount.toLocaleString();
+      }
+
+      const price = (realTokenCount * PRICE_PER_TOKEN).toFixed(2);
+      const summaryPrice = document.getElementById('summary-price');
+      if (summaryPrice) {
+        summaryPrice.textContent = '$' + price;
+      }
+    });
 
     const tokenCountEl = document.getElementById('token-count');
     const priceDisplayEl = document.getElementById('price-display');
@@ -908,8 +918,7 @@ function showPaymentModal() {
 async function handlePaymentSubmission(e) {
     e.preventDefault();
 
-    const tokenCount = TOKEN_ESTIMATE[documentType];
-    const amount = tokenCount * PRICE_PER_TOKEN * 100; // Convert to cents
+
 
     try {
         showLoading('Processing payment...');
@@ -1664,21 +1673,28 @@ function getReadableDocType(type) {
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
-// Add this function
-async function getTokenUsage(payload) {
-  const response = await fetch('https://api.deepseek.com/v1/completions', {
+// Function to get real token usage
+function getTokenUsage(payload, callback) {
+  fetch('https://api.deepseek.com/v1/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+      'Authorization': 'Bearer ' + process.env.DEEPSEEK_API_KEY
     },
     body: JSON.stringify({
       model: "deepseek-chat",
       prompt: payload.document,
-      max_tokens: 100 // Just enough to get token count, not full generation
+      max_tokens: 100
     })
+  })
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(data) {
+    callback(data.usage.total_tokens);
+  })
+  .catch(function(error) {
+    console.error('Error getting token count:', error);
+    callback(2000); // Fallback to default
   });
-
-  const data = await response.json();
-  return data.usage.total_tokens;
 }
