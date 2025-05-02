@@ -11,9 +11,7 @@ class DocumentUpload {
 
     setupEventListeners() {
         // Click handler
-        this.dropZone.addEventListener('click', () => {
-            this.fileInput.click();
-        });
+        this.dropZone.addEventListener('click', () => this.fileInput.click());
 
         // Drag and drop handlers
         this.dropZone.addEventListener('dragover', (e) => {
@@ -30,45 +28,37 @@ class DocumentUpload {
         this.dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             this.dropZone.classList.remove('drag-over');
-
-            if (e.dataTransfer.files.length) {
-                this.handleFileSelection(e.dataTransfer.files[0]);
-            }
+            if (e.dataTransfer.files.length) this.handleFileSelection(e.dataTransfer.files[0]);
         });
 
-        // File input change handler
+        // File input handler
         this.fileInput.addEventListener('change', () => {
-            if (this.fileInput.files.length) {
-                this.handleFileSelection(this.fileInput.files[0]);
-            }
+            if (this.fileInput.files.length) this.handleFileSelection(this.fileInput.files[0]);
         });
 
         // Analyze button handler
-        this.analyzeBtn.addEventListener('click', this.analyzeDocument.bind(this));
+        this.analyzeBtn.addEventListener('click', () => this.analyzeDocument());
     }
 
     handleFileSelection(file) {
-        // Validate file type
-        const validTypes = ['application/pdf',
-                          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                          'application/msword'];
+        const validTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword'
+        ];
 
         if (!validTypes.includes(file.type)) {
             alert('Please upload a PDF or Word document');
             return;
         }
 
-        // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
             alert('File size must be less than 5MB');
             return;
         }
 
-        // Enable analyze button
         this.analyzeBtn.disabled = false;
         this.currentFile = file;
-
-        // Update UI
         this.dropZone.querySelector('.drop-zone-text').textContent = file.name;
         this.dropZone.querySelector('.drop-zone-secondary').textContent =
             `${(file.size / 1024 / 1024).toFixed(2)} MB`;
@@ -78,6 +68,7 @@ class DocumentUpload {
         if (!this.currentFile) return;
 
         this.analyzeBtn.disabled = true;
+        this.analyzeBtn.classList.add('analyzing');
         this.analyzeBtn.textContent = 'Analyzing...';
 
         try {
@@ -86,9 +77,10 @@ class DocumentUpload {
             this.displayFeedback(feedback);
         } catch (error) {
             console.error('Analysis failed:', error);
-            alert('Analysis failed. Please try again.');
+            alert(`Analysis failed: ${error.message}`);
         } finally {
             this.analyzeBtn.disabled = false;
+            this.analyzeBtn.classList.remove('analyzing');
             this.analyzeBtn.textContent = 'Analyze CV';
         }
     }
@@ -102,18 +94,17 @@ class DocumentUpload {
     }
 
     async extractTextFromPDF(file) {
-        // Load PDF.js dynamically if not already loaded
         if (!window.pdfjsLib) {
             await this.loadScript(
                 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
                 'pdfjsLib'
             );
-            pdfjsLib.GlobalWorkerOptions.workerSrc =
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc =
                 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
         }
 
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const pdf = await window.pdfjsLib.getDocument(arrayBuffer).promise;
         let text = '';
 
         for (let i = 1; i <= pdf.numPages; i++) {
@@ -126,7 +117,6 @@ class DocumentUpload {
     }
 
     async extractTextFromWord(file) {
-        // Load mammoth.js dynamically if not already loaded
         if (!window.mammoth) {
             await this.loadScript(
                 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js',
@@ -135,55 +125,36 @@ class DocumentUpload {
         }
 
         const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
+        const result = await window.mammoth.extractRawText({ arrayBuffer });
         return result.value;
     }
 
     async getFeedback(text) {
-        const prompt = buildCVFeedbackPrompt('cv_file');
-        const apiKey = process.env.DEEPSEEK_API_KEY; // Using Vercel environment variable
-
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        // For Vercel deployment, use this endpoint instead of direct API call
+        const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: prompt },
-                    { role: 'user', content: text }
-                ],
-                temperature: 0.7
+                text: text,
+                documentType: 'cv_file'
             })
         });
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error?.message || 'API request failed');
+            throw new Error(error.message || 'API request failed');
         }
 
-        const data = await response.json();
-        return {
-            feedback: data.choices[0]?.message?.content || 'No feedback generated',
-            usage: data.usage
-        };
+        return await response.json();
     }
 
     displayFeedback(content) {
-        this.reviewOutput.innerHTML = this.formatFeedback(content);
-        this.reviewSection.classList.remove('hidden');
-        this.reviewSection.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    formatFeedback(text) {
-        // Convert markdown-like formatting to HTML
-        return text
+        this.reviewOutput.innerHTML = content
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/- (.*?)(?=\n|$)/g, '<li>$1</li>')
             .replace(/\n/g, '<br>');
+        this.reviewSection.classList.remove('hidden');
     }
 
     loadScript(url, globalVar) {
@@ -193,13 +164,10 @@ class DocumentUpload {
             const script = document.createElement('script');
             script.src = url;
             script.onload = () => resolve();
-            script.onerror = reject;
+            script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
             document.head.appendChild(script);
         });
     }
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    new DocumentUpload();
-});
+document.addEventListener('DOMContentLoaded', () => new DocumentUpload());
