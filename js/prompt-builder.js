@@ -172,3 +172,25 @@ function buildTranslationPrompt(targetLanguage) {
 Maintain the same formatting, structure, and professional tone of the original text.
 Ensure that the translation sounds natural to native speakers.`;
 }
+
+/**
+ * Builds a prompt for CV feedback analysis
+ * @param {string} documentType - Type of document (cv_file, cv_text, linkedin)
+ * @return {string} The constructed prompt
+ */
+function buildCVFeedbackPrompt(documentType) {
+    let promptBase = `You are a professional HR Manager with extensive experience in tech companies, startups, corporates, legal, banking, government, manufacturing, and other verticals. You also consult on CV and cover letter writing in schools and universities to help students write amazing job seeking documents.`;
+
+    promptBase += `\n\nAnalyze the provided ${documentType === 'linkedin' ? 'LinkedIn profile' : 'CV'} and write a structured commentary of no more than 100 words. Focus on what an HR person would react positively or negatively to.`;
+
+    promptBase += `\n\nProvide specific, actionable feedback on:
+1. Overall presentation and structure
+2. Professional summary/headline
+3. Experience descriptions (achievements vs responsibilities)
+4. Skills presentation
+5. Most critical improvements needed`;
+
+    promptBase += `\n\nKeep your feedback direct, specific, and actionable. Format as a summary paragraph followed by 3-5 bullet points of key recommendations.`;
+
+    return promptBase;
+}
