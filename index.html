@@ -1,29 +1,36 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CV Review Tool</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/css//styles.css">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>AI CV Review</h1>
+            <p class="subtitle">Get professional feedback on your resume</p>
         </header>
 
         <main>
             <section id="upload-section">
-                <div class="upload-area">
-                    <input type="file" id="document-upload" accept=".pdf,.docx">
-                    <label for="document-upload">Upload CV (PDF or DOCX)</label>
+                <div class="upload-box">
+                    <svg class="upload-icon" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    <input type="file" id="document-upload" accept=".pdf,.docx,.doc" class="file-input">
+                    <label for="document-upload" class="upload-label">
+                        <span class="browse-text">Browse files</span> or drag and drop
+                        <span class="file-types">PDF or DOCX (max 5MB)</span>
+                    </label>
+                    <button id="analyze-btn" class="analyze-button" disabled>Analyze CV</button>
                 </div>
             </section>
 
             <section id="review-section" class="hidden">
-                <h2>AI Review</h2>
-                <div id="review-output"></div>
+                <h2>AI Review Results</h2>
+                <div id="review-output" class="review-output"></div>
             </section>
         </main>
     </div>
