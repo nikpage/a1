@@ -71,9 +71,6 @@ class DocumentUpload {
             const text = await this.extractText(this.currentFile);
             console.log('PARSED TEXT:', text);
             const feedbackData = await this.getFeedback(text);
-            if (!feedbackData || !feedbackData.feedback) {
-                throw new Error('Invalid feedback received.');
-            }
             this.displayFeedback(feedbackData.feedback);
         } catch (error) {
             console.error('Analysis failed:', error);
@@ -125,11 +122,14 @@ class DocumentUpload {
     }
 
     async getFeedback(text) {
-    const res = await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,documentType:'cv_file'})});
-    const txt = await res.text();
-    if(!res.ok) throw new Error(txt);
-    return JSON.parse(txt);
-  }
+        const res = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, documentType: 'cv_file' })
+        });
+        if (!res.ok) throw new Error(`Analyze failed: ${res.status}`);
+        return res.json();
+    }
 
     displayFeedback(content) {
         this.reviewOutput.innerHTML = content
