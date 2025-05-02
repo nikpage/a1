@@ -1,4 +1,4 @@
-// ===== File: /js/upload.js =====
+// File: /js/upload.js
 class DocumentUpload {
   constructor() {
     this.dropZone = document.getElementById('drop-zone');
@@ -29,9 +29,11 @@ class DocumentUpload {
   }
 
   selectFile(file) {
-    const allowed = ['application/pdf',
-                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                     'application/msword'];
+    const allowed = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
+    ];
     if (!file || !allowed.includes(file.type)) {
       alert('Please upload a PDF or Word document');
       return;
@@ -64,13 +66,9 @@ class DocumentUpload {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, documentType: 'cv_file' })
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || `Status ${res.status}`);
-      }
-
-      this.showFeedback(data.feedback);
+      const { feedback, error } = await res.json();
+      if (error) throw new Error(error);
+      this.showFeedback(feedback);
     } catch (err) {
       console.error(err);
       alert(`Error: ${err.message}`);
@@ -87,12 +85,24 @@ class DocumentUpload {
 
   showFeedback(feedback) {
     this.reviewSection.classList.remove('hidden');
-    const output = typeof feedback === 'string'
-      ? feedback
-      : JSON.stringify(feedback);
-    this.reviewOutput.innerHTML = output
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
+    let html = '';
+    if (typeof feedback === 'string') {
+      html = feedback
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    } else {
+      const { strengths = [], areas_for_improvement = [], suggestions = [] } = feedback;
+      html += '<section><h3>Strengths</h3><ul>';
+      strengths.forEach(item => html += `<li>${item}</li>`);
+      html += '</ul></section>';
+      html += '<section><h3>Areas for Improvement</h3><ul>';
+      areas_for_improvement.forEach(item => html += `<li>${item}</li>`);
+      html += '</ul></section>';
+      html += '<section><h3>Suggestions</h3><ul>';
+      suggestions.forEach(item => html += `<li>${item}</li>`);
+      html += '</ul></section>';
+    }
+    this.reviewOutput.innerHTML = html;
   }
 
   async extractText(file) {
