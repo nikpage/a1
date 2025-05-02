@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CV Review Tool</title>
-    <link rel="stylesheet" href="/css//styles.css">
+    <link rel="stylesheet" href="/css/styles.css"> <!-- Fixed path (removed extra slash) -->
 </head>
 <body>
     <div class="container">
@@ -15,16 +15,16 @@
 
         <main>
             <section id="upload-section">
-                <div class="upload-box">
-                    <svg class="upload-icon" viewBox="0 0 24 24">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                    </svg>
-                    <input type="file" id="document-upload" accept=".pdf,.docx,.doc" class="file-input">
-                    <label for="document-upload" class="upload-label">
-                        <span class="browse-text">Browse files</span> or drag and drop
-                        <span class="file-types">PDF or DOCX (max 5MB)</span>
-                    </label>
-                    <button id="analyze-btn" class="analyze-button" disabled>Analyze CV</button>
+                <div class="upload-container">
+                    <div id="drop-zone" class="drop-zone">
+                        <input type="file" id="file-input" accept=".pdf,.docx,.doc">
+                        <div class="drop-zone-content">
+                            <span class="drop-zone-icon">📁</span>
+                            <span class="drop-zone-text">Drag & drop your CV here</span>
+                            <span class="drop-zone-secondary">or click to browse</span>
+                        </div>
+                    </div>
+                    <button id="analyze-btn" disabled>Analyze CV</button>
                 </div>
             </section>
 
