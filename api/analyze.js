@@ -1,4 +1,5 @@
 // /api/analyze.js
+import fetch from 'node-fetch';
 
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
 import { KeyManager } from '../js/key-manager.js';
