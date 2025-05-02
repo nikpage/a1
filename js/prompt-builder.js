@@ -176,21 +176,75 @@ Ensure that the translation sounds natural to native speakers.`;
 /**
  * Builds a prompt for CV feedback analysis
  * @param {string} documentType - Type of document (cv_file, cv_text, linkedin)
+ * @param {string} targetIndustry - Industry focus (tech, finance, healthcare, etc.)
+ * @param {string} country - Country code for localization (us, uk, de, etc.)
  * @return {string} The constructed prompt
  */
-function buildCVFeedbackPrompt(documentType) {
-    let promptBase = `You are a professional HR Manager with extensive experience in tech companies, startups, corporates, legal, banking, government, manufacturing, and other verticals. You also consult on CV and cover letter writing in schools and universities to help students write amazing job seeking documents.`;
+function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country = 'us') {
+    // Industry-specific templates
+    const industryTemplates = {
+        tech: {
+            keywords: ['Agile', 'CI/CD', 'Cloud', 'Python', 'Machine Learning'],
+            metrics: ['% efficiency', 'system uptime', 'reduced latency'],
+            norms: 'Highlight technical projects and GitHub contributions'
+        },
+        finance: {
+            keywords: ['FP&A', 'ROI', 'Financial Modeling', 'GAAP', 'Due Diligence'],
+            metrics: ['$ savings', '% growth', 'deal size'],
+            norms: 'Show certifications (CFA, CPA) and deal experience'
+        },
+        healthcare: {
+            keywords: ['HIPAA', 'EMR', 'Patient Care', 'Clinical Trials', 'FDA'],
+            metrics: ['patient outcomes', '% accuracy', 'process efficiency'],
+            norms: 'Emphasize licenses and compliance experience'
+        },
+        general: {
+            keywords: ['Leadership', 'Project Management', 'Problem Solving'],
+            metrics: ['% improvement', 'cost savings', 'team size'],
+            norms: 'Focus on transferable skills'
+        }
+    };
 
-    promptBase += `\n\nAnalyze the provided ${documentType === 'linkedin' ? 'LinkedIn profile' : 'CV'} and write a structured commentary of no more than 100 words. Focus on what an HR person would react positively or negatively to.`;
+    // Country-specific norms
+    const countryNorms = {
+        us: '1-page preferred, include achievements',
+        uk: '2 pages max, include personal statement',
+        de: 'Photo expected, detailed work history',
+        au: 'Include key selection criteria',
+        cz: '2 pages max, include photo and birth date (optional)',
+        pl: 'Photo expected, detailed education history',
+        ro: 'Include personal details (age, marital status optional)',
+        ua: '2-3 pages, include photo and passport details'
+    };
 
-    promptBase += `\n\nProvide specific, actionable feedback on:
-1. Overall presentation and structure
-2. Professional summary/headline
-3. Experience descriptions (achievements vs responsibilities)
-4. Skills presentation
-5. Most critical improvements needed`;
+    // ATS scoring thresholds
+    const atsThresholds = `(Good: 15+ keywords | Excellent: 25+ keywords)`;
 
-    promptBase += `\n\nKeep your feedback direct, specific, and actionable. Format as a summary paragraph followed by 3-5 bullet points of key recommendations.`;
+    const industry = industryTemplates[targetIndustry] || industryTemplates.general;
+    const countryNorm = countryNorms[country] || countryNorms.us;
+
+    let promptBase = `You're a friendly HR advisor with ${targetIndustry} expertise. Let's optimize this ${documentType === 'linkedin' ? 'LinkedIn profile' : 'CV'} for ${targetIndustry} roles in ${country.toUpperCase()}.`;
+
+    promptBase += `\n\nStart with a warm, encouraging rating (1-5 stars) followed by:\n
+✨ [3 Quick Wins] - Easy fixes with big impact\n
+🔍 [Deep Dive] - Thoughtful analysis on:\n
+1. Formatting (${countryNorm})\n
+2. ${industry.norms}\n
+3. Keyword optimization ${atsThresholds}\n
+4. Achievement phrasing ("${industry.metrics.join('", "')}")\n\n`;
+
+    promptBase += `Suggest improvements like a supportive mentor:\n
+"Great start! Here's how to make it shine:\n
+• Try adding 2-3 more ${industry.keywords.slice(0,3).join('/')} keywords\n
+• Quantify achievements like 'Improved ${industry.metrics[0]} by X%'\n
+• Move education higher for ${country} standards"`;
+
+    promptBase += `\n\nKeep it:\n
+✅ Encouraging but honest\n
+✅ Specific to ${targetIndustry} needs\n
+✅ Culturally appropriate for ${country}\n
+✅ Actionable within 30 minutes\n
+✅ Under 200 words total`;
 
     return promptBase;
 }
