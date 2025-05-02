@@ -69,6 +69,7 @@ class DocumentUpload {
 
         try {
             const text = await this.extractText(this.currentFile);
+            console.log('PARSED TEXT:', text);
             const feedbackData = await this.getFeedback(text);
             if (!feedbackData || !feedbackData.feedback) {
                 throw new Error('Invalid feedback received.');
