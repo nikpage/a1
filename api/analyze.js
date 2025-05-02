@@ -1,20 +1,35 @@
-// api/analyze.js
-import { buildCVFeedbackPrompt } from '../prompt-builder';
+// /api/analyze.js
+
+import { buildCVFeedbackPrompt } from '../../public/js/prompt-builder.js'; // Correct path for Vercel functions
+import { KeyManager } from '../../public/js/key-manager.js'; // Import KeyManager too
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
-        return res.status(405).json({ message: 'Method not allowed' });
+        res.setHeader('Allow', ['POST']);
+        return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
+    }
+
+    const keyManager = new KeyManager();
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+
+    if (!apiKey) {
+        return res.status(500).json({ message: 'DeepSeek API Key missing from server config.' });
     }
 
     try {
-        const { text, documentType } = req.body;
+        const { text, documentType = 'cv_file' } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ message: 'Missing text to analyze.' });
+        }
+
         const prompt = buildCVFeedbackPrompt(documentType);
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: 'deepseek-chat',
@@ -26,18 +41,24 @@ export default async function handler(req, res) {
             })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'API request failed');
+            throw new Error(data?.error?.message || 'DeepSeek API error');
         }
 
-        const data = await response.json();
+        // Optional: Track usage
+        if (data.usage) {
+            keyManager.trackUsage(data.usage);
+        }
+
         res.status(200).json({
-            feedback: data.choices[0]?.message?.content,
+            feedback: data.choices?.[0]?.message?.content || '',
             usage: data.usage
         });
+
     } catch (error) {
-        console.error('Analysis error:', error);
-        res.status(500).json({ message: error.message });
+        console.error('Server API error:', error);
+        res.status(500).json({ message: error.message || 'Server error occurred' });
     }
 }
