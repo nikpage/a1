@@ -1,12 +1,14 @@
 // File: /api/analyze.js
-// A simple Next.js / Vercel-style API route for DeepSeek analysis
-// Parses JSON body, fetches DeepSeek, and returns clear feedback or errors
+// A simple Next.js ESM API route for DeepSeek analysis
+// Parses JSON body, fetches DeepSeek, and returns feedback or errors
 
-const { KeyManager } = require('../js/key-manager');
+import { KeyManager } from '../js/key-manager.js';
 const km = new KeyManager();
 
-// Ensure JSON bodies are parsed
-module.exports = async (req, res) => {
+// Ensure Next.js parses JSON bodies
+export const config = { api: { bodyParser: true } };
+
+export default async function handler(req, res) {
   // Only allow POST
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -42,14 +44,15 @@ module.exports = async (req, res) => {
       throw new Error(`DeepSeek error ${apiRes.status}: ${errTxt}`);
     }
 
-    // Parse and track usage
+    // Parse response and track usage
     const { feedback, usage } = await apiRes.json();
     km.trackUsage(usage);
 
     // Return feedback to client
     return res.status(200).json({ feedback });
+
   } catch (err) {
     console.error('API /analyze error:', err);
     return res.status(500).json({ error: err.message });
   }
-};
+}
