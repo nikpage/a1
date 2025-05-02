@@ -1,71 +1,55 @@
-// /api/analyze.js
-import fetch from 'node-fetch';
-import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
-import { KeyManager } from '../js/key-manager.js';
+// File: /api/analyze.js
+// A simple Next.js / Vercel-style API route for DeepSeek analysis
+// Parses JSON body, fetches DeepSeek, and returns clear feedback or errors
 
-export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        res.setHeader('Allow', ['POST']);
-        return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
+const { KeyManager } = require('../js/key-manager');
+const km = new KeyManager();
+
+// Ensure JSON bodies are parsed
+module.exports = async (req, res) => {
+  // Only allow POST
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  try {
+    // Parse and validate input
+    const { text, documentType } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'No text provided' });
     }
 
-    const keyManager = new KeyManager();
-    const apiKey = keyManager.keys[0];
-
+    // Retrieve DeepSeek API key
+    const apiKey = km.keys[0];
     if (!apiKey) {
-        return res.status(500).json({ message: 'No DeepSeek API Key available.' });
+      throw new Error('DeepSeek API key missing in KeyManager');
     }
 
-    try {
-        const { text, documentType = 'cv_file' } = req.body;
+    // Call DeepSeek service
+    const apiRes = await fetch('https://api.deepseek.io/v1/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({ text, documentType }),
+    });
 
-        if (!text) {
-            return res.status(400).json({ message: 'No text provided.' });
-        }
-
-        const prompt = buildCVFeedbackPrompt(documentType);
-
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: prompt },
-                    { role: 'user', content: text }
-                ],
-                temperature: 0.7
-            })
-        });
-
-        const raw = await response.text();
-        console.log('RAW RESPONSE:', raw);
-
-        let data;
-        try {
-            data = JSON.parse(raw);
-        } catch (err) {
-            console.error('Failed to parse DeepSeek response:', raw);
-            return res.status(500).json({ message: 'Invalid JSON from DeepSeek', raw });
-        }
-
-        if (!response.ok) {
-            console.error('DeepSeek API Error:', data);
-            return res.status(500).json({ message: data.error?.message || 'DeepSeek API Error', raw });
-        }
-
-        keyManager.trackUsage(data.usage);
-
-        return res.status(200).json({
-            feedback: data.choices?.[0]?.message?.content || '',
-            usage: data.usage
-        });
-
-    } catch (error) {
-        console.error('Server API error:', error);
-        return res.status(500).json({ message: error.message || 'Internal Server Error' });
+    // Handle DeepSeek errors
+    if (!apiRes.ok) {
+      const errTxt = await apiRes.text();
+      throw new Error(`DeepSeek error ${apiRes.status}: ${errTxt}`);
     }
-}
+
+    // Parse and track usage
+    const { feedback, usage } = await apiRes.json();
+    km.trackUsage(usage);
+
+    // Return feedback to client
+    return res.status(200).json({ feedback });
+  } catch (err) {
+    console.error('API /analyze error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+};
