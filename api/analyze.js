@@ -1,7 +1,8 @@
-// ===== File: /api/analyze.js =====
+// File: /api/analyze.js
 import { KeyManager } from '../js/key-manager.js';
 const km = new KeyManager();
 
+// Enable JSON body parsing
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
     const apiKey = km.keys[0];
     if (!apiKey) throw new Error('API key missing');
 
+    // Call DeepSeek Chat Completions endpoint
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -46,6 +48,7 @@ export default async function handler(req, res) {
     } catch {
       throw new Error('Invalid JSON from DeepSeek');
     }
+
     const feedback = parsed.feedback;
     if (!feedback) throw new Error('No feedback received');
 
