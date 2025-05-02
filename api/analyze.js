@@ -42,7 +42,7 @@ const data = JSON.parse(raw);
 
 
         if (!response.ok) {
-            throw new Error(data?.error?.message || 'DeepSeek API error');
+            throw new Error(JSON.stringify(data));
         }
 
         keyManager.trackUsage(data.usage);
