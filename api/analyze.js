@@ -36,7 +36,10 @@ export default async function handler(req, res) {
             })
         });
 
-        const data = await response.json();
+        const raw = await response.text();
+console.log('RAW:', raw);
+const data = JSON.parse(raw);
+
 
         if (!response.ok) {
             throw new Error(data?.error?.message || 'DeepSeek API error');
