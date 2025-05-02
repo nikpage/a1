@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const apiKey = km.keys[0];
     if (!apiKey) throw new Error('API key missing');
 
-    const apiRes = await fetch('https://api.deepseek.io/v1/analyze', {
+    const apiRes = await fetch('https://api.deepseek.com', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
