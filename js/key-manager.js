@@ -14,44 +14,39 @@ class KeyManager {
     }
 
     loadKeys() {
-        // Priority 1: Vercel environment variable
-        if (typeof process !== 'undefined' && process.env.DEEPSEEK_API_KEY) {
-            this.keys = [process.env.DEEPSEEK_API_KEY];
-            return;
-        }
+      if (typeof process !== 'undefined' && process.env.DEEPSEEK_API_KEY) {
+          this.keys = [process.env.DEEPSEEK_API_KEY];
+      } else {
+          console.error('No API keys available');
+          this.keys = [null];
+      }
+  }
 
-        // Priority 2: localStorage fallback
-        const storedKeys = JSON.parse(localStorage.getItem('deepseek_keys') || '[]');
-        if (storedKeys.length > 0) {
-            this.keys = storedKeys;
-        }
 
-        if (this.keys.length === 0) {
-            console.error('No API keys available - using null key (requests will fail)');
-            this.keys = [null]; // Prevent crashes but requests will fail
-        }
-    }
+  trackUsage(usageData, model = 'deepseek-chat') {
+      const cost = this.calculateCost(usageData, model);
+      const entry = {
+          timestamp: new Date().toISOString(),
+          model,
+          ...usageData,
+          estimated_cost: cost
+      };
 
-    trackUsage(usageData, model = 'deepseek-chat') {
-        const cost = this.calculateCost(usageData, model);
-        const entry = {
-            timestamp: new Date().toISOString(),
-            model,
-            ...usageData,
-            estimated_cost: cost
-        };
+      this.usageLog.push(entry);
 
-        this.usageLog.push(entry);
-        localStorage.setItem('deepseek_usage', JSON.stringify(this.usageLog));
+      if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('deepseek_usage', JSON.stringify(this.usageLog));
+      }
 
-        console.log('API Usage:', {
-            model,
-            prompt_tokens: usageData.prompt_tokens,
-            completion_tokens: usageData.completion_tokens,
-            total_tokens: usageData.total_tokens,
-            estimated_cost: cost
-        });
-    }
+      console.log('API Usage:', {
+          model,
+          prompt_tokens: usageData.prompt_tokens,
+          completion_tokens: usageData.completion_tokens,
+          total_tokens: usageData.total_tokens,
+          estimated_cost: cost
+      });
+  }
+
 
     calculateCost(usage, model) {
         const rates = this.pricingRates[model] || this.pricingRates['deepseek-chat'];
