@@ -54,6 +54,6 @@ const data = JSON.parse(raw);
 
     } catch (error) {
         console.error('Server API error:', error);
-        res.status(500).json({ message: error.message || 'Server error occurred' });
+        res.status(500).json({ message: error.toString() });
     }
 }
