@@ -1,5 +1,5 @@
 // api/analyze.js
-import { buildCVFeedbackPrompt } from '../../prompt-builder';
+import { buildCVFeedbackPrompt } from '../prompt-builder';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
