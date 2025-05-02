@@ -125,24 +125,11 @@ class DocumentUpload {
     }
 
     async getFeedback(text) {
-        const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                text: text,
-                documentType: 'cv_file'
-            })
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'API request failed');
-        }
-
-        return await response.json();
-    }
+    const res = await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,documentType:'cv_file'})});
+    const txt = await res.text();
+    if(!res.ok) throw new Error(txt);
+    return JSON.parse(txt);
+  }
 
     displayFeedback(content) {
         this.reviewOutput.innerHTML = content
