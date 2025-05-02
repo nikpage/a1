@@ -6,7 +6,7 @@
  * @param {Object} jobDetails - Job details (title, company, keywords)
  * @return {string} The constructed prompt
  */
-function buildCVPrompt(tone, jobDetails) {
+export function buildCVPrompt(tone, jobDetails) {
     let promptBase = `You are a professional CV writer. Create a strong CV based on the candidate's information and experience. `;
 
     // Add tone-specific instructions
@@ -63,7 +63,7 @@ promptBase += `\n\nOnly return the CV content — no notes, no instructions, no 
  * @param {Object} jobDetails - Job details (title, company, hiringManager, keywords)
  * @return {string} The constructed prompt
  */
-function buildCoverLetterPrompt(tone, jobDetails) {
+export function buildCoverLetterPrompt(tone, jobDetails) {
     let promptBase = `You are a professional cover letter writer. Create a compelling cover letter based on the candidate's information and experience. `;
 
     // Add tone-specific instructions
@@ -127,7 +127,7 @@ function buildCoverLetterPrompt(tone, jobDetails) {
 
 
 
-function buildExtractionPrompt() {
+export function buildExtractionPrompt() {
   return `
 You are an intelligent extraction assistant.
 
@@ -157,7 +157,7 @@ Respond ONLY with JSON object. No comments, no intro, no markdown.`;
  * @param {string} targetLanguage - Language code to translate to
  * @return {string} The translation prompt
  */
-function buildTranslationPrompt(targetLanguage) {
+export function buildTranslationPrompt(targetLanguage) {
     const languages = {
         en: 'English',
         es: 'Spanish',
