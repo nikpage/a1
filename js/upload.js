@@ -10,10 +10,8 @@ class DocumentUpload {
     }
 
     setupEventListeners() {
-        // Click handler
         this.dropZone.addEventListener('click', () => this.fileInput.click());
 
-        // Drag and drop handlers
         this.dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             this.dropZone.classList.add('drag-over');
@@ -31,12 +29,10 @@ class DocumentUpload {
             if (e.dataTransfer.files.length) this.handleFileSelection(e.dataTransfer.files[0]);
         });
 
-        // File input handler
         this.fileInput.addEventListener('change', () => {
             if (this.fileInput.files.length) this.handleFileSelection(this.fileInput.files[0]);
         });
 
-        // Analyze button handler
         this.analyzeBtn.addEventListener('click', () => this.analyzeDocument());
     }
 
@@ -73,11 +69,14 @@ class DocumentUpload {
 
         try {
             const text = await this.extractText(this.currentFile);
-            const feedback = await this.getFeedback(text);
-            this.displayFeedback(feedback);
+            const feedbackData = await this.getFeedback(text);
+            if (!feedbackData || !feedbackData.feedback) {
+                throw new Error('Invalid feedback received.');
+            }
+            this.displayFeedback(feedbackData.feedback);
         } catch (error) {
             console.error('Analysis failed:', error);
-            alert(`Analysis failed: ${error.message}`);
+            alert(`Sorry, something went wrong:\n\n${error.message || 'Unknown error.'}`);
         } finally {
             this.analyzeBtn.disabled = false;
             this.analyzeBtn.classList.remove('analyzing');
@@ -88,49 +87,43 @@ class DocumentUpload {
     async extractText(file) {
         if (file.type === 'application/pdf') {
             return this.extractTextFromPDF(file);
-        } else {
+        } else if (file.type.includes('word') || file.type.includes('document')) {
             return this.extractTextFromWord(file);
+        } else {
+            throw new Error('Unsupported file type.');
         }
     }
 
     async extractTextFromPDF(file) {
         if (!window.pdfjsLib) {
-            await this.loadScript(
-                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
-                'pdfjsLib'
-            );
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js', 'pdfjsLib');
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
         }
 
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await window.pdfjsLib.getDocument(arrayBuffer).promise;
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let text = '';
 
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
             const content = await page.getTextContent();
             text += content.items.map(item => item.str).join(' ') + '\n';
         }
 
-        return text;
+        return text.trim();
     }
 
     async extractTextFromWord(file) {
         if (!window.mammoth) {
-            await this.loadScript(
-                'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js',
-                'mammoth'
-            );
+            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js', 'mammoth');
         }
 
         const arrayBuffer = await file.arrayBuffer();
         const result = await window.mammoth.extractRawText({ arrayBuffer });
-        return result.value;
+        return result.value.trim();
     }
 
     async getFeedback(text) {
-        // For Vercel deployment, use this endpoint instead of direct API call
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: {
