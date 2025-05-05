@@ -1,11 +1,10 @@
-// prompt-builder.js
+// File: js/prompt-builder.js
 
-/**
- * Builds a prompt for CV generation
- * @param {string} tone - Selected tone (formal, neutral, casual, cocky)
- * @param {Object} jobDetails - Job details (title, company, keywords)
- * @return {string} The constructed prompt
- */
+// ⚡️ Shared constant for clean JSON
+export const JSON_ONLY = 'Respond with valid, minified JSON.';
+
+// ----------------------------------------------------------------------------
+// Builds a prompt for CV generation
 export function buildCVPrompt(tone, jobDetails) {
     let promptBase = `You are a professional CV writer. Create a strong CV based on the candidate's information and experience. `;
 
@@ -32,18 +31,16 @@ export function buildCVPrompt(tone, jobDetails) {
         if (jobDetails.title) {
             promptBase += `Position: ${jobDetails.title}\n`;
         }
-
         if (jobDetails.company) {
             promptBase += `Company: ${jobDetails.company}\n`;
         }
-
         if (jobDetails.keywords.length > 0) {
             promptBase += `Key skills to emphasize: ${jobDetails.keywords.join(', ')}\n`;
             promptBase += `\nStrategically incorporate these key skills and competencies throughout the CV where relevant to the candidate's experience.`;
         }
     }
 
-    // Add formatting instructions
+    // Formatting instructions
     promptBase += `\n\nFormat the CV with clear section headings and bullet points for readability. Include the following sections:
 1. Professional Summary
 2. Work Experience (in reverse chronological order)
@@ -52,21 +49,18 @@ export function buildCVPrompt(tone, jobDetails) {
 5. Any other relevant sections based on the candidate's background
 
 Make sure the CV sounds human-written, is concise, and highlights the candidate's achievements and value proposition.`;
-promptBase += `\n\nOnly return the CV content — no notes, no instructions, no commentary.`;
+    promptBase += `\n\nOnly return the CV content — no notes, no instructions, no commentary.`;
 
     return promptBase;
 }
+// :contentReference[oaicite:0]{index=0}
 
-/**
- * Builds a prompt for cover letter generation
- * @param {string} tone - Selected tone (formal, neutral, casual, cocky)
- * @param {Object} jobDetails - Job details (title, company, hiringManager, keywords)
- * @return {string} The constructed prompt
- */
+// ----------------------------------------------------------------------------
+// Builds a prompt for cover letter generation
 export function buildCoverLetterPrompt(tone, jobDetails) {
     let promptBase = `You are a professional cover letter writer. Create a compelling cover letter based on the candidate's information and experience. `;
 
-    // Add tone-specific instructions
+    // Tone instructions
     switch(tone) {
         case 'formal':
             promptBase += `Use a formal, professional tone. Avoid contractions and casual language. `;
@@ -82,51 +76,48 @@ export function buildCoverLetterPrompt(tone, jobDetails) {
             break;
     }
 
-    // Add job-specific details if available
+    // Job details
     if (jobDetails.title || jobDetails.company || jobDetails.hiringManager || jobDetails.keywords.length > 0) {
         promptBase += `\n\nTarget this cover letter for the following job details:\n`;
 
         if (jobDetails.title) {
             promptBase += `Position: ${jobDetails.title}\n`;
         }
-
         if (jobDetails.company) {
             promptBase += `Company: ${jobDetails.company}\n`;
         }
-
         if (jobDetails.hiringManager) {
             promptBase += `Hiring Manager: ${jobDetails.hiringManager}\n`;
         }
-
         if (jobDetails.keywords.length > 0) {
             promptBase += `Key skills to emphasize: ${jobDetails.keywords.join(', ')}\n`;
             promptBase += `\nStrategically incorporate these key skills throughout the cover letter where relevant to the candidate's experience.`;
         }
     }
 
-    // Add formatting instructions
+    // Structure instructions
     promptBase += `\n\nStructure the cover letter with:
-    1. Professional header with candidate's contact information
-    2. Date and inside address (if provided)
-    3. Salutation (personalized to the hiring manager if known)
-    4. Opening paragraph that grabs attention
-    5. 1-2 body paragraphs highlighting relevant experience and achievements
-    6. Closing paragraph with call to action
-    7. Professional closing
+1. Professional header with candidate's contact information
+2. Date and inside address (if provided)
+3. Salutation (personalized to the hiring manager if known)
+4. Opening paragraph that grabs attention
+5. 1-2 body paragraphs highlighting relevant experience and achievements
+6. Closing paragraph with call to action
+7. Professional closing
 
-    Make sure the cover letter sounds human-written, is concise (no more than one page), and demonstrates the candidate's enthusiasm and fit for the position.`;
-
+Make sure the cover letter sounds human-written, is concise (no more than one page), and demonstrates the candidate's enthusiasm and fit for the position.`;
     promptBase += `
 
-    Remove placeholder fields like [Insert Date], [Company Name], or [Company Address] if no value is provided. Omit the full address section entirely in digital use. Format the output for clean screen reading: no unnecessary whitespace, no filler, no generic placeholders.
+Remove placeholder fields like [Insert Date], [Company Name], or [Company Address] if no value is provided. Omit the full address section entirely in digital use. Format the output for clean screen reading: no unnecessary whitespace, no filler, no generic placeholders.
 
-    Only return the cover letter — no notes, no explanations, no commentary.`;
+Only return the cover letter — no notes, no explanations, no commentary.`;
 
     return promptBase;
 }
+// :contentReference[oaicite:1]{index=1}
 
-
-
+// ----------------------------------------------------------------------------
+// Builds a prompt for extracting job metadata from a CV
 export function buildExtractionPrompt() {
   return `
 You are an intelligent extraction assistant.
@@ -149,14 +140,10 @@ Extract:
 
 Respond ONLY with JSON object. No comments, no intro, no markdown.`;
 }
+// :contentReference[oaicite:2]{index=2}
 
-
-
-/**
- * Builds a prompt for translating content
- * @param {string} targetLanguage - Language code to translate to
- * @return {string} The translation prompt
- */
+// ----------------------------------------------------------------------------
+// Builds a prompt for translating content
 export function buildTranslationPrompt(targetLanguage) {
     const languages = {
         en: 'English',
@@ -165,47 +152,22 @@ export function buildTranslationPrompt(targetLanguage) {
         de: 'German',
         zh: 'Chinese',
     };
-
     const languageName = languages[targetLanguage] || targetLanguage;
-
     return `Translate the following text into ${languageName}.
 Maintain the same formatting, structure, and professional tone of the original text.
 Ensure that the translation sounds natural to native speakers.`;
 }
+// :contentReference[oaicite:3]{index=3}
 
-/**
- * Builds a prompt for CV feedback analysis
- * @param {string} documentType - Type of document (cv_file, cv_text, linkedin)
- * @param {string} targetIndustry - Industry focus (tech, finance, healthcare, etc.)
- * @param {string} country - Country code for localization (us, uk, de, etc.)
- * @return {string} The constructed prompt
- */
-function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country = 'us') {
-    // Industry-specific templates
+// ----------------------------------------------------------------------------
+// Builds a prompt for CV feedback analysis
+export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country = 'us') {
     const industryTemplates = {
-        tech: {
-            keywords: ['Agile', 'CI/CD', 'Cloud', 'Python', 'Machine Learning'],
-            metrics: ['% efficiency', 'system uptime', 'reduced latency'],
-            norms: 'Highlight technical projects and GitHub contributions'
-        },
-        finance: {
-            keywords: ['FP&A', 'ROI', 'Financial Modeling', 'GAAP', 'Due Diligence'],
-            metrics: ['$ savings', '% growth', 'deal size'],
-            norms: 'Show certifications (CFA, CPA) and deal experience'
-        },
-        healthcare: {
-            keywords: ['HIPAA', 'EMR', 'Patient Care', 'Clinical Trials', 'FDA'],
-            metrics: ['patient outcomes', '% accuracy', 'process efficiency'],
-            norms: 'Emphasize licenses and compliance experience'
-        },
-        general: {
-            keywords: ['Leadership', 'Project Management', 'Problem Solving'],
-            metrics: ['% improvement', 'cost savings', 'team size'],
-            norms: 'Focus on transferable skills'
-        }
+        tech:    { keywords: ['Agile','CI/CD','Cloud','Python','Machine Learning'], metrics: ['% efficiency','system uptime','reduced latency'], norms: 'Highlight technical projects and GitHub contributions' },
+        finance: { keywords: ['FP&A','ROI','Financial Modeling','GAAP','Due Diligence'],         metrics: ['$ savings','% growth','deal size'],               norms: 'Show certifications (CFA, CPA) and deal experience' },
+        healthcare:{ keywords: ['HIPAA','EMR','Patient Care','Clinical Trials','FDA'],         metrics: ['patient outcomes','% accuracy','process efficiency'], norms: 'Emphasize licenses and compliance experience' },
+        general: { keywords: ['Leadership','Project Management','Problem Solving'],            metrics: ['% improvement','cost savings','team size'],         norms: 'Focus on transferable skills' }
     };
-
-    // Country-specific norms
     const countryNorms = {
         us: '1-page preferred, include achievements',
         uk: '2 pages max, include personal statement',
@@ -216,15 +178,11 @@ function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country
         ro: 'Include personal details (age, marital status optional)',
         ua: '2-3 pages, include photo and passport details'
     };
-
-    // ATS scoring thresholds
     const atsThresholds = `(Good: 15+ keywords | Excellent: 25+ keywords)`;
-
     const industry = industryTemplates[targetIndustry] || industryTemplates.general;
     const countryNorm = countryNorms[country] || countryNorms.us;
 
     let promptBase = `You're a friendly HR advisor with ${targetIndustry} expertise. Let's optimize this ${documentType === 'linkedin' ? 'LinkedIn profile' : 'CV'} for ${targetIndustry} roles in ${country.toUpperCase()}.`;
-
     promptBase += `\n\nStart with a warm, encouraging rating (1-5 stars) followed by:\n
 ✨ [3 Quick Wins] - Easy fixes with big impact\n
 🔍 [Deep Dive] - Thoughtful analysis on:\n
@@ -232,14 +190,12 @@ function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country
 2. ${industry.norms}\n
 3. Keyword optimization ${atsThresholds}\n
 4. Achievement phrasing ("${industry.metrics.join('", "')}")\n\n`;
-
     promptBase += `Suggest improvements like a supportive mentor:\n
 "Great start! Here's how to make it shine:\n
 • Try adding 2-3 more ${industry.keywords.slice(0,3).join('/')} keywords\n
 • Quantify achievements like 'Improved ${industry.metrics[0]} by X%'\n
-• Move education higher for ${country} standards"`;
-
-    promptBase += `\n\nKeep it:\n
+• Move education higher for ${country} standards"\n\n`;
+    promptBase += `Keep it:\n
 ✅ Encouraging but honest\n
 ✅ Specific to ${targetIndustry} needs\n
 ✅ Culturally appropriate for ${country}\n
@@ -247,4 +203,11 @@ function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country
 ✅ Under 200 words total`;
 
     return promptBase;
+}
+//
+
+// ----------------------------------------------------------------------------
+// NEW MVP helper: Builds a prompt to extract metadata from CV text.
+export function buildCVMetadataExtractionPrompt(text) {
+  return `Extract the following metadata from this CV:\n\n${text}\n\n${JSON_ONLY}`;
 }
