@@ -131,48 +131,90 @@ class DocumentUpload {
     this.reviewOutput.innerHTML = html;
 
     document.getElementById('submit-metadata-btn').addEventListener('click', async () => {
-  const form = new FormData(document.getElementById('metadata-form'));
-  const cleanedMetadata = {};
+      const form = new FormData(document.getElementById('metadata-form'));
+      const cleanedMetadata = {};
 
-  for (const [key, value] of form.entries()) {
-    if (key.startsWith('use_')) continue;
-    const useKey = 'use_' + key;
-    if (form.get(useKey)) {
-      cleanedMetadata[key] = value.trim();
-    }
-  }
+      for (const [key, value] of form.entries()) {
+        if (key.startsWith('use_')) continue;
+        const useKey = 'use_' + key;
+        if (form.get(useKey)) {
+          cleanedMetadata[key] = value.trim();
+        }
+      }
 
-  try {
-    const res = await fetch('/api/second-stage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        metadata: cleanedMetadata,
-        cv_body: parsedText
-      })
+      try {
+        const res = await fetch('/api/second-stage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            metadata: cleanedMetadata,
+            cv_body: parsedText
+          })
+        });
+
+        if (!res.ok) {
+          console.error('Server error:', res.status);
+          alert('Server error.');
+          return;
+        }
+
+        const result = await res.json();
+
+        document.getElementById('feedback-result').innerHTML = `
+          <h3>AI Feedback:</h3>
+          <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
+            ${result.finalFeedback || result.feedback || 'No feedback available.'}
+          </div>
+        `;
+      } catch (err) {
+        console.error('Request error:', err);
+        alert('Request error.');
+      }
     });
+  }
 
-    if (!res.ok) {
-      console.error('Server error:', res.status);
-      alert('Server error.');
-      return;
+  async extractText(file) {
+    if (file.type === 'application/pdf') {
+      if (!window.pdfjsLib) {
+        await this.loadScript(
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
+          'pdfjsLib'
+        );
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+      }
+      const buf = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(' ') + '\n';
+      }
+      return text.trim();
+    } else {
+      if (!window.mammoth) {
+        await this.loadScript(
+          'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js',
+          'mammoth'
+        );
+      }
+      const buf = await file.arrayBuffer();
+      const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
+      return result.value.trim();
     }
-
-    const result = await res.json();
-
-    document.getElementById('feedback-result').innerHTML = `
-      <h3>AI Feedback:</h3>
-      <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-        ${result.finalFeedback || result.feedback || 'No feedback available.'}
-      </div>
-    `;
-  } catch (err) {
-    console.error('Request error:', err);
-    alert('Request error.');
-  }
-});
   }
 
-} // <--- closes class DocumentUpload
+  loadScript(src, globalVar) {
+    return new Promise((resolve, reject) => {
+      if (window[globalVar]) return resolve();
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => new DocumentUpload());
