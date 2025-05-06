@@ -101,7 +101,7 @@
     document.getElementById('next-2').addEventListener('click', () => showStep(3));
     document.getElementById('prev-3').addEventListener('click', () => showStep(2));
 
-    // Step 3 submit
+    // Step 3  submit
     document.getElementById('metadata-form').addEventListener('submit', e => {
       e.preventDefault();
       const data = new FormData(e.target);
