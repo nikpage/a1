@@ -130,7 +130,9 @@ class DocumentUpload {
 
     this.reviewOutput.innerHTML = html;
 
-    document.getElementById('submit-metadata-btn').addEventListener('click', async () => {
+    this.reviewOutput.addEventListener('click', async (e) => {
+    if (e.target && e.target.id === 'submit-metadata-btn') {
+
       const form = new FormData(document.getElementById('metadata-form'));
       const cleanedMetadata = {};
 
