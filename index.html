@@ -14,25 +14,33 @@
         </header>
 
         <main>
-            <section id="upload-section">
-                <div class="upload-container">
-                    <div id="drop-zone" class="upload-box">
-                        <input type="file" id="file-input" accept=".pdf,.docx,.doc">
-                        <div class="drop-zone-content">
-                            <span class="drop-zone-icon">📁</span>
-                            <span class="drop-zone-text">Drag & drop your CV here</span>
-                            <span class="drop-zone-secondary">or click to browse</span>
-                        </div>
-                    </div>
-                    <button id="analyze-btn" disabled>Analyze CV</button>
-                </div>
-            </section>
 
-            <section id="review-section" class="hidden">
-                <h2>AI Review Results</h2>
-                <div id="review-output" class="review-output"></div>
-            </section>
-        </main>
+    <!-- Review FIRST -->
+    <section id="review-section" class="hidden">
+      <h2>AI Review Results</h2>
+      <div id="review-output" class="review-output"></div>
+    </section>
+
+    <!-- Metadata Editor (dynamic) -->
+    <!-- Already part of review-output content -->
+
+    <!-- Upload LAST -->
+    <section id="upload-section">
+      <div class="upload-container">
+        <div id="drop-zone" class="upload-box">
+          <input type="file" id="file-input" accept=".pdf,.docx,.doc">
+          <div class="drop-zone-content">
+            <span class="drop-zone-icon">📁</span>
+            <span class="drop-zone-text">Drag & drop your CV here</span>
+            <span class="drop-zone-secondary">or click to browse</span>
+          </div>
+        </div>
+        <button id="analyze-btn" disabled>Analyze CV</button>
+      </div>
+    </section>
+
+  </main>
+
     </div>
 
     <script src="/js/prompt-builder.js"></script>
