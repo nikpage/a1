@@ -1,4 +1,4 @@
-let parsedText = '';
+vlet parsedText = '';
 
 class DocumentUpload {
   constructor() {
@@ -110,7 +110,7 @@ class DocumentUpload {
         html += `
           <div class="field-block">
             <label>${key}:</label><br>
-            <textarea name="${key}" rows="2">${feedback[key].join(', ')}</textarea>
+            <textarea name="${key}" rows="2">${feedback[key].join(', ')}"></textarea>
             <label><input type="checkbox" name="use_${key}" checked> Use</label>
           </div><br>`;
       } else {
@@ -130,49 +130,51 @@ class DocumentUpload {
 
     this.reviewOutput.innerHTML = html;
 
-    this.reviewOutput.addEventListener('click', async (e) => {
-    if (e.target && e.target.id === 'submit-metadata-btn') {
+    // ⬇️ MINIMAL FIX: Attach event AFTER innerHTML is set
+    const submitBtn = document.getElementById('submit-metadata-btn');
+    if (submitBtn) {
+      submitBtn.onclick = async () => {
+        const form = new FormData(document.getElementById('metadata-form'));
+        const cleanedMetadata = {};
 
-      const form = new FormData(document.getElementById('metadata-form'));
-      const cleanedMetadata = {};
-
-      for (const [key, value] of form.entries()) {
-        if (key.startsWith('use_')) continue;
-        const useKey = 'use_' + key;
-        if (form.get(useKey)) {
-          cleanedMetadata[key] = value.trim();
-        }
-      }
-
-      try {
-        const res = await fetch('/api/second-stage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            metadata: cleanedMetadata,
-            cv_body: parsedText
-          })
-        });
-
-        if (!res.ok) {
-          console.error('Server error:', res.status);
-          alert('Server error.');
-          return;
+        for (const [key, value] of form.entries()) {
+          if (key.startsWith('use_')) continue;
+          const useKey = 'use_' + key;
+          if (form.get(useKey)) {
+            cleanedMetadata[key] = value.trim();
+          }
         }
 
-        const result = await res.json();
+        try {
+          const res = await fetch('/api/second-stage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              metadata: cleanedMetadata,
+              cv_body: parsedText
+            })
+          });
 
-        document.getElementById('feedback-result').innerHTML = `
-          <h3>AI Feedback:</h3>
-          <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-            ${result.finalFeedback || result.feedback || 'No feedback available.'}
-          </div>
-        `;
-      } catch (err) {
-        console.error('Request error:', err);
-        alert('Request error.');
-      }
-    });
+          if (!res.ok) {
+            console.error('Server error:', res.status);
+            alert('Server error.');
+            return;
+          }
+
+          const result = await res.json();
+
+          document.getElementById('feedback-result').innerHTML = `
+            <h3>AI Feedback:</h3>
+            <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
+              ${result.finalFeedback || result.feedback || 'No feedback available.'}
+            </div>
+          `;
+        } catch (err) {
+          console.error('Request error:', err);
+          alert('Request error.');
+        }
+      };
+    }
   }
 
   async extractText(file) {
