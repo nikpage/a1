@@ -5,12 +5,12 @@ class DocumentUpload {
     this.dropZone = document.getElementById('drop-zone');
     this.fileInput = document.getElementById('file-input');
     this.analyzeBtn = document.getElementById('analyze-btn');
+    this.submitMetadataBtn = document.getElementById('submit-metadata-btn'); // ⬅️ Now linked
     this.reviewSection = document.getElementById('review-section');
     this.reviewOutput = document.getElementById('review-output');
     this.currentFile = null;
-    this.setup(); // Set up dropzone
-    this.setupAnalyzeButton(); // Isolate Analyze button
-    this.setupSubmitButton(); // Handle Submit Metadata button separately
+    this.setup();
+    this.setupButtons();
   }
 
   setup() {
@@ -43,16 +43,9 @@ class DocumentUpload {
     });
   }
 
-  setupAnalyzeButton() {
+  setupButtons() {
     this.analyzeBtn.addEventListener('click', () => this.runAnalysis());
-  }
-
-  setupSubmitButton() {
-    this.reviewOutput.addEventListener('click', (e) => {
-      if (e.target && e.target.id === 'submit-metadata-btn') {
-        this.handleMetadataSubmit();
-      }
-    });
+    this.submitMetadataBtn.addEventListener('click', () => this.handleMetadataSubmit());
   }
 
   selectFile(file) {
@@ -139,10 +132,7 @@ class DocumentUpload {
       }
     }
 
-    html += `
-      </form>
-      <button id="submit-metadata-btn" style="margin-top: 20px; padding: 10px 20px;">Submit Metadata for AI Feedback</button>
-    `;
+    html += `</form>`;
 
     this.reviewOutput.innerHTML = html;
   }
