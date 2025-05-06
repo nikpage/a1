@@ -164,6 +164,37 @@ formatAIText(text) {
     .replace(/\*(.*?)\*/g, '<em>$1</em>');
 }
 
+async extractText(file) {
+  if (file.type === 'application/pdf') {
+    if (!window.pdfjsLib) {
+      await this.loadScript(
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
+        'pdfjsLib'
+      );
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    }
+    const buf = await file.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(' ') + '\n';
+    }
+    return text.trim();
+  } else {
+    if (!window.mammoth) {
+      await this.loadScript(
+        'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js',
+        'mammoth'
+      );
+    }
+    const buf = await file.arrayBuffer();
+    const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
+    return result.value.trim();
+  }
+}
 
   loadScript(src, globalVar) {
     return new Promise((resolve, reject) => {
