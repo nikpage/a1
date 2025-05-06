@@ -5,12 +5,12 @@ class DocumentUpload {
     this.dropZone = document.getElementById('drop-zone');
     this.fileInput = document.getElementById('file-input');
     this.analyzeBtn = document.getElementById('analyze-btn');
-    this.submitMetadataBtn = document.getElementById('submit-metadata-btn'); // ✅ added correctly
+    this.submitMetadataBtn = document.getElementById('submit-metadata-btn');
     this.reviewSection = document.getElementById('review-section');
     this.reviewOutput = document.getElementById('review-output');
     this.currentFile = null;
     this.setup();
-    this.setupButtons(); // ✅ correct
+    this.setupButtons();
   }
 
   setup() {
@@ -119,7 +119,7 @@ class DocumentUpload {
         html += `
           <div class="field-block">
             <label>${key}:</label><br>
-            <textarea name="${key}" rows="2">${feedback[key].join(', ')}"></textarea>
+            <textarea name="${key}" rows="2">${feedback[key].join(', ')}</textarea>
             <label><input type="checkbox" name="use_${key}" checked> Use</label>
           </div><br>`;
       } else {
@@ -223,4 +223,40 @@ class DocumentUpload {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => new DocumentUpload());
+// Expose instance
+let docUploader;
+document.addEventListener('DOMContentLoaded', () => {
+  docUploader = new DocumentUpload();
+});
+
+// === UGLY FALLBACK FOR SUBMIT METADATA BUTTON ===
+document.addEventListener('DOMContentLoaded', () => {
+  const realBtn = document.getElementById('submit-metadata-btn');
+  const submitMetadata = () => {
+    if (docUploader) {
+      docUploader.handleMetadataSubmit();
+    } else {
+      console.error('docUploader not initialized');
+    }
+  };
+
+  if (realBtn) {
+    realBtn.onclick = submitMetadata;
+  } else {
+    const uglyBtn = document.createElement('button');
+    uglyBtn.textContent = '▶ SUBMIT METADATA ◀';
+    uglyBtn.style.cssText = [
+      'position:fixed',
+      'bottom:10px',
+      'right:10px',
+      'padding:10px 20px',
+      'background:#c00',
+      'color:#fff',
+      'font-weight:bold',
+      'z-index:9999',
+    ].join(';');
+    uglyBtn.onclick = submitMetadata;
+    document.body.appendChild(uglyBtn);
+  }
+});
+// === END FALLBACK ===
