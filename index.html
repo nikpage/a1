@@ -7,37 +7,45 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <section id="review-section" class="hidden">
-  <h2>AI Review Results</h2>
-  <div id="review-output" class="review-output"></div>
+  <div class="container">  <!-- ✅ ADD this -->
 
-  <button id="submit-metadata-btn" style="margin-top: 20px; padding: 10px 20px;">Submit Metadata for AI Feedback</button>
-</section>
-    <!-- Metadata Editor (dynamic) -->
-    <!-- Already part of review-output content -->
+    <header>
+      <h1>AI CV Review</h1>
+      <p class="subtitle">Get professional feedback on your resume</p>
+    </header>
 
-    <!-- Upload LAST -->
-    <section id="upload-section">
-      <div class="upload-container">
-        <div id="drop-zone" class="upload-box">
-          <input type="file" id="file-input" accept=".pdf,.docx,.doc">
-          <div class="drop-zone-content">
-            <span class="drop-zone-icon">📁</span>
-            <span class="drop-zone-text">Drag & drop your CV here</span>
-            <span class="drop-zone-secondary">or click to browse</span>
+    <main>  <!-- ✅ ADD this -->
+
+      <section id="review-section" class="hidden">
+        <h2>AI Review Results</h2>
+        <div id="review-output" class="review-output"></div>
+        <button id="submit-metadata-btn" style="margin-top:20px; padding:10px 20px;">Submit Metadata for AI Feedback</button>
+      </section>
+
+      <!-- Metadata Editor (dynamic) -->
+      <!-- Already part of review-output content -->
+
+      <section id="upload-section">
+        <div class="upload-container">
+          <div id="drop-zone" class="upload-box">
+            <input type="file" id="file-input" accept=".pdf,.docx,.doc">
+            <div class="drop-zone-content">
+              <span class="drop-zone-icon">📁</span>
+              <span class="drop-zone-text">Drag & drop your CV here</span>
+              <span class="drop-zone-secondary">or click to browse</span>
+            </div>
           </div>
+          <button id="analyze-btn" disabled>Analyze CV</button>
         </div>
-        <button id="analyze-btn" disabled>Analyze CV</button>
-      </div>
-    </section>
+      </section>
 
-  </main>
+    </main> <!-- ✅ CLOSE main -->
 
-    </div>
+  </div> <!-- ✅ CLOSE container -->
 
-    <script src="/js/prompt-builder.js"></script>
-    <script src="/js/key-manager.js"></script>
-    <script src="/js/upload.js"></script>
-    <script src="/js/app.js"></script>
+  <script src="/js/prompt-builder.js"></script>
+  <script src="/js/key-manager.js"></script>
+  <script src="/js/upload.js"></script>
+  <script src="/js/app.js"></script>
 </body>
 </html>
