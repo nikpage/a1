@@ -146,8 +146,11 @@ class DocumentUpload {
       // Show feedback nicely
       document.getElementById('feedback-result').innerHTML = `
         <h3>AI Feedback:</h3>
-        <pre style="background:#f8f8f8; padding:1rem; border-radius:8px;">${JSON.stringify(result, null, 2)}</pre>
+        <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
+          ${result.finalFeedback ? result.finalFeedback.replace(/\n/g, '<br>') : 'No feedback available.'}
+        </div>
       `;
+
     });
   }
 
