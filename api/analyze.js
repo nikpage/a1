@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: 'You are a CV review assistant. Output JSON with key "feedback".' },
+          { role: 'system', content: 'Analyze this CV thoroughly and extract ALL structured metadata. Extract professional info (job title, seniority level, years of experience, industry verticals), education (degrees, institutions, graduation years, certifications), skills (technical skills, soft skills, languages, proficiency levels), achievements (awards, publications, patents, notable projects), and keywords (industry-specific terms, buzzwords, methodologies). Format as clean JSON with a "feedback" key containing all extracted metadata.' },
           { role: 'user', content: text }
         ],
         response_format: { type: 'json_object' }
