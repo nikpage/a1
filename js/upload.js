@@ -5,12 +5,12 @@ class DocumentUpload {
     this.dropZone = document.getElementById('drop-zone');
     this.fileInput = document.getElementById('file-input');
     this.analyzeBtn = document.getElementById('analyze-btn');
-    this.submitMetadataBtn = document.getElementById('submit-metadata-btn'); // ⬅️ Now linked
+    this.submitMetadataBtn = document.getElementById('submit-metadata-btn'); // ✅ added correctly
     this.reviewSection = document.getElementById('review-section');
     this.reviewOutput = document.getElementById('review-output');
     this.currentFile = null;
     this.setup();
-    this.setupButtons();
+    this.setupButtons(); // ✅ correct
   }
 
   setup() {
