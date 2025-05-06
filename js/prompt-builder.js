@@ -207,7 +207,29 @@ export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', 
 //
 
 // ----------------------------------------------------------------------------
-// NEW MVP helper: Builds a prompt to extract metadata from CV text.
 export function buildCVMetadataExtractionPrompt(text) {
-  return `Extract the following metadata from this CV:\n\n${text}\n\n${JSON_ONLY}`;
+  return `
+Extract the following structured metadata from the CV below:
+
+Return only valid minified JSON matching exactly this schema:
+{
+  "title": "Job title",
+  "seniority": "Seniority level (e.g., Entry, Mid, Senior, Executive)",
+  "company": "Company name",
+  "years_experience": "Years of experience (number)",
+  "industries": ["Industry verticals like 'Fintech', 'Healthcare'"],
+  "education": ["Degrees and institutions"],
+  "skills": ["List of technical and soft skills"],
+  "languages": ["Spoken languages with proficiency if possible"],
+  "achievements": ["Awards, publications, notable projects"],
+  "certifications": ["Certifications or licenses"]
+}
+
+ONLY return the JSON object. No text, no explanation, no markdown.
+
+CV:
+${text}
+
+${JSON_ONLY}
+  `;
 }
