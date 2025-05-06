@@ -146,23 +146,35 @@ class DocumentUpload {
         }
       }
 
-      const res = await fetch('/api/second-stage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          metadata: cleanedMetadata,
-          cv_body: parsedText
-        })
-      });
+      try {
+        const res = await fetch('/api/second-stage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            metadata: cleanedMetadata,
+            cv_body: parsedText
+          })
+        });
 
-      const result = await res.json();
+        const result = await res.json();
 
-      document.getElementById('feedback-result').innerHTML = `
-        <h3>AI Feedback:</h3>
-        <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-          ${result.finalFeedback ? this.formatAIText(result.finalFeedback) : 'No feedback available.'}
-        </div>
-      `;
+        if (res.ok) {
+          document.getElementById('feedback-result').innerHTML = `
+            <h3>AI Feedback:</h3>
+            <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
+              ${result.finalFeedback ? this.formatAIText(result.finalFeedback) : 'No feedback available.'}
+            </div>
+          `;
+        } else {
+          console.error('Server error:', result.error);
+          alert(`Server error: ${result.error}`);
+        }
+      } catch (err) {
+        console.error('Request failed:', err);
+        alert(`Request failed: ${err.message}`);
+      }
+    });
+
     });
   }
 
