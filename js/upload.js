@@ -66,9 +66,10 @@ class DocumentUpload {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, documentType: 'cv_file' })
       });
-      const { feedback, error } = await res.json();
-      if (error) throw new Error(error);
-      this.showFeedback(feedback);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      console.log('FULL RESPONSE:', data);
+      this.showFeedback(data.feedback || data);
     } catch (err) {
       console.error(err);
       alert(`Error: ${err.message}`);
