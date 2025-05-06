@@ -11,13 +11,21 @@ export class KeyManager {
     }
 
     loadKeys() {
-        if (typeof process !== 'undefined' && process.env.DEEPSEEK_API_KEY) {
-            this.keys = [process.env.DEEPSEEK_API_KEY];
+        if (typeof process !== 'undefined' && process.env) {
+            this.keys = Object.keys(process.env)
+                .filter(key => key.startsWith('DEEPSEEK_API_KEY'))
+                .map(key => process.env[key]);
+
+            if (this.keys.length === 0) {
+                console.error('No API keys found');
+                this.keys = [null];
+            }
         } else {
-            console.error('No API keys available');
+            console.error('No environment detected');
             this.keys = [null];
         }
     }
+
 
     trackUsage(usageData, model = 'deepseek-chat') {
         const cost = this.calculateCost(usageData, model);
