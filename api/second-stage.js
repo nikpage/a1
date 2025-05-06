@@ -1,6 +1,7 @@
 // File: /api/second-stage.js
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
+
 const km = new KeyManager();
 
 // Enable JSON body parsing
@@ -20,11 +21,28 @@ export default async function handler(req, res) {
     if (!apiKey) throw new Error('API key missing');
 
     // Build prompt
-    const documentType = 'cv_file'; // or 'linkedin' if you want later dynamic switching
+    const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries);
     const country = guessCountry(metadata.languages);
 
     const prompt = buildCVFeedbackPrompt(documentType, targetIndustry, country);
+
+    // Prepare metadata block
+    const userMetadataSummary = `
+Candidate Profile:
+- Title: ${metadata.title || 'Unknown'}
+- Seniority: ${metadata.seniority || 'Unknown'}
+- Company: ${metadata.company || 'Unknown'}
+- Years Experience: ${metadata.years_experience || 'Unknown'}
+- Industries: ${(metadata.industries || []).join(', ') || 'Unknown'}
+- Education: ${(metadata.education || []).join(', ') || 'Unknown'}
+- Skills: ${(metadata.skills || []).join(', ') || 'Unknown'}
+- Languages: ${(metadata.languages || []).join(', ') || 'Unknown'}
+- Achievements: ${(metadata.achievements || []).join(', ') || 'Unknown'}
+- Certifications: ${(metadata.certifications || []).join(', ') || 'Unknown'}
+`;
+
+    const finalPrompt = `${userMetadataSummary}\n\n${prompt}`;
 
     // Call DeepSeek Chat Completions endpoint
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
@@ -36,7 +54,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'user', content: prompt }
+          { role: 'user', content: finalPrompt }
         ]
       })
     });
