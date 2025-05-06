@@ -20,28 +20,39 @@ export default async function handler(req, res) {
     const apiKey = km.keys[0];
     if (!apiKey) throw new Error('API key missing');
 
-    // Build prompt
+    // Build base prompt
     const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries);
     const country = guessCountry(metadata.languages);
 
     const prompt = buildCVFeedbackPrompt(documentType, targetIndustry, country);
 
-    // Prepare metadata block
+    // Prepare structured metadata block
     const userMetadataSummary = `
-Candidate Profile:
-- Title: ${metadata.title || 'Unknown'}
-- Seniority: ${metadata.seniority || 'Unknown'}
-- Company: ${metadata.company || 'Unknown'}
-- Years Experience: ${metadata.years_experience || 'Unknown'}
-- Industries: ${(metadata.industries || []).join(', ') || 'Unknown'}
-- Education: ${(metadata.education || []).join(', ') || 'Unknown'}
-- Skills: ${(metadata.skills || []).join(', ') || 'Unknown'}
-- Languages: ${(metadata.languages || []).join(', ') || 'Unknown'}
-- Achievements: ${(metadata.achievements || []).join(', ') || 'Unknown'}
-- Certifications: ${(metadata.certifications || []).join(', ') || 'Unknown'}
+📄 Candidate Overview:
+
+• Title: ${metadata.title || 'Not Provided'}
+• Seniority Level: ${metadata.seniority || 'Not Provided'}
+• Current Company: ${metadata.company || 'Not Provided'}
+• Years of Experience: ${metadata.years_experience || 'Not Provided'}
+• Target Industries: ${(metadata.industries || []).join(', ') || 'Not Provided'}
+• Education: ${(metadata.education || []).join(', ') || 'Not Provided'}
+• Languages: ${(metadata.languages || []).join(', ') || 'Not Provided'}
+
+🛠 Skills:
+
+${(metadata.skills || []).map(skill => `- ${skill}`).join('\n') || '- Not Provided'}
+
+🏆 Achievements:
+
+${(metadata.achievements || []).map(ach => `- ${ach}`).join('\n') || '- Not Provided'}
+
+🎖 Certifications:
+
+${(metadata.certifications || []).map(cert => `- ${cert}`).join('\n') || '- Not Provided'}
 `;
 
+    // Final prompt to send
     const finalPrompt = `${userMetadataSummary}\n\n${prompt}`;
 
     // Call DeepSeek Chat Completions endpoint
