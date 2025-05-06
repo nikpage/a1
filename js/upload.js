@@ -1,4 +1,4 @@
-vlet parsedText = '';
+let parsedText = '';
 
 class DocumentUpload {
   constructor() {
@@ -9,6 +9,7 @@ class DocumentUpload {
     this.reviewOutput = document.getElementById('review-output');
     this.currentFile = null;
     this.setup();
+    this.setupMetadataSubmit(); // add this line to set up event once
   }
 
   setup() {
@@ -37,6 +38,14 @@ class DocumentUpload {
       }
     });
     this.analyzeBtn.addEventListener('click', () => this.runAnalysis());
+  }
+
+  setupMetadataSubmit() {
+    this.reviewOutput.addEventListener('click', async (e) => {
+      if (e.target && e.target.id === 'submit-metadata-btn') {
+        await this.handleMetadataSubmit();
+      }
+    });
   }
 
   selectFile(file) {
@@ -129,51 +138,47 @@ class DocumentUpload {
     `;
 
     this.reviewOutput.innerHTML = html;
+  }
 
-    // ⬇️ MINIMAL FIX: Attach event AFTER innerHTML is set
-    const submitBtn = document.getElementById('submit-metadata-btn');
-    if (submitBtn) {
-      submitBtn.onclick = async () => {
-        const form = new FormData(document.getElementById('metadata-form'));
-        const cleanedMetadata = {};
+  async handleMetadataSubmit() {
+    const form = new FormData(document.getElementById('metadata-form'));
+    const cleanedMetadata = {};
 
-        for (const [key, value] of form.entries()) {
-          if (key.startsWith('use_')) continue;
-          const useKey = 'use_' + key;
-          if (form.get(useKey)) {
-            cleanedMetadata[key] = value.trim();
-          }
-        }
+    for (const [key, value] of form.entries()) {
+      if (key.startsWith('use_')) continue;
+      const useKey = 'use_' + key;
+      if (form.get(useKey)) {
+        cleanedMetadata[key] = value.trim();
+      }
+    }
 
-        try {
-          const res = await fetch('/api/second-stage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              metadata: cleanedMetadata,
-              cv_body: parsedText
-            })
-          });
+    try {
+      const res = await fetch('/api/second-stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: cleanedMetadata,
+          cv_body: parsedText
+        })
+      });
 
-          if (!res.ok) {
-            console.error('Server error:', res.status);
-            alert('Server error.');
-            return;
-          }
+      if (!res.ok) {
+        console.error('Server error:', res.status);
+        alert('Server error.');
+        return;
+      }
 
-          const result = await res.json();
+      const result = await res.json();
 
-          document.getElementById('feedback-result').innerHTML = `
-            <h3>AI Feedback:</h3>
-            <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-              ${result.finalFeedback || result.feedback || 'No feedback available.'}
-            </div>
-          `;
-        } catch (err) {
-          console.error('Request error:', err);
-          alert('Request error.');
-        }
-      };
+      document.getElementById('feedback-result').innerHTML = `
+        <h3>AI Feedback:</h3>
+        <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
+          ${result.finalFeedback || result.feedback || 'No feedback available.'}
+        </div>
+      `;
+    } catch (err) {
+      console.error('Request error:', err);
+      alert('Request error.');
     }
   }
 
