@@ -7,7 +7,7 @@ const km = new KeyManager();
 // Enable JSON body parsing
 export const config = { api: { bodyParser: true } };
 
-// Helper to limit size safely
+// Helper to limit field size safely
 function limitFieldLength(value, max = 1000) {
   if (!value) return 'Not Provided';
   if (typeof value === 'string') return value.length > max ? value.slice(0, max) + '...' : value;
@@ -22,8 +22,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const metadata = req.body;
-    if (!metadata) return res.status(400).json({ error: 'No metadata provided' });
+    const { metadata, cv_body } = req.body;
+    if (!metadata || !cv_body) {
+      return res.status(400).json({ error: 'Metadata and CV body are required.' });
+    }
 
     const apiKey = km.keys[0];
     if (!apiKey) throw new Error('API key missing');
@@ -32,7 +34,7 @@ export default async function handler(req, res) {
     const targetIndustry = guessIndustry(metadata.industries);
     const country = guessCountry(metadata.languages);
 
-    const prompt = buildCVFeedbackPrompt(documentType, targetIndustry, country);
+    const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry, country);
 
     const userMetadataSummary = `
 📄 Candidate Overview:
@@ -58,8 +60,22 @@ ${limitFieldLength(metadata.achievements)}
 ${limitFieldLength(metadata.certifications)}
 `;
 
-    const finalPrompt = `${userMetadataSummary}\n\n${prompt}`;
+    // Assemble the final prompt
+    const finalPrompt = `
+You are reviewing a candidate's CV. Use the profile and document provided below.
 
+${userMetadataSummary}
+
+📝 CV Content:
+
+${cv_body}
+
+📋 Review Instructions:
+
+${promptInstructions}
+`;
+
+    // Call DeepSeek Chat Completions API
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
