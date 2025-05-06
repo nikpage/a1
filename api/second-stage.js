@@ -7,6 +7,14 @@ const km = new KeyManager();
 // Enable JSON body parsing
 export const config = { api: { bodyParser: true } };
 
+// Helper to limit size safely
+function limitFieldLength(value, max = 1000) {
+  if (!value) return 'Not Provided';
+  if (typeof value === 'string') return value.length > max ? value.slice(0, max) + '...' : value;
+  if (Array.isArray(value)) return value.map(v => v.length > max ? v.slice(0, max) + '...' : v).join(', ');
+  return 'Not Provided';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -20,42 +28,38 @@ export default async function handler(req, res) {
     const apiKey = km.keys[0];
     if (!apiKey) throw new Error('API key missing');
 
-    // Build base prompt
     const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries);
     const country = guessCountry(metadata.languages);
 
     const prompt = buildCVFeedbackPrompt(documentType, targetIndustry, country);
 
-    // Prepare structured metadata block
     const userMetadataSummary = `
 📄 Candidate Overview:
 
-• Title: ${metadata.title || 'Not Provided'}
-• Seniority Level: ${metadata.seniority || 'Not Provided'}
-• Current Company: ${metadata.company || 'Not Provided'}
-• Years of Experience: ${metadata.years_experience || 'Not Provided'}
-• Target Industries: ${(metadata.industries || []).join(', ') || 'Not Provided'}
-• Education: ${(metadata.education || []).join(', ') || 'Not Provided'}
-• Languages: ${(metadata.languages || []).join(', ') || 'Not Provided'}
+• Title: ${limitFieldLength(metadata.title)}
+• Seniority Level: ${limitFieldLength(metadata.seniority)}
+• Current Company: ${limitFieldLength(metadata.company)}
+• Years of Experience: ${limitFieldLength(metadata.years_experience)}
+• Target Industries: ${limitFieldLength(metadata.industries)}
+• Education: ${limitFieldLength(metadata.education)}
+• Languages: ${limitFieldLength(metadata.languages)}
 
 🛠 Skills:
 
-${(metadata.skills || []).map(skill => `- ${skill}`).join('\n') || '- Not Provided'}
+${limitFieldLength(metadata.skills)}
 
 🏆 Achievements:
 
-${(metadata.achievements || []).map(ach => `- ${ach}`).join('\n') || '- Not Provided'}
+${limitFieldLength(metadata.achievements)}
 
 🎖 Certifications:
 
-${(metadata.certifications || []).map(cert => `- ${cert}`).join('\n') || '- Not Provided'}
+${limitFieldLength(metadata.certifications)}
 `;
 
-    // Final prompt to send
     const finalPrompt = `${userMetadataSummary}\n\n${prompt}`;
 
-    // Call DeepSeek Chat Completions endpoint
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
