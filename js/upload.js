@@ -1,5 +1,3 @@
-// File: /js/upload.js
-
 let parsedText = '';
 
 class DocumentUpload {
@@ -70,7 +68,7 @@ class DocumentUpload {
 
     try {
       const text = await this.extractText(this.currentFile);
-      parsedText = text; // Save parsed text globally
+      parsedText = text;
       console.log('PARSED TEXT:', text);
 
       const res = await fetch('/api/analyze', {
@@ -80,12 +78,9 @@ class DocumentUpload {
       });
 
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      console.log('FULL RESPONSE:', data);
       this.showFeedback(data.feedback || data);
     } catch (err) {
       console.error(err);
-      alert(`Error: ${err.message}`);
     } finally {
       this.toggleBtn(false, 'Analyze CV');
     }
@@ -161,7 +156,7 @@ class DocumentUpload {
       document.getElementById('feedback-result').innerHTML = `
         <h3>AI Feedback:</h3>
         <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-          ${result.finalFeedback ? this.formatAIText(result.finalFeedback) : 'No feedback available.'}
+          ${result.finalFeedback || result.feedback || 'No feedback available.'}
         </div>
       `;
     });
