@@ -8,8 +8,9 @@ class DocumentUpload {
     this.reviewSection = document.getElementById('review-section');
     this.reviewOutput = document.getElementById('review-output');
     this.currentFile = null;
-    this.setup();
-    this.setupMetadataSubmit(); // add this line to set up event once
+    this.setup(); // Set up dropzone
+    this.setupAnalyzeButton(); // Isolate Analyze button
+    this.setupSubmitButton(); // Handle Submit Metadata button separately
   }
 
   setup() {
@@ -22,9 +23,11 @@ class DocumentUpload {
       e.preventDefault();
       this.dropZone.classList.add('drag-over');
     });
+
     ['dragleave', 'dragend'].forEach(evt =>
       this.dropZone.addEventListener(evt, () => this.dropZone.classList.remove('drag-over'))
     );
+
     this.dropZone.addEventListener('drop', e => {
       e.preventDefault();
       this.dropZone.classList.remove('drag-over');
@@ -32,18 +35,22 @@ class DocumentUpload {
         this.selectFile(e.dataTransfer.files[0]);
       }
     });
+
     this.fileInput.addEventListener('change', () => {
       if (this.fileInput.files.length > 0) {
         this.selectFile(this.fileInput.files[0]);
       }
     });
+  }
+
+  setupAnalyzeButton() {
     this.analyzeBtn.addEventListener('click', () => this.runAnalysis());
   }
 
-  setupMetadataSubmit() {
-    this.reviewOutput.addEventListener('click', async (e) => {
+  setupSubmitButton() {
+    this.reviewOutput.addEventListener('click', (e) => {
       if (e.target && e.target.id === 'submit-metadata-btn') {
-        await this.handleMetadataSubmit();
+        this.handleMetadataSubmit();
       }
     });
   }
