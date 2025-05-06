@@ -199,8 +199,7 @@ export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', 
 ✅ Encouraging but honest\n
 ✅ Specific to ${targetIndustry} needs\n
 ✅ Culturally appropriate for ${country}\n
-✅ Actionable within 30 minutes\n
-✅ Under 200 words total`;
+`;
 
     return promptBase;
 }
