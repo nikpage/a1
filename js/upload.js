@@ -1,4 +1,7 @@
 // File: /js/upload.js
+
+let parsedText = '';
+
 class DocumentUpload {
   constructor() {
     this.dropZone = document.getElementById('drop-zone');
@@ -12,7 +15,7 @@ class DocumentUpload {
 
   setup() {
     this.dropZone.addEventListener('click', () => {
-      this.fileInput.value = null; // <-- Allow reselection same file
+      this.fileInput.value = null;
       this.fileInput.click();
     });
 
@@ -67,9 +70,10 @@ class DocumentUpload {
 
     try {
       const text = await this.extractText(this.currentFile);
+      parsedText = text; // <<< Save parsed text globally
       console.log('PARSED TEXT:', text);
 
-      const res = await fetch('/api/analyze'), {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, documentType: 'cv_file' })
@@ -132,27 +136,24 @@ class DocumentUpload {
 
     document.getElementById('submit-metadata-btn').addEventListener('click', async () => {
       const form = new FormData(document.getElementById('metadata-form'));
-      const payload = {};
+      const cleanedMetadata = {};
 
       for (const [key, value] of form.entries()) {
         if (key.startsWith('use_')) continue;
         const useKey = 'use_' + key;
         if (form.get(useKey)) {
-          payload[key] = value.trim();
+          cleanedMetadata[key] = value.trim();
         }
       }
 
-      await fetch('/api/second-stage', {
+      const res = await fetch('/api/second-stage', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           metadata: cleanedMetadata,
-          cv_body: parsedText // <--- full CV text you already parsed
+          cv_body: parsedText
         })
       });
-
 
       const result = await res.json();
 
