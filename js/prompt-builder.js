@@ -183,51 +183,75 @@ export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', 
     const industry = industryTemplates[targetIndustry] || industryTemplates.general;
     const countryNorm = countryNorms[country] || countryNorms.us;
 
-    let promptBase = `You're a friendly HR advisor with ${targetIndustry} expertise. Let's optimize this ${documentType === 'linkedin' ? 'LinkedIn profile' : 'CV'} for ${targetIndustry} roles in ${country.toUpperCase()}.`;
-    promptBase += `\n\nStart with a warm, encouraging rating (1-5 stars) followed by:\n
+    let promptBase = `You're a friendly HR advisor with ${targetIndustry} expertise. Let's optimize this ${documentType === 'linkedin' ? 'LinkedIn profile' : 'CV'} for ${targetIndustry} roles in ${country.toUpperCase()}.\n\n`;
+
+    promptBase += `Start with a warm, encouraging rating (1-5 stars) followed by:\n
 ✨ [3 Quick Wins] - Easy fixes with big impact\n
 🔍 [Deep Dive] - Thoughtful analysis on:\n
 1. Formatting (${countryNorm})\n
 2. ${industry.norms}\n
 3. Keyword optimization ${atsThresholds}\n
-4. Achievement phrasing ("${industry.metrics.join('", "')}")\n\n`;
-    promptBase += `Suggest improvements like a supportive mentor:\n
-"Great start! Here's how to make it shine:\n
-• Try adding 2-3 more ${industry.keywords.slice(0,3).join('/')} keywords\n
-• Quantify achievements like 'Improved ${industry.metrics[0]} by X%'\n
-• Move education higher for ${country} standards"\n\n`;
+4. Achievement phrasing ("${industry.metrics.join('", "')}")\n
+5. Career Storytelling - Evaluate the coherence of career arcs and how parallel experiences strengthen the candidate’s value proposition.\n\n`;
+
+    promptBase += `**Special Focus**:
+- Review the candidate's "Career Arcs Summary" and "Parallel Experiences Summary" provided in the metadata.
+- Suggest how to best present their career growth and complementary skills in the CV.
+- If helpful, recommend rephrasing or repositioning experiences for greater impact.\n\n`;
+
     promptBase += `Keep it:\n
 ✅ Encouraging but honest\n
 ✅ Specific to ${targetIndustry} needs\n
 ✅ Culturally appropriate for ${country}\n
+✅ Focused on human-like reasoning, not mechanical keyword matching\n
+✅ Practical and actionable for immediate improvements
 `;
 
     return promptBase;
 }
-//
 
 // ----------------------------------------------------------------------------
 export function buildCVMetadataExtractionPrompt(text) {
   return `
-Extract the following structured metadata from the CV below:
+Analyze the CV or LinkedIn profile text below with careful, human-like reasoning.
 
-Return only valid minified JSON matching exactly this schema:
+**Your tasks:**
+- Identify and summarize the candidate’s primary career arcs (growth paths, role evolutions, industry themes).
+- Detect any significant parallel or crossover experiences (career pivots, complementary skill sets across industries).
+- Infer seniority level from responsibilities and impact, not just titles.
+- Estimate total years of experience accurately, accounting for overlaps or part-time work.
+- Infer key industries, skills, achievements, certifications, and language proficiencies.
+
+**Important:**
+- Focus on contextual relevance and logical growth, not just title or keyword matching.
+- When career arcs involve a pivot or parallel skillset, highlight the complementarity (e.g., QA testing skills supporting UX design).
+
+**Return ONLY a valid, minified JSON object matching EXACTLY this schema:**
+
 {
-  "title": "Job title",
-  "seniority": "Seniority level (e.g., Entry, Mid, Senior, Executive)",
-  "company": "Company name",
-  "years_experience": "Years of experience (number)",
-  "industries": ["Industry verticals like 'Fintech', 'Healthcare'"],
-  "education": ["Degrees and institutions"],
-  "skills": ["List of technical and soft skills"],
-  "languages": ["Spoken languages with proficiency if possible"],
-  "achievements": ["Awards, publications, notable projects"],
-  "certifications": ["Certifications or licenses"]
+  "current_role": "Most recent or representative job title",
+  "seniority": "Inferred seniority level (e.g., Entry, Mid, Senior, Executive)",
+  "primary_company": "Most recent or primary company name",
+  "career_arcs_summary": "Brief narrative describing main career arcs, highlighting growth and transitions",
+  "parallel_experiences_summary": "Brief narrative highlighting any notable parallel or crossover experiences",
+  "years_experience": "Total years of relevant experience (rounded to nearest 0.5)",
+  "industries": ["List of primary industries, e.g., 'Fintech', 'Healthcare'"],
+  "education": ["Degrees and institutions with focus areas if available"],
+  "skills": ["Comprehensive list of technical and soft skills"],
+  "languages": ["Languages spoken with proficiency if mentioned"],
+  "key_achievements": ["Awards, major projects, publications, or major contributions"],
+  "certifications": ["Relevant certifications or licenses"]
 }
 
-ONLY return the JSON object. No text, no explanation, no markdown.
+**Guidelines:**
+- Infer and summarize career progression and transferable skills logically.
+- If data is ambiguous, make reasonable assumptions favoring clarity.
+- Exclude unrelated work gaps unless contributing valuable skills.
+- Respond ONLY with the JSON object — no intro, no explanation, no markdown.
 
-CV:
+---
+
+CV or LinkedIn Profile:
 ${text}
 
 ${JSON_ONLY}
