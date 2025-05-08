@@ -1,5 +1,5 @@
-// ===== DEV VERSION =====
-//js/prompt-builder.js
+// ===== Z4 VERSION =====
+// File: js/prompt-builder.js
 
 // ⚡️ Shared constant for clean JSON
 export const JSON_ONLY = 'Respond with valid, minified JSON.';
@@ -200,8 +200,7 @@ export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', 
 ✅ Encouraging but honest\n
 ✅ Specific to ${targetIndustry} needs\n
 ✅ Culturally appropriate for ${country}\n
-✅ Actionable within 30 minutes\n
-✅ Under 200 words total`;
+`;
 
     return promptBase;
 }

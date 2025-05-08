@@ -1,10 +1,7 @@
-// ===== DEV VERSION =====
-//  /api/second-stage.js
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
-const km = new KeyManager();
 
-// Enable JSON body parsing
+const km = new KeyManager();
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
@@ -14,20 +11,52 @@ export default async function handler(req, res) {
   }
 
   try {
-    const metadata = req.body;
-    if (!metadata) return res.status(400).json({ error: 'No metadata provided' });
+    const { metadata, cv_body } = req.body;
+    if (!metadata || !cv_body) {
+      return res.status(400).json({ error: 'Metadata and CV body are required.' });
+    }
 
     const apiKey = km.keys[0];
     if (!apiKey) throw new Error('API key missing');
 
-    // Build prompt
-    const documentType = 'cv_file'; // or 'linkedin' if you want later dynamic switching
+    const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries);
     const country = guessCountry(metadata.languages);
 
-    const prompt = buildCVFeedbackPrompt(documentType, targetIndustry, country);
+    const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry, country);
 
-    // Call DeepSeek Chat Completions endpoint
+    const userMetadataSummary = `
+📄 Candidate Overview:
+
+• Title: ${metadata.title || 'Not Provided'}
+• Seniority Level: ${metadata.seniority || 'Not Provided'}
+• Current Company: ${metadata.company || 'Not Provided'}
+• Years of Experience: ${metadata.years_experience || 'Not Provided'}
+• Target Industries: ${metadata.industries || 'Not Provided'}
+• Education: ${metadata.education || 'Not Provided'}
+• Languages: ${metadata.languages || 'Not Provided'}
+
+🛠 Skills: ${metadata.skills || 'Not Provided'}
+
+🏆 Achievements: ${metadata.achievements || 'Not Provided'}
+
+🎖 Certifications: ${metadata.certifications || 'Not Provided'}
+`;
+
+    const finalPrompt = `
+You are reviewing a candidate's CV. Use the profile and document provided below.
+
+${userMetadataSummary}
+
+📝 CV Content:
+
+${cv_body}
+
+📋 Review Instructions:
+
+${promptInstructions}
+`;
+
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -37,7 +66,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'user', content: prompt }
+          { role: 'user', content: finalPrompt }
         ]
       })
     });
