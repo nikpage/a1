@@ -1,4 +1,5 @@
-// /public/js/app.js
+// ===== DEV VERSION =====
+//js/app.js
 // App Controller — production ready
 
 class AppController {

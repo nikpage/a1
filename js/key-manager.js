@@ -1,3 +1,4 @@
+// ===== DEV VERSION =====
 // js/key-manager.js
 export class KeyManager {
     constructor() {

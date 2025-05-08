@@ -1,4 +1,5 @@
-// File: /js/upload.js
+// ===== DEV VERSION =====
+// js/upload.js
 class DocumentUpload {
   constructor() {
     this.dropZone = document.getElementById('drop-zone');

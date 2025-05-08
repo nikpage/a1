@@ -1,4 +1,5 @@
-// File: /api/second-stage.js
+// ===== DEV VERSION =====
+//  /api/second-stage.js
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
 const km = new KeyManager();

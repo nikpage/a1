@@ -1,4 +1,5 @@
-// File: js/prompt-builder.js
+// ===== DEV VERSION =====
+//js/prompt-builder.js
 
 // ⚡️ Shared constant for clean JSON
 export const JSON_ONLY = 'Respond with valid, minified JSON.';
