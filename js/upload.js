@@ -114,6 +114,44 @@ class DocumentUpload {
     `;
 
     this.reviewOutput.innerHTML = html;
+
+const submitButton = document.createElement('button');
+submitButton.textContent = 'Submit for AI Review';
+submitButton.style.marginTop = '20px';
+submitButton.style.padding = '10px 20px';
+submitButton.onclick = async () => {
+    const metadataForm = document.getElementById('metadata-form');
+    const formData = new FormData(metadataForm);
+    const metadata = {};
+
+    for (const [key, value] of formData.entries()) {
+        if (key.startsWith('use_')) continue;
+        const useKey = formData.get(`use_${key}`);
+        if (useKey) {
+            metadata[key] = value;
+        }
+    }
+
+    try {
+        const res = await fetch('/api/second-stage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                metadata,
+                cv_body: this.parsedText
+            })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        alert('AI Review Completed Successfully!');
+        console.log('Final Feedback:', data.finalFeedback);
+    } catch (err) {
+        console.error('Submit metadata error:', err);
+        alert('Error submitting metadata: ' + err.message);
+    }
+};
+
+this.reviewOutput.appendChild(submitButton);
   }
 
   renderField(key, value) {
