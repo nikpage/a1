@@ -11,7 +11,10 @@ class DocumentUpload {
   }
 
   setup() {
-    this.dropZone.addEventListener('click', () => this.fileInput.click());
+    this.dropZone.addEventListener('click', () => {
+    this.fileInput.value = ''; // reset input value
+    this.fileInput.click();
+});
     this.dropZone.addEventListener('dragover', e => {
       e.preventDefault();
       this.dropZone.classList.add('drag-over');
@@ -59,6 +62,8 @@ class DocumentUpload {
       const text = await this.extractText(this.currentFile);
       this.parsedText = text;
       console.log('PARSED TEXT:', text);
+      document.getElementById('upload-section').classList.add('hidden');
+
 
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -90,7 +95,7 @@ class DocumentUpload {
       return;
     }
 
-    const safe = (v) => (v ? (Array.isArray(v) ? v.join(' : ') : v) : '');
+    const safe = (v) => (v !== undefined && v !== null ? v : '');
 
     let html = `
       <form id="metadata-form" class="metadata-grid">
