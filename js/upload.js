@@ -139,9 +139,14 @@ class DocumentUpload {
 
       // ✅ POST to second-stage API, sending both metadata and cv_body
       const res = await fetch('/api/second-stage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    metadata: payload,
+    cv_body: this.parsedText
+  })
+});
+
           metadata: payload,
           cv_body: this.parsedText
         })
