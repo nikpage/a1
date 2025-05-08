@@ -18,6 +18,8 @@ export default async function handler(req, res) {
     if (!text) return res.status(400).json({ error: 'No text provided' });
 
     const apiKey = km.keys[0];
+    console.log('[DeepSeek API] Using Key:', apiKey);
+
     if (!apiKey) throw new Error('API key missing');
 
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
