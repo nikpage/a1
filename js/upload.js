@@ -90,75 +90,38 @@ class DocumentUpload {
       return;
     }
 
+    const safe = (v) => (v ? (Array.isArray(v) ? v.join(' : ') : v) : '');
+
     let html = `
       <form id="metadata-form" class="metadata-grid">
 
+        <h2 class="section-title">Career Development</h2>
+        ${this.renderLongField('career_arcs_summary', safe(feedback.career_arcs_summary))}
+        ${this.renderLongField('parallel_experiences_summary', safe(feedback.parallel_experiences_summary))}
+
         <h2 class="section-title">General Info</h2>
-        ${this.renderField('years_experience', feedback.years_experience)}
-        ${this.renderField('education', feedback.education)}
-        ${this.renderField('languages', feedback.languages)}
-        ${this.renderField('key_achievements', feedback.key_achievements)}
-        ${this.renderField('certifications', feedback.certifications)}
+        ${this.renderField('education', safe(feedback.education))}
+        ${this.renderField('languages', safe(feedback.languages))}
+        ${this.renderField('years_experience', safe(feedback.years_experience))}
 
-        <h2 class="section-title">Career Arcs</h2>
-        ${this.renderLongField('career_arcs_summary', feedback.career_arcs_summary)}
-        ${this.renderLongField('parallel_experiences_summary', feedback.parallel_experiences_summary)}
+        <h2 class="section-title">Lists</h2>
+        ${this.renderLongListField('certifications', safe(feedback.certifications))}
+        ${this.renderLongListField('key_achievements', safe(feedback.key_achievements))}
+        ${this.renderLongListField('industries', safe(feedback.industries))}
+        ${this.renderLongListField('skills', safe(feedback.skills))}
 
-        <h2 class="section-title">Skills and Industries</h2>
-        ${this.renderField('skills', feedback.skills)}
-        ${this.renderField('industries', feedback.industries)}
-
-        <div class="form-actions">
-          <button id="submit-metadata-btn" type="button">Submit Cleaned Metadata</button>
-        </div>
       </form>
     `;
 
     this.reviewOutput.innerHTML = html;
-
-    document.getElementById('submit-metadata-btn').addEventListener('click', async () => {
-      const form = new FormData(document.getElementById('metadata-form'));
-      const payload = {};
-
-      for (const [key, value] of form.entries()) {
-        if (key.startsWith('use_')) continue;
-        if (form.get('use_' + key)) {
-          payload[key] = value.trim();
-        }
-      }
-
-      try {
-        const res = await fetch('/api/second-stage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ metadata: payload, cv_body: this.parsedText })
-        });
-
-        const result = await res.json();
-        if (result.error) throw new Error(result.error);
-
-        document.getElementById('feedback-result').innerHTML = `
-          <h3>AI Feedback:</h3>
-          <div class="feedback-box">${this.formatAIText(result.finalFeedback)}</div>
-        `;
-      } catch (err) {
-        console.error('Error submitting metadata:', err);
-        document.getElementById('feedback-result').innerHTML = `
-          <h3>Error:</h3>
-          <div class="feedback-box error">${err.message}</div>
-        `;
-      }
-    });
   }
 
   renderField(key, value) {
-    if (!value) return '';
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    const field = Array.isArray(value) ? value.join(', ') : value;
     return `
       <div class="form-group">
         <label for="${key}">${pretty}</label>
-        <input id="${key}" name="${key}" type="text" value="${field}">
+        <input id="${key}" name="${key}" type="text" value="${value}">
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -168,12 +131,25 @@ class DocumentUpload {
   }
 
   renderLongField(key, value) {
-    if (!value) return '';
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     return `
       <div class="form-group full-width">
         <label for="${key}">${pretty}</label>
         <textarea id="${key}" name="${key}" rows="15">${value}</textarea>
+        <div class="checkbox-group">
+          <input type="checkbox" id="use_${key}" name="use_${key}" checked>
+          <label for="use_${key}">Use</label>
+        </div>
+      </div>
+    `;
+  }
+
+  renderLongListField(key, value) {
+    const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return `
+      <div class="form-group full-width">
+        <label for="${key}">${pretty}</label>
+        <textarea id="${key}" name="${key}" rows="10">${value}</textarea>
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
