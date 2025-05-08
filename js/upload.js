@@ -98,22 +98,32 @@ class DocumentUpload {
     `;
 
     for (const key in feedback) {
-      if (Array.isArray(feedback[key])) {
+      const value = feedback[key];
+
+      if (Array.isArray(value)) {
         html += `
           <div class="field-block">
             <label>${key}:</label><br>
-            <textarea name="${key}" rows="2">${feedback[key].join(', ')}</textarea>
+            <textarea name="${key}" rows="2">${value.join(', ')}</textarea>
+            <label><input type="checkbox" name="use_${key}" checked> Use</label>
+          </div><br>`;
+      } else if (typeof value === 'string' && value.length > 100) {
+        html += `
+          <div class="field-block">
+            <label>${key}:</label><br>
+            <textarea name="${key}" rows="4">${value}</textarea>
             <label><input type="checkbox" name="use_${key}" checked> Use</label>
           </div><br>`;
       } else {
         html += `
           <div class="field-block">
             <label>${key}:</label><br>
-            <input type="text" name="${key}" value="${feedback[key]}">
+            <input type="text" name="${key}" value="${value}">
             <label><input type="checkbox" name="use_${key}" checked> Use</label>
           </div><br>`;
       }
     }
+
 
     html += `
       <button id="submit-metadata-btn" type="button" style="margin-top: 20px; padding: 10px 20px;">Submit Metadata</button>
