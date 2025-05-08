@@ -1,3 +1,4 @@
+// ===== Z4 VERSION =====
 // File: js/prompt-builder.js
 
 // ⚡️ Shared constant for clean JSON

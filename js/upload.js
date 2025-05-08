@@ -1,126 +1,228 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CV Upload & Submit</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    button, input, textarea { display: block; margin: 10px 0; padding: 8px; }
-    #feedback, #result { margin-top: 20px; white-space: pre-wrap; background: #f9f9f9; padding: 10px; }
-  </style>
-</head>
-<body>
-  <h1>CV Upload & Metadata</h1>
+// ===== Z4 VERSION =====
+// js/uploads.js
+let parsedText = '';
 
-  <input type="file" id="file-input" accept=".pdf,.doc,.docx" />
-  <button type="button" id="analyze-btn" disabled>Analyze CV</button>
+class DocumentUpload {
+  constructor() {
+    this.dropZone = document.getElementById('drop-zone');
+    this.fileInput = document.getElementById('file-input');
+    this.analyzeBtn = document.getElementById('analyze-btn');
+    this.submitMetadataBtn = document.getElementById('submit-metadata-btn'); // ✅ added correctly
+    this.reviewSection = document.getElementById('review-section');
+    this.reviewOutput = document.getElementById('review-output');
+    this.currentFile = null;
+    this.setup();
+    this.setupButtons(); // ✅ correct
+  }
 
-  <div id="feedback"></div>
-
-  <!-- Metadata fields -->
-  <input type="text" id="meta-name" placeholder="Name" disabled />
-  <input type="email" id="meta-email" placeholder="Email" disabled />
-  <textarea id="meta-notes" placeholder="Notes" rows="3" disabled></textarea>
-  <button type="button" id="submit-btn" onclick="submitMetadata()">Submit Metadata</button>
-  <div id="result"></div>
-
-  <!-- Dependencies for PDF and DOCX parsing -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js"></script>
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-  </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.20/mammoth.browser.min.js"></script>
-
-  <script>
-    let parsedText = '';
-    const fileInput = document.getElementById('file-input');
-    const analyzeBtn = document.getElementById('analyze-btn');
-    const feedback = document.getElementById('feedback');
-    const submitBtn = document.getElementById('submit-btn');
-    const result = document.getElementById('result');
-    const metaName = document.getElementById('meta-name');
-    const metaEmail = document.getElementById('meta-email');
-    const metaNotes = document.getElementById('meta-notes');
-
-    fileInput.addEventListener('change', () => {
-      analyzeBtn.disabled = !fileInput.files.length;
-      feedback.textContent = '';
-      resetMetadata();
-      result.textContent = '';
+  setup() {
+    this.dropZone.addEventListener('click', () => {
+      this.fileInput.value = null;
+      this.fileInput.click();
     });
 
-    analyzeBtn.addEventListener('click', async () => {
-      const file = fileInput.files[0]; if (!file) return;
-      feedback.textContent = 'Extracting text...';
-      try {
-        parsedText = await extractText(file);
-        feedback.textContent = 'Extracted Text:\n' + parsedText.slice(0, 500) + (parsedText.length > 500 ? '...' : '');
-        enableMetadata();
-      } catch (err) {
-        feedback.textContent = 'Error extracting text: ' + err.message;
+    this.dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      this.dropZone.classList.add('drag-over');
+    });
+
+    ['dragleave', 'dragend'].forEach(evt =>
+      this.dropZone.addEventListener(evt, () => this.dropZone.classList.remove('drag-over'))
+    );
+
+    this.dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      this.dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files.length > 0) {
+        this.selectFile(e.dataTransfer.files[0]);
       }
     });
 
-    // Central submission function
-    async function submitMetadata() {
-      console.log('submitMetadata called');
-      result.textContent = 'Submitting...';
-      const payload = {
-        cv_body: parsedText,
-        name: metaName.value.trim(),
-        email: metaEmail.value.trim(),
-        notes: metaNotes.value.trim()
-      };
-      try {
-        const res = await fetch('/api/second-stage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        result.textContent = 'Server Response:\n' + JSON.stringify(data, null, 2);
-      } catch (err) {
-        result.textContent = 'Error submitting: ' + err.message;
+    this.fileInput.addEventListener('change', () => {
+      if (this.fileInput.files.length > 0) {
+        this.selectFile(this.fileInput.files[0]);
       }
+    });
+  }
+
+  setupButtons() {
+    this.analyzeBtn.addEventListener('click', () => this.runAnalysis());
+    this.submitMetadataBtn.addEventListener('click', () => this.handleMetadataSubmit());
+  }
+
+  selectFile(file) {
+    const allowed = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
+    ];
+    if (!file || !allowed.includes(file.type)) {
+      alert('Please upload a PDF or Word document');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File must be less than 5MB');
+      return;
     }
 
-    // Attach fallback in JS as well
-    submitBtn.addEventListener('click', submitMetadata);
+    this.currentFile = file;
+    this.analyzeBtn.disabled = false;
+    this.dropZone.querySelector('.drop-zone-text').textContent = file.name;
+    this.dropZone.querySelector('.drop-zone-secondary').textContent =
+      `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+  }
 
-    function enableMetadata() {
-      metaName.disabled = metaEmail.disabled = metaNotes.disabled = submitBtn.disabled = false;
+  async runAnalysis() {
+    if (!this.currentFile) return;
+
+    this.toggleBtn(true, 'Analyzing...');
+
+    try {
+      const text = await this.extractText(this.currentFile);
+      parsedText = text;
+      console.log('PARSED TEXT:', text);
+
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, documentType: 'cv_file' })
+      });
+
+      const data = await res.json();
+      this.showFeedback(data.feedback || data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      this.toggleBtn(false, 'Analyze CV');
     }
-    function resetMetadata() {
-      metaName.value = metaEmail.value = metaNotes.value = '';
-      metaName.disabled = metaEmail.disabled = metaNotes.disabled = submitBtn.disabled = true;
+  }
+
+  toggleBtn(disabled, label) {
+    this.analyzeBtn.disabled = disabled;
+    this.analyzeBtn.textContent = label;
+    this.analyzeBtn.classList.toggle('analyzing', disabled);
+  }
+
+  showFeedback(feedback) {
+    this.reviewSection.classList.remove('hidden');
+
+    if (!feedback || typeof feedback !== 'object') {
+      this.reviewOutput.innerHTML = '<p>No feedback data available.</p>';
+      return;
     }
 
-    async function extractText(file) {
-      if (file.type === 'application/pdf') {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        let fullText = '';
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          fullText += content.items.map(item => item.str).join(' ') + '\n';
-        }
-        return fullText.trim();
-      } else if (file.name.match(/\.docx?$/)) {
-        const arrayBuffer = await file.arrayBuffer();
-        const resultRead = await mammoth.extractRawText({ arrayBuffer });
-        return resultRead.value.trim();
+    let html = `
+      <div id="feedback-result" style="margin-bottom: 30px;"></div>
+      <form id="metadata-form">
+    `;
+
+    for (const key in feedback) {
+      if (Array.isArray(feedback[key])) {
+        html += `
+          <div class="field-block">
+            <label>${key}:</label><br>
+            <textarea name="${key}" rows="2">${feedback[key].join(', ')}"></textarea>
+            <label><input type="checkbox" name="use_${key}" checked> Use</label>
+          </div><br>`;
       } else {
-        return new Promise((res, rej) => {
-          const reader = new FileReader();
-          reader.onload = () => res(reader.result);
-          reader.onerror = () => rej(new Error('Failed to read file'));
-          reader.readAsText(file);
-        });
+        html += `
+          <div class="field-block">
+            <label>${key}:</label><br>
+            <input type="text" name="${key}" value="${feedback[key]}">
+            <label><input type="checkbox" name="use_${key}" checked> Use</label>
+          </div><br>`;
       }
     }
-  </script>
-</body>
-</html>
+
+    html += `</form>`;
+
+    this.reviewOutput.innerHTML = html;
+  }
+
+  async handleMetadataSubmit() {
+    const form = new FormData(document.getElementById('metadata-form'));
+    const cleanedMetadata = {};
+
+    for (const [key, value] of form.entries()) {
+      if (key.startsWith('use_')) continue;
+      const useKey = 'use_' + key;
+      if (form.get(useKey)) {
+        cleanedMetadata[key] = value.trim();
+      }
+    }
+
+    try {
+      const res = await fetch('/api/second-stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: cleanedMetadata,
+          cv_body: parsedText
+        })
+      });
+
+      if (!res.ok) {
+        console.error('Server error:', res.status);
+        alert('Server error.');
+        return;
+      }
+
+      const result = await res.json();
+
+      document.getElementById('feedback-result').innerHTML = `
+        <h3>AI Feedback:</h3>
+        <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
+          ${result.finalFeedback || result.feedback || 'No feedback available.'}
+        </div>
+      `;
+    } catch (err) {
+      console.error('Request error:', err);
+      alert('Request error.');
+    }
+  }
+
+  async extractText(file) {
+    if (file.type === 'application/pdf') {
+      if (!window.pdfjsLib) {
+        await this.loadScript(
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
+          'pdfjsLib'
+        );
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+      }
+      const buf = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(' ') + '\n';
+      }
+      return text.trim();
+    } else {
+      if (!window.mammoth) {
+        await this.loadScript(
+          'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js',
+          'mammoth'
+        );
+      }
+      const buf = await file.arrayBuffer();
+      const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
+      return result.value.trim();
+    }
+  }
+
+  loadScript(src, globalVar) {
+    return new Promise((resolve, reject) => {
+      if (window[globalVar]) return resolve();
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => new DocumentUpload());

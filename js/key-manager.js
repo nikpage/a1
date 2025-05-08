@@ -1,3 +1,4 @@
+// ===== Z4 VERSION =====
 // js/key-manager.js
 export class KeyManager {
     constructor() {
