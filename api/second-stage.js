@@ -17,6 +17,8 @@ export default async function handler(req, res) {
     }
 
     const apiKey = km.keys[0];
+    console.log('[DeepSeek API] Using Key:', apiKey);
+
     if (!apiKey) throw new Error('API key missing');
 
     const documentType = 'cv_file';
