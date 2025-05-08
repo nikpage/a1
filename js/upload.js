@@ -156,8 +156,16 @@ class DocumentUpload {
               })
             });
 
-            const result = await res.json();
+            const resultText = await res.text();
+            let result;
+            try {
+              result = JSON.parse(resultText);
+            } catch (err) {
+              console.error('Invalid JSON from server:', resultText);
+              throw new Error('Failed to parse AI server response.');
+            }
             if (result.error) throw new Error(result.error);
+
 
             document.getElementById('feedback-result').innerHTML = `
               <h3>AI Feedback:</h3>
