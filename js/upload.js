@@ -1,4 +1,3 @@
-// js/upload.js
 class DocumentUpload {
   constructor() {
     this.dropZone = document.getElementById('drop-zone');
@@ -117,7 +116,7 @@ class DocumentUpload {
     }
 
     html += `
-      <button id="submit-metadata-btn" style="margin-top: 20px; padding: 10px 20px;">Submit Metadata</button>
+      <button id="submit-metadata-btn" type="button" style="margin-top: 20px; padding: 10px 20px;">Submit Metadata</button>
       </form>
     `;
 
@@ -137,29 +136,35 @@ class DocumentUpload {
 
       console.log('Submitting cleaned metadata:', payload);
 
-      // ✅ POST to second-stage API, sending both metadata and cv_body
-      const res = await fetch('/api/second-stage', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    metadata: payload,
-    cv_body: this.parsedText
-  })
-});
+      try {
+        // ✅ Corrected POST to second-stage API, sending both metadata and cv_body
+        const res = await fetch('/api/second-stage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            metadata: payload,
+            cv_body: this.parsedText
+          })
+        });
 
-          metadata: payload,
-          cv_body: this.parsedText
-        })
-      });
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
 
-      const result = await res.json();
-
-      document.getElementById('feedback-result').innerHTML = `
-        <h3>AI Feedback:</h3>
-        <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-          ${result.finalFeedback ? this.formatAIText(result.finalFeedback) : 'No feedback available.'}
-        </div>
-      `;
+        document.getElementById('feedback-result').innerHTML = `
+          <h3>AI Feedback:</h3>
+          <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
+            ${result.finalFeedback ? this.formatAIText(result.finalFeedback) : 'No feedback available.'}
+          </div>
+        `;
+      } catch (err) {
+        console.error('Error submitting metadata:', err);
+        document.getElementById('feedback-result').innerHTML = `
+          <h3>Error:</h3>
+          <div style="background:#f8f8f8; padding:1rem; border-radius:8px; color:red;">
+            Failed to submit metadata: ${err.message}
+          </div>
+        `;
+      }
     });
   }
 
