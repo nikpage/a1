@@ -123,6 +123,9 @@ class DocumentUpload {
     submitButton.style.marginTop = '20px';
     submitButton.style.padding = '10px 20px';
     submitButton.onclick = async () => {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Submitting...';
+
         const metadataForm = document.getElementById('metadata-form');
         const fields = [...metadataForm.querySelectorAll('input[type="text"], textarea')];
         const metadata = {};
@@ -145,8 +148,16 @@ class DocumentUpload {
             });
             const data = await res.json();
             if (data.error) throw new Error(data.error);
-            alert('AI Review Completed Successfully!');
-            console.log('Final Feedback:', data.finalFeedback);
+
+            const reviewHTML = `
+    <h2>Final AI Review</h2>
+    <div class="review-text">${this.formatAIText(data.finalFeedback)}</div>
+  `;
+
+  setTimeout(() => {
+    this.reviewOutput.innerHTML = reviewHTML;
+  }, 100);
+
         } catch (err) {
             console.error('Submit metadata error:', err);
             alert('Error submitting metadata: ' + err.message);
