@@ -20,35 +20,35 @@ export default async function handler(req, res) {
     if (!apiKey) throw new Error('API key missing');
 
     const documentType = 'cv_file';
-    const targetIndustry = guessIndustry(metadata.industries);
-    const country = guessCountry(metadata.languages);
+    const targetIndustry = guessIndustry(metadata.industries || '');
+    const country = guessCountry(metadata.languages || '');
+
+    // 🛠 Old-style fallback formatting
+    const userMetadataSummary = `
+📄 Candidate Overview:
+
+• Title: ${metadata.current_role || metadata.title || 'Not Provided'}
+• Seniority Level: ${metadata.seniority || 'Not Provided'}
+• Current Company: ${metadata.primary_company || metadata.company || 'Not Provided'}
+• Years of Experience: ${metadata.years_experience || 'Not Provided'}
+• Target Industries: ${metadata.industries || 'Not Provided'}
+• Education: ${metadata.education || 'Not Provided'}
+• Languages: ${metadata.languages || 'Not Provided'}
+
+🛤 Career Arcs Summary:
+${metadata.career_arcs_summary || 'Not Provided'}
+
+🔀 Parallel Experiences Summary:
+${metadata.parallel_experiences_summary || 'Not Provided'}
+
+🛠 Skills: ${metadata.skills || 'Not Provided'}
+
+🏆 Achievements: ${metadata.key_achievements || metadata.achievements || 'Not Provided'}
+
+🎖 Certifications: ${metadata.certifications || 'Not Provided'}
+`;
 
     const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry, country);
-
-    const userMetadataSummary = `
-    📄 Candidate Overview:
-
-    • Title: ${metadata.current_role || metadata.title || 'Not Provided'}
-    • Seniority Level: ${metadata.seniority || 'Not Provided'}
-    • Current Company: ${metadata.primary_company || metadata.company || 'Not Provided'}
-    • Years of Experience: ${metadata.years_experience || 'Not Provided'}
-    • Target Industries: ${metadata.industries || 'Not Provided'}
-    • Education: ${metadata.education || 'Not Provided'}
-    • Languages: ${metadata.languages || 'Not Provided'}
-
-    🛤 Career Arcs Summary:
-    ${metadata.career_arcs_summary || 'Not Provided'}
-
-    🔀 Parallel Experiences Summary:
-    ${metadata.parallel_experiences_summary || 'Not Provided'}
-
-    🛠 Skills: ${metadata.skills || 'Not Provided'}
-
-    🏆 Achievements: ${metadata.key_achievements || metadata.achievements || 'Not Provided'}
-
-    🎖 Certifications: ${metadata.certifications || 'Not Provided'}
-    `;
-
 
     const finalPrompt = `
 You are reviewing a candidate's CV. Use the profile and document provided below.
@@ -92,6 +92,7 @@ ${promptInstructions}
     return res.status(500).json({ error: err.message });
   }
 }
+
 
 // --- Helpers ---
 function guessIndustry(industries) {
