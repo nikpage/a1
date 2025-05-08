@@ -17,7 +17,8 @@ export default async function handler(req, res) {
     }
 
     const apiKey = km.keys[0];
-    console.log('[DeepSeek API] Using Key:', apiKey);
+    console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
+
 
     if (!apiKey) throw new Error('API key missing');
 

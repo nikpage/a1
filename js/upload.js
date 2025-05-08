@@ -93,100 +93,39 @@ class DocumentUpload {
     }
 
     let html = `
-      <div id="feedback-result" style="margin-bottom: 30px;"></div>
-      <form id="metadata-form">
+      <form id="metadata-form" class="metadata-grid">
+        <h2 class="section-title">📄 Basic Info</h2>
     `;
 
     for (const key in feedback) {
       const value = feedback[key];
+      const displayName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-      if (Array.isArray(value)) {
-        html += `
-          <div class="field-block">
-            <label>${key}:</label><br>
-            <textarea name="${key}" rows="2">${value.join(', ')}</textarea>
-            <label><input type="checkbox" name="use_${key}" checked> Use</label>
-          </div><br>`;
-      } else if (typeof value === 'string' && value.length > 100) {
-        html += `
-          <div class="field-block">
-            <label>${key}:</label><br>
-            <textarea name="${key}" rows="4">${value}</textarea>
-            <label><input type="checkbox" name="use_${key}" checked> Use</label>
-          </div><br>`;
-      } else {
-        html += `
-          <div class="field-block">
-            <label>${key}:</label><br>
-            <input type="text" name="${key}" value="${value}">
-            <label><input type="checkbox" name="use_${key}" checked> Use</label>
-          </div><br>`;
-      }
+      html += `
+        <div class="form-group">
+          <label for="${key}">${displayName}</label>
+          ${Array.isArray(value)
+            ? `<textarea id="${key}" name="${key}" rows="2">${value.join(', ')}</textarea>`
+            : (value.length > 100
+                ? `<textarea id="${key}" name="${key}" rows="4">${value}</textarea>`
+                : `<input id="${key}" name="${key}" type="text" value="${value}">`)
+          }
+          <div class="checkbox-group">
+            <input type="checkbox" id="use_${key}" name="use_${key}" checked>
+            <label for="use_${key}">Use this field</label>
+          </div>
+        </div>
+      `;
     }
 
-
     html += `
-      <button id="submit-metadata-btn" type="button" style="margin-top: 20px; padding: 10px 20px;">Submit Metadata</button>
+        <div class="form-actions">
+          <button id="submit-metadata-btn" type="button">🚀 Submit Metadata</button>
+        </div>
       </form>
     `;
 
     this.reviewOutput.innerHTML = html;
-    setTimeout(() => {
-      const submitBtn = document.getElementById('submit-metadata-btn');
-      if (submitBtn) {
-        submitBtn.addEventListener('click', async () => {
-          const form = new FormData(document.getElementById('metadata-form'));
-          const payload = {};
-
-          for (const [key, value] of form.entries()) {
-            if (key.startsWith('use_')) continue;
-            const useKey = 'use_' + key;
-            if (form.get(useKey)) {
-              payload[key] = value.trim();
-            }
-          }
-
-          try {
-            const res = await fetch('/api/second-stage', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                metadata: payload,
-                cv_body: this.parsedText
-              })
-            });
-
-            const resultText = await res.text();
-            let result;
-            try {
-              result = JSON.parse(resultText);
-            } catch (err) {
-              console.error('Invalid JSON from server:', resultText);
-              throw new Error('Failed to parse AI server response.');
-            }
-            if (result.error) throw new Error(result.error);
-
-
-            document.getElementById('feedback-result').innerHTML = `
-              <h3>AI Feedback:</h3>
-              <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-                ${result.finalFeedback ? this.formatAIText(result.finalFeedback) : 'No feedback available.'}
-              </div>
-            `;
-          } catch (err) {
-            console.error('Error submitting metadata:', err);
-            document.getElementById('feedback-result').innerHTML = `
-              <h3>Error:</h3>
-              <div style="background:#f8f8f8; padding:1rem; border-radius:8px; color:red;">
-                Failed to submit metadata: ${err.message}
-              </div>
-            `;
-          }
-        });
-      } else {
-        console.error('Submit button not found.');
-      }
-    }, 0);
 
     document.getElementById('submit-metadata-btn').addEventListener('click', async () => {
       const form = new FormData(document.getElementById('metadata-form'));
@@ -194,23 +133,16 @@ class DocumentUpload {
 
       for (const [key, value] of form.entries()) {
         if (key.startsWith('use_')) continue;
-        const useKey = 'use_' + key;
-        if (form.get(useKey)) {
+        if (form.get('use_' + key)) {
           payload[key] = value.trim();
         }
       }
 
-      console.log('Submitting cleaned metadata:', payload);
-
       try {
-        // ✅ Corrected POST to second-stage API, sending both metadata and cv_body
         const res = await fetch('/api/second-stage', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            metadata: payload,
-            cv_body: this.parsedText
-          })
+          body: JSON.stringify({ metadata: payload, cv_body: this.parsedText })
         });
 
         const result = await res.json();
@@ -218,21 +150,19 @@ class DocumentUpload {
 
         document.getElementById('feedback-result').innerHTML = `
           <h3>AI Feedback:</h3>
-          <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-            ${result.finalFeedback ? this.formatAIText(result.finalFeedback) : 'No feedback available.'}
-          </div>
+          <div class="feedback-box">${this.formatAIText(result.finalFeedback)}</div>
         `;
       } catch (err) {
         console.error('Error submitting metadata:', err);
         document.getElementById('feedback-result').innerHTML = `
           <h3>Error:</h3>
-          <div style="background:#f8f8f8; padding:1rem; border-radius:8px; color:red;">
-            Failed to submit metadata: ${err.message}
-          </div>
+          <div class="feedback-box error">${err.message}</div>
         `;
       }
     });
   }
+
+
 
   formatAIText(text) {
     return text
