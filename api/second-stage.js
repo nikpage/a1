@@ -15,6 +15,33 @@ function limitFieldLength(value, max = 1000) {
   return 'Not Provided';
 }
 
+// -- ✅ FIXED guessIndustry and guessCountry
+function guessIndustry(industries) {
+  if (!industries) return 'general';
+  if (Array.isArray(industries)) industries = industries.join(' ').toLowerCase();
+  else industries = industries.toLowerCase();
+
+  if (industries.includes('tech') || industries.includes('software') || industries.includes('it')) return 'tech';
+  if (industries.includes('finance') || industries.includes('banking')) return 'finance';
+  if (industries.includes('healthcare') || industries.includes('medical')) return 'healthcare';
+  return 'general';
+}
+
+function guessCountry(languages) {
+  if (!languages) return 'us';
+  if (Array.isArray(languages)) languages = languages.join(' ').toLowerCase();
+  else languages = languages.toLowerCase();
+
+  if (languages.includes('czech')) return 'cz';
+  if (languages.includes('spanish')) return 'es';
+  if (languages.includes('german')) return 'de';
+  if (languages.includes('french')) return 'fr';
+  if (languages.includes('polish')) return 'pl';
+  if (languages.includes('romanian')) return 'ro';
+  if (languages.includes('ukrainian')) return 'ua';
+  return 'us';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -60,7 +87,7 @@ ${limitFieldLength(metadata.achievements)}
 ${limitFieldLength(metadata.certifications)}
 `;
 
-    // Assemble the final prompt
+    // Build the final AI prompt
     const finalPrompt = `
 You are reviewing a candidate's CV. Use the profile and document provided below.
 
@@ -75,7 +102,6 @@ ${cv_body}
 ${promptInstructions}
 `;
 
-    // Call DeepSeek Chat Completions API
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -103,27 +129,4 @@ ${promptInstructions}
     console.error('API second-stage error:', err);
     return res.status(500).json({ error: err.message });
   }
-}
-
-// --- Helpers ---
-function guessIndustry(industries) {
-  if (!industries) return 'general';
-  const lower = industries.toLowerCase();
-  if (lower.includes('tech') || lower.includes('software') || lower.includes('it')) return 'tech';
-  if (lower.includes('finance') || lower.includes('banking')) return 'finance';
-  if (lower.includes('healthcare') || lower.includes('medical')) return 'healthcare';
-  return 'general';
-}
-
-function guessCountry(languages) {
-  if (!languages) return 'us';
-  const lower = languages.toLowerCase();
-  if (lower.includes('czech')) return 'cz';
-  if (lower.includes('spanish')) return 'es';
-  if (lower.includes('german')) return 'de';
-  if (lower.includes('french')) return 'fr';
-  if (lower.includes('polish')) return 'pl';
-  if (lower.includes('romanian')) return 'ro';
-  if (lower.includes('ukrainian')) return 'ua';
-  return 'us';
 }
