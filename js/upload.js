@@ -211,9 +211,15 @@ class DocumentUpload {
 
   formatAIText(text) {
     return text
-      .replace(/\n/g, '<br>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+      .replace(/---/g, '') // Remove horizontal rules
+      .replace(/### (.+)/g, '<h2>$1</h2>') // Turn ### into H2
+      .replace(/#### (.+)/g, '<h3>$1</h3>') // Turn #### into H3
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // Bold
+      .replace(/\*(.+?)\*/g, '<em>$1</em>') // Italic
+      .replace(/\n{2,}/g, '</p><p>') // Double linebreak = paragraph
+      .replace(/\n/g, '<br>') // Single linebreak = <br>
+      .replace(/^/, '<p>') // Start paragraph
+      .replace(/$/, '</p>'); // End paragraph
   }
 
   async extractText(file) {
