@@ -6,7 +6,7 @@ class DocumentUpload {
     this.reviewSection = document.getElementById('review-section');
     this.reviewOutput = document.getElementById('review-output');
     this.currentFile = null;
-    this.parsedText = ''; // ✅ store extracted CV text
+    this.parsedText = '';
     this.setup();
   }
 
@@ -56,9 +56,8 @@ class DocumentUpload {
     this.toggleBtn(true, 'Analyzing...');
 
     try {
-      // Extract plain text
       const text = await this.extractText(this.currentFile);
-      this.parsedText = text; // ✅ save it for CTA2
+      this.parsedText = text;
       console.log('PARSED TEXT:', text);
 
       const res = await fetch('/api/analyze', {
@@ -86,7 +85,6 @@ class DocumentUpload {
 
   showFeedback(feedback) {
     this.reviewSection.classList.remove('hidden');
-
     if (!feedback || typeof feedback !== 'object') {
       this.reviewOutput.innerHTML = '<p>No feedback data available.</p>';
       return;
@@ -94,33 +92,24 @@ class DocumentUpload {
 
     let html = `
       <form id="metadata-form" class="metadata-grid">
-        <h2 class="section-title">📄 Basic Info</h2>
-    `;
 
-    for (const key in feedback) {
-      const value = feedback[key];
-      const displayName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        <h2 class="section-title">General Info</h2>
+        ${this.renderField('years_experience', feedback.years_experience)}
+        ${this.renderField('education', feedback.education)}
+        ${this.renderField('languages', feedback.languages)}
+        ${this.renderField('key_achievements', feedback.key_achievements)}
+        ${this.renderField('certifications', feedback.certifications)}
 
-      html += `
-        <div class="form-group">
-          <label for="${key}">${displayName}</label>
-          ${Array.isArray(value)
-            ? `<textarea id="${key}" name="${key}" rows="2">${value.join(', ')}</textarea>`
-            : (value.length > 100
-                ? `<textarea id="${key}" name="${key}" rows="4">${value}</textarea>`
-                : `<input id="${key}" name="${key}" type="text" value="${value}">`)
-          }
-          <div class="checkbox-group">
-            <input type="checkbox" id="use_${key}" name="use_${key}" checked>
-            <label for="use_${key}">Use this field</label>
-          </div>
-        </div>
-      `;
-    }
+        <h2 class="section-title">Career Arcs</h2>
+        ${this.renderLongField('career_arcs_summary', feedback.career_arcs_summary)}
+        ${this.renderLongField('parallel_experiences_summary', feedback.parallel_experiences_summary)}
 
-    html += `
+        <h2 class="section-title">Skills and Industries</h2>
+        ${this.renderField('skills', feedback.skills)}
+        ${this.renderField('industries', feedback.industries)}
+
         <div class="form-actions">
-          <button id="submit-metadata-btn" type="button">🚀 Submit Metadata</button>
+          <button id="submit-metadata-btn" type="button">Submit Cleaned Metadata</button>
         </div>
       </form>
     `;
@@ -162,7 +151,36 @@ class DocumentUpload {
     });
   }
 
+  renderField(key, value) {
+    if (!value) return '';
+    const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const field = Array.isArray(value) ? value.join(', ') : value;
+    return `
+      <div class="form-group">
+        <label for="${key}">${pretty}</label>
+        <input id="${key}" name="${key}" type="text" value="${field}">
+        <div class="checkbox-group">
+          <input type="checkbox" id="use_${key}" name="use_${key}" checked>
+          <label for="use_${key}">Use</label>
+        </div>
+      </div>
+    `;
+  }
 
+  renderLongField(key, value) {
+    if (!value) return '';
+    const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return `
+      <div class="form-group full-width">
+        <label for="${key}">${pretty}</label>
+        <textarea id="${key}" name="${key}" rows="15">${value}</textarea>
+        <div class="checkbox-group">
+          <input type="checkbox" id="use_${key}" name="use_${key}" checked>
+          <label for="use_${key}">Use</label>
+        </div>
+      </div>
+    `;
+  }
 
   formatAIText(text) {
     return text
