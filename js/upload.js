@@ -107,8 +107,8 @@ class DocumentUpload {
     this.reviewSection.classList.remove('hidden');
 
     if (!feedback || typeof feedback !== 'object') {
-      this.reviewOutput.innerHTML = '<p>No feedback data available.</p>';
-      return;
+        this.reviewOutput.innerHTML = '<p>No feedback data available.</p>';
+        return;
     }
 
     let html = `
@@ -121,7 +121,7 @@ class DocumentUpload {
         html += `
           <div class="field-block">
             <label>${key}:</label><br>
-            <textarea name="${key}" rows="2">${feedback[key].join(', ')}"></textarea>
+            <textarea name="${key}" rows="2">${feedback[key].join(', ')}</textarea>
             <label><input type="checkbox" name="use_${key}" checked> Use</label>
           </div><br>`;
       } else {
@@ -134,95 +134,13 @@ class DocumentUpload {
       }
     }
 
-    html += `</form>`;
+    html += `
+      <button id="submit-metadata-btn" type="button" style="margin-top: 20px; padding: 10px 20px;">Submit Metadata</button>
+      </form>
+    `;
 
     this.reviewOutput.innerHTML = html;
-  }
 
-  async handleMetadataSubmit() {
-    const form = new FormData(document.getElementById('metadata-form'));
-    const cleanedMetadata = {};
-
-    for (const [key, value] of form.entries()) {
-      if (key.startsWith('use_')) continue;
-      const useKey = 'use_' + key;
-      if (form.get(useKey)) {
-        cleanedMetadata[key] = value.trim();
-      }
-    }
-
-    try {
-      const res = await fetch('/api/second-stage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          metadata: cleanedMetadata,
-          cv_body: parsedText
-        })
-      });
-
-      if (!res.ok) {
-        console.error('Server error:', res.status);
-        alert('Server error.');
-        return;
-      }
-
-      const result = await res.json();
-
-      document.getElementById('feedback-result').innerHTML = `
-        <h3>AI Feedback:</h3>
-        <div style="background:#f8f8f8; padding:1rem; border-radius:8px;">
-          ${result.finalFeedback || result.feedback || 'No feedback available.'}
-        </div>
-      `;
-    } catch (err) {
-      console.error('Request error:', err);
-      alert('Request error.');
-    }
-  }
-
-  async extractText(file) {
-    if (file.type === 'application/pdf') {
-      if (!window.pdfjsLib) {
-        await this.loadScript(
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
-          'pdfjsLib'
-        );
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-      }
-      const buf = await file.arrayBuffer();
-      const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
-      let text = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map(item => item.str).join(' ') + '\n';
-      }
-      return text.trim();
-    } else {
-      if (!window.mammoth) {
-        await this.loadScript(
-          'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js',
-          'mammoth'
-        );
-      }
-      const buf = await file.arrayBuffer();
-      const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
-      return result.value.trim();
-    }
-  }
-
-  loadScript(src, globalVar) {
-    return new Promise((resolve, reject) => {
-      if (window[globalVar]) return resolve();
-      const script = document.createElement('script');
-      script.src = src;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-      document.head.appendChild(script);
-    });
-  }
+    // ✅ ADD THIS: Attach event listener **after** button is inserted
+    document.getElementById('submit-metadata-btn').addEventListener('click', () => this.handleMetadataSubmit());
 }
-
-document.addEventListener('DOMContentLoaded', () => new DocumentUpload());
