@@ -8,6 +8,8 @@ export class KeyManager {
             'deepseek-chat': { prompt: 0.00001, completion: 0.00003 }
         };
         this.loadKeys();
+        this.currentKeyIndex = Math.floor(Math.random() * this.keys.length);
+
     }
 
     loadKeys() {
