@@ -65,7 +65,6 @@ class DocumentUpload {
     try {
       const text = await this.extractText(this.currentFile);
       this.parsedText = text;
-      console.log('PARSED TEXT:', text);
       document.getElementById('upload-section').classList.add('hidden');
 
       const res = await fetch('/api/analyze', {
@@ -75,7 +74,6 @@ class DocumentUpload {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      console.log('FULL RESPONSE:', data);
       this.showFeedback(data.feedback || data);
     } catch (err) {
       console.error(err);
@@ -98,7 +96,7 @@ class DocumentUpload {
       return;
     }
 
-    const safe = (v) => (v !== undefined && v !== null ? v : '');
+    const safe = (v) => v && v.trim() ? v : 'No data';
 
     let html = `
       <form id="metadata-form" class="metadata-grid">
@@ -122,8 +120,6 @@ class DocumentUpload {
     `;
 
     this.reviewOutput.innerHTML = html;
-
-    // Enhance form after injection
     this.initFormEnhancements();
 
     const oldBtn = document.getElementById('submit-metadata-btn');
@@ -180,10 +176,12 @@ class DocumentUpload {
 
   renderField(key, value) {
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const fullWidthKeys = ['education', 'languages'];
+    const isFullWidth = fullWidthKeys.includes(key);
     return `
-      <div class="form-group">
+      <div class="form-group ${isFullWidth ? 'full-width' : ''}">
         <label for="${key}">${pretty}</label>
-        <input id="${key}" name="${key}" type="text" value="${value}" class="${key === 'education' ? 'full-width' : ''}">
+        <input id="${key}" name="${key}" type="text" value="${value}">
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -197,7 +195,7 @@ class DocumentUpload {
     return `
       <div class="form-group full-width">
         <label for="${key}">${pretty}</label>
-        <textarea ... style="min-height: 40px; max-height: 500px; overflow-y: hidden;">...</textarea>
+        <textarea id="${key}" name="${key}" style="min-height: 40px; max-height: 500px; overflow-y: hidden;">${value}</textarea>
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -208,10 +206,11 @@ class DocumentUpload {
 
   renderLongListField(key, value) {
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const formattedList = value.replace(/,/g, ', ');
     return `
       <div class="form-group full-width">
         <label for="${key}">${pretty}</label>
-        <textarea id="${key}" name="${key}" rows="10">${value}</textarea>
+        <textarea id="${key}" name="${key}" style="min-height: 40px; max-height: 500px; overflow-y: hidden;">${formattedList}</textarea>
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -223,8 +222,8 @@ class DocumentUpload {
   formatAIText(text) {
     return text
       .replace(/---/g, '')
-      .replace(/### (.+)/g, '<h2>$1</h2>')
-      .replace(/#### (.+)/g, '<h3>$1</h3>')
+      .replace(/^#+\s*/gm, '')           // Remove # headers
+      .replace(/^- /gm, '• ')            // Convert dash bullets
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/\n{2,}/g, '</p><p>')
@@ -276,20 +275,18 @@ class DocumentUpload {
     });
   }
 
-  // 🚀 Enhancement logic lives here
   initFormEnhancements() {
     document.querySelectorAll('textarea').forEach(el => {
       el.style.overflowY = 'hidden';
       const resize = () => {
         el.style.height = '0px';
-        el.style.height = el.scrollHeight + 'px';
-
+        el.style.height = `${el.scrollHeight}px`;
       };
       el.addEventListener('input', resize);
       resize();
 
       if (!el.value.trim()) {
-        el.value = 'No content';
+        el.value = 'No data';
         el.classList.add('no-content-placeholder');
       }
 
@@ -302,7 +299,7 @@ class DocumentUpload {
 
       el.addEventListener('blur', () => {
         if (!el.value.trim()) {
-          el.value = 'No content';
+          el.value = 'No data';
           el.classList.add('no-content-placeholder');
         }
       });
