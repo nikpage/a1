@@ -103,6 +103,11 @@ class DocumentUpload {
   return String(v);
 };
 
+const lang = feedback.languages?.trim();
+const years = feedback.years_experience;
+
+if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
+if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPERIENCE]';
 
     let html = `
       <form id="metadata-form" class="metadata-grid">
