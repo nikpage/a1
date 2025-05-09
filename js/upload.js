@@ -74,7 +74,8 @@ class DocumentUpload {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      this.showFeedback(data.feedback || data);
+      this.languageHint = data.languageHint;
+this.showFeedback(data);
     } catch (err) {
       console.error(err);
       alert(`Error: ${err.message}`);
@@ -161,8 +162,10 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             metadata,
-            cv_body: this.parsedText
+            cv_body: this.parsedText,
+            languageHint: this.languageHint
           })
+
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
