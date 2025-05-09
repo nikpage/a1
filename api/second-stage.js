@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     if (!apiKey) throw new Error('API key missing');
 
     const documentType = 'cv_file';
-    const targetIndustry = guessIndustry(metadata.industries || '');
+    const targetIndustry = guessIndustry((metadata.industries || []).join(', '));
 
     const userMetadataSummary = `
 📄 Candidate Overview:

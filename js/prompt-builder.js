@@ -162,7 +162,7 @@ Ensure that the translation sounds natural to native speakers.`;
 
 // ----------------------------------------------------------------------------
 // Builds a prompt for CV feedback analysis
-export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country = 'us') {
+export function buildCVFeedbackPrompt(documentType, targetIndustry = null, country = null) {
     const industryTemplates = {
         tech:    { keywords: ['Agile','CI/CD','Cloud','Python','Machine Learning'], metrics: ['% efficiency','system uptime','reduced latency'], norms: 'Highlight technical projects and GitHub contributions' },
         finance: { keywords: ['FP&A','ROI','Financial Modeling','GAAP','Due Diligence'],         metrics: ['$ savings','% growth','deal size'],               norms: 'Show certifications (CFA, CPA) and deal experience' },
