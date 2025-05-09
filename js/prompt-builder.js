@@ -162,7 +162,7 @@ Ensure that the translation sounds natural to native speakers.`;
 
 // ----------------------------------------------------------------------------
 // Builds a prompt for CV feedback analysis
-export function buildCVFeedbackPrompt(documentType, targetIndustry = null, country = null) {
+export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', country = 'us') {
     const industryTemplates = {
         tech:    { keywords: ['Agile','CI/CD','Cloud','Python','Machine Learning'], metrics: ['% efficiency','system uptime','reduced latency'], norms: 'Highlight technical projects and GitHub contributions' },
         finance: { keywords: ['FP&A','ROI','Financial Modeling','GAAP','Due Diligence'],         metrics: ['$ savings','% growth','deal size'],               norms: 'Show certifications (CFA, CPA) and deal experience' },
@@ -244,8 +244,8 @@ Analyze the CV or LinkedIn profile text below with careful, human-like reasoning
   "languages": ["Languages spoken with proficiency if mentioned"],
   "key_achievements": ["Awards, major projects, publications, or major contributions"],
   "certifications": ["Relevant certifications or licenses"],
-  "output_language": "Same as CV text language (ignore 'Fluent in X')",
-"country": "Infer from Praha/Komerční Banka → 'cz', else fallback"
+  "places": ["Countries or cities mentioned or inferred"],
+  "language_codes": ["ISO 639-1 language codes if known (e.g., 'en', 'cs')"]
 }
 
 **Guidelines:**
