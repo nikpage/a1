@@ -159,6 +159,8 @@ ${this.renderField('country', safe(feedback.country))}
         const checkbox = document.getElementById(`use_${field.id}`);
         if (checkbox && checkbox.checked) {
           metadata[field.id] = field.value;
+          if (!Array.isArray(metadata.language_codes)) metadata.language_codes = [];
+
         }
       });
 
