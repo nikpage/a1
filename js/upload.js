@@ -74,8 +74,7 @@ class DocumentUpload {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      this.languageHint = data.languageHint || '';
-this.showFeedback(data);
+      this.showFeedback(data);
     } catch (err) {
       console.error(err);
       alert(`Error: ${err.message}`);
@@ -164,8 +163,7 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
           body: JSON.stringify({
   metadata,
   cv_body: this.parsedText,
-  languageHint: this.languageHint,
-  })
+    })
 
 
         });

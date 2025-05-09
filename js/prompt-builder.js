@@ -181,7 +181,7 @@ export function buildCVFeedbackPrompt(documentType, targetIndustry = 'general', 
     };
     const atsThresholds = `(Good: 15+ keywords | Excellent: 25+ keywords)`;
     const industry = industryTemplates[targetIndustry] || industryTemplates.general;
-    const countryNorm = countryNorms[country] || countryNorms.us;
+    const countryNorm = countryNorms[country] || `Use regionally appropriate formatting for ${country || 'the candidate\'s location'}.`;
 
     let promptBase = `You're a friendly HR advisor with ${targetIndustry} expertise. Let's optimize this ${documentType === 'linkedin' ? 'LinkedIn profile' : 'CV'} for ${targetIndustry} roles in ${country.toUpperCase()}.\n\n`;
 
