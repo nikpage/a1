@@ -96,7 +96,13 @@ class DocumentUpload {
       return;
     }
 
-    const safe = (v) => v && v.trim() ? v : 'No data';
+    const safe = (v) => {
+  if (typeof v === 'string') return v.trim() || 'No data';
+  if (Array.isArray(v)) return v.join(', ');
+  if (v == null) return 'No data';
+  return String(v);
+};
+
 
     let html = `
       <form id="metadata-form" class="metadata-grid">
