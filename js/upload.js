@@ -75,6 +75,7 @@ class DocumentUpload {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       this.languageHint = data.languageHint;
+this.locationHint = data.locationHint;
 this.showFeedback(data);
     } catch (err) {
       console.error(err);
@@ -120,7 +121,9 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
         <h2 class="section-title">General Info</h2>
         ${this.renderField('education', safe(feedback.education))}
         ${this.renderField('languages', safe(feedback.languages))}
+        ${this.renderField('location_hint', safe(feedback.locationHint || this.locationHint || 'No data'))}
         ${this.renderField('years_experience', safe(feedback.years_experience))}
+
 
         <h2 class="section-title">Lists</h2>
         ${this.renderLongListField('certifications', safe(feedback.certifications))}
@@ -161,10 +164,12 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            metadata,
-            cv_body: this.parsedText,
-            languageHint: this.languageHint
-          })
+  metadata,
+  cv_body: this.parsedText,
+  languageHint: this.languageHint,
+  locationHint: this.locationHint
+})
+
 
         });
         const data = await res.json();

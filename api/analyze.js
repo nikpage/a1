@@ -48,6 +48,15 @@ export default async function handler(req, res) {
     let parsed;
     try {
       parsed = JSON.parse(content);
+      let locationHint = null;
+if (parsed.places && parsed.places.length > 0) {
+  locationHint = parsed.places[0]; // or run scoring logic
+} else if (parsed.languages && parsed.languages.length > 0) {
+  const langToCountry = { cs: 'Czech Republic', fr: 'France', de: 'Germany', es: 'Spain', it: 'Italy', pl: 'Poland', nl: 'Netherlands', en: 'UK' };
+  const langCode = parsed.languages[0].toLowerCase();
+  locationHint = langToCountry[langCode] || 'Europe';
+}
+
     } catch {
       throw new Error('Invalid JSON from DeepSeek');
     }
@@ -84,7 +93,7 @@ if (primaryLang && isoMap[primaryLang]) {
   primaryLang = isoMap[primaryLang];
 }
 
-return res.status(200).json({ ...parsed, languageHint: primaryLang });
+return res.status(200).json({ ...parsed, languageHint: primaryLang, locationHint });
   } catch (err) {
     console.error('API analyze error:', err);
     return res.status(500).json({ error: err.message });
