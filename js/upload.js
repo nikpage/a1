@@ -187,7 +187,7 @@ class DocumentUpload {
     return `
       <div class="form-group ${isFullWidth ? 'full-width' : ''}">
         <label for="${key}">${pretty}</label>
-        <input id="${key}" name="${key}" type="text" value="${value}">
+        <input id="${key}" name="${key}" type="text" value="${value}" class="${value === 'No data' ? 'no-content-placeholder' : ''}">
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -226,17 +226,55 @@ class DocumentUpload {
   }
 
   formatAIText(text) {
-    return text
+    let formatted = text
       .replace(/---/g, '')
-      .replace(/^#+\s*/gm, '')           // Remove # headers
-      .replace(/^- /gm, '• ')            // Convert dash bullets
+      .replace(/^#+\s*/gm, '') // remove #
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/\n{2,}/g, '</p><p>')
-      .replace(/\n/g, '<br>')
-      .replace(/^/, '<p>')
-      .replace(/$/, '</p>');
+      .split('\n');
+
+    let html = '';
+    let inList = false;
+    let inSubList = false;
+
+    for (let line of formatted) {
+      if (/^\s*- /.test(line)) {
+        if (!inSubList) {
+          html += '<ul style="margin-left: 2em">';
+          inSubList = true;
+        }
+        html += `<li>${line.replace(/^\s*- /, '')}</li>`;
+      } else if (/^- /.test(line)) {
+        if (inSubList) {
+          html += '</ul>';
+          inSubList = false;
+        }
+        if (!inList) {
+          html += '<ul>';
+          inList = true;
+        }
+        html += `<li>${line.replace(/^- /, '')}</li>`;
+      } else if (line.trim() === '') {
+        if (inSubList) {
+          html += '</ul>';
+          inSubList = false;
+        }
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += '<br>';
+      } else {
+        html += `<p>${line}</p>`;
+      }
+    }
+
+    if (inSubList) html += '</ul>';
+    if (inList) html += '</ul>';
+
+    return html;
   }
+
 
   async extractText(file) {
     if (file.type === 'application/pdf') {

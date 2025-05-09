@@ -688,3 +688,7 @@ textarea.no-content-placeholder {
   color: var(--text-light);
   font-style: italic;
 }
+input.no-content-placeholder {
+  color: var(--text-light);
+  font-style: italic;
+}
