@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const targetIndustry = guessIndustry(metadata.industries || '');
     const country = guessCountry(metadata.languages || '');
 
-    // 🛠 Old-style fallback formatting
+    // 🛠 Old-style  fallback formatting
     const userMetadataSummary = `
 📄 Candidate Overview:
 
