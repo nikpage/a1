@@ -18,15 +18,14 @@ export default async function handler(req, res) {
 
     const apiKey = km.keys[0];
     console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
-
-
     if (!apiKey) throw new Error('API key missing');
 
     const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries || '');
-    const country = guessCountry(metadata.languages || '');
 
-    // 🛠 Old-style  fallback formatting
+    const lang = Array.isArray(metadata.language_codes) ? metadata.language_codes[0] : null;
+    const country = Array.isArray(metadata.places) ? metadata.places[0] : null;
+
     const userMetadataSummary = `
 📄 Candidate Overview:
 
@@ -54,16 +53,18 @@ ${metadata.parallel_experiences_summary || 'Not Provided'}
     const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry, country);
 
     const finalPrompt = `
-You are reviewing a candidate's CV. Use the profile and document provided below.
+You are reviewing a candidate's CV.
 
+${lang ? `Respond in ${lang.toUpperCase()}.\n\n` : ''}
+${country ? `Tailor your advice for the job market in ${country}.\n\n` : ''}
+
+Candidate Overview:
 ${userMetadataSummary}
 
 📝 CV Content:
-
 ${cv_body}
 
 📋 Review Instructions:
-
 ${promptInstructions}
 `;
 
@@ -96,7 +97,6 @@ ${promptInstructions}
   }
 }
 
-
 // --- Helpers ---
 function guessIndustry(industries) {
   if (!industries) return 'general';
@@ -105,17 +105,4 @@ function guessIndustry(industries) {
   if (lower.includes('finance') || lower.includes('banking')) return 'finance';
   if (lower.includes('healthcare') || lower.includes('medical')) return 'healthcare';
   return 'general';
-}
-
-function guessCountry(languages) {
-  if (!languages) return 'us';
-  const lower = languages.toLowerCase();
-  if (lower.includes('czech')) return 'cz';
-  if (lower.includes('spanish')) return 'es';
-  if (lower.includes('german')) return 'de';
-  if (lower.includes('french')) return 'fr';
-  if (lower.includes('polish')) return 'pl';
-  if (lower.includes('romanian')) return 'ro';
-  if (lower.includes('ukrainian')) return 'ua';
-  return 'us';
 }
