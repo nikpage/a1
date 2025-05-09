@@ -46,9 +46,10 @@ export default async function handler(req, res) {
     const chatJson = await apiRes.json();
     const content = chatJson.choices[0].message.content;
     let parsed;
+    let locationHint = null;
     try {
       parsed = JSON.parse(content);
-      let locationHint = null;
+
 if (parsed.places && parsed.places.length > 0) {
   locationHint = parsed.places[0]; // or run scoring logic
 } else if (parsed.languages && parsed.languages.length > 0) {
