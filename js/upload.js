@@ -95,6 +95,7 @@ class DocumentUpload {
       this.reviewOutput.innerHTML = '<p>No feedback data available.</p>';
       return;
     }
+    document.documentElement.lang = feedback.output_language || 'en';
 
     const safe = (v) => {
   if (typeof v === 'string') return v.trim() || 'No data';
