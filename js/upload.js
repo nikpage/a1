@@ -7,6 +7,7 @@ class DocumentUpload {
     this.reviewOutput = document.getElementById('review-output');
     this.currentFile = null;
     this.parsedText = '';
+    this.locationHint = '';
     this.setup();
   }
 
