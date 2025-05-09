@@ -75,8 +75,8 @@ class DocumentUpload {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      this.languageHint = data.languageHint;
-this.locationHint = data.locationHint;
+      this.languageHint = data.languageHint || '';
+this.locationHint = data.locationHint || '';
 this.showFeedback(data);
     } catch (err) {
       console.error(err);
