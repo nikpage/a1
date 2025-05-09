@@ -221,6 +221,9 @@ Analyze the CV or LinkedIn profile text below with careful, human-like reasoning
 - Infer seniority level from responsibilities and impact, not just titles.
 - Estimate total years of experience accurately, accounting for overlaps or part-time work.
 - Infer key industries, skills, achievements, certifications, and language proficiencies.
+- Include a list of locations (countries/cities) as "places" based on text clues or reasonable inference.
+- Include ISO 639-1 codes in "language_codes" if the language can be matched.
+
 
 **Important:**
 - Focus on contextual relevance and logical growth, not just title or keyword matching.
@@ -240,7 +243,9 @@ Analyze the CV or LinkedIn profile text below with careful, human-like reasoning
   "skills": ["Comprehensive list of technical and soft skills"],
   "languages": ["Languages spoken with proficiency if mentioned"],
   "key_achievements": ["Awards, major projects, publications, or major contributions"],
-  "certifications": ["Relevant certifications or licenses"]
+  "certifications": ["Relevant certifications or licenses"],
+  "places": ["Countries or cities mentioned or inferred"],
+  "language_codes": ["ISO 639-1 language codes if known (e.g., 'en', 'cs')"]
 }
 
 **Guidelines:**
