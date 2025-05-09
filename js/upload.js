@@ -98,42 +98,36 @@ class DocumentUpload {
     document.documentElement.lang = feedback.output_language || 'en';
 
     const safe = (v) => {
-  if (typeof v === 'string') return v.trim() || 'No data';
-  if (Array.isArray(v)) return v.join(', ');
-  if (v == null) return 'No data';
-  return String(v);
-};
+      if (typeof v === 'string') return v.trim() || 'No data';
+      if (Array.isArray(v)) return v.join(', ');
+      if (v == null) return 'No data';
+      return String(v);
+    };
 
-const lang = Array.isArray(feedback.languages)
-  ? feedback.languages.join(', ').trim()
-  : (typeof feedback.languages === 'string' ? feedback.languages.trim() : '');
-const years = feedback.years_experience;
+    const lang = Array.isArray(feedback.languages)
+      ? feedback.languages.join(', ').trim()
+      : (typeof feedback.languages === 'string' ? feedback.languages.trim() : '');
+    const years = feedback.years_experience;
 
-if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
-if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPERIENCE]';
+    if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
+    if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPERIENCE]';
 
     let html = `
       <form id="metadata-form" class="metadata-grid">
-
         <h2 class="section-title">Career Development</h2>
         ${this.renderLongField('career_arcs_summary', safe(feedback.career_arcs_summary))}
         ${this.renderLongField('parallel_experiences_summary', safe(feedback.parallel_experiences_summary))}
-
         <h2 class="section-title">General Info</h2>
         ${this.renderField('education', safe(feedback.education))}
         ${this.renderField('languages', safe(feedback.languages))}
         ${this.renderField('years_experience', safe(feedback.years_experience))}
         ${this.renderField('output_language', safe(feedback.output_language))}
-${this.renderField('country', safe(feedback.country))}
-
-
-
+        ${this.renderField('country', safe(feedback.country))}
         <h2 class="section-title">Lists</h2>
         ${this.renderLongListField('certifications', safe(feedback.certifications))}
         ${this.renderLongListField('key_achievements', safe(feedback.key_achievements))}
         ${this.renderLongListField('industries', safe(feedback.industries))}
         ${this.renderLongListField('skills', safe(feedback.skills))}
-
       </form>
     `;
 
@@ -154,13 +148,12 @@ ${this.renderField('country', safe(feedback.country))}
       const metadataForm = document.getElementById('metadata-form');
       const fields = [...metadataForm.querySelectorAll('input[type="text"], textarea')];
       const metadata = {};
+      metadata.language_codes = []; // Initialize language_codes
 
       fields.forEach(field => {
         const checkbox = document.getElementById(`use_${field.id}`);
         if (checkbox && checkbox.checked) {
           metadata[field.id] = field.value;
-          if (!Array.isArray(metadata.language_codes)) metadata.language_codes = [];
-
         }
       });
 
@@ -169,11 +162,9 @@ ${this.renderField('country', safe(feedback.country))}
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-  metadata,
-  cv_body: this.parsedText,
-    })
-
-
+            metadata,
+            cv_body: this.parsedText,
+          })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -186,7 +177,6 @@ ${this.renderField('country', safe(feedback.country))}
         setTimeout(() => {
           this.reviewOutput.innerHTML = reviewHTML;
         }, 100);
-
       } catch (err) {
         console.error('Submit metadata error:', err);
         alert('Error submitting metadata: ' + err.message);
@@ -197,6 +187,7 @@ ${this.renderField('country', safe(feedback.country))}
   }
 
   renderField(key, value) {
+    if (typeof key !== 'string') return '';
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     const fullWidthKeys = ['education', 'languages'];
     const isFullWidth = fullWidthKeys.includes(key);
@@ -213,6 +204,7 @@ ${this.renderField('country', safe(feedback.country))}
   }
 
   renderLongField(key, value) {
+    if (typeof key !== 'string') return '';
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     return `
       <div class="form-group full-width">
@@ -227,6 +219,7 @@ ${this.renderField('country', safe(feedback.country))}
   }
 
   renderLongListField(key, value) {
+    if (typeof key !== 'string') return '';
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     const formattedList = value.replace(/,/g, ', ');
     return `
@@ -290,7 +283,6 @@ ${this.renderField('country', safe(feedback.country))}
 
     return html;
   }
-
 
   async extractText(file) {
     if (file.type === 'application/pdf') {
