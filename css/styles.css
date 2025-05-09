@@ -630,3 +630,61 @@ button:disabled {
   border-radius: var(--radius-lg);
   cursor: pointer;
 }
+/* General input styling */
+#metadata-form input[type="text"],
+#metadata-form textarea {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+}
+
+/* Make textarea auto-expand */
+#metadata-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Metadata form layout */
+.metadata-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: 20px;
+}
+/* General input styling */
+#metadata-form input[type="text"],
+#metadata-form textarea {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+}
+
+/* Make textarea auto-expand */
+#metadata-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Metadata form layout */
+.metadata-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: 20px;
+}
+textarea.no-content-placeholder {
+  color: var(--text-light);
+  font-style: italic;
+}
