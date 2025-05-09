@@ -244,8 +244,8 @@ Analyze the CV or LinkedIn profile text below with careful, human-like reasoning
   "languages": ["Languages spoken with proficiency if mentioned"],
   "key_achievements": ["Awards, major projects, publications, or major contributions"],
   "certifications": ["Relevant certifications or licenses"],
-  "places": ["Countries or cities mentioned or inferred"],
-  "language_codes": ["ISO 639-1 language codes if known (e.g., 'en', 'cs')"]
+  "output_language": "Same as CV text language (ignore 'Fluent in X')",
+"country": "Infer from Praha/Komerční Banka → 'cz', else fallback"
 }
 
 **Guidelines:**
