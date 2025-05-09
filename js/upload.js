@@ -120,6 +120,9 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
         ${this.renderField('education', safe(feedback.education))}
         ${this.renderField('languages', safe(feedback.languages))}
         ${this.renderField('years_experience', safe(feedback.years_experience))}
+        ${this.renderField('output_language', safe(feedback.output_language))}
+${this.renderField('country', safe(feedback.country))}
+
 
 
         <h2 class="section-title">Lists</h2>
