@@ -183,7 +183,7 @@ class DocumentUpload {
     return `
       <div class="form-group">
         <label for="${key}">${pretty}</label>
-        <input id="${key}" name="${key}" type="text" value="${value}">
+        <input id="${key}" name="${key}" type="text" value="${value}" class="${key === 'education' ? 'full-width' : ''}">
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -197,7 +197,7 @@ class DocumentUpload {
     return `
       <div class="form-group full-width">
         <label for="${key}">${pretty}</label>
-        <textarea id="${key}" name="${key}" rows="15">${value}</textarea>
+        <textarea ... style="min-height: 40px; max-height: 500px; overflow-y: hidden;">...</textarea>
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -281,8 +281,9 @@ class DocumentUpload {
     document.querySelectorAll('textarea').forEach(el => {
       el.style.overflowY = 'hidden';
       const resize = () => {
-        el.style.height = 'auto';
-        el.style.height = `${el.scrollHeight}px`;
+        el.style.height = '0px';
+        el.style.height = el.scrollHeight + 'px';
+
       };
       el.addEventListener('input', resize);
       resize();
