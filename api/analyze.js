@@ -52,7 +52,39 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    return res.status(200).json(parsed); // <-- Send parsed full JSON
+    // Normalize European language codes
+const isoMap = {
+  cz: 'cs',       // Czech
+  en_gb: 'en',    // English UK
+  en_us: 'en',    // English US
+  fr_fr: 'fr',    // French
+  de_de: 'de',    // German
+  it_it: 'it',    // Italian
+  es_es: 'es',    // Spanish
+  pt_pt: 'pt',    // Portuguese
+  pt_br: 'pt',    // Brazilian Portuguese (still relevant in EU apps)
+  nl: 'nl',       // Dutch
+  pl: 'pl',       // Polish
+  sk: 'sk',       // Slovak
+  ro: 'ro',       // Romanian
+  hu: 'hu',       // Hungarian
+  bg: 'bg',       // Bulgarian
+  el: 'el',       // Greek
+  sv: 'sv',       // Swedish
+  da: 'da',       // Danish
+  fi: 'fi',       // Finnish
+  no: 'no'        // Norwegian
+};
+
+let primaryLang = Array.isArray(parsed.languages) && parsed.languages.length > 0
+  ? parsed.languages[0].toLowerCase()
+  : null;
+
+if (primaryLang && isoMap[primaryLang]) {
+  primaryLang = isoMap[primaryLang];
+}
+
+return res.status(200).json({ ...parsed, languageHint: primaryLang });
   } catch (err) {
     console.error('API analyze error:', err);
     return res.status(500).json({ error: err.message });
