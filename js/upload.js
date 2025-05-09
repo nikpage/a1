@@ -104,7 +104,9 @@ class DocumentUpload {
   return String(v);
 };
 
-const lang = Array.isArray(feedback.languages) ? feedback.languages.join(', ').trim() : (feedback.languages || '').trim();
+const lang = Array.isArray(feedback.languages)
+  ? feedback.languages.join(', ').trim()
+  : (typeof feedback.languages === 'string' ? feedback.languages.trim() : '');
 const years = feedback.years_experience;
 
 if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
