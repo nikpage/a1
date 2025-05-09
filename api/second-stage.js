@@ -23,9 +23,6 @@ export default async function handler(req, res) {
     const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries || '');
 
-    const lang = Array.isArray(metadata.language_codes) ? metadata.language_codes[0] : null;
-    const country = Array.isArray(metadata.places) ? metadata.places[0] : null;
-
     const userMetadataSummary = `
 📄 Candidate Overview:
 
@@ -50,13 +47,14 @@ ${metadata.parallel_experiences_summary || 'Not Provided'}
 🎖 Certifications: ${metadata.certifications || 'Not Provided'}
 `;
 
-    const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry, country);
+    const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry);
 
     const finalPrompt = `
 You are reviewing a candidate's CV.
 
-${lang ? `Respond in ${lang.toUpperCase()}.\n\n` : ''}
-${country ? `Tailor your advice for the job market in ${country}.\n\n` : ''}
+Respond in the candidate’s native language if inferable.
+
+Tailor your advice based on the candidate’s country if it can be inferred.
 
 Candidate Overview:
 ${userMetadataSummary}
