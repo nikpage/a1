@@ -260,5 +260,7 @@ CV or LinkedIn Profile:
 ${text}
 
 ${JSON_ONLY}
+Respond ONLY in the language used in the CV or LinkedIn profile.
+
   `;
 }
