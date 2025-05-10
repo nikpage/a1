@@ -52,7 +52,8 @@ ${metadata.parallel_experiences_summary || 'Not Provided'}
     const finalPrompt = `
 You are reviewing a candidate's CV.
 
-Respond in the candidate’s native language if inferable.
+ALWAYS respond in the candidate’s native language. Do not use English unless absolutely necessary.
+
 
 Tailor your advice based on the candidate’s country if it can be inferred.
 
