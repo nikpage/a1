@@ -1,8 +1,10 @@
-// ===== DEV VERSION  =====
+// ===== DEV VERSION =====
 // /api/analyze.js
+
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
 import clientPromise from '../lib/mongo.js';
+
 const km = new KeyManager();
 
 // Enable JSON body parsing
@@ -20,7 +22,6 @@ export default async function handler(req, res) {
 
     const apiKey = km.keys[0];
     console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
-
     if (!apiKey) throw new Error('API key missing');
 
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
@@ -54,6 +55,7 @@ export default async function handler(req, res) {
     }
 
     // — save parsed CV into MongoDB —
+    console.log('🚀 [Mongo] Inserting document:', { rawText: text, analysis: parsed });
     const client = await clientPromise;
     const db = client.db('cvpro');
     await db.collection('users').insertOne({
@@ -61,6 +63,7 @@ export default async function handler(req, res) {
       analysis: parsed,
       createdAt: new Date()
     });
+    console.log('✅ [Mongo] Insert complete');
 
     return res.status(200).json(parsed);
   } catch (err) {
