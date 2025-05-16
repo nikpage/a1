@@ -78,7 +78,7 @@ class DocumentUpload {
 
         const text = await this.currentFile.text();
 
-        const res = await fetch('/api/save-analysis', {
+        const res = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, documentType: 'cv_file' })
