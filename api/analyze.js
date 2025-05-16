@@ -2,6 +2,7 @@
 // /api/analyze.js
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
+import clientPromise from '../lib/mongo.js';
 const km = new KeyManager();
 
 // Enable JSON body parsing
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
@@ -51,6 +52,15 @@ export default async function handler(req, res) {
     } catch {
       throw new Error('Invalid JSON from DeepSeek');
     }
+
+    // — save parsed CV into MongoDB —
+    const client = await clientPromise;
+    const db = client.db('cvpro');
+    await db.collection('users').insertOne({
+      rawText: text,
+      analysis: parsed,
+      createdAt: new Date()
+    });
 
     return res.status(200).json(parsed);
   } catch (err) {
