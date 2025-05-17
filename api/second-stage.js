@@ -1,8 +1,12 @@
-import clientPromise from '../../mongo.js'
+// second-stage.js
+import { initDB } from '../lib/db.js';
+import db from '../lib/db.js';
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
 
-const km = new KeyManager();
+// Ensure JSON “DB” is initialized before handling requests
+await initDB();
+
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
@@ -17,8 +21,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Metadata and CV body are required.' });
     }
 
+    // Authenticate using master token
+    const token = 'master';
+    const user = db.data.users.find(u => u.token === token);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Build AI prompt
+    const km = new KeyManager();
     const apiKey = km.keys[0];
-    console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
     if (!apiKey) throw new Error('API key missing');
 
     const documentType = 'cv_file';
@@ -49,12 +61,10 @@ ${metadata.parallel_experiences_summary || 'Not Provided'}
 `;
 
     const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry);
-
     const finalPrompt = `
 You are reviewing a candidate's CV.
 
 ALWAYS respond in the candidate’s native language. Do not use English unless absolutely necessary.
-
 
 Tailor your advice based on the candidate’s country if it can be inferred.
 
@@ -68,18 +78,14 @@ ${cv_body}
 ${promptInstructions}
 `;
 
+    // Call AI API
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'user', content: finalPrompt }
-        ]
-      })
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: finalPrompt }] })
     });
 
     if (!apiRes.ok) {
@@ -90,14 +96,21 @@ ${promptInstructions}
     const chatJson = await apiRes.json();
     const finalFeedback = chatJson.choices[0].message.content;
 
-    const client = await clientPromise;
-    const db = client.db('cvpro');
-
-    await db.collection('feedback').insertOne({
-      feedback: finalFeedback,
-      metadata,
-      createdAt: new Date(),
-    });
+    // Save final CV and feedback to JSON DB
+    await db.read();
+    // Update or insert CV data record
+    db.data.cvdata ||= [];
+    const rec = db.data.cvdata.find(d => d.userId === user.token);
+    if (rec) {
+      rec.finalCv = cv_body;
+      rec.updatedAt = new Date().toISOString();
+    } else {
+      db.data.cvdata.push({ userId: user.token, finalCv: cv_body, createdAt: new Date().toISOString() });
+    }
+    // Append feedback
+    db.data.feedback ||= [];
+    db.data.feedback.push({ userId: user.token, feedback: finalFeedback, createdAt: new Date().toISOString() });
+    await db.write();
 
     return res.status(200).json({ finalFeedback });
 
