@@ -67,7 +67,7 @@ class DocumentUpload {
       this.parsedText = text;
       document.getElementById('upload-section').classList.add('hidden');
 
-      const res = await fetch('/api/analyze', {
+      const res = await fetch('/api/save-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, documentType: 'cv_file' })
@@ -75,6 +75,7 @@ class DocumentUpload {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       this.showFeedback(data);
+
     } catch (err) {
       console.error(err);
       alert(`Error: ${err.message}`);

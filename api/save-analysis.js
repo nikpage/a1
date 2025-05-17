@@ -1,23 +1,40 @@
-import clientPromise from '../lib/mongo.js';
+import crypto from 'crypto';
+import clientPromise from '../mongo.js';
 
-export default async function (req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Wrong method' });
+export const config = { api: { bodyParser: true } };
 
-  const { text, documentType } = req.body;
-  if (!text || !documentType) return res.status(400).json({ error: 'Missing data' });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
   try {
-    const client = await clientPromise;
-    const db = client.db('cvpro');
+    const { rawText, analysis } = req.body;
 
-    const result = await db.collection('parsedcv').insertOne({
-      text,
-      documentType,
-      uploadedAt: new Date()
+    if (!rawText || !analysis) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const secretId = crypto.randomUUID();
+    const client   = await clientPromise;
+    const db       = client.db();
+
+    await db.collection('sessions').insertOne({
+      secretId,
+      rawText,
+      analysis,
+      createdAt: new Date()
     });
 
-    res.status(200).json({ insertedId: result.insertedId });
+    console.log('🔗 Session Link:', `/session/${secretId}`);
+    console.log('🔗 Generated secretId:', secretId);
+
+    return res.status(200).json({ secretId });
+
   } catch (err) {
-    res.status(500).json({ error: 'Mongo insert failed' });
+    console.error('API save-analysis error:', err);
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(500).end(JSON.stringify({ error: err.message }));
   }
 }

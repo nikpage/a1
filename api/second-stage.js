@@ -1,3 +1,4 @@
+import clientPromise from '../../mongo.js'
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
 
@@ -89,7 +90,17 @@ ${promptInstructions}
     const chatJson = await apiRes.json();
     const finalFeedback = chatJson.choices[0].message.content;
 
+    const client = await clientPromise;
+    const db = client.db('cvpro');
+
+    await db.collection('feedback').insertOne({
+      feedback: finalFeedback,
+      metadata,
+      createdAt: new Date(),
+    });
+
     return res.status(200).json({ finalFeedback });
+
   } catch (err) {
     console.error('API second-stage error:', err);
     return res.status(500).json({ error: err.message });

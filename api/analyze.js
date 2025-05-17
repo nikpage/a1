@@ -1,6 +1,3 @@
-// ===== DEV VERSION =====
-// /api/analyze.js
-
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
 import clientPromise from '../lib/mongo.js';
@@ -41,17 +38,33 @@ export default async function handler(req, res) {
 
     if (!apiRes.ok) {
       const errTxt = await apiRes.text();
+      console.error('[DeepSeek API] Error response:', errTxt);
       throw new Error(`DeepSeek error ${apiRes.status}: ${errTxt}`);
     }
 
-    const chatJson = await apiRes.json();
-    const content = chatJson.choices[0].message.content;
+    const content = await apiRes.text();
+    console.log('[DeepSeek API] Raw response:', content);
 
+    let chatJson;
+    try {
+      chatJson = JSON.parse(content);
+    } catch (parseErr) {
+      console.error('[DeepSeek API] JSON parse error:', parseErr.message, 'Raw content:', content);
+      throw new Error(`Failed to parse DeepSeek response: ${parseErr.message}`);
+    }
+
+    if (!chatJson.choices || !chatJson.choices[0] || !chatJson.choices[0].message || !chatJson.choices[0].message.content) {
+      console.error('[DeepSeek API] Invalid response structure:', chatJson);
+      throw new Error('Invalid response structure from DeepSeek');
+    }
+
+    const parsedContent = chatJson.choices[0].message.content;
     let parsed;
     try {
-      parsed = JSON.parse(content);
-    } catch {
-      throw new Error('Invalid JSON from DeepSeek');
+      parsed = JSON.parse(parsedContent);
+    } catch (parseErr) {
+      console.error('[DeepSeek API] Content JSON parse error:', parseErr.message, 'Raw content:', parsedContent);
+      throw new Error(`Invalid JSON in DeepSeek content: ${parseErr.message}`);
     }
 
     // — save parsed CV into MongoDB —
@@ -68,6 +81,6 @@ export default async function handler(req, res) {
     return res.status(200).json(parsed);
   } catch (err) {
     console.error('API analyze error:', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: `Failed to process request: ${err.message}` });
   }
 }

@@ -1,17 +1,20 @@
+// /pages/session/[secretId].js
+
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import clientPromise from '../../lib/mongo.js';
 import JobInput from '../../js/session/JobInput.js';
 import MetadataTone from '../../js/session/MetadataTone.js';
 import DocPreview from '../../js/session/DocPreview.js';
 import DownloadPay from '../../js/session/DownloadPay.js';
 import { post } from '../../js/services/api.js';
 
-export default function SessionPage({ secretId, initialTokens }) {
+export default function SessionPage({ secretId, initialTokens, userData }) {
   const [step, setStep] = useState(1);
-  const [jobMeta, setJobMeta] = useState(null);
+  const [jobMeta, setJobMeta] = useState(userData.analysis || null);
   const [parsedCV, setParsedCV] = useState(null);
   const [tone, setTone] = useState('Neutral');
-  const [feedback, setFeedback] = useState(null);
+  const [feedback, setFeedback] = useState(userData.feedback || null);
   const [docs, setDocs] = useState({ cvHTML: '', coverLetterHTML: '' });
   const [tokens, setTokens] = useState(initialTokens);
 
@@ -23,13 +26,11 @@ export default function SessionPage({ secretId, initialTokens }) {
   const handleMetadataSubmit = async (metaData) => {
     setTone(metaData.tone);
     setParsedCV(metaData.parsedCV || {});
-    setFeedback(metaData.feedback || {});
-    const result = await post('/api/build-docs', {
-      parsedCV,
-      jobMeta: metaData,
-      tone: metaData.tone,
-      feedback
+    const result = await post('/api/second-stage', {
+      metadata: metaData,
+      cv_body: parsedCV
     });
+    setFeedback(result.finalFeedback);
     setDocs(result);
     setStep(3);
   };
@@ -76,9 +77,25 @@ export default function SessionPage({ secretId, initialTokens }) {
   );
 }
 
-export async function getServerSideProps(context) {
-  const { secretId } = context.query;
-  // Optionally fetch initial token balance or session data
-  const initialTokens = 0; // default for new users
-  return { props: { secretId, initialTokens } };
+export async function getServerSideProps({ query }) {
+  const { secretId } = query;
+  const client = await clientPromise;
+  const db = client.db();
+  const user = await db
+    .collection('users')
+    .findOne({ secretId }, { projection: { _id: 0 } });
+  if (!user) {
+    return { notFound: true };
+  }
+  return {
+    props: {
+      secretId,
+      initialTokens: 0,
+      userData: {
+        rawText: user.rawText,
+        analysis: user.analysis,
+        feedback: user.feedback || null
+      }
+    }
+  };
 }

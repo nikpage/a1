@@ -61,7 +61,12 @@ export default async function handler(req, res) {
     }
     const coverLetterHTML = await clRes.text();
 
-    return res.status(200).json({ cvHTML, coverLetterHTML });
+    if (!cvHTML || !coverLetterHTML) {
+  console.error("❌ Missing output from DeepSeek", { cvHTML, coverLetterHTML });
+  return res.status(502).json({ error: "Failed to generate documents" });
+}
+
+return res.status(200).json({ cvHTML, coverLetterHTML });
   } catch (err) {
     console.error('API build-docs error:', err);
     return res.status(500).json({ error: err.message });
