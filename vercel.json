@@ -1,8 +1,10 @@
 {
   "version": 2,
   "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18.x"
+    "api/*.js": {
+      "runtime": "nodejs18.x",
+      "memory": 512,
+      "maxDuration": 10
     }
   },
   "routes": [
