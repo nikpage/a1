@@ -11,25 +11,24 @@ export default async function handler(req, res) {
   try {
     const { token, finalFeedback } = req.body;
     if (!token || !finalFeedback) {
-      return res.status(400).json({ error: 'token and finalFeedback required' });
+      return res.status(400).json({ error: 'Token and feedback are required.' });
     }
 
-    // 1) Connect to Mongo
     const client = await clientPromise;
     const db = client.db('cvpro');
 
-    // 2) Ensure collections exist
+    // Ensure cvdata and feedback collections exist
     for (const name of ['cvdata', 'feedback']) {
       try { await db.createCollection(name); } catch {}
     }
 
-    // 3) Update cvdata with final CV
+    // 1) update cvdata with final CV text
     await db.collection('cvdata').updateOne(
       { userId: token },
       { $set: { finalCv: finalFeedback, updatedAt: new Date() } }
     );
 
-    // 4) Insert the AI feedback
+    // 2) save the AI feedback
     await db.collection('feedback').insertOne({
       userId: token,
       feedback: finalFeedback,
@@ -38,7 +37,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    console.error('[FEEDBACK ERROR]', err);
-    return res.status(500).json({ error: err.message });
+    console.error('[ERROR]', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 }
