@@ -1,3 +1,5 @@
+// /api/second-stage.js
+
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
 
@@ -11,9 +13,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { metadata, cv_body } = req.body;
-    if (!metadata || !cv_body) {
-      return res.status(400).json({ error: 'Metadata and CV body are required.' });
+    const { userId, metadata, cv_body } = req.body;
+    if (!userId || !metadata || !cv_body) {
+      return res
+        .status(400)
+        .json({ error: 'userId, metadata and cv_body are required.' });
     }
 
     const apiKey = km.keys[0];
@@ -25,7 +29,6 @@ export default async function handler(req, res) {
 
     const userMetadataSummary = `
 📄 Candidate Overview:
-
 • Title: ${metadata.current_role || metadata.title || 'Not Provided'}
 • Seniority Level: ${metadata.seniority || 'Not Provided'}
 • Current Company: ${metadata.primary_company || metadata.company || 'Not Provided'}
@@ -48,14 +51,10 @@ ${metadata.parallel_experiences_summary || 'Not Provided'}
 `;
 
     const promptInstructions = buildCVFeedbackPrompt(documentType, targetIndustry);
-
     const finalPrompt = `
 You are reviewing a candidate's CV.
 
 ALWAYS respond in the candidate’s native language. Do not use English unless absolutely necessary.
-
-
-Tailor your advice based on the candidate’s country if it can be inferred.
 
 Candidate Overview:
 ${userMetadataSummary}
@@ -75,9 +74,7 @@ ${promptInstructions}
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
-        messages: [
-          { role: 'user', content: finalPrompt }
-        ]
+        messages: [{ role: 'user', content: finalPrompt }]
       })
     });
 
@@ -88,6 +85,27 @@ ${promptInstructions}
 
     const chatJson = await apiRes.json();
     const finalFeedback = chatJson.choices[0].message.content;
+
+    // insert feedback into cv_feedback table
+    const fbRes = await fetch(
+      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_feedback',
+      {
+        method: 'POST',
+        headers: {
+          apikey:        process.env.SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{
+          user_id:  userId,
+          feedback: finalFeedback
+        }])
+      }
+    );
+    if (!fbRes.ok) {
+      const errTxt = await fbRes.text();
+      throw new Error(`Feedback insert error ${fbRes.status}: ${errTxt}`);
+    }
 
     return res.status(200).json({ finalFeedback });
   } catch (err) {
@@ -100,8 +118,10 @@ ${promptInstructions}
 function guessIndustry(industries) {
   if (!industries) return 'general';
   const lower = industries.toLowerCase();
-  if (lower.includes('tech') || lower.includes('software') || lower.includes('it')) return 'tech';
+  if (lower.includes('tech') || lower.includes('software') || lower.includes('it'))
+    return 'tech';
   if (lower.includes('finance') || lower.includes('banking')) return 'finance';
-  if (lower.includes('healthcare') || lower.includes('medical')) return 'healthcare';
+  if (lower.includes('healthcare') || lower.includes('medical'))
+    return 'healthcare';
   return 'general';
 }

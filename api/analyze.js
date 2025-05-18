@@ -5,8 +5,6 @@ import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
 
 const km = new KeyManager();
-
-// Enable JSON body parsing
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
@@ -44,21 +42,18 @@ export default async function handler(req, res) {
     }
 
     const chatJson = await apiRes.json();
-    const content = chatJson.choices[0].message.content;
-
-    // parse DeepSeek response
     let parsed;
     try {
-      parsed = JSON.parse(content);
+      parsed = JSON.parse(chatJson.choices[0].message.content);
     } catch {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // insert user via Supabase   REST API
     const userId = crypto.randomUUID();
-    // insert user via Supabase REST API
-    const restRes = await fetch(
-      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
+
+    // insert metadata into cv_metadata table
+    const metaRes = await fetch(
+      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata',
       {
         method: 'POST',
         headers: {
@@ -67,19 +62,17 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify([{
-          id:     userId,
-          email:  '',      // non-null
-          secret: ''       // non-null
+          user_id:  userId,
+          metadata: parsed
         }])
       }
     );
-    if (!restRes.ok) {
-      const errTxt = await restRes.text();
-      throw new Error(`DB insert error ${restRes.status}: ${errTxt}`);
+    if (!metaRes.ok) {
+      const errTxt = await metaRes.text();
+      throw new Error(`Metadata insert error ${metaRes.status}: ${errTxt}`);
     }
 
-
-    return res.status(200).json(parsed);
+    return res.status(200).json({ userId, metadata: parsed });
   } catch (err) {
     console.error('API analyze error:', err);
     return res.status(500).json({ error: err.message });
