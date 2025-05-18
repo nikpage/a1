@@ -1,76 +1,67 @@
 // pages/api/analyze.js
-import crypto from 'crypto';
-import { KeyManager } from '../js/key-manager.js';
-import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
 import { createClient } from '@supabase/supabase-js';
+import fetch from 'node-fetch';
 
-// Initialize Supabase with service role key for server-side
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-const km = new KeyManager();
-
-// Enable JSON body parsing
-export const config = { api: { bodyParser: true } };
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export default async function handler(req, res) {
-  // Shared secret verification
-  const incoming = req.headers['x-api-secret'];
-  if (incoming !== process.env.API_SHARED_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // 1. Only POST allowed
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
+
+  // 2. Secret header check
+  if (req.headers['x-api-secret'] !== process.env.API_SHARED_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized: bad or missing secret' });
+  }
+
   try {
-    if (req.method !== 'POST') {
-      res.setHeader('Allow', 'POST');
-      return res.status(405).json({ error: 'Method Not Allowed' });
-    }
-
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ error: 'No text provided' });
-
-    // Call DeepSeek
-    const apiKey = km.keys[km.currentKeyIndex];
-    if (!apiKey) throw new Error('DeepSeek API key missing');
-
-    const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: buildCVMetadataExtractionPrompt(text) }],
-        response_format: { type: 'json_object' }
-      })
-    });
-    if (!apiRes.ok) {
-      const errTxt = await apiRes.text();
-      throw new Error(`DeepSeek error ${apiRes.status}: ${errTxt}`);
-    }
-
-    const chatJson = await apiRes.json();
-    let metadata = chatJson.choices[0].message.content;
+    // 3. Parse JSON body
+    let payload;
     try {
-      metadata = JSON.parse(metadata);
+      payload = JSON.parse(req.body);
     } catch {
-      throw new Error('Invalid JSON from DeepSeek');
+      return res.status(400).json({ error: 'Invalid JSON payload' });
     }
 
-    // Save to Supabase: create user and cv_metadata row
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .insert([{ email: metadata.email || 'unknown@example.com', token_balance: 0, secret: crypto.randomUUID() }])
-      .single();
-    if (userError) throw userError;
+    const { text } = payload;
+    if (typeof text !== 'string' || text.trim() === '') {
+      return res.status(400).json({ error: 'Missing or invalid `text` in request body' });
+    }
 
-    const { data: cvMeta, error: metaError } = await supabase
+    // 4. Call DeepSeek (example)
+    const deepSeekRes = await fetch('https://api.deepseek.example/metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!deepSeekRes.ok) {
+      throw new Error(`DeepSeek error ${deepSeekRes.status}`);
+    }
+    const data = await deepSeekRes.json();
+
+    // 5. Insert user and metadata into Supabase
+    const userId = crypto.randomUUID();
+    await supabase.from('users').insert({ id: userId, email: null });
+    const insertMeta = await supabase
       .from('cv_metadata')
-      .insert([{ user_id: user.id, file_url: metadata.file_url || null, data: metadata }])
-      .single();
-    if (metaError) throw metaError;
+      .insert({ user_id: userId, file_url: data.fileUrl, data: data });
 
-    return res.status(200).json({ metadata: cvMeta });
+    if (insertMeta.error) {
+      throw insertMeta.error;
+    }
+
+    // 6. Success response
+    return res.status(200).json({ metadata: insertMeta.data[0] });
+
   } catch (err) {
-    console.error('API analyze error:', err);
-    return res.status(err.statusCode || 500).json({ error: err.message });
+    console.error('analyze handler error:', err);
+    // 7. Always JSON on error
+    return res
+      .status(err.statusCode || 500)
+      .json({ error: err.message || 'Internal Server Error' });
   }
 }
