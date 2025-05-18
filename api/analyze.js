@@ -1,26 +1,45 @@
-// ===== DEV VERSION  =====
-// /api/analyze.js
+// pages/api/analyze.js
+import { randomUUID } from 'crypto';
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase with service role key for server-side
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 const km = new KeyManager();
 
 // Enable JSON body parsing
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
+  // Only POST allowed
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  // Shared secret verification
+  const incoming = req.headers['x-api-secret'];
+  const secret = process.env.API_SHARED_SECRET;
+  if (!secret || incoming !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     const { text } = req.body;
-    if (!text) return res.status(400).json({ error: 'No text provided' });
+    if (!text) {
+      return res.status(400).json({ error: 'No text provided' });
+    }
 
-    const apiKey = km.keys[0];
-    console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
-
-    if (!apiKey) throw new Error('API key missing');
+    // Fetch metadata from DeepSeek
+    const apiKey = km.keys[km.currentKeyIndex];
+    if (!apiKey) {
+      throw new Error('DeepSeek API key missing');
+    }
 
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -38,21 +57,43 @@ export default async function handler(req, res) {
     });
 
     if (!apiRes.ok) {
-      const errTxt = await apiRes.text();
-      throw new Error(`DeepSeek error ${apiRes.status}: ${errTxt}`);
+      const errorText = await apiRes.text();
+      throw new Error(`DeepSeek error ${apiRes.status}: ${errorText}`);
     }
 
-    const chatJson = await apiRes.json();
-    const content = chatJson.choices[0].message.content;
-
-    let parsed;
+    const json = await apiRes.json();
+    let metadata = json.choices?.[0]?.message?.content;
     try {
-      parsed = JSON.parse(content);
+      metadata = JSON.parse(metadata);
     } catch {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    return res.status(200).json(parsed);
+    // 1) Create new user
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .insert([{
+        email: metadata.email || 'unknown@example.com',
+        token_balance: 0,
+        secret: randomUUID()
+      }])
+      .single();
+    if (userError) throw userError;
+
+    // 2) Insert CV metadata
+    const { data: cvMeta, error: cvError } = await supabase
+      .from('cv_metadata')
+      .insert([{
+        user_id: user.id,
+        file_url: metadata.file_url || null,
+        data: metadata
+      }])
+      .single();
+    if (cvError) throw cvError;
+
+    // Respond with saved record
+    return res.status(200).json({ metadata: cvMeta });
+
   } catch (err) {
     console.error('API analyze error:', err);
     return res.status(500).json({ error: err.message });
