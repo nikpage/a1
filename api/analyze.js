@@ -56,22 +56,28 @@ export default async function handler(req, res) {
 
     // insert user via Supabase   REST API
     const userId = crypto.randomUUID();
+    // insert user via Supabase REST API
     const restRes = await fetch(
       'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
       {
         method: 'POST',
         headers: {
-  apikey: process.env.SERVICE_ROLE_KEY,
-  Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-  'Content-Type': 'application/json'
-},
-        body: JSON.stringify([{ id: userId, email: '' }])
+          apikey:        process.env.SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{
+          id:     userId,
+          email:  '',      // non-null
+          secret: ''       // non-null
+        }])
       }
     );
     if (!restRes.ok) {
       const errTxt = await restRes.text();
       throw new Error(`DB insert error ${restRes.status}: ${errTxt}`);
     }
+
 
     return res.status(200).json(parsed);
   } catch (err) {
