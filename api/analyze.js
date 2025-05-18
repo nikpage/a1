@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     // insert user via Supabase REST API
     const userId = crypto.randomUUID();
     const restRes = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/users`,
+      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
       {
         method: 'POST',
         headers: {
