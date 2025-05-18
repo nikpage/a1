@@ -1,14 +1,8 @@
 // /api/analyze.js
 
-const { createClient } = require('@supabase/supabase-js');
-const crypto = require('crypto');
+import crypto from 'crypto';
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 const km = new KeyManager();
 
@@ -60,12 +54,24 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // insert user into Supabase
+    // insert user via Supabase REST API
     const userId = crypto.randomUUID();
-    const { error: userErr } = await supabase
-      .from('users')
-      .insert({ id: userId, email: null });
-    if (userErr) throw userErr;
+    const restRes = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/users`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{ id: userId, email: null }])
+      }
+    );
+    if (!restRes.ok) {
+      const errTxt = await restRes.text();
+      throw new Error(`DB insert error ${restRes.status}: ${errTxt}`);
+    }
 
     return res.status(200).json(parsed);
   } catch (err) {
