@@ -67,7 +67,7 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify([{ user_id: userId, metadata: parsed }])
+        body: JSON.stringify([{ user_id: userId, jsonb: parsed }])
       }
     );
     if (!metaRes.ok) {
