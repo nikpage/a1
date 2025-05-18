@@ -1,4 +1,5 @@
 // pages/api/analyze.js
+import crypto from 'crypto';
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
 import { createClient } from '@supabase/supabase-js';
@@ -14,26 +15,24 @@ const km = new KeyManager();
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
-  // Reject non-POST
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  // Shared secret check
+  // Shared secret verification
   const incoming = req.headers['x-api-secret'];
   if (incoming !== process.env.API_SHARED_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-
   try {
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'POST');
+      return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'No text provided' });
 
-    const apiKey = km.keys[km.currentKeyIndex];
-    if (!apiKey) throw new Error('API key missing');
-
     // Call DeepSeek
+    const apiKey = km.keys[km.currentKeyIndex];
+    if (!apiKey) throw new Error('DeepSeek API key missing');
+
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -69,10 +68,9 @@ export default async function handler(req, res) {
       .single();
     if (metaError) throw metaError;
 
-    // Respond with saved metadata
     return res.status(200).json({ metadata: cvMeta });
   } catch (err) {
     console.error('API analyze error:', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(err.statusCode || 500).json({ error: err.message });
   }
 }
