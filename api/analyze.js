@@ -77,7 +77,8 @@ export default async function handler(req, res) {
       throw new Error(`DB insert error ${restRes.status}: ${errTxt}`);
     }
 
-    return res.status(200).json(parsed);
+    // return both userId and metadata
+    return res.status(200).json({ userId, metadata: parsed });
   } catch (err) {
     console.error('API analyze error:', err);
     return res.status(500).json({ error: err.message });
