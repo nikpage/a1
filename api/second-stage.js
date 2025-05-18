@@ -2,8 +2,17 @@
 
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
+import { createClient } from '@supabase/supabase-js';
 
-const km = new KeyManager();
+// Initialize Supabase client with Service Role key
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing Supabase environment variables.');
+}
+const supabase2 = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
@@ -15,15 +24,16 @@ export default async function handler(req, res) {
   try {
     const { userId, metadata, cv_body } = req.body;
     if (!userId || !metadata || !cv_body) {
-      return res
-        .status(400)
+      return res.status(400)
         .json({ error: 'userId, metadata and cv_body are required.' });
     }
 
+    const km = new KeyManager();
     const apiKey = km.keys[0];
-    console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
-    if (!apiKey) throw new Error('API key missing');
+    if (!apiKey) throw new Error('DeepSeek API key missing');
+    console.log('[DeepSeek API] Key index:', km.currentKeyIndex);
 
+    // Build prompts
     const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries || '');
 
@@ -70,7 +80,7 @@ ${promptInstructions}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
@@ -86,25 +96,13 @@ ${promptInstructions}
     const chatJson = await apiRes.json();
     const finalFeedback = chatJson.choices[0].message.content;
 
-    // insert feedback into cv_feedback table
-    const fbRes = await fetch(
-      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_feedback',
-      {
-        method: 'POST',
-        headers: {
-          apikey:        process.env.SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify([{
-          user_id:  userId,
-          feedback: finalFeedback
-        }])
-      }
-    );
-    if (!fbRes.ok) {
-      const errTxt = await fbRes.text();
-      throw new Error(`Feedback insert error ${fbRes.status}: ${errTxt}`);
+    // Save feedback
+    const { error: fbError } = await supabase2
+      .from('cv_feedback')
+      .insert({ user_id: userId, feedback: finalFeedback });
+
+    if (fbError) {
+      throw new Error(`Feedback insert error: ${fbError.message}`);
     }
 
     return res.status(200).json({ finalFeedback });
@@ -114,7 +112,8 @@ ${promptInstructions}
   }
 }
 
-// --- Helpers ---
+
+// Helper
 function guessIndustry(industries) {
   if (!industries) return 'general';
   const lower = industries.toLowerCase();
