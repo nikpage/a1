@@ -1,21 +1,105 @@
+// /api/analyze.js
+
+import crypto from 'crypto';
+import { KeyManager } from '../js/key-manager.js';
+import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
+
+const km = new KeyManager();
+export const config = { api: { bodyParser: true } };
+
+export default async function handler(req, res) {
+  // shared-secret header validation
+  const secretHeader = req.headers['x-shared-secret'];
+  if (secretHeader !== process.env.API_SHARED_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'No text provided' });
+
+    const apiKey = km.keys[0];
+    if (!apiKey) throw new Error('API key missing');
+
+    const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'user', content: buildCVMetadataExtractionPrompt(text) }
+        ],
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!apiRes.ok) {
+      const errTxt = await apiRes.text();
+      throw new Error(`DeepSeek error ${apiRes.status}: ${errTxt}`);
+    }
+
+    const chatJson = await apiRes.json();
+    let parsed;
+    try {
+      parsed = JSON.parse(chatJson.choices[0].message.content);
+    } catch {
+      throw new Error('Invalid JSON from DeepSeek');
+    }
+
+    const userId = crypto.randomUUID();
+
+    // insert metadata into cv_metadata table
+    const metaRes = await fetch(
+      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata',
+      {
+        method: 'POST',
+        headers: {
+          apikey:        process.env.SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{
+          user_id:  userId,
+          metadata: parsed
+        }])
+      }
+    );
+    if (!metaRes.ok) {
+      const errTxt = await metaRes.text();
+      throw new Error(`Metadata insert error ${metaRes.status}: ${errTxt}`);
+    }
+
+    return res.status(200).json({ userId, metadata: parsed });
+  } catch (err) {
+    console.error('API analyze error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+
 // /api/second-stage.js
 
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
-import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client with Service Role key
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing Supabase environment variables.');
-}
-const supabase2 = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
+const km = new KeyManager();
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
+  // shared-secret header validation
+  const secretHeader = req.headers['x-shared-secret'];
+  if (secretHeader !== process.env.API_SHARED_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -24,16 +108,14 @@ export default async function handler(req, res) {
   try {
     const { userId, metadata, cv_body } = req.body;
     if (!userId || !metadata || !cv_body) {
-      return res.status(400)
+      return res
+        .status(400)
         .json({ error: 'userId, metadata and cv_body are required.' });
     }
 
-    const km = new KeyManager();
     const apiKey = km.keys[0];
-    if (!apiKey) throw new Error('DeepSeek API key missing');
-    console.log('[DeepSeek API] Key index:', km.currentKeyIndex);
+    if (!apiKey) throw new Error('API key missing');
 
-    // Build prompts
     const documentType = 'cv_file';
     const targetIndustry = guessIndustry(metadata.industries || '');
 
@@ -80,7 +162,7 @@ ${promptInstructions}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
@@ -96,13 +178,25 @@ ${promptInstructions}
     const chatJson = await apiRes.json();
     const finalFeedback = chatJson.choices[0].message.content;
 
-    // Save feedback
-    const { error: fbError } = await supabase2
-      .from('cv_feedback')
-      .insert({ user_id: userId, feedback: finalFeedback });
-
-    if (fbError) {
-      throw new Error(`Feedback insert error: ${fbError.message}`);
+    // insert feedback into cv_feedback table
+    const fbRes = await fetch(
+      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_feedback',
+      {
+        method: 'POST',
+        headers: {
+          apikey:        process.env.SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{
+          user_id:  userId,
+          feedback: finalFeedback
+        }])
+      }
+    );
+    if (!fbRes.ok) {
+      const errTxt = await fbRes.text();
+      throw new Error(`Feedback insert error ${fbRes.status}: ${errTxt}`);
     }
 
     return res.status(200).json({ finalFeedback });
@@ -112,8 +206,7 @@ ${promptInstructions}
   }
 }
 
-
-// Helper
+// --- Helpers ---
 function guessIndustry(industries) {
   if (!industries) return 'general';
   const lower = industries.toLowerCase();

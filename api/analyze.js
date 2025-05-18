@@ -3,17 +3,8 @@
 import crypto from 'crypto';
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
-import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client with Service Role key
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing Supabase environment variables.');
-}
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
+const km = new KeyManager();
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
@@ -26,16 +17,15 @@ export default async function handler(req, res) {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'No text provided' });
 
-    const km = new KeyManager();
     const apiKey = km.keys[0];
-    if (!apiKey) throw new Error('DeepSeek API key missing');
-    console.log('[DeepSeek API] Key index:', km.currentKeyIndex);
+    console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
+    if (!apiKey) throw new Error('API key missing');
 
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
@@ -61,13 +51,25 @@ export default async function handler(req, res) {
 
     const userId = crypto.randomUUID();
 
-    // Save metadata
-    const { error: metaError } = await supabase
-      .from('cv_metadata')
-      .insert({ user_id: userId, metadata: parsed });
-
-    if (metaError) {
-      throw new Error(`Metadata insert error: ${metaError.message}`);
+    // insert metadata into cv_metadata table
+    const metaRes = await fetch(
+      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata',
+      {
+        method: 'POST',
+        headers: {
+          apikey:        process.env.SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{
+          user_id:  userId,
+          metadata: parsed
+        }])
+      }
+    );
+    if (!metaRes.ok) {
+      const errTxt = await metaRes.text();
+      throw new Error(`Metadata insert error ${metaRes.status}: ${errTxt}`);
     }
 
     return res.status(200).json({ userId, metadata: parsed });
