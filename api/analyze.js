@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // insert user via Supabase REST API
+    // insert user via Supabase   REST API
     const userId = crypto.randomUUID();
     const restRes = await fetch(
       'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
