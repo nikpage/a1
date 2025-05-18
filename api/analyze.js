@@ -61,10 +61,10 @@ export default async function handler(req, res) {
       {
         method: 'POST',
         headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
+  apikey: process.env.SERVICE_ROLE_KEY,
+  Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+  'Content-Type': 'application/json'
+},
         body: JSON.stringify([{ id: userId, email: null }])
       }
     );
