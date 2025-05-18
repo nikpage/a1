@@ -65,7 +65,7 @@ export default async function handler(req, res) {
   Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
   'Content-Type': 'application/json'
 },
-        body: JSON.stringify([{ id: userId, email: null }])
+        body: JSON.stringify([{ id: userId, email: '' }])
       }
     );
     if (!restRes.ok) {
