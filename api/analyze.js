@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // insert user via Supabase   REST API
+    // insert user via Supabase REST API
     const userId = crypto.randomUUID();
 
     // save metadata in cv_metadata table via Supabase REST API
@@ -67,13 +67,14 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify([{ user_id: userId, jsonb: parsed }])
+        body: JSON.stringify([{ user_id: userId, data: parsed }])
       }
     );
     if (!metaRes.ok) {
       const errTxt = await metaRes.text();
       throw new Error(`Metadata insert error ${metaRes.status}: ${errTxt}`);
     }
+
     const restRes = await fetch(
       'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
       {
