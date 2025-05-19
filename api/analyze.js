@@ -5,8 +5,6 @@ import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
 
 const km = new KeyManager();
-
-// Enable JSON body parsing
 export const config = { api: { bodyParser: true } };
 
 export default async function handler(req, res) {
@@ -44,20 +42,34 @@ export default async function handler(req, res) {
     }
 
     const chatJson = await apiRes.json();
-    const content = chatJson.choices[0].message.content;
-
-    // parse DeepSeek response
     let parsed;
     try {
-      parsed = JSON.parse(content);
+      parsed = JSON.parse(chatJson.choices[0].message.content);
     } catch {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // insert user via Supabase REST API
     const userId = crypto.randomUUID();
 
-    // save metadata in cv_metadata table via Supabase REST API
+    // insert user into users table to satisfy FK
+    const userRes = await fetch(
+      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
+      {
+        method: 'POST',
+        headers: {
+          apikey:        process.env.SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{ id: userId, email: '', secret: '' }])
+      }
+    );
+    if (!userRes.ok) {
+      const errTxt = await userRes.text();
+      throw new Error(`User insert error ${userRes.status}: ${errTxt}`);
+    }
+
+    // insert metadata into cv_metadata table
     const metaRes = await fetch(
       'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata',
       {
@@ -75,28 +87,7 @@ export default async function handler(req, res) {
       throw new Error(`Metadata insert error ${metaRes.status}: ${errTxt}`);
     }
 
-    const restRes = await fetch(
-      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
-      {
-        method: 'POST',
-        headers: {
-          apikey:        process.env.SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify([{
-          id:     userId,
-          email:  '',      // non-null
-          secret: ''       // non-null
-        }])
-      }
-    );
-    if (!restRes.ok) {
-      const errTxt = await restRes.text();
-      throw new Error(`DB insert error ${restRes.status}: ${errTxt}`);
-    }
-
-    return res.status(200).json(parsed);
+    return res.status(200).json({ userId, metadata: parsed });
   } catch (err) {
     console.error('API analyze error:', err);
     return res.status(500).json({ error: err.message });
