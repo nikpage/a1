@@ -13,27 +13,22 @@ export default async function handler(req, res) {
   }
 
   const { userId, metadata, cv_body } = req.body;
-  if (!userId || !metadata) {
-    return res.status(400).json({ error: 'Missing userId or metadata' });
+  if (!userId || !metadata || !cv_body) {
+    return res
+      .status(400)
+      .json({ error: 'userId, metadata and cv_body are required.' });
   }
 
   try {
     // 1) Upsert user
-    const { error: userErr } = await supabase
+    await supabase
       .from('users')
       .upsert({ id: userId, email: null, secret: '' });
-    if (userErr) throw userErr;
 
-    // 2) Insert CV metadata
-    const { error: metaErr } = await supabase
+    // 2) Upsert metadata
+    await supabase
       .from('cv_metadata')
-      .insert({ user_id: userId, data: metadata, file_url: null });
-    if (metaErr) throw metaErr;
-
-    // 3) (Optional) Store CV text
-    // await supabase
-    //   .from('cv_bodies')
-    //   .insert({ user_id: userId, body: cv_body });
+      .upsert({ user_id: userId, data: metadata, file_url: null });
 
     return res.status(200).json({ success: true });
   } catch (err) {
