@@ -12,6 +12,7 @@ class DocumentUpload {
     this.setup();
   }
 
+
   setup() {
     this.dropZone.addEventListener('click', () => {
       this.fileInput.value = '';
