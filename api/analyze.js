@@ -1,3 +1,4 @@
+// /api/analyze.js
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
 import crypto from 'crypto';
@@ -51,48 +52,52 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // ✅ Respond immediately with metadata
+    // ✅ Respond immediately with parsed metadata
     res.status(200).json(parsed);
 
-    // 🚀 Async DB insert (non-blocking)
-    (async () => {
-      const userId = crypto.randomUUID();
+    // 🚀 Background DB inserts
+    setImmediate(() => {
+      (async () => {
+        try {
+          const userId = crypto.randomUUID();
 
-      // 1. Create user
-      const userRes = await fetch('https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users', {
-        method: 'POST',
-        headers: {
-          apikey:        process.env.SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify([{ id: userId, email: null, secret: '' }])
-      });
+          const userRes = await fetch('https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users', {
+            method: 'POST',
+            headers: {
+              apikey:        process.env.SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([{ id: userId, email: null, secret: '' }])
+          });
 
-      if (!userRes.ok) {
-        console.error(`[DB] Failed to insert user:`, await userRes.text());
-        return;
-      }
+          if (!userRes.ok) {
+            console.error(`[DB] Failed to insert user:`, await userRes.text());
+            return;
+          }
 
-      // 2. Insert metadata
-      const metaRes = await fetch('https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata', {
-        method: 'POST',
-        headers: {
-          apikey:        process.env.SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify([{
-          user_id: userId,
-          data: parsed,
-          file_url: null // You can update this later when file URL is known
-        }])
-      });
+          const metaRes = await fetch('https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata', {
+            method: 'POST',
+            headers: {
+              apikey:        process.env.SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([{
+              user_id: userId,
+              data: parsed,
+              file_url: null
+            }])
+          });
 
-      if (!metaRes.ok) {
-        console.error(`[DB] Failed to insert metadata:`, await metaRes.text());
-      }
-    })();
+          if (!metaRes.ok) {
+            console.error(`[DB] Failed to insert metadata:`, await metaRes.text());
+          }
+        } catch (err) {
+          console.error('[DB Insert Error]', err);
+        }
+      })();
+    });
 
   } catch (err) {
     console.error('API analyze error:', err);
