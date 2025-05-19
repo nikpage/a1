@@ -1,12 +1,3 @@
-// /api/analyze.js
-
-import crypto from 'crypto';
-import { KeyManager } from '../js/key-manager.js';
-import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
-
-const km = new KeyManager();
-export const config = { api: { bodyParser: true } };
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -49,45 +40,47 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    const userId = crypto.randomUUID();
+    // ✅ First respond with metadata to user
+    res.status(200).json({ metadata: parsed });
 
-    // insert user into users table to satisfy FK
-    const userRes = await fetch(
-      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
-      {
-        method: 'POST',
-        headers: {
-          apikey:        process.env.SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify([{ id: userId, email: null, secret: '' }])
+    // ⬇️ Then do DB work async — non-blocking
+    (async () => {
+      const userId = crypto.randomUUID();
+
+      const userRes = await fetch(
+        'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users',
+        {
+          method: 'POST',
+          headers: {
+            apikey:        process.env.SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify([{ id: userId, email: null, secret: '' }])
+        }
+      );
+      if (!userRes.ok) {
+        console.error(`User insert error ${userRes.status}:`, await userRes.text());
+        return;
       }
-    );
-    if (!userRes.ok) {
-      const errTxt = await userRes.text();
-      throw new Error(`User insert error ${userRes.status}: ${errTxt}`);
-    }
 
-    // insert metadata into cv_metadata table
-    const metaRes = await fetch(
-      'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata',
-      {
-        method: 'POST',
-        headers: {
-          apikey:        process.env.SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify([{ user_id: userId, data: parsed }])
+      const metaRes = await fetch(
+        'https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata',
+        {
+          method: 'POST',
+          headers: {
+            apikey:        process.env.SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify([{ user_id: userId, data: parsed }])
+        }
+      );
+      if (!metaRes.ok) {
+        console.error(`Metadata insert error ${metaRes.status}:`, await metaRes.text());
       }
-    );
-    if (!metaRes.ok) {
-      const errTxt = await metaRes.text();
-      throw new Error(`Metadata insert error ${metaRes.status}: ${errTxt}`);
-    }
+    })();
 
-    return res.status(200).json({ userId, metadata: parsed });
   } catch (err) {
     console.error('API analyze error:', err);
     return res.status(500).json({ error: err.message });
