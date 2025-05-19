@@ -1,7 +1,6 @@
 // /api/analyze.js
 import { KeyManager } from '../js/key-manager.js';
 import { buildCVMetadataExtractionPrompt } from '../js/prompt-builder.js';
-import crypto from 'crypto';
 
 const km = new KeyManager();
 
@@ -21,7 +20,6 @@ export default async function handler(req, res) {
 
     const apiKey = km.keys[0];
     console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
-
     if (!apiKey) throw new Error('API key missing');
 
     const apiRes = await fetch('https://api.deepseek.com/chat/completions', {
@@ -45,58 +43,23 @@ export default async function handler(req, res) {
     }
 
     const chatJson = await apiRes.json();
-    const content = chatJson.choices[0].message.content;
-
     let parsed;
     try {
-      parsed = JSON.parse(content);
+      parsed = JSON.parse(chatJson.choices[0].message.content);
     } catch {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // ✅ Return only metadata
+    // ✅ Return only metadata immediately
     res.status(200).json(parsed);
 
-    // 🛠️ Save user and metadata in background
+    // 🛠️ Forward persistence to api/db.js in background
     setImmediate(() => {
-      (async () => {
-        try {
-          const userRes = await fetch('https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users', {
-            method: 'POST',
-            headers: {
-              apikey:        process.env.SERVICE_ROLE_KEY,
-              Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify([{ id: userId, email: null, secret: '' }])
-          });
-
-          if (!userRes.ok) {
-            console.error(`[DB] Failed to insert user:`, await userRes.text());
-            return;
-          }
-
-          const metaRes = await fetch('https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/cv_metadata', {
-            method: 'POST',
-            headers: {
-              apikey:        process.env.SERVICE_ROLE_KEY,
-              Authorization: `Bearer ${process.env.SERVICE_ROLE_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify([{
-              user_id: userId,
-              data: parsed,
-              file_url: null
-            }])
-          });
-
-          if (!metaRes.ok) {
-            console.error(`[DB] Failed to insert metadata:`, await metaRes.text());
-          }
-        } catch (err) {
-          console.error('[DB Insert Error]', err);
-        }
-      })();
+      fetch(`${req.headers.origin}/api/db`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, metadata: parsed, cv_body: text })
+      }).catch(e => console.error('[DB Forward Error]', e));
     });
 
   } catch (err) {
