@@ -14,8 +14,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ error: 'No text provided' });
+    const { text, userId } = req.body;
+    if (!text || !userId) {
+      return res.status(400).json({ error: 'Missing text or userId' });
+    }
 
     const apiKey = km.keys[0];
     console.log('[DeepSeek API] Using Key index:', km.currentKeyIndex);
@@ -52,15 +54,13 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // ✅ Return only metadata — like working version
+    // ✅ Return only metadata
     res.status(200).json(parsed);
 
-    // ✅ Background DB insert (unchanged)
+    // 🛠️ Save user and metadata in background
     setImmediate(() => {
       (async () => {
         try {
-          const userId = crypto.randomUUID();
-
           const userRes = await fetch('https://ybfvkdxeusgqdwbekcxm.supabase.co/rest/v1/users', {
             method: 'POST',
             headers: {

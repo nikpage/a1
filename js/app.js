@@ -1,9 +1,16 @@
-
 // ===== DEV VERSION =====
-//js/app.js
+// js/app.js
 
 // ===== Z4 VERSION =====
 // js/app.js
+
+// ✅ Anonymous session ID setup (NEW)
+let userId = localStorage.getItem('userId');
+if (!userId) {
+    userId = crypto.randomUUID();
+    localStorage.setItem('userId', userId);
+}
+window.appUserId = userId;
 
 // App Controller — production ready
 
