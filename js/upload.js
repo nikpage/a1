@@ -1,3 +1,5 @@
+const userId = localStorage.getItem('userId');
+
 class DocumentUpload {
   constructor() {
     this.dropZone = document.getElementById('drop-zone');
@@ -70,7 +72,7 @@ class DocumentUpload {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, documentType: 'cv_file' })
+        body: JSON.stringify({ text, documentType: 'cv_file', userId })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
