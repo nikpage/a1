@@ -52,10 +52,10 @@ export default async function handler(req, res) {
       throw new Error('Invalid JSON from DeepSeek');
     }
 
-    // ✅ Send metadata back to UI
+    // ✅ Return only metadata — like working version
     res.status(200).json(parsed);
 
-    // 🗃️ Save user + metadata in background
+    // ✅ Background DB insert (unchanged)
     setImmediate(() => {
       (async () => {
         try {
