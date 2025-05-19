@@ -12,7 +12,6 @@ class DocumentUpload {
     this.setup();
   }
 
-
   setup() {
     this.dropZone.addEventListener('click', () => {
       this.fileInput.value = '';
@@ -73,8 +72,13 @@ class DocumentUpload {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, documentType: 'cv_file', userId })
+        body: JSON.stringify({
+          text,
+          documentType: 'cv_file',
+          userId
+        })
       });
+
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       this.showFeedback(data);
@@ -100,21 +104,20 @@ class DocumentUpload {
     }
 
     const safe = (v) => {
-  if (typeof v === 'string') return v.trim() || 'No data';
-  if (Array.isArray(v)) return v.join(', ');
-  if (v == null) return 'No data';
-  return String(v);
-};
+      if (typeof v === 'string') return v.trim() || 'No data';
+      if (Array.isArray(v)) return v.join(', ');
+      if (v == null) return 'No data';
+      return String(v);
+    };
 
-const lang = Array.isArray(feedback.languages) ? feedback.languages.join(', ').trim() : (feedback.languages || '').trim();
-const years = feedback.years_experience;
+    const lang = Array.isArray(feedback.languages) ? feedback.languages.join(', ').trim() : (feedback.languages || '').trim();
+    const years = feedback.years_experience;
 
-if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
-if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPERIENCE]';
+    if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
+    if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPERIENCE]';
 
     let html = `
       <form id="metadata-form" class="metadata-grid">
-
         <h2 class="section-title">Career Development</h2>
         ${this.renderLongField('career_arcs_summary', safe(feedback.career_arcs_summary))}
         ${this.renderLongField('parallel_experiences_summary', safe(feedback.parallel_experiences_summary))}
@@ -124,13 +127,11 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
         ${this.renderField('languages', safe(feedback.languages))}
         ${this.renderField('years_experience', safe(feedback.years_experience))}
 
-
         <h2 class="section-title">Lists</h2>
         ${this.renderLongListField('certifications', safe(feedback.certifications))}
         ${this.renderLongListField('key_achievements', safe(feedback.key_achievements))}
         ${this.renderLongListField('industries', safe(feedback.industries))}
         ${this.renderLongListField('skills', safe(feedback.skills))}
-
       </form>
     `;
 
@@ -164,12 +165,11 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-  metadata,
-  cv_body: this.parsedText,
-    })
-
-
+            metadata,
+            cv_body: this.parsedText,
+          })
         });
+
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
@@ -239,7 +239,7 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
   formatAIText(text) {
     let formatted = text
       .replace(/---/g, '')
-      .replace(/^#+\s*/gm, '') // remove #
+      .replace(/^#+\s*/gm, '')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .split('\n');
@@ -285,7 +285,6 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
 
     return html;
   }
-
 
   async extractText(file) {
     if (file.type === 'application/pdf') {
@@ -342,24 +341,4 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
 
       if (!el.value.trim()) {
         el.value = 'No data';
-        el.classList.add('no-content-placeholder');
-      }
-
-      el.addEventListener('focus', () => {
-        if (el.classList.contains('no-content-placeholder')) {
-          el.value = '';
-          el.classList.remove('no-content-placeholder');
-        }
-      });
-
-      el.addEventListener('blur', () => {
-        if (!el.value.trim()) {
-          el.value = 'No data';
-          el.classList.add('no-content-placeholder');
-        }
-      });
-    });
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => new DocumentUpload());
+        el
