@@ -1,10 +1,5 @@
 // /api/db.js
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SERVICE_ROLE_KEY
-);
+import { supabase } from '../supabaseClient.js';  // reuse your working client :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,7 +14,7 @@ export default async function handler(req, res) {
       .json({ error: 'userId, metadata and cv_body are required.' });
   }
 
-  // Try each upsert, but never throw
+  // Attempt to upsert user and metadata, but never crash
   try {
     const { error: userErr } = await supabase
       .from('users')
@@ -38,6 +33,6 @@ export default async function handler(req, res) {
     console.error('[DB] metadata upsert threw:', err);
   }
 
-  // Always respond 200 so /api/second-stage.js can keep running
+  // Always respond 200 so callers (analyze & second-stage) keep running
   return res.status(200).json({ success: true });
 }
