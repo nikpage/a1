@@ -1,6 +1,6 @@
 // /api/second-stage.js
 import { KeyManager } from '../js/key-manager.js';
-import { buildFeedbackPrompt } from '../js/prompt-builder.js';
+import { buildCVFeedbackPrompt } from '../js/prompt-builder.js';
 
 const km = new KeyManager();
 
@@ -10,59 +10,69 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { userId, metadata, cv_body, feedback } = req.body;
-  if (!userId || !metadata || !cv_body || !feedback) {
+  // ONLY these three fields are required now:
+  const { userId, metadata, cv_body } = req.body;
+  if (!userId || !metadata || !cv_body) {
     return res
       .status(400)
-      .json({ error: 'userId, metadata, cv_body and feedback are required.' });
+      .json({ error: 'userId, metadata and cv_body are required.' });
   }
 
+  // build absolute URL to your own /api/db
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const host  = req.headers['host'];
+  const dbUrl = `${proto}://${host}/api/db`;
+
   try {
-    // 1) Ensure user + metadata in your DB via your central handler
-    const dbRes = await fetch(`${req.headers.origin}/api/db`, {
+    // 1) Upsert user+metadata via /api/db
+    const dbRes = await fetch(dbUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, metadata, cv_body })
     });
     if (!dbRes.ok) {
-      const errTxt = await dbRes.text();
-      throw new Error(`DB upsert failed: ${errTxt}`);
+      const body = await dbRes.text();
+      console.error('DB upsert failed:', body);
+      return res.status(502).json({ error: 'DB upsert failed', detail: body });
     }
 
-    // 2) Call DeepSeek for second‐stage feedback processing
-    const apiKey = km.keys[km.currentKeyIndex];
-    console.log('[DeepSeek 2nd-stage] Using Key index:', km.currentKeyIndex);
+    // 2) Build prompt and call DeepSeek for feedback
+    const prompt = buildCVFeedbackPrompt();
+    const fullPrompt =
+      prompt +
+      '\n\nMETADATA:\n' + JSON.stringify(metadata) +
+      '\n\nCV TEXT:\n' + cv_body;
 
     const deepRes = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${km.keys[km.currentKeyIndex]}`
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
-        messages: [
-          { role: 'user', content: buildFeedbackPrompt(metadata, feedback) }
-        ],
+        messages: [{ role: 'user', content: fullPrompt }],
         response_format: { type: 'json_object' }
       })
     });
 
     if (!deepRes.ok) {
       const errTxt = await deepRes.text();
-      throw new Error(`DeepSeek error ${deepRes.status}: ${errTxt}`);
+      console.error('DeepSeek stage2 error:', errTxt);
+      return res.status(502).json({ error: 'DeepSeek failed', detail: errTxt });
     }
 
     const deepJson = await deepRes.json();
-    let feedbackResult;
+    let finalFeedback;
     try {
-      feedbackResult = JSON.parse(deepJson.choices[0].message.content);
-    } catch {
-      throw new Error('Invalid JSON from DeepSeek in stage 2');
+      finalFeedback = JSON.parse(deepJson.choices[0].message.content);
+    } catch (parseErr) {
+      console.error('Invalid JSON from DeepSeek:', deepJson.choices[0].message.content);
+      return res.status(502).json({ error: 'Invalid JSON from DeepSeek' });
     }
 
-    // 3) Return the processed feedback to the client
-    return res.status(200).json({ feedbackResult });
+    // 3) Return only JSON—no HTML ever
+    return res.status(200).json({ finalFeedback });
 
   } catch (err) {
     console.error('Second-stage error:', err);
