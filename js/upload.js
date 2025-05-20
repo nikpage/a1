@@ -1,3 +1,4 @@
+// upload.js
 class DocumentUpload {
   constructor() {
     this.dropZone = document.getElementById('drop-zone');
@@ -99,19 +100,21 @@ class DocumentUpload {
     }
 
     const safe = (v) => {
-  if (typeof v === 'string') return v.trim() || 'No data';
-  if (Array.isArray(v)) return v.join(', ');
-  if (v == null) return 'No data';
-  return String(v);
-};
+      if (typeof v === 'string') return v.trim() || 'No data';
+      if (Array.isArray(v)) return v.join(', ');
+      if (v == null) return 'No data';
+      return String(v);
+    };
 
-const lang = Array.isArray(feedback.languages) ? feedback.languages.join(', ').trim() : (feedback.languages || '').trim();
-const years = feedback.years_experience;
+    const lang = Array.isArray(feedback.languages)
+      ? feedback.languages.join(', ').trim()
+      : (feedback.languages || '').trim();
+    const years = feedback.years_experience;
 
-if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
-if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPERIENCE]';
+    if (!lang) feedback.languages = '[MISSING: CV LANGUAGE]';
+    if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPERIENCE]';
 
-    let html = `
+    const html = `
       <form id="metadata-form" class="metadata-grid">
 
         <h2 class="section-title">Career Development</h2>
@@ -122,7 +125,6 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
         ${this.renderField('education', safe(feedback.education))}
         ${this.renderField('languages', safe(feedback.languages))}
         ${this.renderField('years_experience', safe(feedback.years_experience))}
-
 
         <h2 class="section-title">Lists</h2>
         ${this.renderLongListField('certifications', safe(feedback.certifications))}
@@ -136,21 +138,27 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
     this.reviewOutput.innerHTML = html;
     this.initFormEnhancements();
 
+    // Remove any previous button
     const oldBtn = document.getElementById('submit-metadata-btn');
     if (oldBtn) oldBtn.remove();
 
+    // Create and append new Submit button
     const submitButton = document.createElement('button');
+    submitButton.id = 'submit-metadata-btn';
     submitButton.textContent = 'Submit for AI Review';
     submitButton.style.marginTop = '20px';
     submitButton.style.padding = '10px 20px';
+
     submitButton.onclick = async () => {
       submitButton.disabled = true;
       submitButton.textContent = 'Submitting...';
 
+      // Gather updated metadata from the form
       const metadataForm = document.getElementById('metadata-form');
-      const fields = [...metadataForm.querySelectorAll('input[type="text"], textarea')];
+      const fields = [
+        ...metadataForm.querySelectorAll('input[type="text"], textarea')
+      ];
       const metadata = {};
-
       fields.forEach(field => {
         const checkbox = document.getElementById(`use_${field.id}`);
         if (checkbox && checkbox.checked) {
@@ -159,31 +167,38 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
       });
 
       try {
+        const cvText = this.parsedText;
+        const userId = localStorage.getItem('userId');
+
+        // 1) Call second-stage with all required fields
         const res = await fetch('/api/second-stage', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-  metadata,
-  cv_body: this.parsedText,
-    })
-
-
+          body: JSON.stringify({ userId, metadata, cv_body: cvText })
         });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
 
+        // 2) Read as text so we never try to parse HTML
+        const text = await res.text();
+        if (!res.ok) {
+          console.error('2nd-stage error:', text);
+          alert(`Error: ${text}`);
+          submitButton.disabled = false;
+          submitButton.textContent = 'Submit for AI Review';
+          return;
+        }
+
+        // 3) Parse JSON and render final feedback
+        const data = JSON.parse(text);
         const reviewHTML = `
           <h2>Final AI Review</h2>
           <div class="review-text">${this.formatAIText(data.finalFeedback)}</div>
         `;
-
-        setTimeout(() => {
-          this.reviewOutput.innerHTML = reviewHTML;
-        }, 100);
-
+        this.reviewOutput.innerHTML = reviewHTML;
       } catch (err) {
         console.error('Submit metadata error:', err);
         alert('Error submitting metadata: ' + err.message);
+        submitButton.disabled = false;
+        submitButton.textContent = 'Submit for AI Review';
       }
     };
 
@@ -197,7 +212,8 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
     return `
       <div class="form-group ${isFullWidth ? 'full-width' : ''}">
         <label for="${key}">${pretty}</label>
-        <input id="${key}" name="${key}" type="text" value="${value}" class="${value === 'No data' ? 'no-content-placeholder' : ''}">
+        <input id="${key}" name="${key}" type="text" value="${value}"
+               class="${value === 'No data' ? 'no-content-placeholder' : ''}">
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -211,7 +227,10 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
     return `
       <div class="form-group full-width">
         <label for="${key}">${pretty}</label>
-        <textarea id="${key}" name="${key}" style="min-height: 40px; max-height: 500px; overflow-y: hidden;">${value}</textarea>
+        <textarea id="${key}" name="${key}"
+                  style="min-height: 40px; max-height: 500px; overflow-y: hidden;">
+          ${value}
+        </textarea>
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -222,11 +241,14 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
 
   renderLongListField(key, value) {
     const pretty = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    const formattedList = value.replace(/,/g, ', ');
+    const formatted = value.replace(/,/g, ', ');
     return `
       <div class="form-group full-width">
         <label for="${key}">${pretty}</label>
-        <textarea id="${key}" name="${key}" style="min-height: 40px; max-height: 500px; overflow-y: hidden;">${formattedList}</textarea>
+        <textarea id="${key}" name="${key}"
+                  style="min-height: 40px; max-height: 500px; overflow-y: hidden;">
+          ${formatted}
+        </textarea>
         <div class="checkbox-group">
           <input type="checkbox" id="use_${key}" name="use_${key}" checked>
           <label for="use_${key}">Use</label>
@@ -236,9 +258,9 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
   }
 
   formatAIText(text) {
-    let formatted = text
+    const lines = text
       .replace(/---/g, '')
-      .replace(/^#+\s*/gm, '') // remove #
+      .replace(/^#+\s*/gm, '')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .split('\n');
@@ -247,7 +269,7 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
     let inList = false;
     let inSubList = false;
 
-    for (let line of formatted) {
+    for (let line of lines) {
       if (/^\s*- /.test(line)) {
         if (!inSubList) {
           html += '<ul style="margin-left: 2em">';
@@ -264,27 +286,18 @@ if (isNaN(years) || years < 0) feedback.years_experience = '[INVALID: YEARS EXPE
           inList = true;
         }
         html += `<li>${line.replace(/^- /, '')}</li>`;
-      } else if (line.trim() === '') {
-        if (inSubList) {
-          html += '</ul>';
-          inSubList = false;
-        }
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
+      } else if (!line.trim()) {
+        if (inSubList) { html += '</ul>'; inSubList = false; }
+        if (inList) { html += '</ul>'; inList = false; }
         html += '<br>';
       } else {
         html += `<p>${line}</p>`;
       }
     }
-
     if (inSubList) html += '</ul>';
     if (inList) html += '</ul>';
-
     return html;
   }
-
 
   async extractText(file) {
     if (file.type === 'application/pdf') {
