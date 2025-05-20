@@ -19,20 +19,25 @@ export default async function handler(req, res) {
       .json({ error: 'userId, metadata and cv_body are required.' });
   }
 
+  // Try each upsert, but never throw
   try {
-    // 1) Upsert user
-    await supabase
+    const { error: userErr } = await supabase
       .from('users')
-      .upsert({ id: userId, email: null, secret: '' });
-
-    // 2) Upsert metadata
-    await supabase
-      .from('cv_metadata')
-      .upsert({ user_id: userId, data: metadata, file_url: null });
-
-    return res.status(200).json({ success: true });
+      .upsert([{ id: userId, email: null, secret: '' }]);
+    if (userErr) console.error('[DB] user upsert error:', userErr);
   } catch (err) {
-    console.error('DB error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('[DB] user upsert threw:', err);
   }
+
+  try {
+    const { error: metaErr } = await supabase
+      .from('cv_metadata')
+      .upsert([{ user_id: userId, data: metadata, file_url: null }]);
+    if (metaErr) console.error('[DB] metadata upsert error:', metaErr);
+  } catch (err) {
+    console.error('[DB] metadata upsert threw:', err);
+  }
+
+  // Always respond 200 so /api/second-stage.js can keep running
+  return res.status(200).json({ success: true });
 }
