@@ -1,51 +1,33 @@
 // pages/api/feedback.js
-import { getFeedback } from '../../lib/deepseekClient';
-import { supabase } from '../../lib/supabase';
+import { buildCVFeedbackPrompt } from '../../lib/prompt-builder';
+import deepseekClient from '../../lib/deepseekClient';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { userId, metadata, cvBody, fileUrl } = req.body;
+  const { metadata, cvBody, prompt } = req.body;
+  if (!metadata || !cvBody) {
+    return res.status(400).json({ error: 'metadata and cvBody are required' });
+  }
 
   try {
-    // 1) Persist the metadata in cv_metadata and grab its ID
-    const { data: metaRec, error: metaErr } = await supabase
-      .from('cv_metadata')
-      .insert({
-        user_id: userId,
-        file_url: fileUrl || null,
-        data: metadata,
-      })
-      .select('id')
-      .single();
-
-    if (metaErr) {
-      throw new Error('Metadata insert error: ' + metaErr.message);
+    // Use provided prompt or build from metadata
+    const finalPrompt = prompt || buildCVFeedbackPrompt({ metadata, parsedCV: cvBody });
+    // Call DeepSeek (our AI service)
+    const raw = await deepseekClient.generate(finalPrompt);
+    let feedback;
+    try {
+      const parsed = JSON.parse(raw);
+      feedback = parsed.feedback || raw;
+    } catch {
+      feedback = raw;
     }
-
-    const cvMetadataId = metaRec.id;
-
-    // 2) Call DeepSeek for the AI feedback
-    const feedback = await getFeedback(metadata, cvBody);
-
-    // 3) Persist that feedback in cv_feedback
-    const { error: fbErr } = await supabase
-      .from('cv_feedback')
-      .insert({
-        cv_metadata_id: cvMetadataId,
-        feedback: feedback,
-      });
-
-    if (fbErr) {
-      console.error('Feedback insert error:', fbErr);
-    }
-
-    // 4) Return the AI feedback to the client
-    res.status(200).json({ feedback });
-  } catch (error) {
-    console.error('Feedback endpoint error:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(200).json({ feedback });
+  } catch (err) {
+    console.error('Feedback API error:', err);
+    return res.status(500).json({ error: err.message });
   }
 }
