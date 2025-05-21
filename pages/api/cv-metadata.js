@@ -2,15 +2,19 @@
 import { extractMetadata } from '../../lib/deepseekClient';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method !== 'POST')
+    return res.status(405).json({ error: 'Only POST allowed' });
+
+  const { textChunks, userId } = req.body;
+  if (!Array.isArray(textChunks)) {
+    return res.status(400).json({ error: 'No textChunks array provided' });
   }
-  const { text, userId } = req.body;
   try {
-    const metadata = await extractMetadata(text);
+    // join chunks for one prompt
+    const metadata = await extractMetadata(textChunks.join('\n\n'));
     res.status(200).json(metadata);
-  } catch (error) {
-    console.error('DeepSeek metadata error:', error);
-    res.status(500).json({ error: error.message });
+  } catch (e) {
+    console.error('DeepSeek metadata error', e);
+    res.status(500).json({ error: e.message });
   }
 }

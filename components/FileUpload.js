@@ -19,8 +19,8 @@ export default function FileUpload({ userId, onUpload }) {
           file: { content: base64, name: file.name, type: file.type },
         }),
       });
-      const { fileUrl } = await res.json();
-      if (onUpload) onUpload();
+      const { metadata } = await res.json();
+      if (onUpload) onUpload({ metadata });
     };
     reader.readAsDataURL(file);
   };
