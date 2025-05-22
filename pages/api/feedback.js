@@ -1,6 +1,6 @@
 // pages/api/feedback.js
 import { buildCVFeedbackPrompt } from '../../lib/prompt-builder';
-import deepseekClient from '../../lib/deepseekClient';
+import { generate } from '../../lib/deepseekClient';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     // Use provided prompt or build from metadata
     const finalPrompt = prompt || buildCVFeedbackPrompt({ metadata, parsedCV: cvBody });
     // Call DeepSeek (our AI service)
-    const raw = await deepseekClient.generate(finalPrompt);
+    const raw = await generate(finalPrompt);
     let feedback;
     try {
       const parsed = JSON.parse(raw);

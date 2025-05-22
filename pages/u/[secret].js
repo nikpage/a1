@@ -1,172 +1,160 @@
 // pages/u/[secret].js
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import FileUpload from '../../components/FileUpload';
 import ExtractionPanel from '../../components/ExtractionPanel';
-import { buildExtractionPrompt, buildCVFeedbackPrompt } from '../../lib/prompt-builder';
+import { buildCVPrompt, buildCoverLetterPrompt } from '../../lib/prompt-builder';
 
-const JOB_FIELDS = [
-  { key: 'job_title', label: 'Job Title' },
-  { key: 'company_name', label: 'Company Name' },
-  { key: 'hr_contact', label: 'HR Contact' },
-  { key: 'keywords', label: 'Keywords' },
-];
-const TONES = ['Formal', 'Neutral', 'Friendly', 'Cocky'];
-
-export default function DashboardPage() {
-  const router = useRouter();
-  const { secret } = router.query;
-  const [user, setUser] = useState(null);
-  const [pasteAd, setPasteAd] = useState('');
-  const [jobMeta, setJobMeta] = useState({});
-  const [useField, setUseField] = useState({});
-  const [tone, setTone] = useState('Neutral');
-  const [language, setLanguage] = useState('');
+export default function SecretPage() {
+  const [userId, setUserId] = useState(null);
+  const [secret, setSecret] = useState(null);
+  const [cvMetadata, setCvMetadata] = useState(null);
+  const [jobMetadata, setJobMetadata] = useState({});
+  const [toggles, setToggles] = useState({});
+  const [tone, setTone] = useState('neutral');
   const [outputType, setOutputType] = useState('both');
+  const [result, setResult] = useState({});
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState({ cv: '', cover: '' });
 
-  // fetch user by secret
   useEffect(() => {
-    if (!secret) return;
-    fetch(`/api/users?secret=${secret}`)
+    const storedSecret = sessionStorage.getItem('user_secret');
+    if (!storedSecret) return;
+    setSecret(storedSecret);
+
+    fetch(`/api/users?secret=${storedSecret}`)
       .then(res => res.json())
-      .then(data => setUser({ email: data.email || '', tokens: data.tokens || 0 }))
-      .catch(console.error);
-  }, [secret]);
+      .then(user => {
+        setUserId(user.id);
+        return fetch(`/api/user-cvs?secret=${storedSecret}`);
+      })
+      .then(res => res.json())
+      .then(cvs => {
+        if (cvs.length > 0) {
+          setCvMetadata(cvs[0].data); // Use latest saved CV metadata
+        }
+      });
+  }, []);
 
-  // show loading until user data arrives
-  if (user === null) {
-    return <div className="p-4">Loading dashboard…</div>;
-  }
-
-  // extract job metadata
-  const handleExtract = async () => {
-    if (!pasteAd) return;
-    const res = await fetch(`/api/extract-job-meta?secret=${secret}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: pasteAd }),
-    });
-    const data = await res.json();
-    setJobMeta(data);
-    setUseField(Object.fromEntries(Object.keys(data).map(k => [k, true])));
+  const handleExtract = (meta, toggleState) => {
+    setJobMetadata(meta);
+    setToggles(toggleState);
   };
 
-  const handleToggleField = key => {
-    setUseField(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  // generate docs
   const handleGenerate = async () => {
+    if (!cvMetadata) return;
+
     setLoading(true);
-    const payload = {
-      metadata: Object.fromEntries(
-        Object.entries(jobMeta).filter(([k]) => useField[k])
-      ),
-      tone,
-      language,
-      outputType,
-    };
-    const res = await fetch(`/api/write-docs?secret=${secret}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+
+    const selectedJob = {};
+    Object.entries(toggles).forEach(([key, active]) => {
+      if (active) {
+        if (key.startsWith('keywords_')) {
+          const idx = parseInt(key.split('_')[1]);
+          selectedJob.keywords = selectedJob.keywords || [];
+          selectedJob.keywords.push(jobMetadata.keywords[idx]);
+        } else {
+          selectedJob[key] = jobMetadata[key];
+        }
+      }
     });
-    const docs = await res.json();
-    setResults({ cv: docs.cv, cover: docs.cover });
-    setLoading(false);
+
+    const jobDetails = {
+      ...selectedJob,
+      keywords: selectedJob.keywords || [],
+    };
+
+    const docResults = {};
+
+    try {
+      if (outputType === 'cv' || outputType === 'both') {
+        const prompt = buildCVPrompt(tone, jobDetails);
+        const res = await fetch('/api/write-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metadata: jobDetails, cv: { data: cvMetadata }, tone, language: 'en', outputType: 'cv' }),
+        });
+        const data = await res.json();
+        docResults.cv = data.cv;
+      }
+
+      if (outputType === 'cover' || outputType === 'both') {
+        const prompt = buildCoverLetterPrompt(tone, jobDetails);
+        const res = await fetch('/api/write-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metadata: jobDetails, cv: { data: cvMetadata }, tone, language: 'en', outputType: 'cover' }),
+        });
+        const data = await res.json();
+        docResults.cover = data.cover;
+      }
+
+      setResult(docResults);
+    } catch (err) {
+      console.error('write-docs error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen p-6">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl">Dashboard</h1>
-        <div>
-          <span className="mr-4">{user.email.split('@')[0]}</span>
-          <span>Tokens: {user.tokens}</span>
-        </div>
-      </header>
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Document Generator</h1>
 
-      {/* 1. Paste Job Ad */}
-      <section className="mb-6">
-        <h2 className="font-semibold mb-2">1. Paste Job Ad</h2>
+      <section>
         <ExtractionPanel onExtract={handleExtract} />
       </section>
 
-      {/* 2. Review Job Metadata */}
-      {Object.keys(jobMeta).length > 0 && (
-        <section className="mb-6 border rounded p-4 bg-gray-50">
-          <h2 className="font-semibold mb-2">2. Review Job Metadata</h2>
-          {JOB_FIELDS.map(({ key, label }) => (
-            <div key={key} className="flex items-center mb-2">
-              <input
-                type="checkbox"
-                checked={!!useField[key]}
-                onChange={() => handleToggleField(key)}
-                className="mr-2"
-              />
-              <div>
-                <div className="font-semibold">{label}</div>
-                <div>{Array.isArray(jobMeta[key]) ? jobMeta[key].join(', ') : jobMeta[key]}</div>
-              </div>
-            </div>
+      <section className="mt-6">
+        <h2 className="text-xl font-semibold">Tone</h2>
+        <div className="flex gap-2 my-2">
+          {['formal', 'neutral', 'casual', 'cocky'].map(t => (
+            <button
+              key={t}
+              onClick={() => setTone(t)}
+              className={`px-3 py-1 rounded ${tone === t ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            >
+              {t}
+            </button>
           ))}
-        </section>
-      )}
-
-      {/* 3. Options & Generate */}
-      <section className="mb-6">
-        <h2 className="font-semibold mb-2">3. Options & Generate</h2>
-        <div className="flex gap-4 mb-4">
-          <div>
-            <label>Tone</label>
-            <select value={tone} onChange={e => setTone(e.target.value)}>
-              {TONES.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label>Language</label>
-            <input type="text" placeholder="Auto" value={language} onChange={e => setLanguage(e.target.value)} />
-          </div>
-          <div>
-            <label>Output</label>
-            <select value={outputType} onChange={e => setOutputType(e.target.value)}>
-              <option value="cv">CV</option>
-              <option value="cover">Cover Letter</option>
-              <option value="both">Both</option>
-            </select>
-          </div>
         </div>
+
+        <label className="block font-semibold mt-2">Document Type:</label>
+        <select
+          value={outputType}
+          onChange={e => setOutputType(e.target.value)}
+          className="mt-1 border rounded px-2 py-1"
+        >
+          <option value="cv">CV</option>
+          <option value="cover">Cover Letter</option>
+          <option value="both">Both</option>
+        </select>
+      </section>
+
+      <section className="mt-4">
         <button
           onClick={handleGenerate}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          disabled={!cvMetadata || loading}
+          className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
         >
           {loading ? 'Generating...' : 'Generate Documents'}
         </button>
       </section>
 
-      {/* 4. Display Results */}
-      {(results.cv || results.cover) && (
-        <section className="space-y-6">
-          {results.cv && (
-            <article className="border rounded p-4">
-              <h3 className="font-bold mb-2">Generated CV</h3>
-              <div dangerouslySetInnerHTML={{ __html: results.cv }} />
-            </article>
-          )}
-          {results.cover && (
-            <article className="border rounded p-4">
-              <h3 className="font-bold mb-2">Generated Cover Letter</h3>
-              <div dangerouslySetInnerHTML={{ __html: results.cover }} />
-            </article>
-          )}
+      {result.cv && (
+        <section className="mt-6">
+          <h2 className="text-xl font-semibold mb-2">Generated CV</h2>
+          <pre className="whitespace-pre-wrap bg-gray-100 p-4 rounded">
+            {result.cv.choices?.[0]?.message?.content}
+          </pre>
         </section>
       )}
 
-      {/* 5. File Upload Section */}
-      <FileUpload secret={secret} />
+      {result.cover && (
+        <section className="mt-6">
+          <h2 className="text-xl font-semibold mb-2">Generated Cover Letter</h2>
+          <pre className="whitespace-pre-wrap bg-gray-100 p-4 rounded">
+            {result.cover.choices?.[0]?.message?.content}
+          </pre>
+        </section>
+      )}
     </div>
   );
 }

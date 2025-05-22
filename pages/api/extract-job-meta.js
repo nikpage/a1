@@ -1,6 +1,6 @@
 // pages/api/extract-job-meta.js
 import { buildExtractionPrompt } from '../../lib/prompt-builder';
-import deepseekClient from '../../lib/deepseekClient';
+import { generate } from '../../lib/deepseekClient';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,10 +17,10 @@ export default async function handler(req, res) {
     const prompt = buildExtractionPrompt(text);
 
     // Send prompt to DeepSeek API and get raw response
-    const raw = await deepseekClient.generate(prompt);
+    const raw = await generate(prompt);
+  const content = raw?.choices?.[0]?.message?.content || '{}';
+  const metadata = JSON.parse(content);
 
-    // Expect JSON string from DeepSeek; parse it
-    let metadata = JSON.parse(raw);
 
     // Enforce max 8 keywords if present
     if (Array.isArray(metadata.keywords)) {
