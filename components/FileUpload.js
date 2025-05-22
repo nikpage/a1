@@ -20,6 +20,8 @@ export default function FileUpload({ userId, onUpload }) {
         }),
       });
       const { metadata } = await res.json();
+      console.log('🧠 Metadata received:', metadata);
+
       if (onUpload) onUpload({ metadata });
     };
     reader.readAsDataURL(file);

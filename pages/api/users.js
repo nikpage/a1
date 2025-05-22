@@ -3,29 +3,53 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../lib/supabase';
 
 export default async function handler(req, res) {
-  switch (req.method) {
-    case 'POST': {
-      const secret = uuidv4();
+  if (req.method === 'POST') {
+    const secret = uuidv4();
+    try {
+      console.log('Attempting to insert user with secret:', secret);
       const { data, error } = await supabase
         .from('users')
         .insert({ secret })
+        .select('id, secret')    // ← fetch both id and secret
         .single();
-      if (error) return res.status(500).json({ error: error.message });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        return res.status(500).json({ error: error.message, details: error });
+      }
+      console.log('Supabase response:', data);
+      // ← return both userId and secret
       return res.status(200).json({ userId: data.id, secret: data.secret });
+    } catch (err) {
+      console.error('Unexpected error:', err.message, err.stack);
+      return res.status(500).json({ error: 'Internal Server Error', details: err.message });
     }
-    case 'GET': {
-      const { secret } = req.query;
-      if (!secret) return res.status(400).json({ error: 'Secret is required' });
+  }
+
+  if (req.method === 'GET') {
+    const { secret } = req.query;
+    if (!secret) {
+      return res.status(400).json({ error: 'Secret parameter is required' });
+    }
+    try {
+      console.log('Fetching user with secret:', secret);
       const { data, error } = await supabase
         .from('users')
-        .select('id, email, tokens, secret')
+        .select('id, email, token_balance, secret')
         .eq('secret', secret)
         .single();
-      if (error) return res.status(500).json({ error: error.message });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        return res.status(404).json({ error: 'User not found', details: error });
+      }
       return res.status(200).json(data);
+    } catch (err) {
+      console.error('Unexpected error:', err.message, err.stack);
+      return res.status(500).json({ error: 'Internal Server Error', details: err.message });
     }
-    default:
-      res.setHeader('Allow', ['POST','GET']);
-      res.status(405).end(`Method ${req.method} Not Allowed`);
   }
+
+  res.setHeader('Allow', ['POST', 'GET']);
+  res.status(405).end(`Method ${req.method} Not Allowed`);
 }
