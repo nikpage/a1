@@ -36,6 +36,8 @@ export default function SecretPage() {
         });
 
         const result = await res.json();
+        console.log('DeepSeek used key:', result._usedKey, 'index:', result._keyIndex);
+
         const content = type === 'cv' ? result.cv : result.cover;
         setFeedback(`${type.toUpperCase()}:\n\n${content}`);
       } else if (type === 'both') {
