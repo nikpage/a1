@@ -1,4 +1,3 @@
-// pages/u/[secret].js
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { marked } from 'marked';
@@ -13,97 +12,104 @@ export default function SecretPage() {
   const [cvData, setCvData] = useState(null);
   const [toggles, setToggles] = useState({});
   const [tone, setTone] = useState('neutral');
-  const [skipped, setSkipped] = useState(false);
 
   const handleExtract = (data, newToggles) => {
-    setCvData({ ...data, secret });
+    setCvData(data);
     setToggles(newToggles);
-  };
-
-  const handleSkip = () => {
-    setCvData({ secret });
-    setSkipped(true);
   };
 
   const handleGenerate = async (type) => {
     try {
       if (!cvData) return;
 
-      const res = await fetch('/api/write-docs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          metadata: { ...cvData, secret },
-          tone,
-          language: 'en',
-          outputType: type,
-        }),
-      });
+      const commonPayload = {
+        metadata: cvData,
+        tone,
+        language: 'en',
+      };
 
-      const result = await res.json();
-      if (type === 'cv') {
-        setFeedback(`# CV\n\n${result.cv}`);
-      } else if (type === 'cover') {
-        setFeedback(`# Cover Letter\n\n${result.cover}`);
+      if (type === 'cv' || type === 'cover') {
+        const res = await fetch('/api/write-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...commonPayload, outputType: type }),
+        });
+
+        const result = await res.json();
+        const content = type === 'cv' ? result.cv : result.cover;
+        setFeedback(`${type.toUpperCase()}:\n\n${content}`);
       } else if (type === 'both') {
-        setFeedback(`# CV\n\n${result.cv}\n\n---\n\n# Cover Letter\n\n${result.cover}`);
+        const [cvRes, coverRes] = await Promise.all([
+          fetch('/api/write-docs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...commonPayload, outputType: 'cv' }),
+          }),
+          fetch('/api/write-docs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...commonPayload, outputType: 'cover' }),
+          }),
+        ]);
+
+        const cvResult = await cvRes.json();
+        const coverResult = await coverRes.json();
+
+        setFeedback(`
+### CV
+${cvResult.cv}
+
+---
+
+### Cover Letter
+${coverResult.cover}
+        `);
       }
     } catch (err) {
       console.error('Generation error:', err);
-      setFeedback('❌ Failed to generate.');
+      setFeedback('❌ Failed to generate. Try again.');
     }
   };
-
-  const showGeneration = cvData || skipped;
-
-  const buttonStyle = (active) => ({
-    backgroundColor: active ? '#10b981' : '#e5e7eb',
-    color: active ? 'white' : '#111827',
-    padding: '0.5rem 1rem',
-    marginRight: '0.5rem',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  });
 
   return (
     <div>
       <DashboardHeader secret={secret} />
 
-      {!showGeneration && (
-        <>
-          <ExtractionPanel onExtract={handleExtract} />
-          <button onClick={handleSkip}>Skip Job Matching</button>
-        </>
-      )}
+      <ExtractionPanel onExtract={handleExtract} />
 
-      {showGeneration && (
+      {cvData && (
         <>
-          <div style={{ marginTop: '1rem' }}>
+          <div>
             <strong>Select Tone:</strong><br />
-            {['neutral', 'formal', 'casual', 'cocky'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setTone(t)}
-                style={buttonStyle(tone === t)}
-              >
-                {t}
-              </button>
-            ))}
+            <button onClick={() => setTone('neutral')}>Neutral</button>
+            <button onClick={() => setTone('formal')}>Formal</button>
+            <button onClick={() => setTone('casual')}>Casual</button>
+            <button onClick={() => setTone('cocky')}>Cocky</button>
           </div>
 
           <div style={{ marginTop: '1rem' }}>
             <strong>Generate:</strong><br />
-            <button style={buttonStyle(false)} onClick={() => handleGenerate('cv')}>CV</button>
-            <button style={buttonStyle(false)} onClick={() => handleGenerate('cover')}>Cover Letter</button>
-            <button style={buttonStyle(true)} onClick={() => handleGenerate('both')}>Both</button>
+            <button onClick={() => handleGenerate('cv')}>CV</button>
+            <button onClick={() => handleGenerate('cover')}>Cover Letter</button>
+            <button onClick={() => handleGenerate('both')}>Both</button>
+          </div>
+
+          <div style={{ marginTop: '2rem' }}>
+            <h3>Extracted Data</h3>
+            <ul>
+              {cvData.jobTitle && <li><strong>Job Title:</strong> {cvData.jobTitle}</li>}
+              {cvData.company && <li><strong>Company:</strong> {cvData.company}</li>}
+              {cvData.hrContact && <li><strong>HR Contact:</strong> {cvData.hrContact}</li>}
+              {cvData.keywords && Array.isArray(cvData.keywords) && cvData.keywords.map((kw, index) => (
+                <li key={index}><strong>Keyword {index + 1}:</strong> {kw}</li>
+              ))}
+            </ul>
           </div>
         </>
       )}
 
       {feedback && (
-        <div style={{ marginTop: '2rem' }} dangerouslySetInnerHTML={{ __html: marked(feedback) }} />
+        <div dangerouslySetInnerHTML={{ __html: marked(feedback) }} />
       )}
     </div>
   );
