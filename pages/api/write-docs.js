@@ -1,61 +1,33 @@
 // pages/api/write-docs.js
-import { supabase } from '../../lib/supabase';
 import { generate } from '../../lib/deepseekClient';
-import {
-  buildCVPrompt,
-  buildCoverLetterPrompt,
-} from '../../lib/prompt-builder';
+import { getKeyAndIndex } from '../../lib/key-manager';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { metadata, tone = 'neutral', language = 'en', outputType = 'both' } = req.body;
+  const { metadata, tone, outputType = 'cv', language = 'en' } = req.body;
 
-  if (!metadata) {
-    return res.status(400).json({ error: 'Missing metadata' });
+  if (!metadata || !tone || !outputType) {
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
-    const promptOptions = { metadata, tone, language };
-    const response = {};
+    const { key, index } = getKeyAndIndex(); // 💡 grab the DeepSeek key like other routes
 
-    if (outputType === 'cv' || outputType === 'both') {
-      const cvPrompt = buildCVPrompt(promptOptions);
-      response.cv = await generate(cvPrompt);
-    }
+    const prompt = `Generate a ${tone} ${outputType === 'cv' ? 'CV' : 'cover letter'} in ${language} based on:\n${JSON.stringify(metadata, null, 2)}`;
 
-    if (outputType === 'cover' || outputType === 'both') {
-      const coverPrompt = buildCoverLetterPrompt(promptOptions);
-      response.cover = await generate(coverPrompt);
-    }
+    const raw = await generate(prompt, key);
 
-    // Save feedback to DB
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('secret', metadata.secret)
-      .single();
+    let response = {};
+    if (outputType === 'cv') response.cv = raw;
+    if (outputType === 'cover') response.cover = raw;
 
-    if (user) {
-      const { data: cvMeta } = await supabase
-        .from('cv_metadata')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (cvMeta) {
-        await supabase.from('cv_feedback').insert({
-          cv_metadata_id: cvMeta.id,
-          feedback: response,
-        });
-      }
-    }
-
-    return res.status(200).json(response);
+    res.status(200).json({ ...response, _usedKey: key, _keyIndex: index });
   } catch (err) {
-    console.error('Error in write-docs:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    console.error('write-docs error:', err);
+    res.status(500).json({ error: 'Failed to generate content', details: err.message });
   }
 }
