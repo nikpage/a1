@@ -1,6 +1,5 @@
 // pages/api/write-docs.js
 import { generate } from '../../lib/deepseekClient';
-import * as KeyManager from '../../lib/key-manager';
 import {
   buildCVPrompt,
   buildCoverLetterPrompt
@@ -19,8 +18,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { key, index } = KeyManager.getKeyAndIndex();
-
     let prompt;
     if (outputType === 'cv') {
       prompt = buildCVPrompt(tone, metadata);
@@ -30,12 +27,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid outputType. Must be "cv" or "cover".' });
     }
 
-    const raw = await generate(prompt, key);
+    const result = await generate(prompt);
 
     res.status(200).json({
-      [outputType]: raw,
-      _usedKey: key,
-      _keyIndex: index
+      [outputType]: result.choices?.[0]?.message?.content || result,
+      _usedKey: result._usedKey,
+      _keyIndex: result._keyIndex
     });
   } catch (err) {
     console.error('write-docs error:', err);
