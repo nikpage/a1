@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    let result;
+    let result = { data: null, error: null };
 
     switch (type) {
       case 'cv_meta':
@@ -47,7 +47,6 @@ export default async function handler(req, res) {
             if (feedbackInsert.error) throw feedbackInsert.error;
           }
         }
-
         break;
 
       case 'job_meta':
@@ -84,9 +83,11 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `Unknown save type: ${type}` });
     }
 
-    if (result.error) {
-      console.error('Save error:', result.error);
-      return res.status(500).json({ error: result.error.message });
+    // ✅ Rock-solid error handling
+    if (!result || result.error) {
+      const msg = result?.error?.message || 'Unknown save failure';
+      console.error('Save error:', result?.error || 'No result returned');
+      return res.status(500).json({ error: msg });
     }
 
     res.status(200).json({ success: true, data: result.data });
