@@ -1,6 +1,6 @@
 // pages/api/write-docs.js
 import { generate } from '../../lib/deepseekClient';
-import { getKeyAndIndex } from '../../lib/key-manager';
+import * as KeyManager from '../../lib/key-manager';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { key, index } = getKeyAndIndex(); // 💡 grab the DeepSeek key like other routes
+    const { key, index } = KeyManager.getKeyAndIndex();
 
     const prompt = `Generate a ${tone} ${outputType === 'cv' ? 'CV' : 'cover letter'} in ${language} based on:\n${JSON.stringify(metadata, null, 2)}`;
 
