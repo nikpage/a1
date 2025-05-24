@@ -94,17 +94,7 @@ ${coverResult.cover}
             <button onClick={() => handleGenerate('both')}>Both</button>
           </div>
 
-          <div style={{ marginTop: '2rem' }}>
-            <h3>Extracted Data</h3>
-            <ul>
-              {cvData.jobTitle && <li><strong>Job Title:</strong> {cvData.jobTitle}</li>}
-              {cvData.company && <li><strong>Company:</strong> {cvData.company}</li>}
-              {cvData.hrContact && <li><strong>HR Contact:</strong> {cvData.hrContact}</li>}
-              {cvData.keywords && Array.isArray(cvData.keywords) && cvData.keywords.map((kw, index) => (
-                <li key={index}><strong>Keyword {index + 1}:</strong> {kw}</li>
-              ))}
-            </ul>
-          </div>
+
         </>
       )}
 

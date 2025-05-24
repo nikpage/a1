@@ -73,24 +73,6 @@ export default function ExtractionPanel({ onExtract }) {
       />
       <br />
 
-      <label>
-        <input
-          type="checkbox"
-          checked={toggles.includeCV}
-          onChange={() => handleToggle('includeCV')}
-        />
-        Include CV
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={toggles.includeCover}
-          onChange={() => handleToggle('includeCover')}
-        />
-        Include Cover Letter
-      </label>
-      <br />
-
       <button onClick={handleExtract} disabled={loading}>
         {loading ? 'Extracting...' : 'Extract Metadata'}
       </button>
