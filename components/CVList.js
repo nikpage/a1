@@ -1,20 +1,20 @@
 // components/CVList.js
 export default function CVList({ cvs }) {
-  if (!cvs || cvs.length === 0) return <p className="mt-4">No CVs uploaded yet.</p>;
+  if (!cvs || cvs.length === 0) return <p className="cvlist-empty">No CVs uploaded yet.</p>;
 
   return (
-    <ul className="mt-4 space-y-2">
+    <ul className="cvlist">
       {cvs.map((cv) => (
-        <li key={cv.id} className="p-2 border rounded">
+        <li key={cv.id} className="cvlist-item">
           <a
             href={cv.file_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-blue-600 hover:underline"
+            className="cvlist-link"
           >
             View CV
           </a>
-          <p className="text-sm text-gray-500">Updated: {new Date(cv.updated_at).toLocaleString()}</p>
+          <p className="cvlist-meta">Updated: {new Date(cv.updated_at).toLocaleString()}</p>
         </li>
       ))}
     </ul>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import FileUpload from '../components/FileUpload';
 import { buildCVFeedbackPrompt } from '../lib/prompt-builder';
+import ReactMarkdown from 'react-markdown';
 
 const METADATA_FIELDS = [
   { key: 'current_role', label: 'Current role' },
@@ -45,10 +46,9 @@ export default function HomePage() {
     }
   }, []);
 
-  if (!userId) return <div className="p-4">Initializing...</div>;
+  if (!userId) return <div className="container">Loading...</div>;
 
   const handleUploadResult = result => {
-    console.log('Upload result payload:', result);
     const metadata = result.metadata || result;
     setCvMetadata(metadata);
     const usage = {};
@@ -58,7 +58,7 @@ export default function HomePage() {
       }
     });
     setFieldUsage(usage);
-    setKeywords([...(metadata.skills||[]), ...(metadata.industries||[])].slice(0,8));
+    setKeywords([...(metadata.skills || []), ...(metadata.industries || [])].slice(0, 8));
   };
 
   const handleFieldChange = (key, value) => {
@@ -82,10 +82,10 @@ export default function HomePage() {
     });
     const { feedback: fb } = await res.json();
     await fetch('/api/save-metadata', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ userId, metadata: selected }),
-});
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, metadata: selected }),
+    });
 
     const text = typeof fb === 'string' ? fb : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
     setFeedback(text);
@@ -93,60 +93,118 @@ export default function HomePage() {
 
   const fieldsToShow = METADATA_FIELDS.filter(({ key }) => {
     const val = cvMetadata[key];
-    return val && (Array.isArray(val) ? val.length>0 : true);
+    return val && (Array.isArray(val) ? val.length > 0 : true);
   });
+
   const selectedCount = Object.values(fieldUsage).filter(Boolean).length;
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">CV AI MVP</h1>
+    <div className="container">
+      <h1>CV Feedback Assistant</h1>
+
       <FileUpload userId={userId} onUpload={handleUploadResult} />
 
       {fieldsToShow.length > 0 && (
-        <section className="mt-6 p-4 border rounded bg-gray-50 shadow">
-          <h2 className="text-xl mb-2 font-bold">Review Extracted Metadata</h2>
+        <section style={{ marginTop: '2rem' }}>
+          <h2>Review Extracted Metadata</h2>
+
           {keywords.length > 0 && (
-            <div className="mb-4">
-              <strong>Keywords:</strong> {' '}
-              {keywords.map((kw,i)=><span key={i} className="inline-block px-2 py-1 bg-blue-100 rounded text-xs mr-1">{kw}</span>)}
-            </div>
-          )}
-          <form onSubmit={handleSaveMetadata}>
-            {fieldsToShow.map(({ key,label })=> (
-              <div key={key} className="mb-3 flex items-start gap-2">
-                <input type="checkbox" checked={fieldUsage[key]||false} onChange={()=>handleToggleUse(key)} className="mt-1" />
-                <div className="flex-1">
-                  <label className="block font-semibold mb-1">{label}</label>
-                  {Array.isArray(cvMetadata[key]) ? (
-                    <textarea
-                      value={cvMetadata[key].join(', ')}
-                      onChange={e=>handleFieldChange(key,e.target.value.split(',').map(s=>s.trim()))}
-                      rows={2} className="w-full border rounded p-2" />
-                  ) : (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <strong>Keywords:</strong>
+              <ul style={{ listStyle: 'none', paddingLeft: 0, marginTop: '0.5rem' }}>
+                {keywords.map((kw, i) => (
+                  <li key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldUsage[`keyword_${i}`] ?? true}
+                      onChange={() =>
+                        setFieldUsage(prev => ({
+                          ...prev,
+                          [`keyword_${i}`]: !prev[`keyword_${i}`],
+                        }))
+                      }
+                    />
                     <input
                       type="text"
-                      value={cvMetadata[key]||''}
-                      onChange={e=>handleFieldChange(key,e.target.value)}
-                      className="w-full border rounded p-2" />
-                  )}
+                      value={kw}
+                      onChange={e => {
+                        const newKeywords = [...keywords];
+                        newKeywords[i] = e.target.value;
+                        setKeywords(newKeywords);
+                      }}
+                      style={{ flex: 1, padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveMetadata}>
+            {fieldsToShow.map(({ key, label }) => (
+              <div key={key} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={fieldUsage[key] || false}
+                  onChange={() => handleToggleUse(key)}
+                  style={{ marginTop: '0.5rem' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontWeight: '600', fontSize: '0.9rem' }}>{label}</label>
+                  <textarea
+                    value={cvMetadata[key] || ''}
+                    onChange={e => handleFieldChange(key, e.target.value)}
+                    rows={Math.min(6, (typeof cvMetadata[key] === 'string' ? cvMetadata[key].split('\n').length : 1))}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '4px',
+                      minHeight: '3rem',
+                      resize: 'vertical',
+                    }}
+                  />
                 </div>
               </div>
             ))}
-            {selectedCount>0 && <button type="submit" className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Review CV</button>}
+            {selectedCount > 0 && (
+              <button type="submit">Review CV</button>
+            )}
           </form>
+
           {feedback && (
-            <article className="mt-6 p-4 bg-green-50 border-l-4 border-green-400">
-              <h3 className="font-bold mb-2">CV Feedback</h3>
-              <div className="prose">{feedback.split('\n').map((line,idx)=><p key={idx}>{line}</p>)}</div>
-            </article>
+            <div style={{
+              marginTop: '2rem',
+              backgroundColor: '#fffef5',
+              padding: '1.25rem',
+              borderLeft: '4px solid #facc15',
+              borderRadius: '6px',
+              fontSize: '0.95rem',
+              lineHeight: '1.6',
+              color: '#1f2937'
+            }}>
+              <ReactMarkdown
+                components={{
+                  h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginTop: '1rem' }} {...props} />,
+                  ul: ({ node, ...props }) => <ul style={{ paddingLeft: '1.2rem', marginBottom: '1rem' }} {...props} />,
+                  li: ({ node, ...props }) => <li style={{ marginBottom: '0.4rem' }} {...props} />,
+                  p: ({ node, ...props }) => <p style={{ marginBottom: '0.75rem' }} {...props} />,
+                  strong: ({ node, ...props }) => <strong style={{ fontWeight: '600' }} {...props} />
+                }}
+              >
+                {feedback}
+              </ReactMarkdown>
+            </div>
           )}
         </section>
       )}
 
       {secretUrl && (
-        <footer className="mt-6 text-sm">
+        <footer style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#6b7280' }}>
           <p>Your dashboard URL:</p>
-          <a href={secretUrl} className="text-blue-600 break-all">{secretUrl}</a>
+          <a href={secretUrl} style={{ color: '#b45309', textDecoration: 'underline' }}>
+            {secretUrl}
+          </a>
         </footer>
       )}
     </div>
