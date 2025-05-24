@@ -24,12 +24,13 @@ export default async function handler(req, res) {
 
         if (result.error) throw result.error;
 
-        // Save feedback if included
-        if (feedback && result.data?.[0]?.id) {
+        const metaId = result.data?.[0]?.id || result.data?.id;
+        if (feedback && metaId) {
           const feedbackResult = await supabase.from('cv_feedback').insert({
-            cv_metadata_id: result.data[0].id,
+            cv_metadata_id: metaId,
             feedback,
           });
+
           if (feedbackResult.error) throw feedbackResult.error;
         }
         break;
