@@ -1,115 +1,145 @@
 // components/ExtractionPanel.js
-
 import { useState } from 'react';
 
 export default function ExtractionPanel({ onExtract }) {
   const [jobText, setJobText] = useState('');
   const [loading, setLoading] = useState(false);
   const [metadata, setMetadata] = useState(null);
-  const [toggles, setToggles] = useState({});
+  const [toggles, setToggles] = useState({
+    includeCV: true,
+    includeCover: true,
+  });
 
   const handleExtract = async () => {
-    if (!jobText.trim()) return;
+    if (!jobText.trim()) {
+      alert('Please paste the job description first.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await fetch(`/api/extract-job-meta`, {
+      const response = await fetch('/api/extract-job-meta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: jobText }),
       });
       const data = await response.json();
-      setMetadata(data);
+      if (!data || typeof data !== 'object') throw new Error('Empty or invalid response');
 
-      const initToggles = {};
-      if (data.keywords && Array.isArray(data.keywords)) {
-        data.keywords.forEach((_, idx) => {
-          initToggles[`keywords_${idx}`] = true;
-        });
-      }
+      const initialToggles = {
+        includeCV: true,
+        includeCover: true,
+      };
+
       Object.keys(data).forEach((key) => {
-        if (key !== 'keywords') initToggles[key] = true;
+        if (key === 'keywords' && Array.isArray(data.keywords)) {
+          data.keywords.forEach((_, idx) => {
+            initialToggles[`keywords_${idx}`] = true;
+          });
+        } else {
+          initialToggles[key] = true;
+        }
       });
-      setToggles(initToggles);
-      onExtract && onExtract(data, initToggles);
+
+      setMetadata(data);
+      setToggles(initialToggles);
+      onExtract(data, initialToggles);
     } catch (err) {
       console.error('Extraction error:', err);
+      alert('Failed to extract metadata');
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggle = (field) => {
-    setToggles((prev) => ({ ...prev, [field]: !prev[field] }));
+    const updated = { ...toggles, [field]: !toggles[field] };
+    setToggles(updated);
+    onExtract(metadata, updated);
+  };
+
+  const handleFieldChange = (field, value) => {
+    const updatedMeta = { ...metadata, [field]: value };
+    setMetadata(updatedMeta);
+    onExtract(updatedMeta, toggles);
   };
 
   return (
     <div>
-      <h2>Extract Job Metadata</h2>
+      <textarea
+        value={jobText}
+        onChange={(e) => setJobText(e.target.value)}
+        rows={6}
+        placeholder="Paste job description here"
+      />
+      <br />
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '1rem' }}>
-        <textarea
-          rows={6}
-          style={{ flex: 1 }}
-          value={jobText}
-          onChange={(e) => setJobText(e.target.value)}
+      <label>
+        <input
+          type="checkbox"
+          checked={toggles.includeCV}
+          onChange={() => handleToggle('includeCV')}
         />
-        <button onClick={handleExtract} disabled={loading || !jobText.trim()}>
-          {loading ? 'Extracting...' : 'Extract Metadata'}
-        </button>
-      </div>
+        Include CV
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={toggles.includeCover}
+          onChange={() => handleToggle('includeCover')}
+        />
+        Include Cover Letter
+      </label>
+      <br />
+
+      <button onClick={handleExtract} disabled={loading}>
+        {loading ? 'Extracting...' : 'Extract Metadata'}
+      </button>
 
       {metadata && (
         <div>
-          <h3>Extracted Fields</h3>
+          <h3>Extracted Metadata</h3>
           <ul>
             {Object.entries(metadata).map(([key, value]) => {
               if (key === 'keywords' && Array.isArray(value)) {
-                return (
-                  <li key={key}>
-                    <strong>{key}:</strong>
-                    <ul>
-                      {value.map((kw, idx) => (
-                        <li key={idx}>
-                          <input
-                            type="checkbox"
-                            checked={toggles[`keywords_${idx}`]}
-                            onChange={() => handleToggle(`keywords_${idx}`)}
-                          />
-                          <input
-                            type="text"
-                            value={kw}
-                            onChange={(e) => {
-                              const newKeywords = [...value];
-                              newKeywords[idx] = e.target.value;
-                              const newMetadata = { ...metadata, keywords: newKeywords };
-                              setMetadata(newMetadata);
-                              onExtract && onExtract(newMetadata, toggles);
-                            }}
-                          />
-                        </li>
-                      ))}
-                    </ul>
+                return value.map((kw, idx) => (
+                  <li key={idx}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={toggles[`keywords_${idx}`]}
+                        onChange={() => handleToggle(`keywords_${idx}`)}
+                      />
+                      <input
+                        type="text"
+                        value={kw}
+                        onChange={(e) => {
+                          const newKeywords = [...value];
+                          newKeywords[idx] = e.target.value;
+                          const updated = { ...metadata, keywords: newKeywords };
+                          setMetadata(updated);
+                          onExtract(updated, toggles);
+                        }}
+                      />
+                    </label>
                   </li>
-                );
+                ));
               }
 
               return (
                 <li key={key}>
-                  <input
-                    type="checkbox"
-                    checked={toggles[key]}
-                    onChange={() => handleToggle(key)}
-                  />
-                  <strong>{key}:</strong>{' '}
-                  <input
-                    type="text"
-                    value={value}
-                    onChange={(e) => {
-                      const newMetadata = { ...metadata, [key]: e.target.value };
-                      setMetadata(newMetadata);
-                      onExtract && onExtract(newMetadata, toggles);
-                    }}
-                  />
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={toggles[key]}
+                      onChange={() => handleToggle(key)}
+                    />
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(e) => handleFieldChange(key, e.target.value)}
+                    />
+                  </label>
                 </li>
               );
             })}
