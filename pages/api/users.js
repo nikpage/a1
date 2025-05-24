@@ -10,15 +10,15 @@ export default async function handler(req, res) {
       const { data, error } = await supabase
         .from('users')
         .insert({ secret })
-        .select('id, secret')    // ← fetch both id and secret
+        .select('id, secret')
         .single();
 
       if (error) {
         console.error('Supabase error:', error);
         return res.status(500).json({ error: error.message, details: error });
       }
+
       console.log('Supabase response:', data);
-      // ← return both userId and secret
       return res.status(200).json({ userId: data.id, secret: data.secret });
     } catch (err) {
       console.error('Unexpected error:', err.message, err.stack);
@@ -31,18 +31,20 @@ export default async function handler(req, res) {
     if (!secret) {
       return res.status(400).json({ error: 'Secret parameter is required' });
     }
+
     try {
       console.log('Fetching user with secret:', secret);
-      const { data, error } = await supabase
+      const result = await supabase
         .from('users')
         .select('id, email, token_balance, secret')
-        .eq('secret', secret)
-        .single();
+        .eq('secret', secret);
 
-      if (error) {
-        console.error('Supabase error:', error);
-        return res.status(404).json({ error: 'User not found', details: error });
+      if (result.error || !result.data || result.data.length !== 1) {
+        console.error('Supabase error:', result.error || 'User not found');
+        return res.status(404).json({ error: 'User not found', details: result.error });
       }
+
+      const data = result.data[0];
       return res.status(200).json(data);
     } catch (err) {
       console.error('Unexpected error:', err.message, err.stack);
