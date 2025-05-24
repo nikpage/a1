@@ -1,4 +1,3 @@
-// components/ExtractionPanel.js
 import { useState } from 'react';
 
 export default function ExtractionPanel({ onExtract }) {
@@ -65,7 +64,7 @@ export default function ExtractionPanel({ onExtract }) {
   };
 
   return (
-    <div>
+    <div style={{ paddingLeft: '1rem' }}>
       <textarea
         value={jobText}
         onChange={(e) => setJobText(e.target.value)}
@@ -99,12 +98,13 @@ export default function ExtractionPanel({ onExtract }) {
       {metadata && (
         <div>
           <h3>Extracted Metadata</h3>
-          <ul>
+          <div>
             {Object.entries(metadata).map(([key, value]) => {
               if (key === 'keywords' && Array.isArray(value)) {
                 return value.map((kw, idx) => (
-                  <li key={idx}>
+                  <div key={`keyword-${idx}`}>
                     <label>
+                      <strong>Keyword:</strong>
                       <input
                         type="checkbox"
                         checked={toggles[`keywords_${idx}`]}
@@ -112,7 +112,7 @@ export default function ExtractionPanel({ onExtract }) {
                       />
                       <input
                         type="text"
-                        value={kw}
+                        value={kw ?? ''}
                         onChange={(e) => {
                           const newKeywords = [...value];
                           newKeywords[idx] = e.target.value;
@@ -122,13 +122,22 @@ export default function ExtractionPanel({ onExtract }) {
                         }}
                       />
                     </label>
-                  </li>
+                  </div>
                 ));
               }
 
+              const labelMap = {
+                jobTitle: 'Job Title:',
+                company: 'Company:',
+                hrContact: 'HR Contact:',
+              };
+
+              const label = labelMap[key] || key;
+
               return (
-                <li key={key}>
+                <div key={key}>
                   <label>
+                    <strong>{label}</strong>
                     <input
                       type="checkbox"
                       checked={toggles[key]}
@@ -136,14 +145,14 @@ export default function ExtractionPanel({ onExtract }) {
                     />
                     <input
                       type="text"
-                      value={value}
+                      value={value ?? ''}
                       onChange={(e) => handleFieldChange(key, e.target.value)}
                     />
                   </label>
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
         </div>
       )}
     </div>

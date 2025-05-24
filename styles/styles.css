@@ -83,3 +83,6 @@ button:disabled {
   font-style: italic;
   color: #4b5563;
 }
+.hidden-meta {
+  display: none;
+}
