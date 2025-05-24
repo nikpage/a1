@@ -18,14 +18,24 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('📩 INPUT:', { metadata, tone, outputType, language });
+
+    const jobDetails = {
+      title: metadata?.title || metadata?.current_role || '',
+      company: metadata?.company || metadata?.primary_company || '',
+      keywords: Array.isArray(metadata?.skills) ? metadata.skills.slice(0, 8) : []
+    };
+
     let prompt;
     if (outputType === 'cv') {
-      prompt = buildCVPrompt(tone, metadata);
+      prompt = buildCVPrompt(tone, jobDetails);
     } else if (outputType === 'cover') {
-      prompt = buildCoverLetterPrompt(tone, metadata);
+      prompt = buildCoverLetterPrompt(tone, jobDetails);
     } else {
       return res.status(400).json({ error: 'Invalid outputType. Must be "cv" or "cover".' });
     }
+
+    console.log('🧠 Prompt to DeepSeek:', prompt);
 
     const result = await generate(prompt);
 
