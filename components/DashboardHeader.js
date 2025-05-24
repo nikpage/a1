@@ -1,4 +1,3 @@
-// components/DashboardHeader.js
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -61,12 +60,15 @@ export default function DashboardHeader({ secret }) {
   }, [secret]);
 
   return (
-    <div>
-      <h2>Welcome, {emailPrefix}</h2>
-      <p>
-        Token Balance: {tokenBalance !== null ? tokenBalance : '...'} &nbsp;|&nbsp;
-        Verification: users {check.users}, metadata {check.cv_metadata}, feedback {check.cv_feedback}
-      </p>
+    <div style={{ display: 'flex', alignItems: 'center', padding: '1rem' }}>
+      <img src="/logo.png" alt="Logo" style={{ height: '40px', marginRight: '1rem' }} />
+      <div>
+        <h2>Welcome, {emailPrefix}</h2>
+        <p>
+          Token Balance: {tokenBalance !== null ? tokenBalance : '...'} &nbsp;|&nbsp;
+          Verification: users {check.users}, metadata {check.cv_metadata}, feedback {check.cv_feedback}
+        </p>
+      </div>
     </div>
   );
 }
