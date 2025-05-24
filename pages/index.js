@@ -74,21 +74,25 @@ export default function HomePage() {
     const selected = Object.entries(fieldUsage)
       .filter(([_, use]) => use)
       .reduce((acc, [key]) => ({ ...acc, [key]: cvMetadata[key] }), {});
+
     const prompt = buildCVFeedbackPrompt({ metadata: selected, parsedCV: cvMetadata });
-    const res = await fetch('/api/feedback', {
+    const resFeedback = await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ metadata: selected, cvBody: cvMetadata, prompt }),
     });
-    const { feedback: fb } = await res.json();
+    const { feedback: fb } = await resFeedback.json();
+    setFeedback(typeof fb === 'string' ? fb : fb.choices?.[0]?.message?.content || JSON.stringify(fb));
+
     await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, metadata: selected }),
+      body: JSON.stringify({
+        type: 'cv_meta',
+        userId: userId,
+        data: selected
+      }),
     });
-
-    const text = typeof fb === 'string' ? fb : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
-    setFeedback(text);
   };
 
   const fieldsToShow = METADATA_FIELDS.filter(({ key }) => {
@@ -167,29 +171,29 @@ export default function HomePage() {
                 </div>
               </div>
             ))}
-            {selectedCount > 0 && (
-              <button type="submit">Review CV</button>
-            )}
+            {selectedCount > 0 && <button type="submit">Review CV</button>}
           </form>
 
           {feedback && (
-            <div style={{
-              marginTop: '2rem',
-              backgroundColor: '#fffef5',
-              padding: '1.25rem',
-              borderLeft: '4px solid #facc15',
-              borderRadius: '6px',
-              fontSize: '0.95rem',
-              lineHeight: '1.6',
-              color: '#1f2937'
-            }}>
+            <div
+              style={{
+                marginTop: '2rem',
+                backgroundColor: '#fffef5',
+                padding: '1.25rem',
+                borderLeft: '4px solid #facc15',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                lineHeight: '1.6',
+                color: '#1f2937',
+              }}
+            >
               <ReactMarkdown
                 components={{
                   h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginTop: '1rem' }} {...props} />,
                   ul: ({ node, ...props }) => <ul style={{ paddingLeft: '1.2rem', marginBottom: '1rem' }} {...props} />,
                   li: ({ node, ...props }) => <li style={{ marginBottom: '0.4rem' }} {...props} />,
                   p: ({ node, ...props }) => <p style={{ marginBottom: '0.75rem' }} {...props} />,
-                  strong: ({ node, ...props }) => <strong style={{ fontWeight: '600' }} {...props} />
+                  strong: ({ node, ...props }) => <strong style={{ fontWeight: '600' }} {...props} />,
                 }}
               >
                 {feedback}
