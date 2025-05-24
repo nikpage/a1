@@ -81,7 +81,7 @@ export default function HomePage() {
       body: JSON.stringify({ metadata: selected, cvBody: cvMetadata, prompt }),
     });
     const { feedback: fb } = await res.json();
-    await fetch('/api/save-metadata', {
+    await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, metadata: selected }),
