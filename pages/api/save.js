@@ -2,6 +2,8 @@
 import { supabase } from '../../lib/supabase';
 
 export default async function handler(req, res) {
+  console.log('[/api/save] Request body:', req.body);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Only POST allowed' });
   }
@@ -57,13 +59,13 @@ export default async function handler(req, res) {
     }
 
     if (result.error) {
-      console.error('Save error:', result.error);
+      console.error('[/api/save] Supabase error:', result.error);
       return res.status(500).json({ error: result.error.message });
     }
 
     res.status(200).json({ success: true, data: result.data });
   } catch (e) {
-    console.error('Unexpected error:', e);
+    console.error('[/api/save] Unexpected error:', e);
     res.status(500).json({ error: e.message });
   }
 }
