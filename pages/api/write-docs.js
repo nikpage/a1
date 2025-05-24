@@ -1,6 +1,10 @@
 // pages/api/write-docs.js
 import { generate } from '../../lib/deepseekClient';
 import * as KeyManager from '../../lib/key-manager';
+import {
+  buildCVPrompt,
+  buildCoverLetterPrompt
+} from '../../lib/prompt-builder';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { metadata, tone, outputType = 'cv', language = 'en' } = req.body;
+  const { metadata, tone = 'neutral', outputType = 'cv', language = 'en' } = req.body;
 
   if (!metadata || !tone || !outputType) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -17,17 +21,27 @@ export default async function handler(req, res) {
   try {
     const { key, index } = KeyManager.getKeyAndIndex();
 
-    const prompt = `Generate a ${tone} ${outputType === 'cv' ? 'CV' : 'cover letter'} in ${language} based on:\n${JSON.stringify(metadata, null, 2)}`;
+    let prompt;
+    if (outputType === 'cv') {
+      prompt = buildCVPrompt(tone, metadata);
+    } else if (outputType === 'cover') {
+      prompt = buildCoverLetterPrompt(tone, metadata);
+    } else {
+      return res.status(400).json({ error: 'Invalid outputType. Must be "cv" or "cover".' });
+    }
 
     const raw = await generate(prompt, key);
 
-    let response = {};
-    if (outputType === 'cv') response.cv = raw;
-    if (outputType === 'cover') response.cover = raw;
-
-    res.status(200).json({ ...response, _usedKey: key, _keyIndex: index });
+    res.status(200).json({
+      [outputType]: raw,
+      _usedKey: key,
+      _keyIndex: index
+    });
   } catch (err) {
     console.error('write-docs error:', err);
-    res.status(500).json({ error: 'Failed to generate content', details: err.message });
+    res.status(500).json({
+      error: 'Failed to generate content',
+      details: err.message
+    });
   }
 }
