@@ -17,22 +17,37 @@ export default async function handler(req, res) {
 
     switch (type) {
       case 'cv_meta':
-        result = await supabase.from('cv_metadata').upsert(
+        const metaUpsert = await supabase.from('cv_metadata').upsert(
           { user_id: userId, data },
-          { onConflict: ['user_id'], returning: 'representation' }
+          { onConflict: ['user_id'], returning: 'minimal' }
         );
 
-        if (result.error) throw result.error;
+        if (metaUpsert.error) throw metaUpsert.error;
 
-        const metaId = result.data?.[0]?.id || result.data?.id;
-        if (feedback && metaId) {
-          const feedbackResult = await supabase.from('cv_feedback').insert({
-            cv_metadata_id: metaId,
-            feedback,
-          });
+        if (feedback) {
+          const { data: existingMeta, error: metaErr } = await supabase
+            .from('cv_metadata')
+            .select('id')
+            .eq('user_id', userId)
+            .single();
 
-          if (feedbackResult.error) throw feedbackResult.error;
+          if (metaErr) throw metaErr;
+
+          const feedbackCheck = await supabase
+            .from('cv_feedback')
+            .select('id')
+            .eq('cv_metadata_id', existingMeta.id);
+
+          if (!feedbackCheck.data || feedbackCheck.data.length === 0) {
+            const feedbackInsert = await supabase.from('cv_feedback').insert({
+              cv_metadata_id: existingMeta.id,
+              feedback,
+            });
+
+            if (feedbackInsert.error) throw feedbackInsert.error;
+          }
         }
+
         break;
 
       case 'job_meta':
