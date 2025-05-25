@@ -1,3 +1,4 @@
+// pages/u/[secret].js
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { marked } from 'marked';
@@ -35,13 +36,14 @@ export default function SecretPage() {
         metadata: cvData,
         tone,
         language: 'en',
+        secret,
       };
 
       if (type === 'cv' || type === 'cover') {
         const res = await fetch('/api/write-docs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...commonPayload, outputType: type }),
+          body: JSON.stringify({ ...commonPayload, cv: cvData, outputType: type }),
         });
 
         const result = await res.json();
@@ -51,17 +53,18 @@ export default function SecretPage() {
         setFeedback(`${type.toUpperCase()}:\n\n${content}`);
       } else if (type === 'both') {
         const [cvRes, coverRes] = await Promise.all([
-          fetch('/api/write-docs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...commonPayload, outputType: 'cv' }),
-          }),
-          fetch('/api/write-docs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...commonPayload, outputType: 'cover' }),
-          }),
-        ]);
+  fetch('/api/write-docs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...commonPayload, cv: cvData, outputType: 'cv' }),
+  }),
+  fetch('/api/write-docs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...commonPayload, cv: cvData, outputType: 'cover' }),
+  }),
+]);
+
 
         const cvResult = await cvRes.json();
         const coverResult = await coverRes.json();
