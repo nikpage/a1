@@ -1,8 +1,11 @@
 // pages/api/write-docs.js
 import { generate } from '../../lib/deepseekClient';
+import {
+  buildCVPrompt,
+  buildCoverLetterPrompt
+} from '../../lib/prompt-builder';
 
 export default async function handler(req, res) {
-   console.log('BODY:', req.body);
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
@@ -15,21 +18,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('📩 INPUT:', { metadata, tone, outputType, language });
-
-    const prompt = `
-You are a CV assistant.
-
-Based on the following metadata and parsed CV, generate a ${tone} ${outputType} in ${language}.
-
-Metadata:
-${JSON.stringify(metadata, null, 2)}
-
-Parsed CV:
-${cv}
-`.trim();
-
-    console.log('🧠 Prompt to DeepSeek:', prompt);
+    const prompt =
+      outputType === 'cv'
+        ? buildCVPrompt(tone, metadata)
+        : buildCoverLetterPrompt(tone, metadata);
 
     const result = await generate(prompt);
 
