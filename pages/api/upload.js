@@ -1,33 +1,34 @@
-const handleUpload = async () => {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const base64 = reader.result.split(',')[1];
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId,
-        file: { content: base64, name: file.name, type: file.type },
-      }),
-    });
-    const { metadata } = await res.json();
-    console.log('🧠 Metadata received:', metadata);
+// pages/api/upload.js
+import { supabase } from '../../lib/supabase';
+import { decode } from 'base64-arraybuffer';
+import { buildCVMetadataExtractionPrompt } from '../../lib/prompt-builder';
+import { generate } from '../../lib/deepseekClient';
 
-    // Save to document_inputs
-    await fetch('/api/save-document-input', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId,
-        type: 'cv',
-        source: 'upload',
-        fileName: file.name,
-        content: metadata,
-      }),
-    });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).end();
+  }
 
-    if (onUpload) onUpload({ metadata });
-  };
-  reader.readAsDataURL(file); // ✅ This was the missing line
-};
+  try {
+    const { userId, file } = req.body;
+    if (!userId || !file?.content || !file?.name) {
+      return res.status(400).json({ error: 'Missing file or user info' });
+    }
+
+    const buffer = decode(file.content);
+    const text = Buffer.from(buffer).toString('utf-8');
+
+    const prompt = buildCVMetadataExtractionPrompt(text);
+    const result = await generate(prompt);
+
+    const metadata = result.choices?.[0]?.message?.content
+      ? JSON.parse(result.choices[0].message.content)
+      : result;
+
+    res.status(200).json({ metadata });
+  } catch (err) {
+    console.error('upload error:', err);
+    res.status(500).json({ error: 'Upload failed', details: err.message });
+  }
+}
