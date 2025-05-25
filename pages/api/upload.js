@@ -29,4 +29,5 @@ const handleUpload = async () => {
 
     if (onUpload) onUpload({ metadata });
   };
-  re
+  reader.readAsDataURL(file); // ✅ This was the missing line
+};
