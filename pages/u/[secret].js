@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { marked } from 'marked';
 import ExtractionPanel from '../../components/ExtractionPanel';
@@ -8,10 +8,18 @@ export default function SecretPage() {
   const router = useRouter();
   const { secret } = router.query;
 
+  const [userId, setUserId] = useState(null);
   const [feedback, setFeedback] = useState('');
   const [cvData, setCvData] = useState(null);
   const [toggles, setToggles] = useState({});
   const [tone, setTone] = useState('neutral');
+
+  useEffect(() => {
+    if (!secret) return;
+    fetch(`/api/users?secret=${secret}`)
+      .then(res => res.json())
+      .then(data => setUserId(data.id));
+  }, [secret]);
 
   const handleExtract = (data, newToggles) => {
     setCvData(data);
@@ -20,9 +28,10 @@ export default function SecretPage() {
 
   const handleGenerate = async (type) => {
     try {
-      if (!cvData) return;
+      if (!cvData || !userId) return;
 
       const commonPayload = {
+        userId,
         metadata: cvData,
         tone,
         language: 'en',
@@ -95,8 +104,6 @@ ${coverResult.cover}
             <button onClick={() => handleGenerate('cover')}>Cover Letter</button>
             <button onClick={() => handleGenerate('both')}>Both</button>
           </div>
-
-
         </>
       )}
 
