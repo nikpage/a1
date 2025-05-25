@@ -1,8 +1,9 @@
 // pages/api/upload.js
+
 import { supabase } from '../../lib/supabase';
-import { decode } from 'base64-arraybuffer';
 import { buildCVMetadataExtractionPrompt } from '../../lib/prompt-builder';
 import { generate } from '../../lib/deepseekClient';
+import pdfParse from 'pdf-parse';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -16,8 +17,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing file or user info' });
     }
 
-    const buffer = decode(file.content);
-    const text = Buffer.from(buffer).toString('utf-8');
+    const base64 = file.content;
+    const buffer = Buffer.from(base64, 'base64');
+
+    // PDF text extraction
+    const pdfData = await pdfParse(buffer);
+    const text = pdfData.text;
 
     const prompt = buildCVMetadataExtractionPrompt(text);
     const result = await generate(prompt);
