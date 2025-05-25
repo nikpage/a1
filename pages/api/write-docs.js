@@ -1,64 +1,35 @@
 // pages/api/write-docs.js
 import { generate } from '../../lib/deepseekClient';
-import { buildCVPrompt, buildCoverLetterPrompt } from '../../lib/prompt-builder';
-import { supabase } from '../../lib/supabase';
 
 export default async function handler(req, res) {
+   console.log('BODY:', req.body);
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { userId, metadata, tone = 'neutral', outputType = 'cv', language = 'en' } = req.body;
+  const { metadata, cv, tone = 'neutral', outputType = 'cv', language = 'en' } = req.body;
 
-  if (!userId || !metadata || !tone || !outputType) {
+  if (!metadata || !cv || !tone || !outputType) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
-    // Fetch the most recent parsed CV
-    const { data, error } = await supabase
-      .from('document_inputs')
-      .select('content')
-      .eq('user_id', userId)
-      .eq('type', 'cv')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    console.log('📩 INPUT:', { metadata, tone, outputType, language });
 
-    if (error || !data) {
-      return res.status(404).json({ error: 'No parsed CV found for user' });
-    }
+    const prompt = `
+You are a CV assistant.
 
-    const parsedCV = data.content;
-    const jobDetails = {
-      title: metadata?.title || metadata?.current_role || '',
-      company: metadata?.company || metadata?.primary_company || '',
-      hiringManager: metadata?.hiringManager || '',
-      keywords: Array.isArray(metadata?.skills) ? metadata.skills.slice(0, 8) : [],
-    };
+Based on the following metadata and parsed CV, generate a ${tone} ${outputType} in ${language}.
 
-    const userProfile =
-      parsedCV?.summary || parsedCV?.body || JSON.stringify(parsedCV || {}, null, 2);
+Metadata:
+${JSON.stringify(metadata, null, 2)}
 
-    let prompt = '';
+Parsed CV:
+${cv}
+`.trim();
 
-    if (outputType === 'cv') {
-      prompt = buildCVPrompt(tone, jobDetails);
-    } else if (outputType === 'cover') {
-      prompt = buildCoverLetterPrompt(tone, jobDetails);
-    } else {
-      throw new Error('Invalid outputType');
-    }
-
-    prompt += `
-
-------------------------
-📄 CANDIDATE BACKGROUND:
-${userProfile}
-------------------------
-
-Use only the actual background. Do NOT invent details.`;
+    console.log('🧠 Prompt to DeepSeek:', prompt);
 
     const result = await generate(prompt);
 

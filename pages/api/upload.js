@@ -1,37 +1,83 @@
 // pages/api/upload.js
-export const config = {
-  runtime: 'nodejs',
-};
-
-import pdfParse from 'pdf-parse';
-import { generate } from '../../lib/deepseekClient';
-import { buildCVMetadataExtractionPrompt } from '../../lib/prompt-builder';
+import pdf from 'pdf-parse';
+import mammoth from 'mammoth';
+import { extractMetadata } from '../../lib/deepseekClient';
+import { supabase } from '../../lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).end();
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const { userId, file } = req.body;
+    const { file, userId } = req.body;
+
     if (!userId || !file?.content || !file?.name) {
-      return res.status(400).json({ error: 'Missing file or user info' });
+      return res.status(400).json({ error: 'Missing file or userId' });
     }
 
-    const buffer = Buffer.from(file.content, 'base64');
-    const pdf = await pdfParse(buffer);
-    const text = pdf.text;
+    const buf = Buffer.from(file.content, 'base64');
 
-    const prompt = buildCVMetadataExtractionPrompt(text);
-    const result = await generate(prompt);
+    // extract raw text
+    let rawText = '';
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      rawText = (await pdf(buf)).text;
+    } else if (/\.(docx|doc)$/i.test(file.name)) {
+      rawText = (await mammoth.extractRawText({ buffer: buf })).value;
+    } else {
+      return res.status(400).json({ error: 'Unsupported file type' });
+    }
 
-    const content = result.choices?.[0]?.message?.content || '{}';
-    const metadata = JSON.parse(content);
+    // call AI to get JSON metadata string
+    const dsResponse = await extractMetadata(rawText);
+    console.log('🧠 DeepSeek message content:', dsResponse.choices?.[0]?.message?.content);
 
-    res.status(200).json({ metadata });
+    let content = dsResponse?.choices?.[0]?.message?.content || '';
+
+    // strip code fences if present
+    content = content
+      .replace(/^\s*```json\s*/i, '')
+      .replace(/```$/g, '')
+      .trim();
+
+    // attempt parse with fallback
+    let metadata = {};
+    try {
+      metadata = JSON.parse(content);
+    } catch (parseErr) {
+      console.error('Upload handler JSON parse error:', parseErr.message);
+      console.error('Raw AI output was:', content);
+      return res.status(200).json({ metadata: {}, parseError: true });
+    }
+
+    // Save to document_inputs
+    const { error: insertErr } = await supabase
+      .from('document_inputs')
+      .upsert([
+        {
+          user_id: userId,
+          type: 'cv',
+          source: 'upload',
+          content: {
+            text: rawText,
+            cv: metadata,
+          },
+        },
+      ]);
+
+
+    if (insertErr) {
+      console.error('Supabase insert error:', insertErr.message);
+      return res.status(500).json({
+        error: 'Failed to save parsed CV',
+        details: insertErr.message,
+      });
+    }
+
+    return res.status(200).json({ metadata });
   } catch (err) {
-    console.error('UPLOAD ERROR:', err);
-    res.status(500).json({ error: 'Upload failed', details: err.message });
+    console.error('Upload handler unexpected error:', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 }

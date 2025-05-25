@@ -8,6 +8,7 @@ export default function DashboardHeader({ secret }) {
     users: '⏳',
     cv_metadata: '⏳',
     cv_feedback: '⏳',
+    document_inputs: '⏳',
   });
 
   useEffect(() => {
@@ -21,7 +22,12 @@ export default function DashboardHeader({ secret }) {
         .single();
 
       if (error || !user) {
-        setCheck({ users: '❌', cv_metadata: '❌', cv_feedback: '❌' });
+        setCheck({
+          users: '❌',
+          cv_metadata: '❌',
+          cv_feedback: '❌',
+          document_inputs: '❌',
+        });
         return;
       }
 
@@ -38,7 +44,12 @@ export default function DashboardHeader({ secret }) {
         .single();
 
       if (metaErr || !metadata) {
-        setCheck((prev) => ({ ...prev, cv_metadata: '❌', cv_feedback: '❌' }));
+        setCheck((prev) => ({
+          ...prev,
+          cv_metadata: '❌',
+          cv_feedback: '❌',
+          document_inputs: '❌',
+        }));
         return;
       }
 
@@ -54,6 +65,24 @@ export default function DashboardHeader({ secret }) {
         ...prev,
         cv_feedback: fbErr || !feedback ? '❌' : '✔️',
       }));
+
+      // ✅ LOGGING for document_inputs
+      console.log('Checking document_inputs...');
+      console.log('Secret:', secret);
+      console.log('User ID:', user.id);
+      console.log('Type: cv');
+
+      const { data: doc, error: docErr } = await supabase
+        .from('document_inputs')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('type', 'cv')
+        .maybeSingle();
+
+      setCheck((prev) => ({
+        ...prev,
+        document_inputs: docErr || !doc ? '❌' : '✔️',
+      }));
     };
 
     fetchUserAndCheck();
@@ -66,7 +95,7 @@ export default function DashboardHeader({ secret }) {
         <h2>Welcome, {emailPrefix}</h2>
         <p>
           Token Balance: {tokenBalance !== null ? tokenBalance : '...'} &nbsp;|&nbsp;
-          Verification: users {check.users}, metadata {check.cv_metadata}, feedback {check.cv_feedback}
+          Verification: users {check.users}, metadata {check.cv_metadata}, feedback {check.cv_feedback}, input {check.document_inputs}
         </p>
       </div>
     </div>
