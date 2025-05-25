@@ -1,4 +1,7 @@
 // pages/api/upload.js
+export const config = {
+  runtime: 'nodejs',
+};
 
 import { supabase } from '../../lib/supabase';
 import { buildCVMetadataExtractionPrompt } from '../../lib/prompt-builder';
