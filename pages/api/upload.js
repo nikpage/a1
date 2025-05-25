@@ -3,10 +3,9 @@ export const config = {
   runtime: 'nodejs',
 };
 
-import { supabase } from '../../lib/supabase';
-import { buildCVMetadataExtractionPrompt } from '../../lib/prompt-builder';
-import { generate } from '../../lib/deepseekClient';
 import pdfParse from 'pdf-parse';
+import { generate } from '../../lib/deepseekClient';
+import { buildCVMetadataExtractionPrompt } from '../../lib/prompt-builder';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,23 +19,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing file or user info' });
     }
 
-    const base64 = file.content;
-    const buffer = Buffer.from(base64, 'base64');
-
-    // PDF text extraction
-    const pdfData = await pdfParse(buffer);
-    const text = pdfData.text;
+    const buffer = Buffer.from(file.content, 'base64');
+    const pdf = await pdfParse(buffer);
+    const text = pdf.text;
 
     const prompt = buildCVMetadataExtractionPrompt(text);
     const result = await generate(prompt);
 
-    const metadata = result.choices?.[0]?.message?.content
-      ? JSON.parse(result.choices[0].message.content)
-      : result;
+    const content = result.choices?.[0]?.message?.content || '{}';
+    const metadata = JSON.parse(content);
 
     res.status(200).json({ metadata });
   } catch (err) {
-    console.error('upload error:', err);
+    console.error('UPLOAD ERROR:', err);
     res.status(500).json({ error: 'Upload failed', details: err.message });
   }
 }
