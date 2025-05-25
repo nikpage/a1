@@ -7,35 +7,32 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Only POST allowed' });
   }
 
+  console.log('🛠️ [save.js] Request body:', req.body);
   const { userId, data, feedback } = req.body || {};
-  if (!userId || !data || !feedback) {
-    return res.status(400).json({ error: 'Missing userId, data or feedback' });
-  }
+  if (!userId || !data) return res.status(400).json({ error: 'Missing userId or data' });
 
   try {
-    // Plain insert into cv_metadata
+    // Upsert to avoid duplicate user_id errors
     const { data: metaRow, error: metaErr } = await supabase
       .from('cv_metadata')
-      .insert([{ user_id: userId, data }])
+      .upsert(
+        { user_id: userId, data },
+        { onConflict: ['user_id'] }
+      )
       .select()
       .single();
+    if (metaErr) throw metaErr;
 
-    if (metaErr) {
-      return res.status(500).json({ error: metaErr.message });
-    }
-
-    // Insert feedback
-    const { error: fbErr } = await supabase
-      .from('cv_feedback')
-      .insert([{ cv_metadata_id: metaRow.id, feedback }]);
-
-    if (fbErr) {
-      return res.status(500).json({ error: fbErr.message });
+    if (feedback) {
+      const { error: fbErr } = await supabase
+        .from('cv_feedback')
+        .insert([{ cv_metadata_id: metaRow.id, feedback }]);
+      if (fbErr) throw fbErr;
     }
 
     return res.status(200).json({ ok: true, cv_metadata_id: metaRow.id });
   } catch (err) {
-    console.error('SAVE ERROR:', err);
+    console.error('🚨 SAVE ERROR:', err);
     return res.status(500).json({ error: err.message });
   }
 }

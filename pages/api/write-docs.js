@@ -1,40 +1,43 @@
 // pages/api/write-docs.js
+import { buildCVPrompt, buildCoverLetterPrompt } from '../../lib/prompt-builder';
 import { generate } from '../../lib/deepseekClient';
-import {
-  buildCVPrompt,
-  buildCoverLetterPrompt
-} from '../../lib/prompt-builder';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
-  }
-
-  const { metadata, cv, tone = 'neutral', outputType = 'cv', language = 'en' } = req.body;
-
-  if (!metadata || !cv || !tone || !outputType) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    return res.status(405).json({ error: 'Only POST allowed' });
   }
 
   try {
-    const prompt =
-      outputType === 'cv'
-        ? buildCVPrompt(tone, metadata)
-        : buildCoverLetterPrompt(tone, metadata);
+    const { userId, metadata, coverLetterData, outputType = 'both' } = req.body;
 
-    const result = await generate(prompt);
+    const jobDetails = {
+      title: metadata?.jobDetails?.title || '',
+      company: metadata?.jobDetails?.company || '',
+      keywords: Array.isArray(metadata?.jobDetails?.keywords) ? metadata.jobDetails.keywords : [],
+    };
 
-    res.status(200).json({
-      [outputType]: result.choices?.[0]?.message?.content || result,
-      _usedKey: result._usedKey,
-      _keyIndex: result._keyIndex,
+    const coverData = {
+      title: coverLetterData?.title || '',
+      company: coverLetterData?.company || '',
+      hiringManager: coverLetterData?.hiringManager || '',
+      keywords: Array.isArray(coverLetterData?.keywords) ? coverLetterData.keywords : [],
+    };
+
+    const cvPrompt = buildCVPrompt(metadata.tone, jobDetails);
+    const clPrompt = buildCoverLetterPrompt(metadata.tone, coverData);
+
+    const [cvResult, clResult] = await Promise.all([
+      generate(cvPrompt),
+      generate(clPrompt),
+    ]);
+
+    return res.status(200).json({
+      cv: cvResult,
+      coverLetter: clResult,
     });
   } catch (err) {
-    console.error('write-docs error:', err);
-    res.status(500).json({
-      error: 'Failed to generate content',
-      details: err.message,
-    });
+    console.error('🚨 WRITE-DOCS ERROR:', err);
+    return res.status(500).json({ error: err.message });
   }
 }

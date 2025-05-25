@@ -1,3 +1,4 @@
+// components/DashboardHeader.js
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -59,30 +60,26 @@ export default function DashboardHeader({ secret }) {
         .from('cv_feedback')
         .select('id')
         .eq('cv_metadata_id', metadata.id)
-        .maybeSingle();
+        .limit(1);
 
-      setCheck((prev) => ({
-        ...prev,
-        cv_feedback: fbErr || !feedback ? '❌' : '✔️',
-      }));
-
-      // ✅ LOGGING for document_inputs
-      console.log('Checking document_inputs...');
-      console.log('Secret:', secret);
-      console.log('User ID:', user.id);
-      console.log('Type: cv');
+      console.log('feedback error:', fbErr);
 
       const { data: doc, error: docErr } = await supabase
         .from('document_inputs')
         .select('id')
         .eq('user_id', user.id)
         .eq('type', 'cv')
-        .maybeSingle();
+        .limit(1);
+
+      console.log('document_inputs error:', docErr);
+
 
       setCheck((prev) => ({
-        ...prev,
-        document_inputs: docErr || !doc ? '❌' : '✔️',
-      }));
+  ...prev,
+  document_inputs: docErr ? '❌' : doc?.length ? '✔️' : '❌',
+}));
+
+
     };
 
     fetchUserAndCheck();

@@ -1,7 +1,9 @@
 // pages/u/[secret].js
-import { useState, useEffect } from 'react';
+
+'use client';
+
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { marked } from 'marked';
 import ExtractionPanel from '../../components/ExtractionPanel';
 import DashboardHeader from '../../components/DashboardHeader';
 
@@ -10,21 +12,23 @@ export default function SecretPage() {
   const { secret } = router.query;
 
   const [userId, setUserId] = useState(null);
-  const [feedback, setFeedback] = useState('');
   const [cvData, setCvData] = useState(null);
-  const [toggles, setToggles] = useState({});
   const [tone, setTone] = useState('neutral');
+  const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
     if (!secret) return;
-    fetch(`/api/users?secret=${secret}`)
-      .then(res => res.json())
-      .then(data => setUserId(data.id));
+
+    const fetchUser = async () => {
+      const res = await fetch(`/api/users?secret=${secret}`);
+      const user = await res.json();
+      if (user?.id) setUserId(user.id);
+    };
+    fetchUser();
   }, [secret]);
 
-  const handleExtract = (data, newToggles) => {
+  const handleExtract = (data) => {
     setCvData(data);
-    setToggles(newToggles);
   };
 
   const handleGenerate = async (type) => {
@@ -37,46 +41,49 @@ export default function SecretPage() {
         tone,
         language: 'en',
         secret,
+        coverLetterData: cvData,
       };
 
       if (type === 'cv' || type === 'cover') {
         const res = await fetch('/api/write-docs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...commonPayload, cv: cvData, outputType: type }),
+          body: JSON.stringify({ ...commonPayload, outputType: type }),
         });
 
         const result = await res.json();
-        console.log('DeepSeek used key:', result._usedKey, 'index:', result._keyIndex);
+        const content = type === 'cv'
+          ? result?.cv?.choices?.[0]?.message?.content
+          : result?.coverLetter?.choices?.[0]?.message?.content;
 
-        const content = type === 'cv' ? result.cv : result.cover;
-        setFeedback(`${type.toUpperCase()}:\n\n${content}`);
-      } else if (type === 'both') {
+        setFeedback(`${type.toUpperCase()}:\n\n${content || '[no content]'}`);
+      }
+
+      if (type === 'both') {
         const [cvRes, coverRes] = await Promise.all([
-  fetch('/api/write-docs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...commonPayload, cv: cvData, outputType: 'cv' }),
-  }),
-  fetch('/api/write-docs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...commonPayload, cv: cvData, outputType: 'cover' }),
-  }),
-]);
-
+          fetch('/api/write-docs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...commonPayload, outputType: 'cv' }),
+          }),
+          fetch('/api/write-docs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...commonPayload, outputType: 'cover' }),
+          }),
+        ]);
 
         const cvResult = await cvRes.json();
         const coverResult = await coverRes.json();
 
         setFeedback(`
 ### CV
-${cvResult.cv}
+${cvResult?.cv?.choices?.[0]?.message?.content || '[no cv]'}
 
 ---
 
 ### Cover Letter
-${coverResult.cover}
+${coverResult?.coverLetter?.choices?.[0]?.message?.content || '[no cover letter]'}
         `);
       }
     } catch (err) {
@@ -86,23 +93,29 @@ ${coverResult.cover}
   };
 
   return (
-    <div>
+    <div style={{ padding: '2rem' }}>
       <DashboardHeader secret={secret} />
-
       <ExtractionPanel onExtract={handleExtract} />
 
       {cvData && (
         <>
-          <div>
-            <strong>Select Tone:</strong><br />
-            <button onClick={() => setTone('neutral')}>Neutral</button>
-            <button onClick={() => setTone('formal')}>Formal</button>
-            <button onClick={() => setTone('casual')}>Casual</button>
-            <button onClick={() => setTone('cocky')}>Cocky</button>
+          <h2 style={{ marginTop: '2rem' }}>Generate Documents</h2>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label>Select Tone:</label>
+            {['neutral', 'formal', 'casual', 'cocky'].map((t) => (
+              <button
+                key={t}
+                style={{ marginLeft: '0.5rem' }}
+                onClick={() => setTone(t)}
+                className={tone === t ? 'selected' : ''}
+              >
+                {t[0].toUpperCase() + t.slice(1)}
+              </button>
+            ))}
           </div>
 
           <div style={{ marginTop: '1rem' }}>
-            <strong>Generate:</strong><br />
             <button onClick={() => handleGenerate('cv')}>CV</button>
             <button onClick={() => handleGenerate('cover')}>Cover Letter</button>
             <button onClick={() => handleGenerate('both')}>Both</button>
@@ -111,7 +124,7 @@ ${coverResult.cover}
       )}
 
       {feedback && (
-        <div dangerouslySetInnerHTML={{ __html: marked(feedback) }} />
+        <pre style={{ whiteSpace: 'pre-wrap', marginTop: '2rem' }}>{feedback}</pre>
       )}
     </div>
   );
