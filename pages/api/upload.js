@@ -59,6 +59,7 @@ export default async function handler(req, res) {
           user_id: userId,
           type: 'cv',
           source: 'upload',
+          raw_text: rawText,
           content: {
             text: rawText,
             cv: metadata,
