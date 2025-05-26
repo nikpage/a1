@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId, metadata, coverLetterData, outputType = 'both' } = req.body;
+    const { userId, metadata, coverLetterData, outputType = 'both', tone = 'neutral' } = req.body;
 
     const { data: inputDoc, error: inputError } = await supabase
       .from('document_inputs')
@@ -41,10 +41,11 @@ export default async function handler(req, res) {
       keywords: Array.isArray(coverLetterData?.keywords) ? coverLetterData.keywords : [],
     };
 
-    const cvPrompt = buildCVPrompt(metadata.tone, jobDetails, cvText);
+    const cvPrompt = buildCVPrompt(tone, jobDetails, cvText);
+const clPrompt = buildCoverLetterPrompt(tone, coverData, cvText);
+
     console.log('🧠 FINAL CV PROMPT START >>>\n', cvPrompt, '\n<<< END');
 
-    const clPrompt = buildCoverLetterPrompt(metadata.tone, coverData);
     console.log('✉️ FINAL CL PROMPT START >>>\n', clPrompt, '\n<<< END');
 
     const [cvResult, clResult] = await Promise.all([
