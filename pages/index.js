@@ -1,8 +1,9 @@
-// pages/index.js
+// File: /pages/index.js
 import { useEffect, useState } from 'react';
 import FileUpload from '../components/FileUpload';
-import { buildCVFeedbackPrompt } from '../lib/prompt-builder';
+import { languages, markets } from '../lib/market-config';
 import ReactMarkdown from 'react-markdown';
+import { franc } from 'franc';
 
 const METADATA_FIELDS = [
   { key: 'current_role', label: 'Current role' },
@@ -25,6 +26,8 @@ export default function HomePage() {
   const [fieldUsage, setFieldUsage] = useState({});
   const [keywords, setKeywords] = useState([]);
   const [feedback, setFeedback] = useState('');
+  const [selectedLang, setSelectedLang] = useState('en');
+  const [selectedMarket, setSelectedMarket] = useState('eu');
 
   useEffect(() => {
     const existing = sessionStorage.getItem('user_secret');
@@ -46,11 +49,22 @@ export default function HomePage() {
     }
   }, []);
 
-  if (!userId) return <div className="container">Loading...</div>;
+  const detectLanguageCode = (text) => {
+    const lang3 = franc(text, { minLength: 20 });
+    if (lang3 === 'und') return 'en';
+    const match = iso6393.find(lang => lang.iso6393 === lang3);
+    return match?.iso6391 || 'en';
+  };
 
   const handleUploadResult = result => {
     const metadata = result.metadata || result;
     setCvMetadata(metadata);
+
+    const rawLang = (metadata.language_codes?.[0] || 'en').toLowerCase();
+    setSelectedLang(languages.some(l => l.code === rawLang) ? rawLang : 'en');
+
+    setSelectedMarket('eu');
+
     const usage = {};
     METADATA_FIELDS.forEach(({ key }) => {
       if (metadata[key] && (Array.isArray(metadata[key]) ? metadata[key].length : true)) {
@@ -71,31 +85,21 @@ export default function HomePage() {
 
   const handleSaveMetadata = async e => {
     e.preventDefault();
-    const selected = Object.entries(fieldUsage)
-      .filter(([_, use]) => use)
-      .reduce((acc, [key]) => ({ ...acc, [key]: cvMetadata[key] }), {});
-    const prompt = buildCVFeedbackPrompt({ metadata: selected, parsedCV: cvMetadata });
-
-    const res = await fetch('/api/feedback', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ metadata: selected, cvBody: cvMetadata, prompt }),
-    });
-    const { feedback: fb } = await res.json();
-
-    const text = typeof fb === 'string' ? fb : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
-    setFeedback(text);
-
-    await fetch('/api/save', {
+    const res = await fetch('/api/review-cv', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: 'cv_meta',
         userId,
-        data: selected,
-        feedback: text,
+        tone: 'neutral',
+        targetIndustry: selectedMarket,
+        country: selectedLang,
       }),
     });
+    const { feedback: fb } = await res.json();
+    const text = typeof fb === 'string'
+      ? fb
+      : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
+    setFeedback(text);
   };
 
   const fieldsToShow = METADATA_FIELDS.filter(({ key }) => {
@@ -105,6 +109,9 @@ export default function HomePage() {
 
   const selectedCount = Object.values(fieldUsage).filter(Boolean).length;
 
+  if (!userId) return <div className="container">Loading...</div>;
+  const orderedLangs = [...languages.filter(l => l.code !== 'en'), languages.find(l => l.code === 'en')];
+
   return (
     <div className="container">
       <h1>CV Feedback Assistant</h1>
@@ -113,6 +120,47 @@ export default function HomePage() {
 
       {fieldsToShow.length > 0 && (
         <section style={{ marginTop: '2rem' }}>
+          <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
+            <div>
+              <label style={{ fontWeight: 600 }}>Output Language:</label>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {orderedLangs.map(({ code, name }) => (
+                  <label key={code} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <input
+                      type="radio"
+                      name="lang"
+                      value={code}
+                      checked={selectedLang === code}
+                      onChange={() => {
+                        setSelectedLang(code);
+                        setCvMetadata(prev => ({ ...prev, languages: [code] }));
+                      }}
+                    />
+                    {name}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontWeight: 600 }}>Target Market:</label>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {markets.map(({ code, name }) => (
+                  <label key={code} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <input
+                      type="radio"
+                      name="market"
+                      value={code}
+                      checked={selectedMarket === code}
+                      onChange={() => setSelectedMarket(code)}
+                    />
+                    {name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <h2>Review Extracted Metadata</h2>
 
           {keywords.length > 0 && (
