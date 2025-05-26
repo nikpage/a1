@@ -1,6 +1,6 @@
-// pages/api/write-docs.js
 import { buildCVPrompt, buildCoverLetterPrompt } from '../../lib/prompt-builder';
 import { generate } from '../../lib/deepseekClient';
+import { supabase } from '../../lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -10,6 +10,23 @@ export default async function handler(req, res) {
 
   try {
     const { userId, metadata, coverLetterData, outputType = 'both' } = req.body;
+
+    const { data: inputDoc, error: inputError } = await supabase
+      .from('document_inputs')
+      .select('raw_text')
+      .eq('user_id', userId)
+      .eq('type', 'cv')
+      .limit(1)
+      .single();
+
+    const raw = inputDoc?.raw_text;
+    const cvText = typeof raw === 'string' ? raw : (raw ? String(raw) : '');
+
+    // 🔍 Log core values
+    console.log('📦 userId:', userId);
+    console.log('📦 outputType:', outputType);
+    console.log('📦 inputDoc:', inputDoc);
+    console.log('📦 cvText:', cvText);
 
     const jobDetails = {
       title: metadata?.jobDetails?.title || '',
@@ -24,8 +41,11 @@ export default async function handler(req, res) {
       keywords: Array.isArray(coverLetterData?.keywords) ? coverLetterData.keywords : [],
     };
 
-    const cvPrompt = buildCVPrompt(metadata.tone, jobDetails);
+    const cvPrompt = buildCVPrompt(metadata.tone, jobDetails, cvText);
+    console.log('🧠 FINAL CV PROMPT START >>>\n', cvPrompt, '\n<<< END');
+
     const clPrompt = buildCoverLetterPrompt(metadata.tone, coverData);
+    console.log('✉️ FINAL CL PROMPT START >>>\n', clPrompt, '\n<<< END');
 
     const [cvResult, clResult] = await Promise.all([
       generate(cvPrompt),
