@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import ExtractionPanel from '../../components/ExtractionPanel';
 import DashboardHeader from '../../components/DashboardHeader';
+import DocTabs from '../../components/DocTabs';
 
 export default function SecretPage() {
   const router = useRouter();
@@ -14,7 +15,9 @@ export default function SecretPage() {
   const [userId, setUserId] = useState(null);
   const [cvData, setCvData] = useState(null);
   const [tone, setTone] = useState('neutral');
-  const [feedback, setFeedback] = useState('');
+  const [cvContent, setCvContent] = useState('');
+  const [coverContent, setCoverContent] = useState('');
+  const [feedbackReady, setFeedbackReady] = useState(false);
 
   useEffect(() => {
     if (!secret) return;
@@ -56,7 +59,10 @@ export default function SecretPage() {
           ? result?.cv?.choices?.[0]?.message?.content
           : result?.coverLetter?.choices?.[0]?.message?.content;
 
-        setFeedback(`${type.toUpperCase()}:\n\n${content || '[no content]'}`);
+        if (type === 'cv') setCvContent(content || '');
+        else setCoverContent(content || '');
+
+        setFeedbackReady(true);
       }
 
       if (type === 'both') {
@@ -76,19 +82,13 @@ export default function SecretPage() {
         const cvResult = await cvRes.json();
         const coverResult = await coverRes.json();
 
-        setFeedback(`
-### CV
-${cvResult?.cv?.choices?.[0]?.message?.content || '[no cv]'}
-
----
-
-### Cover Letter
-${coverResult?.coverLetter?.choices?.[0]?.message?.content || '[no cover letter]'}
-        `);
+        setCvContent(cvResult?.cv?.choices?.[0]?.message?.content?.trim() || '');
+        setCoverContent(coverResult?.coverLetter?.choices?.[0]?.message?.content?.trim() || '');
+        setFeedbackReady(true);
       }
     } catch (err) {
       console.error('Generation error:', err);
-      setFeedback('❌ Failed to generate. Try again.');
+      setFeedbackReady(false);
     }
   };
 
@@ -123,8 +123,14 @@ ${coverResult?.coverLetter?.choices?.[0]?.message?.content || '[no cover letter]
         </>
       )}
 
-      {feedback && (
-        <pre style={{ whiteSpace: 'pre-wrap', marginTop: '2rem' }}>{feedback}</pre>
+      {feedbackReady && (
+        <DocTabs
+          cv={cvContent}
+          cover={coverContent}
+          onEdit={(type, html) =>
+            console.log(`Edited ${type.toUpperCase()} Document:`, html)
+          }
+        />
       )}
     </div>
   );
