@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { metadata, cvBody, prompt } = req.body;
+  const { metadata, cvBody, prompt, userId } = req.body;
   if (!metadata || !cvBody) {
     return res.status(400).json({ error: 'metadata and cvBody are required' });
   }
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
         method: 'POST',
         body: {
           type: 'feedback',
-          userId: metadata.user_id,
+          userId,
           data: {
             cv_metadata_id: metadata.id,
             feedback,

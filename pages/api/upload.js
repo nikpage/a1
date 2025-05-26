@@ -23,8 +23,10 @@ export default async function handler(req, res) {
     let rawText = '';
     if (file.name.toLowerCase().endsWith('.pdf')) {
       rawText = (await pdf(buf)).text;
+      console.log('📝 Extracted raw text (preview):', rawText.slice(0, 1000));
     } else if (/\.(docx|doc)$/i.test(file.name)) {
       rawText = (await mammoth.extractRawText({ buffer: buf })).value;
+      console.log('📝 Extracted raw text (preview):', rawText.slice(0, 1000));
     } else {
       return res.status(400).json({ error: 'Unsupported file type' });
     }
@@ -66,7 +68,6 @@ export default async function handler(req, res) {
           },
         },
       ]);
-
 
     if (insertErr) {
       console.error('Supabase insert error:', insertErr.message);
