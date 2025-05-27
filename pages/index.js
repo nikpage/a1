@@ -56,13 +56,11 @@ export default function HomePage() {
     return match?.iso6391 || 'en';
   };
 
-  const handleUploadResult = result => {
-    const metadata = result.metadata || result;
+  const handleUploadResult = ({ metadata, rawText }) => {
+    const detectedLang = detectLanguageCode(rawText || '');
+    setSelectedLang(languages.some(l => l.code === detectedLang) ? detectedLang : 'en');
+
     setCvMetadata(metadata);
-
-    const rawLang = (metadata.language_codes?.[0] || 'en').toLowerCase();
-    setSelectedLang(languages.some(l => l.code === rawLang) ? rawLang : 'en');
-
     setSelectedMarket('eu');
 
     const usage = {};
@@ -74,6 +72,7 @@ export default function HomePage() {
     setFieldUsage(usage);
     setKeywords([...(metadata.skills || []), ...(metadata.industries || [])].slice(0, 8));
   };
+
 
   const handleFieldChange = (key, value) => {
     setCvMetadata(prev => ({ ...prev, [key]: value }));
