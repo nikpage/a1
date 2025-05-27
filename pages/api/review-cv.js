@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId, tone = 'neutral', targetIndustry = 'general', country = 'cz' } = req.body;
+    const { userId, tone = 'neutral', targetIndustry = 'general', country = 'cz', language = 'en' } = req.body;
 
     // fetch raw CV text
     const { data: inputDoc, error: fetchErr } = await supabase
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
     // build feedback prompt using only CV text
     const prompt = `
-${buildCVFeedbackPrompt('cv', targetIndustry, country)}
+${buildCVFeedbackPrompt('cv', targetIndustry, country, language)}
 
 Candidate CV:
 ${cvText}

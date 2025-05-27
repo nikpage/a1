@@ -41,8 +41,9 @@ export default function DashboardHeader({ secret }) {
       const { data: metadata, error: metaErr } = await supabase
         .from('cv_metadata')
         .select('id')
-        .eq('user_id', user.id)
-        .single();
+  .eq('user_id', user.id)
+  .limit(1);
+
 
       if (metaErr || !metadata) {
         setCheck((prev) => ({

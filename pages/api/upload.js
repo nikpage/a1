@@ -32,10 +32,16 @@ export default async function handler(req, res) {
     }
 
     // call AI to get JSON metadata string
-    const dsResponse = await extractMetadata(rawText);
-    console.log('🧠 DeepSeek message content:', dsResponse.choices?.[0]?.message?.content);
+    let content = '';
+try {
+  const dsResponse = await extractMetadata(rawText);
+  content = dsResponse?.choices?.[0]?.message?.content || '';
+  console.log('🧠 Raw AI response:', content);
+} catch (e) {
+  console.error('❌ extractMetadata failed:', e);
+  return res.status(500).json({ error: 'Metadata extraction failed' });
+}
 
-    let content = dsResponse?.choices?.[0]?.message?.content || '';
 
     // strip code fences if present
     content = content
@@ -46,6 +52,8 @@ export default async function handler(req, res) {
     // attempt parse with fallback
     let metadata = {};
     try {
+      console.log('📄 Content to parse:', content);
+
       metadata = JSON.parse(content);
     } catch (parseErr) {
       console.error('Upload handler JSON parse error:', parseErr.message);
@@ -77,7 +85,7 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ metadata });
+    return res.status(200).json({ metadata, rawText });
   } catch (err) {
     console.error('Upload handler unexpected error:', err);
     return res.status(500).json({ error: err.message || 'Internal Server Error' });
