@@ -99,6 +99,19 @@ export default function HomePage() {
       ? fb
       : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
     setFeedback(text);
+    await fetch('/api/save', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    userId,
+    data: {},
+    feedback: {
+      cv_metadata_id: cvMetadata.id,
+      feedback: text,
+    },
+  }),
+});
+
   };
 
   const fieldsToShow = METADATA_FIELDS.filter(({ key }) => {

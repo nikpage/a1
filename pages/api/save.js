@@ -24,9 +24,18 @@ export default async function handler(req, res) {
     if (metaErr) throw metaErr;
 
     if (feedback) {
+      // Allow direct cv_metadata_id if passed, otherwise use the id from metaRow
+      const cv_metadata_id = feedback.cv_metadata_id || metaRow?.id;
+      const feedbackValue = feedback.feedback !== undefined ? feedback.feedback : feedback;
+
+      const insertPayload = {
+        cv_metadata_id,
+        feedback: feedbackValue,
+      };
+
       const { error: fbErr } = await supabase
         .from('cv_feedback')
-        .insert([{ cv_metadata_id: metaRow.id, feedback }]);
+        .insert([insertPayload]);
       if (fbErr) throw fbErr;
     }
 

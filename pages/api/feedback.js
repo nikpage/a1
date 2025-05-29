@@ -29,25 +29,26 @@ export default async function handler(req, res) {
       feedback = raw;
     }
 
-    // Save feedback directly using save.js
-    await saveHandler(
-      {
-        method: 'POST',
-        body: {
-          type: 'feedback',
-          userId,
-          data: {
-            cv_metadata_id: metadata.id,
-            feedback,
-          },
+    // Save feedback directly using save.js (matching db format)
+  await saveHandler(
+    {
+      method: 'POST',
+      body: {
+        userId,
+        data: {}, // Required by save.js but not used here
+        feedback: {
+          cv_metadata_id: metadata.id,
+          feedback: typeof feedback === 'object' ? feedback : { text: feedback },
         },
       },
-      {
-        status: () => ({
-          json: () => {},
-        }),
-      }
-    );
+    },
+    {
+      status: () => ({
+        json: () => {},
+      }),
+    }
+  );
+
 
     return res.status(200).json({ feedback });
   } catch (err) {
