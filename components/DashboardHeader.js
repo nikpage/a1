@@ -41,11 +41,10 @@ export default function DashboardHeader({ secret }) {
       const { data: metadata, error: metaErr } = await supabase
         .from('cv_metadata')
         .select('id')
-  .eq('user_id', user.id)
-  .limit(1);
+        .eq('user_id', user.id)
+        .limit(1);
 
-
-      if (metaErr || !metadata) {
+      if (metaErr || !metadata || metadata.length === 0) {
         setCheck((prev) => ({
           ...prev,
           cv_metadata: '❌',
@@ -60,10 +59,13 @@ export default function DashboardHeader({ secret }) {
       const { data: feedback, error: fbErr } = await supabase
         .from('cv_feedback')
         .select('id')
-        .eq('cv_metadata_id', metadata.id)
+        .eq('cv_metadata_id', metadata[0].id)
         .limit(1);
 
-      console.log('feedback error:', fbErr);
+      setCheck((prev) => ({
+        ...prev,
+        cv_feedback: fbErr || !feedback || feedback.length === 0 ? '❌' : '✔️',
+      }));
 
       const { data: doc, error: docErr } = await supabase
         .from('document_inputs')
@@ -72,15 +74,10 @@ export default function DashboardHeader({ secret }) {
         .eq('type', 'cv')
         .limit(1);
 
-      console.log('document_inputs error:', docErr);
-
-
       setCheck((prev) => ({
-  ...prev,
-  document_inputs: docErr ? '❌' : doc?.length ? '✔️' : '❌',
-}));
-
-
+        ...prev,
+        document_inputs: docErr || !doc || doc.length === 0 ? '❌' : '✔️',
+      }));
     };
 
     fetchUserAndCheck();
