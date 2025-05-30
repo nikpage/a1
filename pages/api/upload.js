@@ -85,14 +85,15 @@ try {
       });
     }
     // After successful insert to document_inputs:
-    const saveRes = await fetch('http://localhost:3000/api/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId,
-        data: metadata,
-      }),
-    });
+    const saveRes = await fetch(`${req.headers.origin}/api/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId,
+      data: metadata,
+    }),
+  });
+
 
     const saveJson = await saveRes.json();
 
