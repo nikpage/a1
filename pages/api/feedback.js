@@ -1,4 +1,3 @@
-// pages/api/feedback.js
 import { buildCVFeedbackPrompt } from '../../lib/prompt-builder';
 import { generate } from '../../lib/deepseekClient';
 import saveHandler from './save.js';
@@ -15,10 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Use provided prompt or build from metadata
     const finalPrompt = prompt || buildCVFeedbackPrompt({ metadata, parsedCV: cvBody });
-
-    // Call DeepSeek (our AI service)
     const raw = await generate(finalPrompt);
     let feedback;
 
@@ -29,26 +25,25 @@ export default async function handler(req, res) {
       feedback = raw;
     }
 
-    // Save feedback directly using save.js (matching db format)
-  await saveHandler(
-    {
-      method: 'POST',
-      body: {
-        userId,
-        data: {}, // Required by save.js but not used here
-        feedback: {
-          cv_metadata_id: metadata.id,
-          feedback: typeof feedback === 'object' ? feedback : { text: feedback },
+    // Auto-save feedback (the original working logic)
+    await saveHandler(
+      {
+        method: 'POST',
+        body: {
+          userId,
+          data: {},
+          feedback: {
+            cv_metadata_id: metadata.id,
+            feedback: typeof feedback === 'object' ? feedback : { text: feedback },
+          },
         },
       },
-    },
-    {
-      status: () => ({
-        json: () => {},
-      }),
-    }
-  );
-
+      {
+        status: () => ({
+          json: () => {},
+        }),
+      }
+    );
 
     return res.status(200).json({ feedback });
   } catch (err) {
