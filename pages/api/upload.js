@@ -84,15 +84,18 @@ try {
         details: insertErr.message,
       });
     }
-    // After successful insert to document_inputs:
     const saveRes = await fetch(`${req.headers.origin}/api/save`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId,
-      data: metadata,
-    }),
-  });
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        data: metadata,
+      }),
+    });
+
 
 
     const saveJson = await saveRes.json();
