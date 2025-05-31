@@ -57,7 +57,13 @@ export default function HomePage() {
   };
 
   const handleUploadResult = ({ metadata, rawText }) => {
+    if (!metadata) {
+      console.error('No metadata received');
+      return;
+    }
+
     const detectedLang = detectLanguageCode(rawText || '');
+
     setSelectedLang(languages.some(l => l.code === detectedLang) ? detectedLang : 'en');
     setCvMetadata(metadata);
     setSelectedMarket('eu');
