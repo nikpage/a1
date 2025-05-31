@@ -3,6 +3,7 @@ import FileUpload from '../components/FileUpload';
 import { languages } from '../lib/market-config';
 import ReactMarkdown from 'react-markdown';
 import { franc } from 'franc';
+import Header from '../components/Header';
 
 const METADATA_FIELDS = [
   { key: 'current_role', label: 'Current role' },
@@ -68,7 +69,6 @@ export default function HomePage() {
         usage[key] = true;
       }
     });
-    // Default to show all skills/industries checkboxes
     for (let i = 0; i < 30; i++) {
       usage[`skills_${i}`] = metadata.skills?.[i] ? true : false;
       usage[`industries_${i}`] = metadata.industries?.[i] ? true : false;
@@ -111,7 +111,6 @@ export default function HomePage() {
       : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
     setFeedback(text);
 
-    // Save feedback to DB
     await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -121,22 +120,24 @@ export default function HomePage() {
         feedback: text
       }),
     });
-};
+  };
 
   const autoExpand = (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
-  if (!userId) return <div className="container">Loading...</div>;
+  if (!userId) return <div>Loading...</div>;
 
-  // 1. Only show file upload until we have meta (i.e., user_name exists in cvMetadata)
   if (!cvMetadata || Object.keys(cvMetadata).length === 0) {
     return (
-      <div className="container">
-        <h1>CV Feedback Assistant</h1>
-        <FileUpload userId={userId} onUpload={handleUploadResult} />
-      </div>
+      <>
+        <Header />
+        <div className="container">
+          <h1>CV Feedback Assistant</h1>
+          <FileUpload userId={userId} onUpload={handleUploadResult} />
+        </div>
+      </>
     );
   }
 
