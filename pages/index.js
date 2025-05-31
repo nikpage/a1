@@ -102,6 +102,7 @@ export default function HomePage() {
         tone: 'neutral',
         targetIndustry: selectedMarket,
         country: selectedLang,
+        metadata: cvMetadata
       }),
     });
     const { feedback: fb } = await res.json();
@@ -109,7 +110,18 @@ export default function HomePage() {
       ? fb
       : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
     setFeedback(text);
-  };
+
+    // Save feedback to DB
+    await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        data: cvMetadata,
+        feedback: text
+      }),
+    });
+};
 
   const autoExpand = (e) => {
     e.target.style.height = 'auto';
