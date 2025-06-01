@@ -50,6 +50,19 @@ export default function HomePage() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const header = document.querySelector('header');
+      if (window.scrollY > 50) {
+        header.classList.add('shrink');
+      } else {
+        header.classList.remove('shrink');
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const detectLanguageCode = (text) => {
     const lang3 = franc(text, { minLength: 20 });
     if (lang3 === 'und') return 'en';
@@ -63,7 +76,6 @@ export default function HomePage() {
     }
 
     const detectedLang = detectLanguageCode(rawText || '');
-
     setSelectedLang(languages.some(l => l.code === detectedLang) ? detectedLang : 'en');
     setCvMetadata(metadata);
     setSelectedMarket('eu');
@@ -112,19 +124,13 @@ export default function HomePage() {
       }),
     });
     const { feedback: fb } = await res.json();
-    const text = typeof fb === 'string'
-      ? fb
-      : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
+    const text = typeof fb === 'string' ? fb : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
     setFeedback(text);
 
     await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId,
-        data: cvMetadata,
-        feedback: text
-      }),
+      body: JSON.stringify({ userId, data: cvMetadata, feedback: text }),
     });
   };
 
@@ -140,18 +146,17 @@ export default function HomePage() {
       <>
         <Header />
         <div className="container">
-          <h1>CV Feedback Assistant</h1>
           <FileUpload userId={userId} onUpload={handleUploadResult} />
         </div>
       </>
     );
   }
 
-  // 2. After upload, show meta editing. Feedback/dashboard only after feedback exists.
   return (
-    <div className="container">
+    <>
+      <Header />
+      <div className="container">
 
-      {/* Top meta in two-column grid, all fields editable */}
       <div style={{ margin: '2rem 0 2rem 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', rowGap: '0.75rem', alignItems: 'start' }}>
           <div style={{ fontWeight: 'bold' }}>Name:</div>
@@ -421,5 +426,6 @@ export default function HomePage() {
         </>
       )}
     </div>
-  );
+  </>
+);
 }
