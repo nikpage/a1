@@ -3,6 +3,7 @@ import FileUpload from '../components/FileUpload';
 import { languages } from '../lib/market-config';
 import ReactMarkdown from 'react-markdown';
 import { franc } from 'franc';
+import Header from '../components/Header';
 
 const METADATA_FIELDS = [
   { key: 'current_role', label: 'Current role' },
@@ -49,6 +50,19 @@ export default function HomePage() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const header = document.querySelector('header');
+      if (window.scrollY > 50) {
+        header.classList.add('shrink');
+      } else {
+        header.classList.remove('shrink');
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const detectLanguageCode = (text) => {
     const lang3 = franc(text, { minLength: 20 });
     if (lang3 === 'und') return 'en';
@@ -56,6 +70,11 @@ export default function HomePage() {
   };
 
   const handleUploadResult = ({ metadata, rawText }) => {
+    if (!metadata) {
+      console.error('No metadata received');
+      return;
+    }
+
     const detectedLang = detectLanguageCode(rawText || '');
     setSelectedLang(languages.some(l => l.code === detectedLang) ? detectedLang : 'en');
     setCvMetadata(metadata);
@@ -101,54 +120,54 @@ export default function HomePage() {
         tone: 'neutral',
         targetIndustry: selectedMarket,
         country: selectedLang,
+        metadata: cvMetadata
       }),
     });
-
     const { feedback: fb } = await res.json();
-    const text = typeof fb === 'string'
-      ? fb
-      : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
+    const text = typeof fb === 'string' ? fb : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
     setFeedback(text);
 
-    // Save feedback to backend
     await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId,
-        data: cvMetadata,
-        feedback: text
-      }),
+      body: JSON.stringify({ userId, data: cvMetadata, feedback: text }),
     });
   };
-
 
   const autoExpand = (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
-  if (!userId) return <div className="container">Loading...</div>;
+  if (!userId) return <div>Loading...</div>;
 
   if (!cvMetadata || Object.keys(cvMetadata).length === 0) {
     return (
-      <div className="container">
-        <h1>CV Feedback Assistant</h1>
-        <FileUpload userId={userId} onUpload={handleUploadResult} />
-      </div>
+      <>
+        <Header />
+        <div className="container">
+          <FileUpload userId={userId} onUpload={handleUploadResult} />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="container">
-      <div style={{ margin: '2rem 0' }}>
+    <>
+      <Header />
+      <div className="container">
+
+      <div style={{ margin: '2rem 0 2rem 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', rowGap: '0.75rem', alignItems: 'start' }}>
           <div style={{ fontWeight: 'bold' }}>Name:</div>
           <input
             type="text"
-            value={cvMetadata.full_name || ""}
-            onChange={e => handleFieldChange('full_name', e.target.value)}
+            value={cvMetadata.name || ""}
+            onChange={e => handleFieldChange('name', e.target.value)}
+
             style={{ padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+            placeholder="Enter name"
+            autoComplete="off"
           />
 
           <div style={{ fontWeight: 'bold' }}>Phone:</div>
@@ -157,6 +176,8 @@ export default function HomePage() {
             value={cvMetadata.phone || ""}
             onChange={e => handleFieldChange('phone', e.target.value)}
             style={{ padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+            placeholder="Enter phone"
+            autoComplete="off"
           />
 
           <div style={{ fontWeight: 'bold' }}>Email:</div>
@@ -165,6 +186,8 @@ export default function HomePage() {
             value={cvMetadata.email || ""}
             onChange={e => handleFieldChange('email', e.target.value)}
             style={{ padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+            placeholder="Enter email"
+            autoComplete="off"
           />
 
           <div style={{ fontWeight: 'bold' }}>Languages:</div>
@@ -173,6 +196,8 @@ export default function HomePage() {
             value={Array.isArray(cvMetadata.languages) ? cvMetadata.languages.join(', ') : (cvMetadata.languages || "")}
             onChange={e => handleFieldChange('languages', e.target.value.split(',').map(v => v.trim()))}
             style={{ padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+            placeholder="English, Czech, etc."
+            autoComplete="off"
           />
 
           <div style={{ fontWeight: 'bold' }}>Years Experience:</div>
@@ -181,6 +206,8 @@ export default function HomePage() {
             value={cvMetadata.years_experience || ""}
             onChange={e => handleFieldChange('years_experience', e.target.value)}
             style={{ padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+            placeholder="e.g. 5"
+            autoComplete="off"
           />
 
           <div style={{ fontWeight: 'bold' }}>Seniority:</div>
@@ -189,6 +216,8 @@ export default function HomePage() {
             value={cvMetadata.seniority || ""}
             onChange={e => handleFieldChange('seniority', e.target.value)}
             style={{ padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+            placeholder="e.g. Senior"
+            autoComplete="off"
           />
 
           <div style={{ fontWeight: 'bold' }}>Current Role:</div>
@@ -197,7 +226,173 @@ export default function HomePage() {
             value={cvMetadata.current_role || ""}
             onChange={e => handleFieldChange('current_role', e.target.value)}
             style={{ padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px', width: '100%' }}
+            placeholder="e.g. UX Lead"
+            autoComplete="off"
           />
+
+          <div style={{ fontWeight: 'bold', marginTop: '1.5rem', fontSize: '1.1em' }}>Employment Gaps (6+ months):</div>
+          <div style={{ marginTop: '1.5rem' }}>
+            {Array.isArray(cvMetadata.employment_gaps) && cvMetadata.employment_gaps.length > 0 ? (
+              <ul style={{ margin: 0, paddingLeft: '1.5em' }}>
+                {cvMetadata.employment_gaps.map((gap, i) => (
+                  <li key={i}>
+                    {gap.start} &ndash; {gap.end} ({gap.months} months)
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span>None Found</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Certifications */}
+      {cvMetadata.certifications?.length > 0 && (
+        <div style={{ marginBottom: '1rem' }}>
+          <h3>Certifications</h3>
+          {(Array.isArray(cvMetadata.certifications) ? cvMetadata.certifications : [cvMetadata.certifications]).map((item, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={fieldUsage[`certifications_${i}`] ?? true}
+                onChange={() => handleToggleUse('certifications', i)}
+              />
+              <input
+                type="text"
+                value={item}
+                onChange={e => handleFieldChange('certifications', e.target.value, i)}
+                style={{ flex: 1, padding: '0.3rem', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {['key_achievements'].map(section => (
+        cvMetadata[section]?.length > 0 && (
+          <div key={section} style={{ marginBottom: '1rem' }}>
+            <h3>{section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h3>
+            {(Array.isArray(cvMetadata[section]) ? cvMetadata[section] : [cvMetadata[section]]).map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={fieldUsage[`${section}_${i}`] ?? true}
+                  onChange={() => handleToggleUse(section, i)}
+                />
+                <input
+                  type="text"
+                  value={item}
+                  onChange={e => handleFieldChange(section, e.target.value, i)}
+                  style={{ flex: 1, padding: '0.3rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                />
+              </div>
+            ))}
+          </div>
+        )
+      ))}
+
+      {['career_arcs_summary', 'parallel_experiences_summary'].map(section => (
+        cvMetadata[section] && (
+          <div key={section} style={{ marginBottom: '1rem' }}>
+            <h3>{section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h3>
+            <textarea
+              value={cvMetadata[section]}
+              onChange={e => handleFieldChange(section, e.target.value)}
+              onInput={autoExpand}
+              style={{
+                width: '100%',
+                padding: '0.3rem',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                minHeight: '3rem',
+                overflow: 'hidden'
+              }}
+            />
+          </div>
+        )
+      ))}
+
+      {/* Industries: show only the number of inferred industries */}
+      <div style={{ marginBottom: '1rem' }}>
+        <h3>Industries</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+          {(cvMetadata.industries || []).map((item, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={fieldUsage[`industries_${i}`] ?? false}
+                onChange={() => handleToggleUse('industries', i)}
+              />
+              <input
+                type="text"
+                value={item || ''}
+                onChange={e => handleFieldChange('industries', e.target.value, i)}
+                style={{
+                  flex: 1,
+                  padding: '0.3rem',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Places */}
+      {cvMetadata.places?.length > 0 && (
+        <div style={{ marginBottom: '1rem' }}>
+          <h3>Places</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+            {cvMetadata.places.map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={fieldUsage[`places_${i}`] ?? true}
+                  onChange={() => handleToggleUse('places', i)}
+                />
+                <input
+                  type="text"
+                  value={item}
+                  onChange={e => handleFieldChange('places', e.target.value, i)}
+                  style={{
+                    flex: 1,
+                    padding: '0.3rem',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px'
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Skills: always 30 fields */}
+      <div style={{ marginBottom: '1rem' }}>
+        <h3>Skills</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={fieldUsage[`skills_${i}`] ?? false}
+                onChange={() => handleToggleUse('skills', i)}
+              />
+              <input
+                type="text"
+                value={cvMetadata.skills?.[i] || ''}
+                onChange={e => handleFieldChange('skills', e.target.value, i)}
+                style={{
+                  flex: 1,
+                  padding: '0.3rem',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -205,6 +400,7 @@ export default function HomePage() {
         <button type="submit">Review CV</button>
       </form>
 
+      {/* Feedback + dashboard link: ONLY after feedback */}
       {feedback && (
         <>
           <div style={{
@@ -230,5 +426,6 @@ export default function HomePage() {
         </>
       )}
     </div>
-  );
+  </>
+);
 }

@@ -85,7 +85,7 @@ export default function DashboardHeader({ secret }) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', padding: '1rem' }}>
-      <img src="/logo.png" alt="Logo" style={{ height: '40px', marginRight: '1rem' }} />
+      <img src="/logo_cvprp+trans.png" alt="Logo" style={{ height: '40px', marginRight: '1rem' }} />
       <div>
         <h2>Welcome, {emailPrefix}</h2>
         <p>
