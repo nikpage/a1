@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
     // Cover letter only
     if (outputType === 'cover') {
-      const prompt = buildCoverLetterPrompt(cvText, coverData, tone);
+      const prompt = buildCoverLetterPrompt(cvText, coverData, tone, metadata);
       const coverResult = await generate(prompt);
       return res.status(200).json({ coverLetter: coverResult });
     }
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     // Both CV and Cover letter
     const [cvResult, coverResult] = await Promise.all([
       generate(buildCVPrompt(cvText, jobDetails, tone, metadata)),
-      generate(buildCoverLetterPrompt(cvText, coverData, tone)),
+      generate(buildCoverLetterPrompt(cvText, coverData, tone, metadata)),
     ]);
 
     return res.status(200).json({

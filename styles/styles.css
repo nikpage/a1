@@ -728,3 +728,13 @@ main {
   line-height: 0.8;
   margin: 0;
 }
+.cv-title {
+    font-size: 36px;
+    font-weight: bold;
+    color: #1e5a96;
+}
+
+.extracted-text {
+    color: #1e5a96;
+    margin-top: 5px;
+}

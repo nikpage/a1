@@ -52,7 +52,7 @@ export default function HomePage() {
   return (
     <>
       <DashboardHeader {...headerProps} />
-      <div className="container" style={{ paddingTop: '80px' }}>
+      <div className="container" style={{ paddingTop: '0px' }}>
         {!cvMetadata || Object.keys(cvMetadata).length === 0 ? (
           <CardUpload
             userId={userId}
