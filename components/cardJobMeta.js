@@ -46,19 +46,24 @@ export default function ExtractionPanel({ onExtract, userId }) {
         includeCover: true,
       };
 
+      // Suggested Keywords: Leave toggles unchanged (default behavior)
       if (data.suggestedKeywords) {
         data.suggestedKeywords.forEach((kwObj, idx) => {
           initialToggles[`suggested_${idx}`] = kwObj.confidence === 'high';
         });
       }
-      if (data.cvKeywords) {
-        data.cvKeywords.forEach((_, idx) => {
-          initialToggles[`cv_${idx}`] = true;
-        });
-      }
+
+      // Job Keywords: Set toggles to OFF
       if (data.jobKeywords) {
         data.jobKeywords.forEach((_, idx) => {
-          initialToggles[`job_${idx}`] = true;
+          initialToggles[`job_${idx}`] = false; // Default toggles OFF
+        });
+      }
+
+      // CV Keywords: Set toggles to OFF
+      if (data.cvKeywords) {
+        data.cvKeywords.forEach((_, idx) => {
+          initialToggles[`cv_${idx}`] = false; // Default toggles OFF
         });
       }
 
@@ -193,22 +198,48 @@ export default function ExtractionPanel({ onExtract, userId }) {
                   onChange={() => handleToggle(`job_${idx}`)}
                   style={{ marginRight: '0.5rem' }}
                 />
-                <span>{kw}</span>
+                <input
+                  type="text"
+                  value={kw}
+                  onChange={(e) => handleKeywordChange('jobKeywords', idx, e.target.value)}
+                  style={{ flex: 1 }}
+                />
               </div>
             ))}
           </div>
 
           <h3>CV Keywords</h3>
-          <div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
             {metadata.cvKeywords?.map((kw, idx) => (
-              <div key={`cv-${idx}`} style={{ marginBottom: '0.5rem' }}>
+              <div
+                key={`cv-${idx}`}
+                style={{
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  padding: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={toggles[`cv_${idx}`]}
                   onChange={() => handleToggle(`cv_${idx}`)}
                   style={{ marginRight: '0.5rem' }}
                 />
-                <span>{kw}</span>
+                <input
+                  type="text"
+                  value={kw}
+                  onChange={(e) => handleKeywordChange('cvKeywords', idx, e.target.value)}
+                  style={{ flex: 1 }}
+                />
               </div>
             ))}
           </div>
