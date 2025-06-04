@@ -1,36 +1,103 @@
 // pages/api/extract-job-meta.js
-import { buildExtractionPrompt } from '../../lib/prompt-builder';
-import { generate } from '../../lib/deepseekClient';
+import { supabase } from '../../lib/supabase';
+import { buildExtractionPrompt } from '../../lib/prompt-builder.js';
+import { generate } from '../../lib/deepseekClient.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { text } = req.body;
+  const { text, userId } = req.body;
   if (!text || !text.trim()) {
     return res.status(400).json({ error: 'No job description provided' });
   }
+  if (!userId || typeof userId !== 'string' || userId.length !== 36) {
+    return res.status(400).json({ error: 'Invalid or missing userId' });
+  }
+
+
 
   try {
-    // Build the prompt for DeepSeek
-    const prompt = buildExtractionPrompt(text);
+    let { data, error } = await supabase
+    .from('cv_metadata')
+    .select('data')
+    .eq('user_id', userId)
+    .single();
 
-    // Send prompt to DeepSeek API and get raw response
-    const raw = await generate(prompt);
-  const content = raw?.choices?.[0]?.message?.content || '{}';
-  const metadata = JSON.parse(content);
+  if (error || !data) {
+    console.error('DB error:', error);
+    throw new Error('No CV metadata found for the user.');
+  }
+
+  data = [{ raw_text: JSON.stringify(data.data) }];
 
 
-    // Enforce max 8 keywords if present
-    if (Array.isArray(metadata.keywords)) {
-      metadata.keywords = metadata.keywords.slice(0, 8);
+    if (error || !data || !data[0]?.raw_text) {
+      console.warn('No document_inputs CV data found. Checking cv_metadata…');
+
+      const { data: cvMetaData, error: cvMetaError } = await supabase
+        .from('cv_metadata')
+        .select('data')
+        .eq('user_id', userId)
+        .single();
+
+      if (cvMetaError || !cvMetaData || !cvMetaData.data) {
+        console.error('DB error (cv_metadata fallback):', cvMetaError);
+        throw new Error('No CV data found for the user.');
+      }
+
+      data = [{ raw_text: JSON.stringify(cvMetaData.data) }];
     }
 
-    // Return the structured metadata
+
+    let cvText = '';
+    let cvKeywords = [];
+
+    cvText = data[0].raw_text;
+    try {
+      const cvData = JSON.parse(cvText);
+      ['skills', 'primary_skills', 'industries'].forEach((field) => {
+        if (Array.isArray(cvData[field])) {
+          cvKeywords = cvKeywords.concat(cvData[field].map((kw) => kw.trim()));
+        }
+      });
+      cvKeywords = [...new Set(cvKeywords)];
+    } catch (err) {
+      console.error('Failed to parse CV JSON:', err);
+    }
+
+    const prompt = buildExtractionPrompt(cvText, cvKeywords, text);
+
+    const raw = await generate(prompt);
+    let content = raw?.choices?.[0]?.message?.content || '{}';
+
+    content = content.trim();
+    if (content.startsWith('```json')) content = content.slice(7);
+    else if (content.startsWith('```')) content = content.slice(3);
+    if (content.endsWith('```')) content = content.slice(0, -3);
+    content = content.trim();
+
+    let metadata;
+    try {
+      metadata = JSON.parse(content);
+    } catch (jsonError) {
+      console.error('JSON parse error:', jsonError);
+      console.error('Raw API response:', content);
+
+      return res.status(200).json({
+        error: 'Invalid JSON response from DeepSeek',
+        preview: content.slice(0, 300),
+        fallback: {}
+      });
+    }
+
     return res.status(200).json(metadata);
   } catch (error) {
     console.error('extract-job-meta error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({
+      error: 'Failed to parse job metadata',
+      details: error.message
+    });
   }
 }

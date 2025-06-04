@@ -1,0 +1,219 @@
+import { useState } from 'react';
+
+export default function ExtractionPanel({ onExtract, userId }) {
+  const [jobText, setJobText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [metadata, setMetadata] = useState(null);
+  const [toggles, setToggles] = useState({
+    includeCV: true,
+    includeCover: true,
+  });
+
+  const handleExtract = async () => {
+    if (!jobText.trim()) {
+      alert('Please paste the job description first.');
+      return;
+    }
+
+    if (!userId || typeof userId !== 'string' || userId.length !== 36) {
+      alert('User ID is missing or invalid.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/extract-job-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: jobText,
+          userId, // ✅ Send userId
+        }),
+      });
+      const data = await response.json();
+
+      if (!data || typeof data !== 'object') throw new Error('Empty or invalid response');
+
+      const confidenceOrder = { high: 3, medium: 2, low: 1 };
+      if (Array.isArray(data.suggestedKeywords)) {
+        data.suggestedKeywords.sort(
+          (a, b) => (confidenceOrder[b.confidence] ?? 0) - (confidenceOrder[a.confidence] ?? 0)
+        );
+      }
+
+      const initialToggles = {
+        includeCV: true,
+        includeCover: true,
+      };
+
+      if (data.suggestedKeywords) {
+        data.suggestedKeywords.forEach((kwObj, idx) => {
+          initialToggles[`suggested_${idx}`] = kwObj.confidence === 'high';
+        });
+      }
+      if (data.cvKeywords) {
+        data.cvKeywords.forEach((_, idx) => {
+          initialToggles[`cv_${idx}`] = true;
+        });
+      }
+      if (data.jobKeywords) {
+        data.jobKeywords.forEach((_, idx) => {
+          initialToggles[`job_${idx}`] = true;
+        });
+      }
+
+      Object.keys(data).forEach((key) => {
+        if (!['suggestedKeywords', 'cvKeywords', 'jobKeywords'].includes(key)) {
+          initialToggles[key] = true;
+        }
+      });
+
+      setMetadata(data);
+      setToggles(initialToggles);
+      onExtract(data, initialToggles);
+    } catch (err) {
+      console.error('Extraction error:', err);
+      alert('Failed to extract metadata');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggle = (field) => {
+    const updated = { ...toggles, [field]: !toggles[field] };
+    setToggles(updated);
+    onExtract(metadata, updated);
+  };
+
+  const handleFieldChange = (field, value) => {
+    const updatedMeta = { ...metadata, [field]: value };
+    setMetadata(updatedMeta);
+    onExtract(updatedMeta, toggles);
+  };
+
+  const handleKeywordChange = (type, idx, value) => {
+    const updated = [...metadata[type]];
+    updated[idx] = value;
+    const updatedMeta = { ...metadata, [type]: updated };
+    setMetadata(updatedMeta);
+    onExtract(updatedMeta, toggles);
+  };
+
+  const handleSuggestedChange = (idx, value) => {
+    const updated = [...metadata.suggestedKeywords];
+    updated[idx].keyword = value;
+    const updatedMeta = { ...metadata, suggestedKeywords: updated };
+    setMetadata(updatedMeta);
+    onExtract(updatedMeta, toggles);
+  };
+
+  return (
+    <div style={{ paddingLeft: '1rem' }}>
+      <textarea
+        value={jobText}
+        onChange={(e) => setJobText(e.target.value)}
+        rows={6}
+        placeholder="Paste job description here"
+        style={{ width: '100%' }}
+      />
+      <br />
+
+      <button onClick={handleExtract} disabled={loading}>
+        {loading ? 'Extracting...' : 'Extract Metadata'}
+      </button>
+
+      {metadata && (
+        <div style={{ marginTop: '1rem' }}>
+          <h3>Suggested Keywords</h3>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
+            {metadata.suggestedKeywords?.map((kwObj, idx) => (
+              <div
+                key={`suggested-${idx}`}
+                style={{
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  padding: '0.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={toggles[`suggested_${idx}`]}
+                    onChange={() => handleToggle(`suggested_${idx}`)}
+                    style={{ marginRight: '0.5rem' }}
+                  />
+                  <input
+                    type="text"
+                    value={kwObj.keyword ?? ''}
+                    onChange={(e) => handleSuggestedChange(idx, e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+                {kwObj.confidence && (
+                  <small style={{ color: '#666' }}>
+                    Confidence: {kwObj.confidence}
+                  </small>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <h3>Job Keywords</h3>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
+            {metadata.jobKeywords?.slice(0, 30).map((kw, idx) => (
+              <div
+                key={`job-${idx}`}
+                style={{
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  padding: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={toggles[`job_${idx}`]}
+                  onChange={() => handleToggle(`job_${idx}`)}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <span>{kw}</span>
+              </div>
+            ))}
+          </div>
+
+          <h3>CV Keywords</h3>
+          <div>
+            {metadata.cvKeywords?.map((kw, idx) => (
+              <div key={`cv-${idx}`} style={{ marginBottom: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={toggles[`cv_${idx}`]}
+                  onChange={() => handleToggle(`cv_${idx}`)}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <span>{kw}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

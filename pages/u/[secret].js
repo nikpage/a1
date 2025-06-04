@@ -1,10 +1,6 @@
-// pages/u/[secret].js
-
-'use client';
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import ExtractionPanel from '../../components/ExtractionPanel';
+import CardJobMeta from '../../components/cardJobMeta';
 import DashboardHeader from '../../components/DashboardHeader';
 import DocTabs from '../../components/DocTabs';
 
@@ -23,15 +19,46 @@ export default function SecretPage() {
     if (!secret) return;
 
     const fetchUser = async () => {
-      const res = await fetch(`/api/users?secret=${secret}`);
-      const user = await res.json();
-      if (user?.id) setUserId(user.id);
+      try {
+        const res = await fetch(`/api/users?secret=${secret}`);
+        const user = await res.json();
+
+        if (user?.id && typeof user.id === 'string' && user.id.length === 36) {
+          setUserId(user.id);
+        } else if (user?.userId && typeof user.userId === 'string' && user.userId.length === 36) {
+          setUserId(user.userId);
+        } else {
+          console.error('Invalid userId from /api/users:', user);
+          setUserId(null);
+        }
+      } catch (err) {
+        console.error('Error fetching userId:', err);
+        setUserId(null);
+      }
     };
     fetchUser();
   }, [secret]);
 
-  const handleExtract = (data) => {
-    setCvData(data);
+  const handleExtract = async (data) => {
+    if (!userId || typeof userId !== 'string' || userId.length !== 36) {
+      console.error('❌ Invalid or missing userId in handleExtract:', userId);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/extract-job-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          text: data.jobDescription || data.text || '',
+        }),
+      });
+      const result = await res.json();
+      setCvData(result);
+    } catch (err) {
+      console.error('Extraction error:', err);
+    }
   };
 
   const handleGenerate = async (type) => {
@@ -95,7 +122,7 @@ export default function SecretPage() {
   return (
     <div style={{ padding: '2rem' }}>
       <DashboardHeader secret={secret} />
-      <ExtractionPanel onExtract={handleExtract} />
+      <CardJobMeta onExtract={handleExtract} userId={userId} /> {/* ✅ Updated with userId */}
 
       {cvData && (
         <>

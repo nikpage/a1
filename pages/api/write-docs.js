@@ -32,6 +32,7 @@ export default async function handler(req, res) {
       title: metadata.current_role || '',
       company: metadata.primary_company || '',
       keywords: Array.isArray(metadata.skills) ? metadata.skills : [],
+      description: metadata.job_description || '',
     };
 
     // prepare cover letter details
@@ -40,26 +41,27 @@ export default async function handler(req, res) {
       company: coverLetterData?.company || '',
       hiringManager: coverLetterData?.hiringManager || '',
       keywords: Array.isArray(coverLetterData?.keywords) ? coverLetterData.keywords : [],
+      description: coverLetterData?.description || '',
     };
 
     // CV only
     if (outputType === 'cv') {
-      const prompt = buildCVPrompt(tone, jobDetails, cvText);
+      const prompt = buildCVPrompt(cvText, jobDetails, tone, metadata);
       const cvResult = await generate(prompt);
       return res.status(200).json({ cv: cvResult });
     }
 
     // Cover letter only
     if (outputType === 'cover') {
-      const prompt = buildCoverLetterPrompt(tone, coverData, cvText);
+      const prompt = buildCoverLetterPrompt(cvText, coverData, tone);
       const coverResult = await generate(prompt);
       return res.status(200).json({ coverLetter: coverResult });
     }
 
     // Both CV and Cover letter
     const [cvResult, coverResult] = await Promise.all([
-      generate(buildCVPrompt(tone, jobDetails, cvText)),
-      generate(buildCoverLetterPrompt(tone, coverData, cvText)),
+      generate(buildCVPrompt(cvText, jobDetails, tone, metadata)),
+      generate(buildCoverLetterPrompt(cvText, coverData, tone)),
     ]);
 
     return res.status(200).json({
