@@ -27,7 +27,7 @@ export default function ExtractionPanel({ onExtract, userId }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: jobText,
-          userId, // ✅ Send userId
+          userId,
         }),
       });
       const data = await response.json();
@@ -46,24 +46,21 @@ export default function ExtractionPanel({ onExtract, userId }) {
         includeCover: true,
       };
 
-      // Suggested Keywords: Leave toggles unchanged (default behavior)
       if (data.suggestedKeywords) {
         data.suggestedKeywords.forEach((kwObj, idx) => {
           initialToggles[`suggested_${idx}`] = kwObj.confidence === 'high';
         });
       }
 
-      // Job Keywords: Set toggles to OFF
       if (data.jobKeywords) {
         data.jobKeywords.forEach((_, idx) => {
-          initialToggles[`job_${idx}`] = false; // Default toggles OFF
+          initialToggles[`job_${idx}`] = false;
         });
       }
 
-      // CV Keywords: Set toggles to OFF
       if (data.cvKeywords) {
         data.cvKeywords.forEach((_, idx) => {
-          initialToggles[`cv_${idx}`] = false; // Default toggles OFF
+          initialToggles[`cv_${idx}`] = false;
         });
       }
 
@@ -87,8 +84,7 @@ export default function ExtractionPanel({ onExtract, userId }) {
   const handleToggle = (field) => {
     const updated = { ...toggles, [field]: !toggles[field] };
     setToggles(updated);
-    onExtract(metadata, updated);
-  };
+    };
 
   const handleFieldChange = (field, value) => {
     const updatedMeta = { ...metadata, [field]: value };
@@ -110,6 +106,23 @@ export default function ExtractionPanel({ onExtract, userId }) {
     const updatedMeta = { ...metadata, suggestedKeywords: updated };
     setMetadata(updatedMeta);
     onExtract(updatedMeta, toggles);
+  };
+
+  const getConfidenceStyle = (confidence) => {
+    switch (confidence) {
+      case 'high':
+        return { color: 'rgb(70, 198, 128)', fontWeight: 'bold' };
+      case 'medium':
+        return { color: 'rgb(11, 75, 127)', fontWeight: 'bold' };
+      case 'low':
+        return { color: '#d2b48c', fontWeight: 'bold' };
+      default:
+        return {};
+    }
+  };
+
+  const capitalizeFirstLetter = (string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
   };
 
   return (
@@ -142,8 +155,6 @@ export default function ExtractionPanel({ onExtract, userId }) {
               <div
                 key={`suggested-${idx}`}
                 style={{
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
                   padding: '0.5rem',
                   display: 'flex',
                   flexDirection: 'column',
@@ -164,8 +175,8 @@ export default function ExtractionPanel({ onExtract, userId }) {
                   />
                 </div>
                 {kwObj.confidence && (
-                  <small style={{ color: '#666' }}>
-                    Confidence: {kwObj.confidence}
+                  <small style={getConfidenceStyle(kwObj.confidence)}>
+                    Confidence: {capitalizeFirstLetter(kwObj.confidence)}
                   </small>
                 )}
               </div>
@@ -185,8 +196,6 @@ export default function ExtractionPanel({ onExtract, userId }) {
               <div
                 key={`job-${idx}`}
                 style={{
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
                   padding: '0.5rem',
                   display: 'flex',
                   alignItems: 'center',
@@ -221,8 +230,6 @@ export default function ExtractionPanel({ onExtract, userId }) {
               <div
                 key={`cv-${idx}`}
                 style={{
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
                   padding: '0.5rem',
                   display: 'flex',
                   alignItems: 'center',
