@@ -16,26 +16,20 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid or missing userId' });
   }
 
-
-
   try {
     let { data, error } = await supabase
-    .from('cv_metadata')
-    .select('data')
-    .eq('user_id', userId)
-    .single();
+      .from('cv_metadata')
+      .select('data')
+      .eq('user_id', userId)
+      .single();
 
-  if (error || !data) {
-    console.error('DB error:', error);
-    throw new Error('No CV metadata found for the user.');
-  }
+    if (error || !data) {
+      throw new Error('No CV metadata found for the user.');
+    }
 
-  data = [{ raw_text: JSON.stringify(data.data) }];
+    data = [{ raw_text: JSON.stringify(data.data) }];
 
-
-    if (error || !data || !data[0]?.raw_text) {
-      console.warn('No document_inputs CV data found. Checking cv_metadata…');
-
+    if (!data || !data[0]?.raw_text) {
       const { data: cvMetaData, error: cvMetaError } = await supabase
         .from('cv_metadata')
         .select('data')
@@ -43,13 +37,11 @@ export default async function handler(req, res) {
         .single();
 
       if (cvMetaError || !cvMetaData || !cvMetaData.data) {
-        console.error('DB error (cv_metadata fallback):', cvMetaError);
         throw new Error('No CV data found for the user.');
       }
 
       data = [{ raw_text: JSON.stringify(cvMetaData.data) }];
     }
-
 
     let cvText = '';
     let cvKeywords = [];
@@ -63,9 +55,7 @@ export default async function handler(req, res) {
         }
       });
       cvKeywords = [...new Set(cvKeywords)];
-    } catch (err) {
-      console.error('Failed to parse CV JSON:', err);
-    }
+    } catch (err) {}
 
     const prompt = buildExtractionPrompt(cvText, cvKeywords, text);
 
@@ -82,9 +72,6 @@ export default async function handler(req, res) {
     try {
       metadata = JSON.parse(content);
     } catch (jsonError) {
-      console.error('JSON parse error:', jsonError);
-      console.error('Raw API response:', content);
-
       return res.status(200).json({
         error: 'Invalid JSON response from DeepSeek',
         preview: content.slice(0, 300),
@@ -94,7 +81,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json(metadata);
   } catch (error) {
-    console.error('extract-job-meta error:', error);
     return res.status(500).json({
       error: 'Failed to parse job metadata',
       details: error.message

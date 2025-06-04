@@ -73,6 +73,11 @@ export default function ExtractionPanel({ onExtract, userId }) {
       setMetadata(data);
       setToggles(initialToggles);
       onExtract(data, initialToggles);
+
+      if (!userId || typeof userId !== 'string' || userId.length !== 36) {
+  console.error('❌ Invalid or missing userId in handleExtract:', userId);
+  return;
+}
     } catch (err) {
       console.error('Extraction error:', err);
       alert('Failed to extract metadata');

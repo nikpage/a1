@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import CardJobMeta from '../../components/cardJobMeta';
+import ExtractionPanel from '../../components/cardJobMeta';
 import DashboardHeader from '../../components/DashboardHeader';
 import DocTabs from '../../components/DocTabs';
 
@@ -39,26 +39,9 @@ export default function SecretPage() {
     fetchUser();
   }, [secret]);
 
-  const handleExtract = async (data) => {
-    if (!userId || typeof userId !== 'string' || userId.length !== 36) {
-      console.error('❌ Invalid or missing userId in handleExtract:', userId);
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/extract-job-meta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          text: data.jobDescription || data.text || '',
-        }),
-      });
-      const result = await res.json();
-      setCvData(result);
-    } catch (err) {
-      console.error('Extraction error:', err);
-    }
+  // This function now just receives metadata from CardJobMeta
+  const handleMetaReady = (meta) => {
+    setCvData(meta);
   };
 
   const handleGenerate = async (type) => {
@@ -122,7 +105,8 @@ export default function SecretPage() {
   return (
     <div style={{ padding: '2rem' }}>
       <DashboardHeader secret={secret} />
-      <CardJobMeta onExtract={handleExtract} userId={userId} /> {/* ✅ Updated with userId */}
+
+      <ExtractionPanel userId={userId} onExtract={handleMetaReady} />
 
       {cvData && (
         <>
