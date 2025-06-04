@@ -1,7 +1,5 @@
-// /pages/index.js
-
 import { useEffect, useState } from 'react';
-import Header from '../components/Header';
+import DashboardHeader from '../components/DashboardHeader'; // Replace Header import
 import CardUpload from '../components/cardUpload';
 import CardCVMeta from '../components/cardCV_Meta';
 import CardCVFeedback from '../components/cardCVFeedback';
@@ -14,6 +12,7 @@ export default function HomePage() {
   const [feedback, setFeedback] = useState('');
   const [selectedLang, setSelectedLang] = useState('en');
   const [selectedMarket, setSelectedMarket] = useState('eu');
+  const [tokenCount, setTokenCount] = useState(0); // Add token tracking
 
   useEffect(() => {
     const existing = sessionStorage.getItem('user_secret');
@@ -23,37 +22,37 @@ export default function HomePage() {
         .then(data => {
           setUserId(data.id);
           setSecretUrl(`${window.location.origin}/u/${existing}`);
+          // Get token count if available
+          setTokenCount(data.tokenCount || 0);
         });
     } else {
       fetch('/api/users', { method: 'POST' })
         .then(res => res.json())
-        .then(({ userId: id, secret }) => {
+        .then(({ userId: id, secret, tokenCount: tokens }) => {
           setUserId(id);
           setSecretUrl(`${window.location.origin}/u/${secret}`);
+          setTokenCount(tokens || 0);
           sessionStorage.setItem('user_secret', secret);
         });
     }
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const header = document.querySelector('header');
-      if (window.scrollY > 50) {
-        header.classList.add('shrink');
-      } else {
-        header.classList.remove('shrink');
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   if (!userId) return <div>Loading...</div>;
+
+  // Prepare header props
+  const headerProps = {
+    userName: "User", // You can enhance this later with real user data
+    tokenCount: tokenCount,
+    userStatus: "users",
+    metadata: cvMetadata && Object.keys(cvMetadata).length > 0,
+    feedback: feedback !== '',
+    input: true
+  };
 
   return (
     <>
-      <Header />
-      <div className="container">
+      <DashboardHeader {...headerProps} />
+      <div className="container" style={{ paddingTop: '80px' }}>
         {!cvMetadata || Object.keys(cvMetadata).length === 0 ? (
           <CardUpload
             userId={userId}

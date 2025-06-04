@@ -581,3 +581,150 @@ textarea:focus-visible {
 .file-upload-button:not(:disabled):active {
   transform: scale(0.97);
 }
+.dashboard-header {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem;
+}
+
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.logo {
+  height: 40px;
+}
+
+.header-nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.header-nav a {
+  text-decoration: none;
+  color: #374151;
+  font-weight: 500;
+}
+
+.header-nav a:hover {
+  color: #3b82f6;
+}
+
+.user-info h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #111827;
+}
+
+.stats-line {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.ticker-container {
+  margin-top: 1rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+.ticker-content {
+  display: flex;
+  animation: ticker 20s linear infinite;
+  white-space: nowrap;
+}
+
+.ticker-item {
+  margin-right: 3rem;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+/* Reset and layout */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+}
+
+/* Header positioning */
+.dashboard-header {
+  position: fixed;        /* Stick to top */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;         /* Above other content */
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+/* Push content down to account for fixed header */
+.main-content {
+  margin-top: 80px;      /* Adjust based on header height */
+  padding: 1rem;
+}
+
+/* Rest of your header styles... */
+/* Push body content down when header is fixed */
+body {
+  padding-top: 80px; /* Adjust this value based on your header height */
+}
+
+/* OR if you have a main container */
+.main-content,
+.container,
+main {
+  margin-top: 80px; /* Use this instead of body padding if you have containers */
+}
+
+/* Make sure the header height is consistent */
+.dashboard-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: 80px; /* Set explicit height */
+}
+.dashboard-header {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;   /* Reduce top/bottom padding */
+}
+
+.logo {
+  font-size: 3rem;        /* Really big logo */
+  font-weight: 900;
+  color: #1f2937;
+  text-decoration: none;
+  line-height: 0.8;
+  margin: 0;
+}

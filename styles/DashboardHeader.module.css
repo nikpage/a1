@@ -1,0 +1,19 @@
+.logo {
+  font-size: 3rem !important;
+  font-weight: 900 !important;
+  color: #1f2937 !important;
+  text-decoration: none !important;
+  line-height: 0.8 !important;
+  margin: 0 !important;
+  display: inline-block !important;
+}
+.logoLink {
+  text-decoration: none !important;
+  display: inline-block !important;
+}
+
+.logo {
+  height: 60px !important;
+  width: auto !important;
+  display: block !important;
+}

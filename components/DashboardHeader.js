@@ -1,8 +1,15 @@
 // components/DashboardHeader.js
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import styles from '../styles/DashboardHeader.module.css';
 
-export default function DashboardHeader({ secret }) {
+export default function DashboardHeader({
+  secret,
+  showNav = false,
+  showTicker = false,
+  tickerItems = [],
+  className = ""
+}) {
   const [emailPrefix, setEmailPrefix] = useState('');
   const [tokenBalance, setTokenBalance] = useState(null);
   const [check, setCheck] = useState({
@@ -84,15 +91,50 @@ export default function DashboardHeader({ secret }) {
   }, [secret]);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', padding: '1rem' }}>
-      <img src="/logo_cvprp+trans.png" alt="Logo" style={{ height: '40px', marginRight: '1rem' }} />
-      <div>
-        <h2>Welcome, {emailPrefix}</h2>
-        <p>
-          Token Balance: {tokenBalance !== null ? tokenBalance : '...'} &nbsp;|&nbsp;
-          Verification: users {check.users}, metadata {check.cv_metadata}, feedback {check.cv_feedback}, input {check.document_inputs}
-        </p>
+    <div className={`dashboard-header ${className}`}>
+      <div className="header-main">
+        <div className="header-left">
+          <img src="/logo_cvprp+trans.png" alt="CV Pro" style={{height: '60px'}} />
+
+          {/* Navigation for index page */}
+          {showNav && (
+            <nav className="header-nav">
+              <a href="#features">Features</a>
+              <a href="#pricing">Pricing</a>
+              <a href="#about">About</a>
+            </nav>
+          )}
+        </div>
+
+        <div className="header-right">
+          {secret && (
+            <div className="user-info">
+              <h2>Welcome, {emailPrefix}</h2>
+              <div className="stats-line">
+                <span className="token-balance">
+                  Tokens: {tokenBalance !== null ? tokenBalance : '...'}
+                </span>
+                <span className="verification">
+                  Status: users {check.users} metadata {check.cv_metadata} feedback {check.cv_feedback} input {check.document_inputs}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Ticker section */}
+      {showTicker && tickerItems.length > 0 && (
+        <div className="ticker-container">
+          <div className="ticker-content">
+            {tickerItems.map((item, index) => (
+              <span key={index} className="ticker-item">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
