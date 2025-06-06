@@ -14,6 +14,10 @@ export default function SecretPage() {
   const [cvContent, setCvContent] = useState('');
   const [coverContent, setCoverContent] = useState('');
   const [feedbackReady, setFeedbackReady] = useState(false);
+  const [rewrittenContent, setRewrittenContent] = useState({
+    'Professional Summary': '',
+    'Core Skills': []
+  });
 
   useEffect(() => {
     if (!secret) return;
@@ -39,14 +43,23 @@ export default function SecretPage() {
     fetchUser();
   }, [secret]);
 
-  // This function now just receives metadata from CardJobMeta
   const handleMetaReady = (meta) => {
     setCvData(meta);
+    if (meta.professionalSummary) {
+      setRewrittenContent(prev => ({
+        ...prev,
+        'Professional Summary': meta.professionalSummary,
+        'Core Skills': meta.coreSkills || []
+      }));
+    }
   };
 
   const handleGenerate = async (type) => {
     try {
-      if (!cvData || !userId) return;
+      if (!cvData || !userId) {
+        console.error('Missing CV data or user ID');
+        return;
+      }
 
       const commonPayload = {
         userId,
@@ -55,6 +68,7 @@ export default function SecretPage() {
         language: 'en',
         secret,
         coverLetterData: cvData,
+        rewrittenContent
       };
 
       if (type === 'cv' || type === 'cover') {

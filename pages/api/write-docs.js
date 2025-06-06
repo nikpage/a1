@@ -1,5 +1,4 @@
 // pages/api/write-docs.js
-
 import { buildCVPrompt, buildCoverLetterPrompt } from '../../lib/prompt-builder';
 import { generate } from '../../lib/deepseekClient';
 import { supabase } from '../../lib/supabase';
@@ -11,7 +10,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId, metadata, coverLetterData, outputType = 'both', tone = 'neutral' } = req.body;
+    const { userId, metadata, coverLetterData, outputType = 'both', tone = 'neutral', rewrittenContent = {} } = req.body;
 
     // fetch raw CV text
     const { data: inputDoc, error: fetchErr } = await supabase
@@ -21,6 +20,7 @@ export default async function handler(req, res) {
       .eq('type', 'cv')
       .limit(1)
       .single();
+
     if (fetchErr || !inputDoc?.raw_text) {
       return res.status(400).json({ error: 'CV text not found' });
     }
@@ -44,32 +44,77 @@ export default async function handler(req, res) {
       description: coverLetterData?.description || '',
     };
 
+    // Extract rewritten content
+    const professionalSummary = metadata?.rewrittenContent?.['Professional Summary'] ||
+                               rewrittenContent?.['Professional Summary'] || '';
+    const coreSkills = metadata?.rewrittenContent?.['Core Skills'] ||
+                      rewrittenContent?.['Core Skills'] || [];
+
     // CV only
     if (outputType === 'cv') {
-      const prompt = buildCVPrompt(cvText, jobDetails, tone, metadata);
+      const prompt = buildCVPrompt(
+        cvText,
+        jobDetails,
+        tone,
+        metadata,
+        null,
+        professionalSummary,
+        Array.isArray(coreSkills) ? coreSkills : []
+      );
+
+      console.log('CV PROMPT:', prompt);
       const cvResult = await generate(prompt);
       return res.status(200).json({ cv: cvResult });
     }
 
     // Cover letter only
-    if (outputType === 'cover') {
-      const prompt = buildCoverLetterPrompt(cvText, coverData, tone, metadata);
-      const coverResult = await generate(prompt);
-      return res.status(200).json({ coverLetter: coverResult });
+    if (outputType === 'cover-letter') {
+      const prompt = buildCoverLetterPrompt(
+        cvText,
+        coverData,
+        tone,
+        metadata
+      );
+
+      console.log('COVER LETTER PROMPT:', prompt);
+      const coverLetterResult = await generate(prompt);
+      return res.status(200).json({ coverLetter: coverLetterResult });
     }
 
-    // Both CV and Cover letter
-    const [cvResult, coverResult] = await Promise.all([
-      generate(buildCVPrompt(cvText, jobDetails, tone, metadata)),
-      generate(buildCoverLetterPrompt(cvText, coverData, tone, metadata)),
+    // Both CV and Cover letter (default case)
+    const cvPrompt = buildCVPrompt(
+      cvText,
+      jobDetails,
+      tone,
+      metadata,
+      null,
+      professionalSummary,
+      Array.isArray(coreSkills) ? coreSkills : []
+    );
+
+    const coverLetterPrompt = buildCoverLetterPrompt(
+      cvText,
+      coverData,
+      tone,
+      metadata
+    );
+
+    console.log('CV PROMPT:', cvPrompt);
+    console.log('COVER LETTER PROMPT:', coverLetterPrompt);
+
+    // Generate both documents
+    const [cvResult, coverLetterResult] = await Promise.all([
+      generate(cvPrompt),
+      generate(coverLetterPrompt)
     ]);
 
     return res.status(200).json({
       cv: cvResult,
-      coverLetter: coverResult,
+      coverLetter: coverLetterResult
     });
-  } catch (err) {
-    console.error('🚨 WRITE-DOCS ERROR:', err);
-    return res.status(500).json({ error: err.message });
+
+  } catch (error) {
+    console.error('Error in write-docs handler:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

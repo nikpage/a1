@@ -60,13 +60,15 @@ export default async function handler(req, res) {
     const prompt = buildExtractionPrompt(cvText, cvKeywords, text);
 
     const raw = await generate(prompt);
-    let content = raw?.choices?.[0]?.message?.content || '{}';
+    console.log('🔍 RAW DEEPSEEK RESPONSE:', JSON.stringify(raw, null, 2));
+
+    let content = raw?.choices?.[0]?.message?.content || raw?.content || raw?.response || raw || '{}';
 
     content = content.trim();
-    if (content.startsWith('```json')) content = content.slice(7);
-    else if (content.startsWith('```')) content = content.slice(3);
-    if (content.endsWith('```')) content = content.slice(0, -3);
+    content = content.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
     content = content.trim();
+    console.log('🔍 CLEANED CONTENT:', content.slice(0, 200));
+
 
     let metadata;
     try {
@@ -79,7 +81,10 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json(metadata);
+    console.log('🔍 FINAL RESPONSE:', metadata);
+    res.status(200).json(metadata);
+
+
   } catch (error) {
     return res.status(500).json({
       error: 'Failed to parse job metadata',

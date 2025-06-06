@@ -4,6 +4,14 @@ import mammoth from 'mammoth';
 import { extractMetadata } from '../../lib/deepseekClient';
 import { supabase } from '../../lib/supabase';
 
+// Helper to fix broken \u escapes
+function fixBrokenUnicodeEscapes(str) {
+  return str.replace(/\\u([0-9a-fA-F]{1,3})([^0-9a-fA-F]|$)/g, (match, hex, tail) => {
+    const fixedHex = hex.padStart(4, '0');
+    return `\\u${fixedHex}${tail}`;
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -19,49 +27,42 @@ export default async function handler(req, res) {
 
     const buf = Buffer.from(file.content, 'base64');
 
-    // extract raw text
     let rawText = '';
     if (file.name.toLowerCase().endsWith('.pdf')) {
       rawText = (await pdf(buf)).text;
-      console.log('📝 Extracted raw text (preview):', rawText.slice(0, 1000));
     } else if (/\.(docx|doc)$/i.test(file.name)) {
       rawText = (await mammoth.extractRawText({ buffer: buf })).value;
-      console.log('📝 Extracted raw text (preview):', rawText.slice(0, 1000));
     } else {
       return res.status(400).json({ error: 'Unsupported file type' });
     }
 
-    // call AI to get JSON metadata string
     let content = '';
-try {
-  const dsResponse = await extractMetadata(rawText);
-  content = dsResponse?.choices?.[0]?.message?.content || '';
-  console.log('🧠 Raw AI response:', content);
-} catch (e) {
-  console.error('❌ extractMetadata failed:', e);
-  return res.status(500).json({ error: 'Metadata extraction failed' });
-}
+    try {
+      const dsResponse = await extractMetadata(rawText);
+      content = dsResponse?.choices?.[0]?.message?.content || '';
+    } catch (e) {
+      console.error('extractMetadata failed:', e);
+      return res.status(500).json({ error: 'Metadata extraction failed' });
+    }
 
-
-    // strip code fences if present
     content = content
       .replace(/^\s*```json\s*/i, '')
       .replace(/```$/g, '')
       .trim();
 
-    // attempt parse with fallback
+    const safeContent = fixBrokenUnicodeEscapes(content);
+
     let metadata = {};
     try {
-      console.log('📄 Content to parse:', content);
-
-      metadata = JSON.parse(content);
+      metadata = JSON.parse(safeContent);
     } catch (parseErr) {
-      console.error('Upload handler JSON parse error:', parseErr.message);
-      console.error('Raw AI output was:', content);
+      console.error('JSON parse error:', parseErr.message);
       return res.status(200).json({ metadata: {}, parseError: true });
     }
 
-    // Save to document_inputs
+    // FIX: Also fix rawText before inserting
+    const safeRawText = fixBrokenUnicodeEscapes(rawText);
+
     const { error: insertErr } = await supabase
       .from('document_inputs')
       .upsert([
@@ -69,9 +70,9 @@ try {
           user_id: userId,
           type: 'cv',
           source: 'upload',
-          raw_text: rawText,
+          raw_text: safeRawText,
           content: {
-            text: rawText,
+            text: safeRawText,
             cv: metadata,
           },
         },
@@ -84,6 +85,7 @@ try {
         details: insertErr.message,
       });
     }
+
     const saveRes = await fetch(`${req.headers.origin}/api/save`, {
       method: 'POST',
       headers: {
@@ -96,11 +98,9 @@ try {
       }),
     });
 
-
-
     const saveJson = await saveRes.json();
 
-    return res.status(200).json({ metadata, rawText });
+    return res.status(200).json({ metadata, rawText: safeRawText });
   } catch (err) {
     console.error('Upload handler unexpected error:', err);
     return res.status(500).json({ error: err.message || 'Internal Server Error' });

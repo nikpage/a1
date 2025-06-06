@@ -89,7 +89,9 @@ export default function ExtractionPanel({ onExtract, userId }) {
   const handleToggle = (field) => {
     const updated = { ...toggles, [field]: !toggles[field] };
     setToggles(updated);
-    };
+    onExtract(metadata, updated);
+  };
+
 
   const handleFieldChange = (field, value) => {
     const updatedMeta = { ...metadata, [field]: value };
@@ -146,8 +148,131 @@ export default function ExtractionPanel({ onExtract, userId }) {
       </button>
 
       {metadata && (
+<>
+
+<h3>Career Analysis</h3>
+<div style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ddd' }}>
+
+  {/* Career Distance */}
+  <div style={{ marginBottom: '1rem' }}>
+    <label><strong>Career Distance:</strong></label>
+    <select
+      value={metadata.careerAnalysis?.careerDistance || ''}
+      onChange={(e) => handleFieldChange('careerAnalysis', {
+        ...metadata.careerAnalysis,
+        careerDistance: e.target.value
+      })}
+      style={{ marginLeft: '0.5rem' }}
+    >
+      <option value="">Select...</option>
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+    </select>
+  </div>
+
+  {/* Scenarios */}
+  <div style={{ marginBottom: '1rem' }}>
+    <label><strong>Scenarios:</strong></label>
+    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+      {['pivot', 'older_applicant', 'career_returner', 'recent_grad'].map(scenario => (
+        <label key={scenario} style={{ display: 'flex', alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            checked={metadata.careerAnalysis?.scenarios?.includes(scenario) || false}
+            onChange={(e) => {
+              const current = metadata.careerAnalysis?.scenarios || [];
+              const updated = e.target.checked
+                ? [...current, scenario]
+                : current.filter(s => s !== scenario);
+              handleFieldChange('careerAnalysis', {
+                ...metadata.careerAnalysis,
+                scenarios: updated
+              });
+            }}
+            style={{ marginRight: '0.25rem' }}
+          />
+          {scenario.replace('_', ' ')}
+        </label>
+      ))}
+    </div>
+  </div>
+
+  {/* Positioning Strategy */}
+  <div style={{ marginBottom: '1rem' }}>
+    <label><strong>Positioning Strategy:</strong></label>
+    <textarea
+      value={metadata.careerAnalysis?.positioningStrategy || ''}
+      onChange={(e) => handleFieldChange('careerAnalysis', {
+        ...metadata.careerAnalysis,
+        positioningStrategy: e.target.value
+      })}
+      rows={3}
+      style={{ width: '100%', marginTop: '0.5rem' }}
+    />
+  </div>
+
+  {/* Key Narratives */}
+  <div style={{ marginBottom: '1rem' }}>
+    <label><strong>Key Narratives:</strong></label>
+    {metadata.careerAnalysis?.keyNarratives?.map((narrative, idx) => (
+      <input
+        key={idx}
+        type="text"
+        value={narrative}
+        onChange={(e) => {
+          const updated = [...(metadata.careerAnalysis?.keyNarratives || [])];
+          updated[idx] = e.target.value;
+          handleFieldChange('careerAnalysis', {
+            ...metadata.careerAnalysis,
+            keyNarratives: updated
+          });
+        }}
+        style={{ width: '100%', marginTop: '0.25rem' }}
+      />
+    ))}
+  </div>
+
+  {/* Potential Concerns */}
+  <div style={{ marginBottom: '1rem' }}>
+    <label><strong>Potential Concerns:</strong></label>
+    {metadata.careerAnalysis?.potentialConcerns?.map((concern, idx) => (
+      <input
+        key={idx}
+        type="text"
+        value={concern}
+        onChange={(e) => {
+          const updated = [...(metadata.careerAnalysis?.potentialConcerns || [])];
+          updated[idx] = e.target.value;
+          handleFieldChange('careerAnalysis', {
+            ...metadata.careerAnalysis,
+            potentialConcerns: updated
+          });
+        }}
+        style={{ width: '100%', marginTop: '0.25rem' }}
+      />
+    ))}
+  </div>
+
+</div>
+
+{/* Extracted Job Info Section */}
+   <div style={{ marginTop: '1rem', marginBottom: '1rem', padding: '1rem', border: '1px solid #ddd' }}>
+       <h3>Extracted Job Info</h3>
+       <div style={{ marginBottom: '0.5rem' }}>
+           <strong>Job Title:</strong> {metadata.jobTitle || 'Not Found'}
+       </div>
+       <div style={{ marginBottom: '0.5rem' }}>
+           <strong>Company:</strong> {metadata.companyName || 'Not Found'}
+       </div>
+       <div> {/* No bottom margin for the last item */}
+           <strong>HR Contact:</strong> {metadata.hrContact || 'Not Found'}
+       </div>
+   </div>
+
         <div style={{ marginTop: '1rem' }}>
           <h3>Suggested Keywords</h3>
+
           <div
             style={{
               display: 'grid',
@@ -251,12 +376,13 @@ export default function ExtractionPanel({ onExtract, userId }) {
                   value={kw}
                   onChange={(e) => handleKeywordChange('cvKeywords', idx, e.target.value)}
                   style={{ flex: 1 }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+                  />
+                </div>
+))}
+</div>
+</div>
+</>
+)}
+</div>
+);
 }
