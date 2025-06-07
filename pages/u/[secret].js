@@ -1,3 +1,4 @@
+// pages/[secret].js
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import ExtractionPanel from '../../components/cardJobMeta';
@@ -43,7 +44,7 @@ export default function SecretPage() {
     fetchUser();
   }, [secret]);
 
-  const handleMetaReady = (meta) => {
+  const handleMetaReady = async (meta) => {
     setCvData(meta);
     if (meta.professionalSummary) {
       setRewrittenContent(prev => ({
@@ -52,93 +53,115 @@ export default function SecretPage() {
         'Core Skills': meta.coreSkills || []
       }));
     }
+    sessionStorage.setItem('cvData', JSON.stringify(meta));
+    if (userId) {
+      sessionStorage.setItem('userId', userId);
+    }
+    sessionStorage.setItem('hiddenStuffKey', 'someDefaultValue');
+
+    if (userId && meta) {
+      try {
+        const saveRes = await fetch('/api/saveJobMetadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+             userId: userId,
+             data: meta,
+             timestamp: new Date().toISOString(),
+          }),
+        });
+
+        if (!saveRes.ok) {
+          const errorText = await saveRes.text();
+          throw new Error(`Save failed in handleMetaReady: ${errorText}`);
+        }
+        console.log('Extracted metadata saved successfully via handleMetaReady.');
+      } catch (err) {
+        console.error('Error saving extracted metadata in handleMetaReady:', err);
+      }
+    } else {
+      console.warn("Skipping save in handleMetaReady: userId or meta missing.");
+    }
   };
 
   const handleGenerate = async (type) => {
+    setCvContent('');
+    setCoverContent('');
+    setFeedbackReady(false);
+
+    if (!cvData || !userId) {
+      alert('Missing userId or CV data!');
+      return;
+    }
+
+    const payload = {
+      userId,
+      jobMetadata: cvData,
+      timestamp: new Date().toISOString(),
+      hiddenStuff: sessionStorage.getItem('hiddenStuffKey'),
+      tone,
+      language: 'en',
+      secret,
+      coverLetterData: cvData,
+      rewrittenContent
+    };
+
     try {
-      if (!cvData || !userId) {
-        console.error('Missing CV data or user ID');
-        return;
-      }
-
-      const commonPayload = {
-        userId,
-        metadata: cvData,
-        tone,
-        language: 'en',
-        secret,
-        coverLetterData: cvData,
-        rewrittenContent
-      };
-
-      if (type === 'cv' || type === 'cover') {
+      if (type === 'both') {
         const res = await fetch('/api/write-docs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...commonPayload, outputType: type }),
+          body: JSON.stringify({ ...payload, outputType: 'both' }),
         });
-
-        const result = await res.json();
-        const content = type === 'cv'
-          ? result?.cv?.choices?.[0]?.message?.content
-          : result?.coverLetter?.choices?.[0]?.message?.content;
-
-        if (type === 'cv') setCvContent(content || '');
-        else setCoverContent(content || '');
-
-        setFeedbackReady(true);
-
-        // Save metadata and session data (no generated content)
-        await fetch('/api/save', {
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setCvContent(data.cv || '');
+        setCoverContent(data.coverLetter || '');
+      } else if (type === 'cv') {
+        const res = await fetch('/api/write-docs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId,
-            jobMetadata: cvData,
-            timestamp: new Date().toISOString(),
-            hiddenStuff: sessionStorage.getItem('hiddenStuffKey')
-          }),
+          body: JSON.stringify({ ...payload, outputType: 'cv' }),
         });
-      }
-
-      if (type === 'both') {
-        const [cvRes, coverRes] = await Promise.all([
-          fetch('/api/write-docs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...commonPayload, outputType: 'cv' }),
-          }),
-          fetch('/api/write-docs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...commonPayload, outputType: 'cover' }),
-          }),
-        ]);
-
-        const cvResult = await cvRes.json();
-        const coverResult = await coverRes.json();
-
-        const cvGeneratedContent = cvResult?.cv?.choices?.[0]?.message?.content?.trim() || '';
-        const coverGeneratedContent = coverResult?.coverLetter?.choices?.[0]?.message?.content?.trim() || '';
-
-        setCvContent(cvGeneratedContent);
-        setCoverContent(coverGeneratedContent);
-        setFeedbackReady(true);
-
-        // Save metadata and session data (no generated content)
-        await fetch('/api/save', {
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setCvContent(data.cv || '');
+      } else if (type === 'cover') {
+        const res = await fetch('/api/write-docs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId,
-            jobMetadata: cvData,
-            timestamp: new Date().toISOString(),
-            hiddenStuff: sessionStorage.getItem('hiddenStuffKey')
-          }),
+          body: JSON.stringify({ ...payload, outputType: 'cover-letter' }),
         });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setCoverContent(data.coverLetter || '');
       }
+
+      const saveRes = await fetch('/api/saveJobMetadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          data: cvData,
+          timestamp: new Date().toISOString(),
+          hiddenStuff: sessionStorage.getItem('hiddenStuffKey'),
+        }),
+      });
+
+      if (!saveRes.ok) {
+        const errText = await saveRes.text();
+        console.error('Failed to save job metadata:', errText);
+        alert('Failed to save metadata. Check console.');
+        setFeedbackReady(false);
+        return;
+      }
+
+      console.log('Metadata saved successfully.');
+      setFeedbackReady(true);
+
     } catch (err) {
-      console.error('Generation error:', err);
+      console.error('Error during generate or save:', err);
+      alert('Error during generation or save. Check console.');
       setFeedbackReady(false);
     }
   };
@@ -158,9 +181,8 @@ export default function SecretPage() {
             {['neutral', 'formal', 'casual', 'cocky'].map((t) => (
               <button
                 key={t}
-                style={{ marginLeft: '0.5rem' }}
+                style={{ marginLeft: '0.5rem', fontWeight: tone === t ? 'bold' : 'normal' }}
                 onClick={() => setTone(t)}
-                className={tone === t ? 'selected' : ''}
               >
                 {t[0].toUpperCase() + t.slice(1)}
               </button>
@@ -168,14 +190,14 @@ export default function SecretPage() {
           </div>
 
           <div style={{ marginTop: '1rem' }}>
-            <button onClick={() => handleGenerate('cv')}>CV</button>
-            <button onClick={() => handleGenerate('cover')}>Cover Letter</button>
-            <button onClick={() => handleGenerate('both')}>Both</button>
+            <button onClick={() => handleGenerate('cv')} >CV</button>
+            <button onClick={() => handleGenerate('cover')} style={{ marginLeft: '0.5rem' }}>Cover Letter</button>
+            <button onClick={() => handleGenerate('both')} style={{ marginLeft: '0.5rem' }}>Both</button>
           </div>
         </>
       )}
 
-      {feedbackReady && (
+      {feedbackReady && (cvContent || coverContent) && (
         <DocTabs
           cv={cvContent}
           cover={coverContent}
