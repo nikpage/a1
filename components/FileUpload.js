@@ -1,5 +1,3 @@
-// components/FileUpload.js
-
 import { useState } from 'react';
 
 function FileUpload({ onUpload, userId }) {
@@ -7,17 +5,13 @@ function FileUpload({ onUpload, userId }) {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const uploadFile = (file) => {
-    // Validate userId
     if (!userId) {
-      console.error('Error: Missing userId');
-      alert('Error: Missing userId. Please provide a valid userId.');
+      alert('Missing userId.');
       return;
     }
 
-    // Validate file
     if (!file) {
-      console.error('Error: No file selected');
-      alert('Error: No file selected. Please select a file to upload.');
+      alert('No file selected.');
       return;
     }
 
@@ -26,46 +20,41 @@ function FileUpload({ onUpload, userId }) {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const base64Content = reader.result.split(',')[1]; // Extract base64 content
-
-        // Build the payload to match the backend's expectations
+        const base64Content = reader.result.split(',')[1];
         const payload = {
-          userId: userId, // Pass userId
+          userId,
           file: {
-            name: file.name, // Pass file name
-            content: base64Content, // Pass base64-encoded file content
+            name: file.name,
+            content: base64Content,
           },
         };
 
-        // Make the API request
         const response = await fetch('/api/upload', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
 
         const result = await response.json();
 
         if (response.ok && !result.error) {
-          console.log('Upload successful:', result);
-          if (onUpload) {
-            onUpload(result); // Call the onUpload callback
-          }
+          onUpload && onUpload(result);
         } else {
-          console.error('Upload failed:', result.error);
           alert(`Upload failed: ${result.error || 'Unknown error'}`);
         }
       } catch (error) {
-        console.error('Error uploading file:', error);
-        alert('An unexpected error occurred while uploading the file.');
+        alert('Error uploading file.');
       } finally {
         setIsUploading(false);
       }
     };
 
-    reader.readAsDataURL(file); // Convert file to base64
+    reader.onerror = () => {
+      alert('Failed to read the file.');
+      setIsUploading(false);
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleDragOver = (e) => {
@@ -75,16 +64,22 @@ function FileUpload({ onUpload, userId }) {
 
   const handleDragLeave = (e) => {
     e.preventDefault();
-    setIsDragOver(false);
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      uploadFile(files[0]);
-    }
+
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  };
+
+  const handleFileInput = (e) => {
+    const file = e.target.files[0];
+    if (file) uploadFile(file);
   };
 
   return (
@@ -106,7 +101,7 @@ function FileUpload({ onUpload, userId }) {
         <p>Drag and drop files here, or click to select</p>
         <input
           type="file"
-          onChange={(e) => uploadFile(e.target.files[0])}
+          onChange={handleFileInput}
           disabled={isUploading}
           style={{ marginTop: '10px' }}
         />

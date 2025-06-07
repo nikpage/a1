@@ -87,6 +87,18 @@ export default function SecretPage() {
         else setCoverContent(content || '');
 
         setFeedbackReady(true);
+
+        // Save metadata and session data (no generated content)
+        await fetch('/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            jobMetadata: cvData,
+            timestamp: new Date().toISOString(),
+            hiddenStuff: sessionStorage.getItem('hiddenStuffKey')
+          }),
+        });
       }
 
       if (type === 'both') {
@@ -106,9 +118,24 @@ export default function SecretPage() {
         const cvResult = await cvRes.json();
         const coverResult = await coverRes.json();
 
-        setCvContent(cvResult?.cv?.choices?.[0]?.message?.content?.trim() || '');
-        setCoverContent(coverResult?.coverLetter?.choices?.[0]?.message?.content?.trim() || '');
+        const cvGeneratedContent = cvResult?.cv?.choices?.[0]?.message?.content?.trim() || '';
+        const coverGeneratedContent = coverResult?.coverLetter?.choices?.[0]?.message?.content?.trim() || '';
+
+        setCvContent(cvGeneratedContent);
+        setCoverContent(coverGeneratedContent);
         setFeedbackReady(true);
+
+        // Save metadata and session data (no generated content)
+        await fetch('/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            jobMetadata: cvData,
+            timestamp: new Date().toISOString(),
+            hiddenStuff: sessionStorage.getItem('hiddenStuffKey')
+          }),
+        });
       }
     } catch (err) {
       console.error('Generation error:', err);

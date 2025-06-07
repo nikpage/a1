@@ -86,19 +86,14 @@ export default async function handler(req, res) {
       });
     }
 
-    const saveRes = await fetch(`${req.headers.origin}/api/save`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        data: metadata,
-      }),
-    });
+    // Save CV data directly using Supabase instead of fetch
+    const { error: saveError } = await supabase
+      .from('cv_data')
+      .insert({ user_id: userId, data: metadata });
 
-    const saveJson = await saveRes.json();
+    if (saveError) {
+      console.error('Failed to save CV data:', saveError);
+    }
 
     return res.status(200).json({ metadata, rawText: safeRawText });
   } catch (err) {
