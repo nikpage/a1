@@ -1,4 +1,6 @@
-import React from 'react';
+//components/cardCV_Meta.js
+
+import React, { useEffect } from 'react';
 
 export default function CardCVMeta({
   cvMetadata,
@@ -9,7 +11,20 @@ export default function CardCVMeta({
   selectedMarket,
   selectedLang,
   setFeedback,
+  setActiveCard,
 }) {
+  // Force document_input_id once
+  useEffect(() => {
+    if (!cvMetadata.document_input_id) {
+      const id =
+        cvMetadata.document_input_id ||
+        window.documentInputId ||
+        sessionStorage.getItem('current_input_id') ||
+        crypto.randomUUID();
+      setCvMetadata(prev => ({ ...prev, document_input_id: id }));
+    }
+  }, [cvMetadata, setCvMetadata]);
+
   const handleFieldChange = (key, value, index = null) => {
     setCvMetadata(prev => {
       if (index !== null) {
@@ -31,14 +46,61 @@ export default function CardCVMeta({
     e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
+  // ---- FORM SUBMIT HANDLER ----
+  const handleSubmit = async e => {
+    e.preventDefault();
+
+    console.log('Current cvMetadata.document_input_id:', cvMetadata.document_input_id);
+
+    // First save the CV metadata
+    const payload = {
+      userId,
+      cvData: cvMetadata,
+      displayName: cvMetadata.display_name,
+      documentInputId: cvMetadata.document_input_id,
+    };
+
+    try {
+      // Get CV text with fallbacks
+      const cvText = sessionStorage.getItem('cvText') ||
+                    localStorage.getItem('cvText') ||
+                    cvMetadata.rawText ||
+                    "No CV text available";
+
+      // Make API call for feedback
+      const feedbackRes = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: cvMetadata,
+          cvBody: cvText,
+          userId: userId
+        }),
+      });
+
+      const feedbackData = await feedbackRes.json();
+
+      if (feedbackData.feedback) {
+        setFeedback(feedbackData.feedback);
+        setActiveCard('feedback');
+      } else {
+        console.error('Failed to generate feedback:', feedbackData.error);
+        // Handle error appropriately
+      }
+    } catch (error) {
+      console.error('Error generating feedback:', error);
+      // Handle error appropriately
+    }
+  };
+
+
   return (
     <div style={{ margin: '0', paddingTop: '0', marginTop: '0', position: 'relative', top: '-20px' }}>
-
-      <h2 style={{ marginBottom: '0.25rem', fontSize: '2.25rem', fontWeight: 'bold', color: '#1e5a96', marginTop: '0', paddingTop: '0' }}>CV Details</h2>
-
+      <h2 style={{ marginBottom: '0.25rem', fontSize: '2.25rem', fontWeight: 'bold', color: '#1e5a96', marginTop: '0', paddingTop: '0' }}>
+        {cvMetadata.display_name || 'Uploaded CV 1'}
+      </h2>
       <p style={{ marginBottom: '1.5rem', color: '#1e5a96', fontSize: '0.9rem', marginTop: '5px' }}>Extracted by AI</p>
 
-      {/* Basic Info Fields */}
       <div style={{ fontWeight: 'bold' }}>Name:</div>
       <input
         type="text"
@@ -69,7 +131,6 @@ export default function CardCVMeta({
         autoComplete="off"
       />
 
-      {/* Professional Fields */}
       <div style={{ fontWeight: 'bold' }}>Current Role:</div>
       <input
         type="text"
@@ -170,7 +231,6 @@ export default function CardCVMeta({
         autoComplete="off"
       />
 
-      {/* Skills section */}
       <div style={{ marginBottom: '1rem' }}>
         <h3>Skills/Keywords</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
@@ -197,24 +257,30 @@ export default function CardCVMeta({
         </div>
       </div>
 
-      <form onSubmit={async e => {
-        e.preventDefault();
-        const res = await fetch('/api/review-cv', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, tone: 'neutral', targetIndustry: selectedMarket, country: selectedLang, metadata: cvMetadata }),
-        });
-        const { feedback: fb } = await res.json();
-        const text = typeof fb === 'string' ? fb : fb.choices?.[0]?.message?.content || JSON.stringify(fb);
-        setFeedback(text);
-        await fetch('/api/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, data: cvMetadata, feedback: text }),
-        });
-      }}>
-        <button type="submit">Review CV</button>
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          handleSubmit(e); // save CV metadata
+          setActiveCard('feedback'); // go to feedback card
+        }}
+      >
+        <button
+          type="submit"
+          style={{
+            marginTop: '1rem',
+            backgroundColor: '#1e5a96',
+            color: 'white',
+            padding: '0.5rem 1rem',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          Generate CV Feedback
+        </button>
       </form>
+
     </div>
   );
 }

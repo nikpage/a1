@@ -1,3 +1,4 @@
+// /pages/api/saveCVMetadata.js
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -6,43 +7,67 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST allowed' });
+    res.status(405).json({ error: 'Only POST requests allowed' });
+    return;
   }
 
-  const { userId, cvData, feedbackData } = req.body;
+  const { userId, cvData, displayName, documentInputId } = req.body;
 
-  if (!userId || !cvData) {
-    return res.status(400).json({ error: 'Missing userId or cvData' });
+  if (!cvData || !documentInputId) {
+    console.log('Missing required fields:', { cvData, documentInputId });
+    res.status(400).json({ error: 'Missing required fields: cvData or documentInputId' });
+    return;
   }
 
   try {
-    // Upsert CV metadata
-    const { data: cvMeta, error: metaError } = await supabase
+    // Check if record exists first
+    const { data: existingData } = await supabase
       .from('cv_metadata')
-      .upsert({ user_id: userId, data: cvData }, { onConflict: ['user_id'] })
-      .select()
+      .select('*')
+      .eq('document_input_id', documentInputId)
       .single();
 
-    if (metaError) {
-      console.error('CV metadata upsert error:', metaError);
-      return res.status(500).json({ error: 'Failed to save CV metadata' });
+    let result;
+
+    if (existingData) {
+      // Update existing record
+      result = await supabase
+        .from('cv_metadata')
+        .update({
+          data: cvData,
+          display_name: displayName || 'Unnamed CV',
+          user_id: userId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('document_input_id', documentInputId);
+    } else {
+      // Insert new record
+      result = await supabase
+        .from('cv_metadata')
+        .insert({
+          document_input_id: documentInputId,
+          data: cvData,
+          display_name: displayName || 'Unnamed CV',
+          user_id: userId,
+          
+        });
     }
 
-    // If feedback exists, insert it linked to cv_metadata id
-    if (feedbackData) {
-      const { error: feedbackError } = await supabase
-        .from('cv_feedback')
-        .insert([{ cv_metadata_id: cvMeta.id, feedback: feedbackData }]);
-
-      if (feedbackError) {
-        console.error('CV feedback insert error:', feedbackError);
-        return res.status(500).json({ error: 'Failed to save CV feedback' });
-      }
+    if (result.error) {
+      console.error('Supabase error:', result.error);
+      res.status(500).json({ error: 'Failed to save CV metadata' });
+      return;
     }
 
-    return res.status(200).json({ message: 'CV metadata and feedback saved' });
+    console.log('CV metadata saved:', documentInputId);
+
+    res.status(200).json({
+      message: 'CV metadata saved successfully!',
+      documentInputId: documentInputId
+    });
   } catch (e) {
     console.error('Unexpected error:', e);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
+    return;
   }
 }

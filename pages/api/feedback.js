@@ -1,7 +1,7 @@
 // pages/api/feedback.js
 import { buildCVFeedbackPrompt } from '../../lib/prompt-builder';
 import { generate } from '../../lib/deepseekClient';
-import saveHandler from './save.js';
+import { supabase } from '../../lib/supabase'; // Adjust the path if needed
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -29,26 +29,21 @@ export default async function handler(req, res) {
       feedback = raw;
     }
 
-    // Save feedback directly using save.js (matching db format)
-  await saveHandler(
-    {
-      method: 'POST',
-      body: {
-        userId,
-        data: {}, // Required by save.js but not used here
-        feedback: {
-          cv_metadata_id: metadata.id,
-          feedback: typeof feedback === 'object' ? feedback : { text: feedback },
-        },
-      },
-    },
-    {
-      status: () => ({
-        json: () => {},
-      }),
-    }
-  );
+    // Directly save feedback to Supabase (no fake res object!)
+    const feedbackData = {
+      cv_metadata_id: metadata.id,
+      feedback: typeof feedback === 'object' ? feedback : { text: feedback },
+      user_id: userId,
+      display_name: metadata.display_name || 'Unnamed CV',
+      created_at: new Date().toISOString(),
+    };
 
+    const { error } = await supabase.from('cv_feedback').insert([feedbackData]);
+
+    if (error) {
+      console.error('Failed to save feedback:', error);
+      return res.status(500).json({ error: 'Failed to save feedback' });
+    }
 
     return res.status(200).json({ feedback });
   } catch (err) {

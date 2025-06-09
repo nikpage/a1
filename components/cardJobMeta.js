@@ -1,6 +1,8 @@
+// components/cardJobMeta.js
+
 import { useState } from 'react';
 
-export default function ExtractionPanel({ onExtract, userId }) {
+export default function cardJobMeta({ onExtract, userId }) {
   const [jobText, setJobText] = useState('');
   const [loading, setLoading] = useState(false);
   const [metadata, setMetadata] = useState(null);

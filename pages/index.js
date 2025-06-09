@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import DashboardHeader from '../components/DashboardHeader'; // Replace Header import
+import DashboardHeader from '../components/DashboardHeader';
 import CardUpload from '../components/cardUpload';
 import CardCVMeta from '../components/cardCV_Meta';
 import CardCVFeedback from '../components/cardCVFeedback';
@@ -12,7 +12,8 @@ export default function HomePage() {
   const [feedback, setFeedback] = useState('');
   const [selectedLang, setSelectedLang] = useState('en');
   const [selectedMarket, setSelectedMarket] = useState('eu');
-  const [tokenCount, setTokenCount] = useState(0); // Add token tracking
+  const [tokenCount, setTokenCount] = useState(0);
+  const [activeCard, setActiveCard] = useState('meta'); // <-- ADD THIS LINE
 
   useEffect(() => {
     const existing = sessionStorage.getItem('user_secret');
@@ -22,7 +23,6 @@ export default function HomePage() {
         .then(data => {
           setUserId(data.id);
           setSecretUrl(`${window.location.origin}/u/${existing}`);
-          // Get token count if available
           setTokenCount(data.tokenCount || 0);
         });
     } else {
@@ -41,7 +41,7 @@ export default function HomePage() {
 
   // Prepare header props
   const headerProps = {
-    userName: "User", // You can enhance this later with real user data
+    userName: "User",
     tokenCount: tokenCount,
     userStatus: "users",
     metadata: cvMetadata && Object.keys(cvMetadata).length > 0,
@@ -60,20 +60,20 @@ export default function HomePage() {
             setSelectedLang={setSelectedLang}
             setFieldUsage={setFieldUsage}
           />
+        ) : activeCard === 'meta' ? (
+          <CardCVMeta
+            cvMetadata={cvMetadata}
+            setCvMetadata={setCvMetadata}
+            fieldUsage={fieldUsage}
+            setFieldUsage={setFieldUsage}
+            userId={userId}
+            selectedMarket={selectedMarket}
+            selectedLang={selectedLang}
+            setFeedback={setFeedback}
+            setActiveCard={setActiveCard}
+          />
         ) : (
-          <>
-            <CardCVMeta
-              cvMetadata={cvMetadata}
-              setCvMetadata={setCvMetadata}
-              fieldUsage={fieldUsage}
-              setFieldUsage={setFieldUsage}
-              userId={userId}
-              selectedMarket={selectedMarket}
-              selectedLang={selectedLang}
-              setFeedback={setFeedback}
-            />
-            <CardCVFeedback feedback={feedback} secretUrl={secretUrl} />
-          </>
+          <CardCVFeedback feedback={feedback} secretUrl={secretUrl} />
         )}
       </div>
     </>

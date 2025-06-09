@@ -142,7 +142,21 @@ export default async function handler(req, res) {
         return result?.choices?.[0]?.message?.content?.trim() || '';
       })()
     ]);
+    const { data: cvData, error: cvErr } = await supabase
+      .from('document_inputs')
+      .select('raw_text, content')
+      .eq('user_id', userId)
+      .eq('type', 'cv')
+      .limit(1)
+      .single();
 
+    if (!cvErr && cvData) {
+      const cvText = cvData.raw_text;
+      const metadata = cvData.content?.cv || {};
+
+      const deepSeekResult = await generateForCV(cvText, metadata);
+      console.log('DeepSeek response:', deepSeekResult);
+    }
     return res.status(200).json({ cv: cvOut, coverLetter: coverLetterOut });
   } catch (error) {
     console.error('Error in write-docs handler:', error);
