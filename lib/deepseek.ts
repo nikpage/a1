@@ -26,7 +26,7 @@ export async function callDeepSeek(messages: any[]) {
       Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY_1}`
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',      // <-- FIXED MODEL NAME
+      model: 'deepseek-chat',     
       messages,
       temperature: 0,
       max_tokens: 2000,
