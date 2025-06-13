@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Build messages array for DeepSeek
+    // Build messages array for DeepSeek, force JSON response
     const { sessionToken, jobAd } = req.body
     if (!sessionToken) {
       return res.status(400).json({ error: 'Missing sessionToken' })
@@ -18,9 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { role: 'user', content: `SessionToken: ${sessionToken}. JobAd: ${jobAd || ''}` }
     ]
 
-
     const dsRaw = await callDeepSeek(messages)
-    console.error('[DeepSeek RAW]', dsRaw.body)
+    console.error('[DeepSeek RAW]', dsRaw.body) // <-- logging restored
     const ds = JSON.parse(dsRaw.body)
     const rawContent = ds.choices[0].message.content
     const clean = rawContent.replace(/```json|```/g, '').trim()
