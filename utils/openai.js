@@ -1,4 +1,3 @@
-// utils/openai.js
 import axios from 'axios'
 
 function logTokenUsage(data) {
@@ -15,10 +14,16 @@ function logTokenUsage(data) {
 }
 
 export async function analyzeCV(cvText, jobText = '') {
+  const userPrompt =
+    'Here is a CV.' +
+    (jobText ? '\nHere is a job description:\n' + jobText : '') +
+    '\n\nPlease analyze the CV for strengths, weaknesses, and missing skills relevant to the job description if provided. Give specific, actionable feedback and suggestions for improvement.'
+
   const messages = [
     { role: 'system', content: 'You are a professional CV analyst.' },
-    { role: 'user', content: 'CV:\n' + cvText + (jobText ? '\nJob Description:\n' + jobText : '') }
+    { role: 'user', content: userPrompt + '\n\nCV:\n' + cvText }
   ]
+
   const { data } = await axios.post(process.env.DEEPSEEK_API_URL, {
     model: 'deepseek-chat',
     messages,

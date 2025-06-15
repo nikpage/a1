@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   try {
     console.log('---- API REQUEST BODY ----', req.body)
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { user_id, jobText } = req.body
+    const { user_id, jobText, skipAnalysis } = req.body
     if (!user_id) return res.status(400).json({ error: 'Missing user_id' })
     let cv
     try {
@@ -15,6 +15,12 @@ export default async function handler(req, res) {
       console.error('CV NOT FOUND ERROR:', e)
       return res.status(404).json({ error: 'CV not found', details: String(e) })
     }
+
+    // If skipAnalysis flag is set, return stored analysis
+    if (skipAnalysis) {
+      return res.status(200).json({ analysis: cv.cv_data })
+    }
+
     let result
     try {
       result = await analyzeCV(cv.cv_data, jobText || '')

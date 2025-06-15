@@ -1,22 +1,21 @@
 // pages/[user_id].js
 import { useState, useEffect } from 'react'
 import AnalysisDisplay from '../components/AnalysisDisplay'
-import JobAdInput from '../components/JobAdInput'
 import DocumentGenerator from '../components/DocumentGenerator'
 import CopyableText from '../components/CopyableText'
 
 export default function SessionPage({ user_id }) {
   const [analysis, setAnalysis] = useState(null)
-  const [jobText, setJobText] = useState('')
   const [docs, setDocs] = useState(null)
   const [tokens, setTokens] = useState(0)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    // Get CV data which now includes stored analysis
     fetch('/api/analyze-cv-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id })
+      body: JSON.stringify({ user_id, skipAnalysis: true })
     })
       .then(r => r.json())
       .then(d => d.analysis ? setAnalysis(d.analysis) : setError(d.error || ''))
@@ -53,8 +52,7 @@ export default function SessionPage({ user_id }) {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center">
       <div className="w-full max-w-2xl p-6 bg-white rounded-2xl shadow-lg flex flex-col gap-6 mt-8">
         <AnalysisDisplay analysis={analysis} error={error} />
-        <JobAdInput jobText={jobText} setJobText={setJobText} />
-        <DocumentGenerator user_id={user_id} jobText={jobText} setDocs={handleDocs} tokens={tokens} setTokens={handleTokens} setError={setError} />
+        <DocumentGenerator user_id={user_id} jobText={''} setDocs={handleDocs} tokens={tokens} setTokens={handleTokens} setError={setError} />
         {docs?.choices?.[0]?.message?.content && (
           <CopyableText
             text={docs.choices[0].message.content}
