@@ -3,9 +3,16 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: {
     appDir: true
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        'ws': 'commonjs ws',
+        'websocket': 'commonjs websocket'
+      })
+    }
+    return config
   }
-  // Add other Next.js config options here as needed
 }
 
 module.exports = nextConfig
-
