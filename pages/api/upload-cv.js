@@ -17,7 +17,8 @@ export default async function handler(req, res) {
   })
 
   try {
-    const [fields, files] = await form.parse(req)
+    const parsed = await form.parse(req)
+    const files = parsed.files || parsed[1]
     const file = files.file?.[0] || files.file
 
     if (!file || file.size > 200 * 1024) {
