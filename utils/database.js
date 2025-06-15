@@ -1,28 +1,15 @@
 // utils/database.js
-import { createClient } from '@supabase/supabase-js'
 
-// Conditional WebSocket import for serverless environments
-let WebSocket
-if (typeof window === 'undefined') {
-  // Server-side (Node.js/Vercel)
-  try {
-    WebSocket = require('ws')
-  } catch (e) {
-    // Fallback if ws is not available
-    WebSocket = null
-  }
-} else {
-  // Client-side (browser)
-  WebSocket = window.WebSocket
-}
+
+import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   {
-    realtime: WebSocket ? {
-      WebSocket: WebSocket
-    } : {}
+    realtime: {
+      disabled: true
+    }
   }
 )
 
