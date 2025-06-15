@@ -1,10 +1,10 @@
 // pages/api/upload-cv.js
 
+
 import formidable from 'formidable'
 import fs from 'fs'
 import extractTextFromPDF from '../../utils/pdf-extract'
 import { upsertUser, upsertCV } from '../../utils/database'
-import { analyzeCV } from '../../utils/openai'
 import genSessionId from '../../utils/session'
 
 export const config = { api: { bodyParser: false } }
@@ -20,19 +20,10 @@ export default async function handler(req, res) {
     let text
     try { text = await extractTextFromPDF(buffer) } catch { return res.status(400).json({ error: 'PDF parse error' }) }
 
-    // Analyze CV with DeepSeek
-    let analysis
-    try {
-      analysis = await analyzeCV(text, fields.jobText || '')
-    } catch (e) {
-      console.error('DEEPSEEK ERROR:', e)
-      return res.status(500).json({ error: 'DeepSeek error', details: String(e) })
-    }
-
     const user_id = genSessionId()
     try {
       await upsertUser(user_id)
-      await upsertCV(user_id, analysis, text)
+      await upsertCV(user_id, null, text) // Only store parsed CV, not analysis
     } catch (e) {
       return res.status(500).json({ error: 'DB error' })
     }
