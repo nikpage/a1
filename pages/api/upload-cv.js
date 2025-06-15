@@ -5,6 +5,7 @@ import fs from 'fs'
 import extractTextFromPDF from '../../utils/pdf-extract'
 import { upsertUser, upsertCV } from '../../utils/database'
 import genSessionId from '../../utils/session'
+import { analyzeCV } from '../../utils/openai'
 
 export const config = { api: { bodyParser: false } }
 
@@ -14,36 +15,14 @@ export default async function handler(req, res) {
   const form = formidable()
 
   form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error('Parse error:', err)
-      return res.status(400).json({ error: 'Upload failed' })
-    }
-
-    console.log('Files object:', JSON.stringify(files, null, 2))
+    if (err) return res.status(400).json({ error: 'Upload failed' })
 
     const file = files.file
-    if (!file) {
-      console.log('No file found in files object')
-      return res.status(400).json({ error: 'No file uploaded' })
-    }
-
-    console.log('File object:', JSON.stringify(file, null, 2))
-
-    if (!file.mimetype || file.mimetype !== 'application/pdf') {
-      console.log('Invalid mimetype:', file.mimetype)
-      return res.status(400).json({ error: 'Not a PDF' })
-    }
-
-    if (file.size > 200 * 1024) {
-      console.log('File too large:', file.size)
-      return res.status(400).json({ error: 'File too large' })
-    }
-
+    if (!file) return res.status(400).json({ error: 'No file uploaded' })
+    if (!file.mimetype || file.mimetype !== 'application/pdf') return res.status(400).json({ error: 'Not a PDF' })
+    if (file.size > 200 * 1024) return res.status(400).json({ error: 'File too large' })
     const filepath = file.filepath || file.path
-    if (!filepath) {
-      console.log('No filepath found')
-      return res.status(400).json({ error: 'File path error' })
-    }
+    if (!filepath) return res.status(400).json({ error: 'File path error' })
 
     const buffer = fs.readFileSync(filepath)
 
@@ -51,8 +30,14 @@ export default async function handler(req, res) {
     try {
       text = await extractTextFromPDF(buffer)
     } catch (e) {
-      console.error('PDF parse error:', e)
       return res.status(400).json({ error: 'PDF parse error' })
+    }
+
+    let dsAnalysis
+    try {
+      dsAnalysis = await analyzeCV(text)
+    } catch (e) {
+      return res.status(500).json({ error: 'DS error' })
     }
 
     const user_id = genSessionId()
@@ -61,10 +46,10 @@ export default async function handler(req, res) {
       await upsertUser(user_id)
       await upsertCV(user_id, null, text)
     } catch (e) {
-      console.error('DB error:', e)
       return res.status(500).json({ error: 'DB error' })
     }
 
-    res.status(200).json({ user_id })
+    // Return DS result directly, do NOT store in DB
+    res.status(200).json({ user_id, dsAnalysis })
   })
 }
