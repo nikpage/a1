@@ -1,10 +1,16 @@
 // utils/database.js
 
 import { createClient } from '@supabase/supabase-js'
+import ws from 'ws'  // <-- add this
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  {
+    realtime: {
+      WebSocket: ws  // <-- add this to fix Vercel error
+    }
+  }
 )
 
 export async function upsertUser(user_id) {
