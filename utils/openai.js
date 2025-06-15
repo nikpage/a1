@@ -1,5 +1,3 @@
-// utils/openai.js
-
 import axios from 'axios'
 
 function logTokenUsage(data) {
@@ -45,7 +43,7 @@ export async function analyzeCV(cvText, jobText = '') {
     });
 
     logTokenUsage(data);
-    console.log('RESPONSE:', data);
+    console.log('RESPONSE:', data); // already here
     return data;
   } catch (error) {
     console.error('DeepSeek API Error:', error.response?.data || error.message);

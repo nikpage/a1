@@ -9,15 +9,16 @@ const supabase = createClient(
   }
 )
 
-export async function upsertUser(user_id) {
+export async function upsertUser(user_id, tokens = 3) {
   const { data, error } = await supabase
-    .from('public.users')
-    .upsert({ user_id, tokens: 3 })
+    .from('users')
+    .upsert({ user_id, tokens })
     .select()
 
   if (error) throw error
   return data[0]
 }
+
 
 export async function upsertCV(user_id, cv_file_url, cv_data) {
   const { error } = await supabase
@@ -40,7 +41,7 @@ export async function getCVData(user_id) {
 
 export async function getUser(user_id) {
   const { data, error } = await supabase
-    .from('public.users')
+    .from('users')
     .select('*')
     .eq('user_id', user_id)
     .single()
