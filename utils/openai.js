@@ -1,3 +1,5 @@
+// utils/openai.js
+
 import axios from 'axios'
 
 function logTokenUsage(data) {
@@ -14,45 +16,39 @@ function logTokenUsage(data) {
 }
 
 export async function analyzeCV(cvText, jobText = '') {
-  const userPrompt =
-    'Here is a CV.' +
-    (jobText ? '\nHere is a job description:\n' + jobText : '') +
-    '\n\nPlease analyze the CV for strengths, weaknesses, and missing skills relevant to the job description if provided. Give specific, actionable feedback and suggestions for improvement.'
+  const systemMessage = {
+    role: 'system',
+    content: 'You are a senior CEE HR specialist with deep ATS knowledge. Analyze CVs for the Central/Eastern European tech market (Czechia, Poland, Hungary, Romania, Slovakia, Ukraine). Provide: 1) Overall score (1-10), 2) Top 3 strengths, 3) Top 2 weaknesses, 4) ATS optimization tips. Be brutally honest but constructive.'
+  };
 
-  const messages = [
-    { role: 'system', content: 'You are a professional CV analyst.' },
-    { role: 'user', content: userPrompt + '\n\nCV:\n' + cvText }
-  ]
+  const userMessage = {
+    role: 'user',
+    content: jobText
+      ? `Analyze this CV for the following job:\n\nJOB DESCRIPTION:\n${jobText}\n\nCV:\n${cvText}`
+      : `Analyze this CV for general CEE tech roles:\n\n${cvText}`
+  };
 
-  const { data } = await axios.post(process.env.DEEPSEEK_API_URL, {
-    model: 'deepseek-chat',
-    messages,
-    stream: false
-  }, {
-    headers: {
-      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
-      'Content-Type': 'application/json'
-    }
-  })
-  logTokenUsage(data)
-  return data
-}
+  console.log('PROMPT:', JSON.stringify([systemMessage, userMessage], null, 2));
 
-export async function generateCVAndCover(cvText, jobText) {
-  const messages = [
-    { role: 'system', content: 'You are a professional CV and cover letter writer.' },
-    { role: 'user', content: 'CV:\n' + cvText + '\nJob Description:\n' + jobText }
-  ]
-  const { data } = await axios.post(process.env.DEEPSEEK_API_URL, {
-    model: 'deepseek-chat',
-    messages,
-    stream: false
-  }, {
-    headers: {
-      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
-      'Content-Type': 'application/json'
-    }
-  })
-  logTokenUsage(data)
-  return data
+  try {
+    const { data } = await axios.post(process.env.DEEPSEEK_API_URL, {
+      model: 'deepseek-chat',
+      messages: [systemMessage, userMessage],
+      temperature: 0.3,
+      max_tokens: 8000,
+      stream: false
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    logTokenUsage(data);
+    console.log('RESPONSE:', data);
+    return data;
+  } catch (error) {
+    console.error('DeepSeek API Error:', error.response?.data || error.message);
+    throw new Error('Failed to analyze CV');
+  }
 }
