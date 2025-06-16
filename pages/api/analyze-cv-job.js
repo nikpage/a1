@@ -1,14 +1,3 @@
-// pages/api/analyze-cv-job.js
-
-
-console.log('ENV VARS CHECK:', {
-  SUPABASE_URL: process.env.SUPABASE_URL,
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-})
-
-
 import { getCVData } from '../../utils/database'
 import { analyzeCV } from '../../utils/openai'
 
@@ -33,21 +22,21 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'DeepSeek error', details: String(e) })
     }
 
-    console.log('DS RAW RESPONSE:', result)
-    const choices = result.choices || result.data?.choices
-    const content = choices?.[0]?.messaconsole.log('ENV VARS CHECK:', {
-  SUPABASE_URL: process.env.SUPABASE_URL,
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-})
-ge?.content || result.output || JSON.stringify(result)
+    console.log('DS RAW RESPONSE:', JSON.stringify(result))
+
+    // Safely extract analysis from all known locations, or fail gracefully
+    const content =
+      result?.choices?.[0]?.message?.content ||
+      result?.choices?.[0]?.message ||
+      result?.output ||
+      null
+
     if (!content) {
       return res.status(500).json({ error: 'No analysis content returned by DeepSeek', raw: result })
     }
 
-    res.status(200).json({ analysis: content })
+    return res.status(200).json({ analysis: content })
   } catch (e) {
-    res.status(500).json({ error: 'Unexpected error', details: String(e) })
+    return res.status(500).json({ error: 'Unexpected error', details: String(e) })
   }
 }
