@@ -9,21 +9,27 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.7.0",
-    "formidable": "^3.5.4",
+    "@supabase/supabase-js": "1.35.7",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "formidable": "^2.1.5",
     "franc": "^6.2.0",
     "iso-639-3": "^3.0.1",
-    "mammoth": "^1.9.0",
+    "mammoth": "^1.9.1",
     "marked": "^15.0.12",
     "next": "13.4.5",
     "openai": "^4.5.0",
     "pdf-parse": "^1.1.1",
+    "pg": "^8.16.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-markdown": "^10.1.0",
+    "textract": "^2.5.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/formidable": "^3.4.5",
+    "@types/uuid": "^10.0.0",
     "eslint": "8.44.0",
     "eslint-config-next": "13.4.5"
   }
