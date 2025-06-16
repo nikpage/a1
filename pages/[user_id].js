@@ -1,31 +1,44 @@
-//pages/[user_id].js
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import AnalysisDisplay from '../components/AnalysisDisplay'
 
-import { useEffect, useState } from 'react'
+export default function UserAnalysisPage() {
+  const router = useRouter()
+  const { user_id } = router.query
 
-export default function SessionPage({ user_id }) {
-  const [analysis, setAnalysis] = useState('')
-  const [error, setError] = useState('')
+  const [jobText, setJobText] = useState('')
+  const [analysis, setAnalysis] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (!user_id) return
+
     fetch('/api/analyze-cv-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, skipAnalysis: false })
+      body: JSON.stringify({ user_id, jobText })
     })
-      .then(r => r.json())
-      .then(d => d.analysis ? setAnalysis(d.analysis) : setError(d.error || 'Analysis failed'))
-  }, [user_id])
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) setError(data.error)
+        else setAnalysis(data.analysis)
+      })
+      .catch(err => setError('Fetch error: ' + err.message))
+  }, [user_id, jobText])
 
-  if (error) return <div className="text-red-500">{error}</div>
-  if (!analysis) return <div>Loading…</div>
+  if (error) return <div>Error: {error}</div>
+  if (!analysis) return <div>Loading analysis…</div>
+
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h2 className="font-bold text-xl mb-2">Your CV Analysis</h2>
-      <pre className="bg-gray-100 rounded p-3 whitespace-pre-wrap">{analysis}</pre>
+    <div>
+      <textarea
+        placeholder="Paste job description here"
+        value={jobText}
+        onChange={e => setJobText(e.target.value)}
+        rows={6}
+        style={{ width: '100%', marginBottom: '1rem' }}
+      />
+      <AnalysisDisplay analysis={analysis} />
     </div>
   )
-}
-
-SessionPage.getInitialProps = async ({ query }) => {
-  return { user_id: query.user_id }
 }

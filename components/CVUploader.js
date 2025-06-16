@@ -12,7 +12,6 @@ export default function CVUploader() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
 
-  // Controls enabling textarea & button
   const fileChosen = !!file
 
   const handleFileChange = (f) => {
@@ -25,20 +24,38 @@ export default function CVUploader() {
     }
     setFile(f)
     setFileName(f.name)
+    console.log("File selected:", f.name, f.size)
   }
 
   const handleUpload = async () => {
-    if (!file) return
+    if (!file) {
+      setError('No file selected')
+      alert('No file selected')
+      return
+    }
     setError('')
     setUploading(true)
+    console.log("Uploading file:", file.name)
     const form = new FormData()
     form.append('file', file)
     form.append('jobText', jobText)
-    const res = await fetch('/api/upload-cv', { method: 'POST', body: form })
-    const data = await res.json()
-    setUploading(false)
-    if (data.user_id) router.push(`/${data.user_id}`)
-    else setError(data.error || 'Upload failed')
+    try {
+      const res = await fetch('/api/upload-cv', { method: 'POST', body: form })
+      const data = await res.json()
+      setUploading(false)
+      console.log("Upload response:", data)
+      if (data.user_id) {
+        router.push(`/${data.user_id}`)
+      } else {
+        setError(data.error || 'Upload failed')
+        alert(data.error || 'Upload failed')
+      }
+    } catch (err) {
+      setUploading(false)
+      setError('Network or server error')
+      alert('Network or server error')
+      console.error("Fetch error:", err)
+    }
   }
 
   return (
@@ -54,7 +71,7 @@ export default function CVUploader() {
           type="file"
           accept="application/pdf"
           ref={inputRef}
-          className="hidden real-file-input" // add a class for CSS kill-switch if needed
+          className="hidden real-file-input"
           onChange={e => handleFileChange(e.target.files[0])}
           disabled={uploading}
         />
@@ -88,7 +105,6 @@ export default function CVUploader() {
       </button>
       {error && <div className="text-red-500 text-center w-full">{error}</div>}
       <style jsx>{`
-        /* CSS hack for rogue input in certain browsers */
         .real-file-input {
           display: none !important;
           visibility: hidden !important;
