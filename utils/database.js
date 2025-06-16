@@ -1,18 +1,12 @@
 // utils/database.js
 import { createClient } from '@supabase/supabase-js'
 
-console.log('Initializing Supabase client with env vars:')
-NEXT_PUBLIC_SUPABASE_URL=https://znnmvfseggnkgaybodki.supabase.co
+// HARD CODE your keys right here:
+const HARDCODED_URL = 'https://znnmvfseggnkgaybodki.supabase.co'
+const HARDCODED_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpubm12ZnNlZ2dua2dheWJvZGtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NDE2OTYsImV4cCI6MjA2NTExNzY5Nn0.d6fA6pxQytItgMP7RBBLN-dM7dSH2glnodrD_BOFtR0'
 
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpubm12ZnNlZ2dua2dheWJvZGtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NDE2OTYsImV4cCI6MjA2NTExNzY5Nn0.d6fA6pxQytItgMP7RBBLN-dM7dSH2glnodrD_BOFtR0
 function getSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) {
-    console.error('Supabase env vars missing or empty')
-    throw new Error('Supabase env vars missing')
-  }
-  return createClient(url, key, {
+  return createClient(HARDCODED_URL, HARDCODED_KEY, {
     realtime: { enabled: false },
   })
 }
