@@ -1,0 +1,21 @@
+/* styles/globals.css */
+.formatted-analysis {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  margin-top: 20px;
+}
+.formatted-analysis h2,
+.formatted-analysis h3 {
+  margin-top: 1em;
+  color: #2c3e50;
+}
+.formatted-analysis ul,
+.formatted-analysis ol {
+  margin-left: 1.2em;
+}
+.formatted-analysis hr {
+  margin: 20px 0;
+  border: 0;
+  height: 1px;
+  background: #ccc;
+}

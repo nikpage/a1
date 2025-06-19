@@ -1,33 +1,28 @@
-import { getCVData } from '../../utils/database'
-import { analyzeCV } from '../../utils/openai'
+// pages/api/analyze-cv-job.js
+import { getCvData, saveGeneratedDoc } from '../../utils/database'
+import { analyzeCvJob } from '../../utils/openai'
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST'])
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const { user_id, jobText } = req.body
+  if (!user_id) {
+    return res.status(400).json({ error: 'Missing user_id in request body' })
+  }
+
   try {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-
-    const { user_id, jobText } = req.body
-    if (!user_id) return res.status(400).json({ error: 'Missing user_id' })
-
-    let cv
-    try {
-      cv = await getCVData(user_id)
-    } catch (e) {
-      return res.status(404).json({ error: 'CV not found', details: String(e) })
+    const cv_data = await getCvData(user_id)
+    if (!cv_data) {
+      return res.status(404).json({ error: 'CV not found for user' })
     }
 
-    let result
-    try {
-      result = await analyzeCV(cv.cv_data, jobText || '')
-    } catch (e) {
-      return res.status(500).json({ error: 'DeepSeek error', details: String(e) })
-    }
+    const result = await analyzeCvJob(cv_data, jobText)
 
-    console.log('DS RAW RESPONSE:', JSON.stringify(result))
-
-    // Safely extract analysis from all known locations, or fail gracefully
     const content =
       result?.choices?.[0]?.message?.content ||
-      result?.choices?.[0]?.message ||
       result?.output ||
       null
 
@@ -35,8 +30,30 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'No analysis content returned by DeepSeek', raw: result })
     }
 
+    // hash logic for lookup compatibility
+    const encoder = new TextEncoder()
+    const hash = (text) =>
+      [...new Uint8Array(encoder.encode(text))].reduce((acc, b) => acc + b, 0)
+
+    const cv_text_hash = hash(cv_data)
+    const job_text_hash = jobText ? hash(jobText) : null
+
+    await saveGeneratedDoc({
+      user_id,
+      source_cv_id: user_id,
+      type: 'analysis',
+      tone: null,
+      company: null,
+      job_title: null,
+      file_name: null,
+      content,
+      cv_text_hash,
+      job_text_hash
+    })
+
     return res.status(200).json({ analysis: content })
   } catch (e) {
-    return res.status(500).json({ error: 'Unexpected error', details: String(e) })
+    console.error('ANALYSIS ROUTE ERROR:', e)
+    return res.status(500).json({ error: 'Analysis failed', details: e.message || 'unknown' })
   }
 }

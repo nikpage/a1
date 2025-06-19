@@ -1,44 +1,41 @@
+// pages/[user_id].js
+
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
 import AnalysisDisplay from '../components/AnalysisDisplay'
+import DocumentGenerator from '../components/DocumentGenerator'
 
-export default function UserAnalysisPage() {
-  const router = useRouter()
-  const { user_id } = router.query
-
-  const [jobText, setJobText] = useState('')
+export default function UserPage({ user_id }) {
   const [analysis, setAnalysis] = useState(null)
-  const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!user_id) return
+    const fetchAnalysis = async () => {
+      try {
+        const res = await fetch('/api/get-analysis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id })
+        })
 
-    fetch('/api/analyze-cv-job', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, jobText })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) setError(data.error)
-        else setAnalysis(data.analysis)
-      })
-      .catch(err => setError('Fetch error: ' + err.message))
-  }, [user_id, jobText])
-
-  if (error) return <div>Error: {error}</div>
-  if (!analysis) return <div>Loading analysis…</div>
+        const data = await res.json()
+        setAnalysis(data.analysis)
+      } catch (err) {
+        setAnalysis('Failed to load analysis')
+      }
+    }
+    if (user_id) fetchAnalysis()
+  }, [user_id])
 
   return (
     <div>
-      <textarea
-        placeholder="Paste job description here"
-        value={jobText}
-        onChange={e => setJobText(e.target.value)}
-        rows={6}
-        style={{ width: '100%', marginBottom: '1rem' }}
-      />
-      <AnalysisDisplay analysis={analysis} />
+      <AnalysisDisplay analysisText={analysis} user_id={user_id} />
     </div>
   )
+
+}
+
+export async function getServerSideProps(context) {
+  const { user_id } = context.params
+  return {
+    props: { user_id },
+  }
 }

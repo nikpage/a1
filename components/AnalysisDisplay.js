@@ -1,21 +1,41 @@
 // components/AnalysisDisplay.js
-import React from 'react'
+import { useState } from 'react';
+import CV_Cover_Display from './CV-Cover-Display';
 
-export default function AnalysisDisplay({ analysis, error }) {
-  if (error) return <div className="error">{error}</div>
-  if (!analysis) return <div>No analysis to display.</div>
+export default function AnalysisDisplay({ analysisText, user_id }) {
+  const [showBuilder, setShowBuilder] = useState(false);
 
-  // Naive but effective formatting: convert headings, --- dividers, and numbers/bullets to HTML
-  let formatted = analysis
-    .replace(/^###\s+\*\*(.+)\*\*/gm, '<h3>$1</h3>')
-    .replace(/^####\s+\*\*(.+)\*\*/gm, '<h4>$1</h4>')
-    .replace(/\*\*(.+)\*\*/g, '<b>$1</b>')
-    .replace(/---/g, '<hr />')
-    .replace(/\n\d+\.\s+/g, '<br />• ')
-    .replace(/\n✅/g, '<br />✅')
-    .replace(/\n/g, '<br />')
+  if (!analysisText || typeof analysisText !== 'string') return null;
 
-  return (
-    <div className="analysis" dangerouslySetInnerHTML={{ __html: formatted }} />
-  )
+  // ─────────  SHOW ANALYSIS  ─────────
+  if (!showBuilder) {
+    return (
+      <div style={{ marginTop: '2em' }}>
+        <div
+          className="formatted-analysis"
+          // keep original formatting
+          dangerouslySetInnerHTML={{ __html: analysisText.replace(/\n/g, '<br/>') }}
+        />
+
+        {/* Write button */}
+        <div style={{ marginTop: '2em', textAlign: 'center' }}>
+          <button
+            onClick={() => setShowBuilder(true)}
+            style={{
+              padding: '0.8rem 2.4rem',
+              fontSize: '1.1rem',
+              borderRadius: 6,
+              border: '1px solid #666',
+              cursor: 'pointer',
+            }}
+          >
+            Write Now!
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────  SHOW CV-/Cover-builder (analysis hidden)  ─────────
+  return <CV_Cover_Display user_id={user_id} analysis={analysisText} />;
 }

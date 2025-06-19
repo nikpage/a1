@@ -1,7 +1,7 @@
-// components/DocumentGenerator.js
+// components/CV-Cover-Display.js
 import { useState } from 'react';
 
-export default function DocumentGenerator({ user_id, analysis }) {
+export default function CV_Cover_Display({ user_id, analysis }) {
   const [tone, setTone] = useState('Formal');
   const [docTypes, setDocTypes] = useState({ cv: false, cover: false });
   const [loading, setLoading] = useState(false);
@@ -12,7 +12,7 @@ export default function DocumentGenerator({ user_id, analysis }) {
     setDocTypes(prev => ({ ...prev, [type]: !prev[type] }));
   };
 
-  const canGenerate = tone && (docTypes.cv || docTypes.cover);
+  const canGenerate = docTypes.cv || docTypes.cover;
 
   const handleGenerate = async () => {
     if (!canGenerate || !analysis) return;
@@ -43,9 +43,9 @@ export default function DocumentGenerator({ user_id, analysis }) {
   };
 
   return (
-    <div style={{ marginTop: 40 }}>
-      <h3>🎯 Choose Tone</h3>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+    <div style={{ marginTop: 40, textAlign: 'center' }}>
+      <h3 style={{ fontSize: '1.25rem' }}>🎯 Choose Tone</h3>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
         {['Formal', 'Friendly', 'Enthusiastic', 'Cocky'].map((t) => (
           <button
             key={t}
@@ -64,8 +64,8 @@ export default function DocumentGenerator({ user_id, analysis }) {
         ))}
       </div>
 
-      <h3>📄 Select Document Type</h3>
-      <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
+      <h3 style={{ fontSize: '1.25rem' }}>📄 Select Document Type</h3>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 20 }}>
         <label>
           <input
             type="checkbox"
@@ -84,28 +84,28 @@ export default function DocumentGenerator({ user_id, analysis }) {
         </label>
       </div>
 
-      {canGenerate && (
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          style={{
-            padding: '0.5rem 1.5rem',
-            background: '#224488',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            fontWeight: 700,
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {loading ? 'Generating…' : 'Generate'}
-        </button>
-      )}
+      <button
+        onClick={handleGenerate}
+        disabled={!canGenerate || loading}
+        style={{
+          padding: '0.75rem 2rem',
+          background: canGenerate && !loading ? '#224488' : '#bbb',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 6,
+          fontWeight: 700,
+          fontSize: '1rem',
+          cursor: canGenerate && !loading ? 'pointer' : 'not-allowed',
+          marginTop: 20,
+        }}
+      >
+        {loading ? 'Generating…' : 'Generate'}
+      </button>
 
       {error && <div style={{ color: 'red', marginTop: 16 }}>{error}</div>}
 
       {docs && (
-        <div style={{ marginTop: 32 }}>
+        <div style={{ marginTop: 32, textAlign: 'left' }}>
           {docs.cv && (
             <>
               <h3>CV</h3>

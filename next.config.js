@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    appDir: true
+    appDir: false // ✅ Fix is here, inside the config
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
