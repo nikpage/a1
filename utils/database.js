@@ -1,3 +1,5 @@
+// utils/database.js
+
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -5,23 +7,27 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-export async function upsertUser(user_id, tokens = 3) {
+// Upsert user
+export async function upsertUser(user_id, phone_hash = null, email = null) {
   const { data, error } = await supabase
     .from('users')
-    .upsert({ user_id, tokens })
-    .select()
+    .upsert([{ user_id, phone_hash, email }], { onConflict: ['user_id'] })
   if (error) throw error
-  return data[0]
+  return data
 }
 
-export async function upsertCV(user_id, cv_file_url, cv_data) {
-  const { error } = await supabase
+
+// Upsert CV
+export async function upsertCV(user_id, cv_data) {
+  const { data, error } = await supabase
     .from('cv_data')
-    .upsert({ user_id, cv_file_url, cv_data })
+    .upsert([{ user_id, cv_data }], { onConflict: ['user_id'] })
   if (error) throw error
+  return data
 }
 
-export async function getCVData(user_id) {
+// Get CV (by user_id)
+export async function getCV(user_id) {
   const { data, error } = await supabase
     .from('cv_data')
     .select('*')
@@ -31,6 +37,19 @@ export async function getCVData(user_id) {
   return data
 }
 
+// getCvData (ALIAS: for handler expecting this name)
+export async function getCvData(user_id) {
+
+  const { data, error } = await supabase
+    .from('cv_data')
+    .select('*')
+    .eq('user_id', user_id)
+    .single()
+  if (error) throw error
+  return data.cv_data
+}
+
+// Get user (by user_id)
 export async function getUser(user_id) {
   const { data, error } = await supabase
     .from('users')
@@ -41,10 +60,37 @@ export async function getUser(user_id) {
   return data
 }
 
+// Decrement token
 export async function decrementToken(user_id) {
-  const { data, error } = await supabase.rpc('decrement_token', { uid: user_id })
+  const { data, error } = await supabase.rpc('decrement_token', { p_user_id: user_id })
   if (error) throw error
   return data
 }
 
-export default supabase
+// Save generated doc
+export async function saveGeneratedDoc({
+  user_id,
+  source_cv_id,
+  type,
+  tone,
+  company,
+  job_title,
+  file_name,
+  content
+}) {
+  const { data, error } = await supabase
+    .from('gen_data')
+    .insert([{
+      user_id,
+      source_cv_id,
+      type,
+      tone,
+      company,
+      job_title,
+      file_name,
+      content
+    }])
+  if (error) throw error
+  return data
+}
+export { supabase }
