@@ -34,7 +34,7 @@ export default function CV_Cover_Display({ user_id, analysis }) {
       if (!res.ok || data.error) {
         setError(data.error || 'Generation failed');
       } else {
-        setDocs(data.docs);
+        setDocs({ cv: data.cv, cover: data.cover });
       }
     } catch (err) {
       setError('Error: ' + err.message);
