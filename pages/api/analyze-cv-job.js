@@ -9,6 +9,8 @@ export default async function handler(req, res) {
   }
 
   const { user_id, jobText } = req.body
+  const fileName = req.body.file_name || 'Unnamed file'
+
   if (!user_id) {
     return res.status(400).json({ error: 'Missing user_id in request body' })
   }
@@ -19,7 +21,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'CV not found for user' })
     }
 
-    const result = await analyzeCvJob(cv_data, jobText)
+    const result = await analyzeCvJob(cv_data, jobText, fileName)
 
     const content =
       result?.choices?.[0]?.message?.content ||

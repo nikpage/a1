@@ -1,4 +1,5 @@
 // pages/api/upload-cv.js
+
 console.log('ENV VARS CHECK:', {
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
@@ -10,8 +11,11 @@ console.log("Handler HIT")
 
 import formidable from 'formidable'
 import { upsertUser, upsertCV } from '../../utils/database'
-import genSessionId from '../../utils/session'
 import extractTextFromPDF from '../../utils/pdf-extract'
+
+function genSessionId() {
+  return crypto.randomUUID()
+}
 
 export const config = { api: { bodyParser: false } }
 
@@ -48,12 +52,16 @@ export default async function handler(req, res) {
         console.log("Formidable error:", err)
         return res.status(400).json({ error: 'Upload failed', details: String(err) })
       }
+
       const file = files.file
       if (!file) {
         console.log("No file uploaded")
         return res.status(400).json({ error: 'No file uploaded' })
       }
+
       console.log("File received:", file.originalFilename || file.newFilename || file.filepath || file.name, file.mimetype, file.size)
+      const uploadedFileName = file.originalFilename || file.newFilename || file.name || 'unknown.pdf'
+
       if (!file.mimetype || file.mimetype !== 'application/pdf') {
         console.log("Not a PDF:", file.mimetype)
         return res.status(400).json({ error: 'Not a PDF' })
@@ -101,17 +109,18 @@ export default async function handler(req, res) {
       // --- END PHONE EXTRACT & HASH ---
 
       const user_id = genSessionId()
+
       try {
         console.log("Generated user_id:", user_id)
         await upsertUser(user_id, phone_hash)
         await upsertCV(user_id, text)
         console.log("DB save successful:", user_id)
+
+        return res.status(200).json({ user_id })
       } catch (dbErr) {
         console.error('DB error:', dbErr)
         return res.status(500).json({ error: 'DB error', details: String(dbErr) })
       }
-
-      return res.status(200).json({ user_id })
     } catch (e) {
       console.error("Server error:", e)
       return res.status(500).json({ error: 'Server error', details: String(e) })

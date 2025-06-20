@@ -1,23 +1,24 @@
-// components/AnalysisDisplay.js
 import { useState } from 'react';
 import CV_Cover_Display from './CV-Cover-Display';
 
 export default function AnalysisDisplay({ analysisText, user_id }) {
+  if (!analysisText || typeof analysisText !== 'string' || analysisText.trim() === '') {
+    return <div style={{ marginTop: '2em', color: 'red' }}>No analysis available.</div>;
+  }
+
+  const fileNameMatch = analysisText.match(/^### FILE ANALYZED: (.+)$/m);
+  const fileName = fileNameMatch ? fileNameMatch[1] : 'unknown.pdf';
+  const fileLabel = `Analyzed File: ${fileName}`;
   const [showBuilder, setShowBuilder] = useState(false);
 
-  if (!analysisText || typeof analysisText !== 'string') return null;
-
-  // ─────────  SHOW ANALYSIS  ─────────
   if (!showBuilder) {
     return (
       <div style={{ marginTop: '2em' }}>
-        <div
-          className="formatted-analysis"
-          // keep original formatting
-          dangerouslySetInnerHTML={{ __html: analysisText.replace(/\n/g, '<br/>') }}
-        />
+        <div className="formatted-analysis">
+          <div style={{ fontWeight: 'bold', marginBottom: '1em' }}>{fileLabel}</div>
+          <div dangerouslySetInnerHTML={{ __html: analysisText.replace(/\n/g, '<br/>') }} />
+        </div>
 
-        {/* Write button */}
         <div style={{ marginTop: '2em', textAlign: 'center' }}>
           <button
             onClick={() => setShowBuilder(true)}
@@ -36,6 +37,5 @@ export default function AnalysisDisplay({ analysisText, user_id }) {
     );
   }
 
-  // ─────────  SHOW CV-/Cover-builder (analysis hidden)  ─────────
   return <CV_Cover_Display user_id={user_id} analysis={analysisText} />;
 }
