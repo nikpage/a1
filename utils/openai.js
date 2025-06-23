@@ -1,16 +1,138 @@
+// utils/openai.js
+
 import axios from 'axios'
 
-export async function analyzeCvJob(cvText, jobText) {
+export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
+  // DO NOT REMOVE THIS LINE OR MOVE IT
+  const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
+
   const systemMessage = {
     role: 'system',
-    content: 'You are a senior CEE HR specialist with deep ATS knowledge. Analyze CVs for the Central/Eastern European tech market (Czechia, Poland, Hungary, Romania, Slovakia, Ukraine). Provide: 1) Overall score (1-10), 2) Top 3 strengths, 3) Top 2 weaknesses, 4) ATS optimization tips. Be brutally honest but constructive.'
+    content: `You are a senior HR advisor with 15+ years of experience reviewing and optimizing CVs for Central/Eastern European tech roles. Be brutally honest, concise, and highly actionable.`
   }
 
   const userMessage = {
     role: 'user',
-    content: jobText
-      ? `Analyze this CV for the following job:\n\nJOB DESCRIPTION:\n${jobText}\n\nCV:\n${cvText}`
-      : `Analyze this CV for general CEE tech roles:\n\n${cvText}`
+    content:
+  `### Extracted CV Metadata
+  - **Country:** Extract the most likely country from any part of the CV or context.
+  - **Industry:** Extract or infer the main industry from any relevant part of the CV.
+  - **Seniority:** Extract or infer the candidate’s likely seniority or experience level.
+
+  ${hasJobText ? `
+  ### Extracted Job Metadata
+  - **Position/Title:** Extract the most likely job title, even if phrased differently or not explicitly labeled.
+  - **Company Name:** Extract the company, organization, or employer—use any reasonable mention, not just explicit "Company Name".
+  - **HR Contact:** Extract any named contact, supervisor, or person mentioned—does not need to be labeled as HR.
+  - **Country:** Extract the most likely country/location from any relevant context, not just a labeled field.
+  - **Industry:** Infer the main industry from context and responsibilities, even if not labeled.
+  - **Seniority:** Infer the most likely seniority/level for this job, using any available clues.
+  ` : ''}
+
+  ### CV Content:
+  ${cvText}
+
+  ${hasJobText ? `
+  ### Job Advertisement:
+  ${jobText}
+  ` : ''}
+
+  ### At a Glance
+  - Give a 1–2 sentence summary of the candidate’s fit and what’s needed to get an interview.
+  - Always suggest whether a targeted cover letter is recommended. If so, specify exactly what issues should be addressed—highlight strengths, address weaknesses, gaps, age, or any scenario tags present.
+
+  ### Step 1: Scoring
+  **Overall Score (1–10):**
+  **ATS Compatibility (1–10):**
+
+  ---
+
+  ### Step 2: Scenario Tags
+  Identify *all applicable* from the CV. If job ad is present, also consider for pivot/overqualified.
+
+  **Scenario:**
+  - Options: older applicant, career start, returner, gap, normal
+  - If job ad is present, add: pivot, overqualified
+  - Multiple tags allowed (e.g., "Older + Gap")
+  - Do **not** use pivot/overqualified unless job ad supports it
+
+  ---
+
+  ### Step 3: Context Analysis
+
+  **## Quick Wins**
+  **IMPORTANT:**
+  - Do NOT use generic rewrite examples (e.g., "Led X..." or "Improved Y%...").
+  - Only rewrite actual phrases found in the provided CV.
+
+  3 fast, high-impact edits (same as before). Keep this short and punchy.
+
+  **## Red Flags**
+  **IMPORTANT:**
+  - Do NOT use generic rewrite examples (e.g., "Led X..." or "Improved Y%...").
+  - Only rewrite actual phrases found in the provided CV.
+
+  Move all critical concerns here (gaps, formatting, unclear roles, scenario justifications)
+
+  **## Cultural Fit**
+  Tips based on country format/style preferences.
+
+  **## Overall Commentary**
+  How does this CV come across? Typical, strong, uniquely qualified?
+  Summarise tone, clarity, professionalism.
+
+  **## Suitable Positions**
+  What roles is the candidate moderately / strongly / uniquely suited for?
+
+  **## Career Arc**
+  Summarise the visible trajectory or evolution in 1–2 lines.
+
+  **## Parallel Experience**
+  Mention any side projects, speaking, teaching, or advising that enhance credibility.
+
+  **## CV Style & Wording**
+  Review formatting, structure, phrasing, tone, grammar.
+
+  **## ATS Keyword Commentary**
+  Comment on keyword presence, clarity, sectioning, matchability.
+
+  ---
+
+  ### Step 4: Action Items
+  **IMPORTANT:**
+  - Do NOT use generic rewrite examples (e.g., "Led X..." or "Improved Y%...").
+  - Only rewrite actual phrases found in the provided CV.
+  Create a list of ALL specific changes from above.
+  Each must be tagged: **[Critical]**, **[Advised]**, or **[Optional]**
+  Keep this list clear and scannable.
+
+  ---
+
+  ${hasJobText ? `
+  ### Step 5: Job Match Analysis
+
+  **## Keyword Match**
+  List job-ad skills/keywords and how well the CV aligns.
+
+  **## Inferred Keywords**
+  Suggest 5–10 extra keywords the CV should contain.
+
+  **## Job Scenario**
+  Compare CV to job. List: normal / pivot / overqualified — only if job ad is present.
+
+  **## Positioning Strategy**
+  Suggest any role/title changes or emphasis shifts to better match the job ad.
+  ` : ''}
+
+  ---
+
+  ### Tone
+  Be brutally honest but constructive.
+  Avoid filler praise. Always justify ratings or concerns.
+
+  ### Output Format
+  Use all section headers (###, ##, -, etc) **exactly as shown**.
+  Do not skip or rename sections. No summary or intro text.`
   }
 
   try {
@@ -43,16 +165,53 @@ export async function analyzeCvJob(cvText, jobText) {
     console.log('RESPONSE:', data)
 
     return {
-  choices: data.choices,
-  output: data.choices?.[0]?.message?.content || ''
-}
+      choices: data.choices,
+      output: data.choices?.[0]?.message?.content || ''
+    }
   } catch (error) {
     console.error('DeepSeek API Error:', error.response?.data || error.message)
     throw error
   }
 }
-export async function generateDocuments({ cv, analysis, tone, type }) {
-  const prompt = `Generate a ${type} (CV and/or Cover Letter) in a ${tone} tone for the following candidate:\n\nCV:\n${cv}\n\nAnalysis:\n${analysis}`;
+function toneInstructions(tone) {
+  switch ((tone || '').toLowerCase()) {
+    case 'formal':
+      return "Use a professional, reserved style. Avoid slang. Clear and businesslike.";
+    case 'friendly':
+      return "Warm, approachable, positive. Slightly informal but still professional.";
+    case 'confident':
+      return "Assertive, self-promoting, positive, but not arrogant. Highlight strengths clearly.";
+    case 'cocky':
+      return "Borderline arrogant, punchy, use colloquialisms if relevant: 'shit-hot', 'kick-ass', 'rock star', 'BOOM!'. Walk the line between boldness and professionalism.";
+    default:
+      return "Professional default style.";
+  }
+}
+
+export async function generateCV({ cv, analysis, tone }) {
+  const prompt = `
+# Task
+Generate a new CV for the candidate in the "${tone}" tone, based ONLY on the provided CV and the analysis data. DO NOT invent or fabricate facts, roles, or skills not supported in the original CV. All claims must be fact-based.
+
+# Rules
+- Use the provided analysis to guide structure, emphasis, and keyword usage.
+- Match and highlight ATS keywords from the analysis/job.
+- Strictly adhere to the target country format and style from analysis.
+- DO NOT introduce new work gaps or time gaps.
+- Write in the "${tone}" tone: (${toneInstructions(tone)}).
+- CV must perform extremely well if re-analyzed by our own analysis engine.
+- Style can be creative and personalized (within the chosen tone) but factual accuracy is required.
+
+# Inputs
+## CV:
+${cv}
+
+## Analysis:
+${analysis}
+
+# Output
+Return only the full, formatted CV. Do NOT include a cover letter or any extra commentary. No placeholders or fake data.
+  `;
 
   const response = await axios.post(
     process.env.DEEPSEEK_API_URL,
@@ -61,27 +220,74 @@ export async function generateDocuments({ cv, analysis, tone, type }) {
       messages: [
         {
           role: 'system',
-          content: 'You are an expert in writing professional CVs and cover letters for CEE tech roles.',
+          content: 'You are an expert in writing professional CVs for CEE tech roles.'
         },
         {
           role: 'user',
-          content: prompt,
-        },
-      ],
+          content: prompt
+        }
+      ]
     },
     {
       headers: {
         Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
-        'Content-Type': 'application/json',
-      },
+        'Content-Type': 'application/json'
+      }
     }
   );
 
   const data = response.data;
-  const output = data.choices?.[0]?.message?.content || '';
+  return data.choices?.[0]?.message?.content || '';
+}
 
-  return {
-    cv: output.includes('Cover Letter') ? output.split('Cover Letter')[0].trim() : output.trim(),
-    cover: output.includes('Cover Letter') ? 'Cover Letter' + output.split('Cover Letter')[1].trim() : null,
-  };
+export async function generateCoverLetter({ cv, analysis, tone }) {
+  const prompt = `
+# Task
+Write a cover letter in the "${tone}" tone for the following application, using only real facts from the CV and analysis. DO NOT invent or fabricate any information.
+
+# Rules
+- Use, IF PRESENT: Job Title, Company Name, HR Contact from the analysis. If missing, skip (no placeholders).
+- Letter must sound like a natural, professional application in the selected tone (${toneInstructions(tone)}).
+- Directly address critical scenario tags and red flags from the analysis.
+- Make best use of the candidate's career arc, parallel experience, and position strategy as found in the analysis.
+- No generic filler, no invented claims, no placeholders.
+- Use ATS and matched keywords for the job, if provided.
+- If the job ad is present, reference specific company and position as appropriate.
+
+# Inputs
+## CV:
+${cv}
+
+## Analysis:
+${analysis}
+
+# Output
+Return only the cover letter, no commentary or extra text. Do NOT include the CV. No placeholders or fake data.
+  `;
+
+  const response = await axios.post(
+    process.env.DEEPSEEK_API_URL,
+    {
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert in writing professional cover letters for CEE tech roles.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const data = response.data;
+  return data.choices?.[0]?.message?.content || '';
 }
