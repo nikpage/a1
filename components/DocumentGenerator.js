@@ -1,3 +1,4 @@
+'/api/generate-cover'
 // components/DocumentGenerator.js
 import { useState } from 'react';
 
@@ -20,7 +21,8 @@ export default function DocumentGenerator({ user_id, analysis }) {
     setError(null);
     setDocs(null);
     try {
-      const res = await fetch('/api/generate-cv-cover', {
+      const res = await fetch('/api/generate-cover'
+, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
