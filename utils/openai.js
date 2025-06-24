@@ -15,6 +15,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     role: 'user',
     content:
   `### Extracted CV Metadata
+  - **Full Name:** Extract the applicant’s full name from the CV. Use best guess from heading or first section. Avoid email or initials.
   - **Country:** Extract the most likely country from any part of the CV or context.
   - **Industry:** Extract or infer the main industry from any relevant part of the CV.
   - **Seniority:** Extract or infer the candidate’s likely seniority or experience level.

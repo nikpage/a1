@@ -8,6 +8,36 @@ export default function CV_Cover_Display({ user_id, analysis }) {
   const [error, setError] = useState(null);
   const [docs, setDocs] = useState(null);
 
+  const handleDownload = async (type, content) => {
+    const res = await fetch('/api/download-doc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id,
+        type,
+        content,
+        company: analysis?.company || null,
+        job_title: analysis?.job_title || null,
+      }),
+    });
+
+    if (!res.ok) {
+      alert('Download failed');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const header = res.headers.get('Content-Disposition');
+    const match = header?.match(/filename="(.+?)"/);
+    a.download = match ? match[1] : 'download.docx';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+
   const toggleDocType = (type) => {
     setDocTypes(prev => ({ ...prev, [type]: !prev[type] }));
   };
@@ -109,9 +139,25 @@ export default function CV_Cover_Display({ user_id, analysis }) {
           {docs.cv && (
             <>
               <h3>CV</h3>
-              <pre style={{ background: '#f8f8fa', padding: 12, borderRadius: 8 }}>
-                {docs.cv}
-              </pre>
+            <pre style={{ background: '#f8f8fa', padding: 12, borderRadius: 8 }}>
+              {docs.cv}
+            </pre>
+            <button
+              onClick={() => handleDownload('cv', docs.cv)}
+              style={{
+                marginTop: 8,
+                padding: '6px 12px',
+                background: '#2255aa',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              Download CV
+            </button>
+
             </>
           )}
           {docs.cover && (
@@ -120,6 +166,22 @@ export default function CV_Cover_Display({ user_id, analysis }) {
               <pre style={{ background: '#f8f8fa', padding: 12, borderRadius: 8 }}>
                 {docs.cover}
               </pre>
+              <button
+                onClick={() => handleDownload('cover', docs.cover)}
+                style={{
+                  marginTop: 8,
+                  padding: '6px 12px',
+                  background: '#2255aa',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Download Cover Letter
+              </button>
+
             </>
           )}
         </div>
