@@ -76,7 +76,8 @@ export async function saveGeneratedDoc({
   company,
   job_title,
   file_name,
-  content
+  content,
+  analysis_id
 }) {
   const { data, error } = await supabase
     .from('gen_data')
@@ -88,9 +89,10 @@ export async function saveGeneratedDoc({
       company,
       job_title,
       file_name,
-      content
+      content,
+      ...(analysis_id ? { analysis_id } : {})
     }])
   if (error) throw error
   return data
 }
-export { supabase }
+export { supabase };

@@ -1,6 +1,7 @@
 // pages/api/analyze-cv-job.js
 import { getCvData, saveGeneratedDoc } from '../../utils/database'
 import { analyzeCvJob } from '../../utils/openai'
+import crypto from 'crypto';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -28,34 +29,37 @@ export default async function handler(req, res) {
       result?.output ||
       null
 
+    const extractMeta = (label) => {
+      const match = content.match(new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`));
+      return match ? match[1].trim() : null;
+    };
+
+    const company = extractMeta('Company Name');
+    const job_title = extractMeta('Position/Title');
+    const hr_contact = extractMeta('HR Contact');
+
     if (!content) {
       return res.status(500).json({ error: 'No analysis content returned by DeepSeek', raw: result })
     }
 
-    // hash logic for lookup compatibility
-    const encoder = new TextEncoder()
-    const hash = (text) =>
-      [...new Uint8Array(encoder.encode(text))].reduce((acc, b) => acc + b, 0)
-
-    const cv_text_hash = hash(cv_data)
-    const job_text_hash = jobText ? hash(jobText) : null
+    const analysis_id = crypto.randomUUID();
 
     await saveGeneratedDoc({
       user_id,
       source_cv_id: user_id,
       type: 'analysis',
       tone: null,
-      company: null,
-      job_title: null,
+      company,
+      job_title,
       file_name: null,
       content,
-      cv_text_hash,
-      job_text_hash
-    })
+      analysis_id,
+      hr_contact
+    });
 
-    return res.status(200).json({ analysis: content })
+    return res.status(200).json({ analysis: content, analysis_id });
+
   } catch (e) {
-    console.error('ANALYSIS ROUTE ERROR:', e)
     return res.status(500).json({ error: 'Analysis failed', details: e.message || 'unknown' })
   }
 }

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import CV_Cover_Display from './CV-Cover-Display';
 
 export default function AnalysisDisplay({ analysisText, user_id }) {
+  if (analysisText === null) return null;
   if (!analysisText || typeof analysisText !== 'string' || analysisText.trim() === '') {
+
     return <div style={{ marginTop: '2em', color: 'red' }}>No analysis available.</div>;
   }
 

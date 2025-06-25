@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import AnalysisDisplay from '../components/AnalysisDisplay'
 import DocumentGenerator from '../components/DocumentGenerator'
+import DashboardDisplay from '../components/DashboardDisplay';
 
 export default function UserPage({ user_id }) {
   const [analysis, setAnalysis] = useState(null)
@@ -28,8 +29,18 @@ export default function UserPage({ user_id }) {
   return (
     <div>
       <AnalysisDisplay analysisText={analysis} user_id={user_id} />
+  {typeof window !== 'undefined' && window.location.search.includes('success=true') ? (
+    <DashboardDisplay />
+  ) : (
+    analysis && <DocumentGenerator user_id={user_id} />
+  )}
+
+
     </div>
   )
+
+
+
 
 }
 

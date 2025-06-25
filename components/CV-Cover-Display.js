@@ -1,25 +1,64 @@
 // components/CV-Cover-Display.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import DownloadTokenPanel from './DownloadTokenPanel';
+
 
 export default function CV_Cover_Display({ user_id, analysis }) {
+  console.log('Analysis in CV_Cover_Display:', analysis);
   const [tone, setTone] = useState('Formal');
   const [docTypes, setDocTypes] = useState({ cv: false, cover: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [docs, setDocs] = useState(null);
+  const [showBuyPanel, setShowBuyPanel] = useState(false);
+  useEffect(() => {
+    const loadDocs = async () => {
+      if (!user_id || !analysis || !tone || !analysis.analysis_id) return;
+
+      const { source_cv_id, analysis_id } = analysis;
+
+      const { data, error } = await supabase
+        .from('gen_data')
+        .select('type, content')
+        .eq('user_id', user_id)
+        .eq('source_cv_id', source_cv_id)
+        .eq('tone', tone)
+        .eq('analysis_id', analysis_id)
+        .in('type', ['cv', 'cover']);
+
+      if (error) {
+        console.error('DB fetch failed:', error);
+        return;
+      }
+
+      const result = { cv: null, cover: null };
+      for (const row of data) {
+        if (row.type === 'cv') result.cv = row.content;
+        if (row.type === 'cover') result.cover = row.content;
+      }
+
+      setDocs(result);
+    };
+
+    loadDocs();
+  }, [user_id, analysis, tone]);
+
+
+
 
   const handleDownload = async (type, content) => {
-    const res = await fetch('/api/download-doc', {
+    const res = await fetch('/api/download-token-check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id,
-        type,
-        content,
-        company: analysis?.company || null,
-        job_title: analysis?.job_title || null,
-      }),
+      body: JSON.stringify({ user_id, type, content }),
     });
+
+    if (res.status === 402) {
+  console.log('Triggering Buy Panel');
+  setShowBuyPanel(true);
+  return;
+}
+
 
     if (!res.ok) {
       alert('Download failed');
@@ -30,12 +69,11 @@ export default function CV_Cover_Display({ user_id, analysis }) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const header = res.headers.get('Content-Disposition');
-    const match = header?.match(/filename="(.+?)"/);
-    a.download = match ? match[1] : 'download.docx';
+    a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+?)"/)?.[1] || 'download.docx';
     a.click();
     window.URL.revokeObjectURL(url);
   };
+
 
 
   const toggleDocType = (type) => {
@@ -133,6 +171,22 @@ export default function CV_Cover_Display({ user_id, analysis }) {
       </button>
 
       {error && <div style={{ color: 'red', marginTop: 16 }}>{error}</div>}
+      {showBuyPanel && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} />
+        </div>
+      )}
 
       {docs && (
         <div style={{ marginTop: 32, textAlign: 'left' }}>
