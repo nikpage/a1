@@ -184,7 +184,7 @@ export default function CV_Cover_Display({ user_id, analysis }) {
           alignItems: 'center',
           zIndex: 1000
         }}>
-          <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} />
+          <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} user_id={user_id} />
         </div>
       )}
 
