@@ -29,16 +29,21 @@ export default async function handler(req, res) {
         {
           price_data: {
             currency: 'eur',
-            product_data: { name: PRICE_MAP[quantity].name },
+            product_data: {
+              name: PRICE_MAP[quantity].name,
+            },
             unit_amount: PRICE_MAP[quantity].amount,
           },
           quantity: 1,
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment-success?user_id=${user_id}&quantity=${quantity}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/`,
-      metadata: { user_id, quantity }
+      success_url: `https://www.thecv.pro/payment-success?user_id=${user_id}&quantity=${quantity}`,
+      cancel_url: 'https://www.thecv.pro/cancel',
+      metadata: {
+        user_id: user_id,
+        quantity: String(quantity),
+      },
     });
 
     res.status(200).json({ url: session.url });
