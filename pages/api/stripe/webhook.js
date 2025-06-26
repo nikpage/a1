@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     if (user_id && quantity > 0) {
       const { data, error } = await supabase
         .from('users')
-        .update({ tokens: supabase.raw('tokens + ?', [quantity]) })
+        .update({ tokens: supabase.literal('tokens + ' + quantity) })
         .eq('user_id', user_id)
         .select('tokens');
 
