@@ -1,4 +1,3 @@
-body: JSON.stringify({ quantity, user_id: localStorage.getItem('user_id') }),
 // components/DownloadTokenPanel.js
 import { useEffect, useState } from 'react';
 
