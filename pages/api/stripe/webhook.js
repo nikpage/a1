@@ -35,24 +35,33 @@ export default async function handler(req, res) {
     const user_id = session.metadata?.user_id;
     const quantity = parseInt(session.metadata?.quantity || '0', 10);
 
-
-
     if (user_id && quantity > 0) {
-      const { data, error } = await supabase
+      const { data: userData, error: fetchError } = await supabase
         .from('users')
-        .update({ tokens: supabase.literal('tokens + ' + quantity) })
+        .select('tokens')
         .eq('user_id', user_id)
-        .select('tokens');
+        .single();
 
-      if (error) {
-        console.error('SUPABASE UPDATE ERROR:', error);
+      if (fetchError || !userData) {
+        console.error('USER FETCH ERROR:', fetchError || 'User not found');
+        return res.status(500).json({ error: 'User fetch failed' });
+      }
+
+      const newTokenCount = (userData.tokens || 0) + quantity;
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ tokens: newTokenCount })
+        .eq('user_id', user_id);
+
+      if (updateError) {
+        console.error('TOKEN UPDATE ERROR:', updateError);
       } else {
-        console.log('TOKENS ADDED', data);
+        console.log(`✅ Added ${quantity} tokens to user ${user_id}`);
       }
     } else {
       console.warn('MISSING METADATA', { user_id, quantity });
     }
-
   }
 
   res.json({ received: true });
