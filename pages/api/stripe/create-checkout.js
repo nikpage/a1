@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       mode: 'payment',
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment-success?user_id=${user_id}&quantity=${quantity}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/`,
+      metadata: { user_id, quantity }
     });
 
     res.status(200).json({ url: session.url });
