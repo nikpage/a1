@@ -68,7 +68,7 @@ try {
       const { error: updateError } = await supabase
         .from('users')
         .update({ tokens: newTokenCount })
-        .eq('id', user_id);
+        .eq('user_id', user_id);
 
       if (updateError) {
         console.error('TOKEN UPDATE ERROR:', updateError);
