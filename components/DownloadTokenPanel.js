@@ -21,7 +21,7 @@ export default function DownloadTokenPanel({ onClose }) {
     const res = await fetch('/api/stripe/create-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity, user_id: localStorage.getItem('user_id') }),
+      body: JSON.stringify({ quantity, user_id }),
     });
     const data = await res.json();
     if (data.url) {
