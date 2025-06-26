@@ -1,3 +1,10 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "routes": [
+    {
+      "src": "/api/stripe/webhook",
+      "dest": "/api/stripe/webhook.js"
+    }
+  ]
 }
+
