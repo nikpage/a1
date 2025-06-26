@@ -11,11 +11,7 @@ export default function PaymentSuccess() {
   useEffect(() => {
     if (!user_id || !quantity || done) return;
 
-    fetch('/api/stripe/add-tokens', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, amount: parseInt(quantity) }),
-    })
+
       .finally(() => {
         setDone(true);
         router.replace(`/${user_id}?success=true`);
