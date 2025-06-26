@@ -28,7 +28,8 @@ export default async function handler(req, res) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const user_id = session.metadata.user_id;
-    const quantity = parseInt(session.metadata.quantity);
+    const quantity = parseInt(session.metadata?.quantity || '0', 10);
+    console.log('WEBHOOK:', { user_id, quantity });
 
     if (user_id && quantity) {
       await supabase.rpc('add_tokens', { p_user_id: user_id, p_amount: quantity });
