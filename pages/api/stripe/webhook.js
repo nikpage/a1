@@ -1,3 +1,5 @@
+//  pages/api/stripe/webhook.js
+
 import Stripe from 'stripe';
 import { supabase } from '../../../utils/database';
 
@@ -11,13 +13,6 @@ const buffer = async (readable) => {
     chunks.push(Buffer.from(chunk));
   }
   return Buffer.concat(chunks);
-};
-
-const TOKEN_MAP = {
-  'Single Document': 1,
-  'CV & Cover Letter - Starter Pair': 2,
-  '10 Document Bundle': 10,
-  '30 Document Bundle': 30,
 };
 
 export default async function handler(req, res) {
@@ -48,11 +43,16 @@ export default async function handler(req, res) {
     }
 
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-    const productName = lineItems?.data?.[0]?.description;
-    const tokenCount = TOKEN_MAP[productName] || 0;
+    const name = lineItems?.data?.[0]?.description?.toLowerCase() || '';
+
+    const tokenCount =
+      name.includes('1') ? 1 :
+      name.includes('2') ? 2 :
+      name.includes('10') ? 10 :
+      name.includes('30') ? 30 : 0;
 
     if (tokenCount === 0) {
-      console.warn('UNKNOWN PRODUCT:', productName);
+      console.warn('UNKNOWN PRODUCT:', name);
       return res.status(400).json({ error: 'Unknown product' });
     }
 
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
       .select();
 
     if (error || !user.length) {
-      console.error('SUPABASE UPDATE ERROR:', error || 'User not found');
+      console.error('SUPABASE ERROR:', error || 'User not found');
       return res.status(500).json({ error: 'User not found or DB error' });
     }
 
