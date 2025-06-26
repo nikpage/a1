@@ -11,12 +11,10 @@ export default function PaymentSuccess() {
   useEffect(() => {
     if (!user_id || !quantity || done) return;
 
-
-      .finally(() => {
-        setDone(true);
-        router.replace(`/${user_id}?success=true`);
-      });
+    setDone(true);
+    router.replace(`/${user_id}?success=true`);
   }, [user_id, quantity, done]);
+
 
   return null;
 }
