@@ -1,19 +1,12 @@
-//  pages/api/stripe/webhook.js
+// pages/api/stripe/webhook.js
 
 import Stripe from 'stripe';
+import { buffer } from 'micro';
 import { supabase } from '../../../utils/database';
 
 export const config = { api: { bodyParser: false } };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-const buffer = async (readable) => {
-  const chunks = [];
-  for await (const chunk of readable) {
-    chunks.push(Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
-};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
@@ -34,45 +27,58 @@ export default async function handler(req, res) {
   }
 
   if (event.type === 'checkout.session.completed') {
+    console.log('EVENT', event);
+
     const session = event.data.object;
-    const email = session.customer_details?.email;
+    const user_id = session.metadata?.user_id;
 
-    if (!email) {
-      console.warn('MISSING EMAIL');
-      return res.status(400).json({ error: 'Missing email' });
+if (!user_id) {
+  console.warn('MISSING USER_ID');
+  return res.status(400).json({ error: 'Missing user_id' });
+}
+
+
+    let tokenCount = 0;
+try {
+  const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+  const desc = lineItems?.data?.[0]?.description?.toLowerCase() || '';
+  if (desc.includes('1')) tokenCount = 1;
+  else if (desc.includes('2')) tokenCount = 2;
+  else if (desc.includes('10')) tokenCount = 10;
+  else if (desc.includes('30')) tokenCount = 30;
+} catch (e) {
+  console.error('LINE ITEM ERROR:', e.message);
+  return res.status(500).json({ error: 'Line item fetch failed' });
+}
+
+    if (user_id && tokenCount > 0) {
+      const { data: userData, error: fetchError } = await supabase
+        .from('users')
+        .select('tokens')
+        .eq('id', user_id)
+        .single();
+
+      if (fetchError || !userData) {
+        console.error('USER FETCH ERROR:', fetchError || 'User not found');
+        return res.status(500).json({ error: 'User fetch failed' });
+      }
+
+      const newTokenCount = (userData.tokens || 0) + tokenCount;
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ tokens: newTokenCount })
+        .eq('id', user_id);
+
+      if (updateError) {
+        console.error('TOKEN UPDATE ERROR:', updateError);
+        return res.status(500).json({ error: 'Token update failed' });
+      }
+
+      console.log(`✅ Added ${tokenCount} tokens to user ${user_id}`);
+    } else {
+      console.warn('MISSING METADATA', { user_id, tokenCount });
     }
-
-    let productName = '';
-    try {
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-      productName = lineItems?.data?.[0]?.description?.toLowerCase() || '';
-    } catch (e) {
-      console.error('LINE ITEM FETCH FAIL:', e.message);
-    }
-
-    const tokenCount =
-      productName.includes('1') ? 1 :
-      productName.includes('2') ? 2 :
-      productName.includes('10') ? 10 :
-      productName.includes('30') ? 30 : 0;
-
-    if (tokenCount === 0) {
-      console.warn('UNRECOGNIZED PRODUCT:', productName);
-      return res.status(400).json({ error: 'Unknown product' });
-    }
-
-    const { data: user, error } = await supabase
-      .from('users')
-      .update({ tokens: supabase.raw('tokens + ?', [tokenCount]) })
-      .ilike('email', email)
-      .select();
-
-    if (error || !user.length) {
-      console.error('SUPABASE UPDATE ERROR:', error || 'User not found');
-      return res.status(500).json({ error: 'Token update failed' });
-    }
-
-    console.log(`✅ Added ${tokenCount} tokens to ${email}`);
   }
 
   res.json({ received: true });

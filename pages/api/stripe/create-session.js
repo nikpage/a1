@@ -1,6 +1,6 @@
 // pages/api/stripe/create-session.js
 
-import Stripe from 'stripe';
+iimport Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { quantity, user_id } = req.body;
+  const { quantity, user_id, email } = req.body;
 
   const prices = {
     1: 600,    // €6.00
@@ -37,6 +37,9 @@ export default async function handler(req, res) {
         },
       ],
       mode: 'payment',
+      metadata: { user_id },
+
+      customer_email: email,
       success_url: `${req.headers.origin}/payment-success?user_id=${user_id}&quantity=${quantity}`,
       cancel_url: `${req.headers.origin}/cancel`,
     });
