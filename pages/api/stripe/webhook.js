@@ -1,7 +1,14 @@
 // pages/api/stripe/webhook.js
 
 import Stripe from 'stripe';
-import { buffer } from 'micro';
+const buffer = async (readable) => {
+  const chunks = [];
+  for await (const chunk of readable) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+};
+
 import { supabase } from '../../../utils/database';
 
 export const config = { api: { bodyParser: false } };
