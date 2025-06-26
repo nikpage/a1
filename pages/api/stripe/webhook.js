@@ -33,6 +33,8 @@ export default async function handler(req, res) {
     console.log('🧾 WEBHOOK SESSION:', session);
 
     const user_id = session.metadata?.user_id;
+    const quantity = parseInt(session.metadata?.quantity || '0', 10);
+
 
 
     if (user_id && quantity > 0) {
