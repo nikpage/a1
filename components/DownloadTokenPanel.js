@@ -1,7 +1,7 @@
 // components/DownloadTokenPanel.js
 import { useEffect, useState } from 'react';
 
-export default function DownloadTokenPanel({ onClose }) {
+export default function DownloadTokenPanel({ onClose, user_id }) {
   const [success, setSuccess] = useState(false);
   const [tokensBought, setTokensBought] = useState(null);
 
