@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     const { data: user, error } = await supabase
       .from('users')
       .update({ tokens: supabase.raw('tokens + ?', [tokenCount]) })
-      .eq('email', email)
+      .ilike('email', email)
       .select();
 
     if (error || !user.length) {
