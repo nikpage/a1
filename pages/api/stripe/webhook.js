@@ -27,11 +27,14 @@ export default async function handler(req, res) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    console.log('EVENT', event);
+    console.log('📦 RAW EVENT:', event);
 
     const session = event.data.object;
+    console.log('🧾 WEBHOOK SESSION:', session);
+
     const user_id = session.metadata?.user_id;
     const quantity = parseInt(session.metadata?.quantity || '0', 10);
+
 
     if (user_id && quantity > 0) {
       const { data, error } = await supabase
