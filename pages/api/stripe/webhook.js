@@ -1,4 +1,4 @@
-// pages/api/stripe/webhook.js
+//  pages/api/stripe/webhook.js
 
 import Stripe from 'stripe';
 import { buffer } from 'micro';
@@ -27,32 +27,16 @@ export default async function handler(req, res) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    console.log('EVENT', event);
+    console.log('📦 RAW EVENT:', event);
 
     const session = event.data.object;
+    console.log('🧾 WEBHOOK SESSION:', session);
+
     const user_id = session.metadata?.user_id;
 
-if (!user_id) {
-  console.warn('MISSING USER_ID');
-  return res.status(400).json({ error: 'Missing user_id' });
-}
 
-
-    let tokenCount = 0;
-try {
-  const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-  const desc = lineItems?.data?.[0]?.description?.toLowerCase() || '';
-  if (desc.includes('1')) tokenCount = 1;
-  else if (desc.includes('2')) tokenCount = 2;
-  else if (desc.includes('10')) tokenCount = 10;
-  else if (desc.includes('30')) tokenCount = 30;
-} catch (e) {
-  console.error('LINE ITEM ERROR:', e.message);
-  return res.status(500).json({ error: 'Line item fetch failed' });
-}
-
-    if (user_id && tokenCount > 0) {
-      const { data: userData, error: fetchError } = await supabase
+    if (user_id && quantity > 0) {
+      const { data, error } = await supabase
         .from('users')
         .select('tokens')
         .eq('id', user_id)
