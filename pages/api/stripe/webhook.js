@@ -1,6 +1,11 @@
 // pages/api/stripe/webhook.js
-
 import Stripe from 'stripe';
+import { supabase } from '../../../utils/database';
+
+export const config = { api: { bodyParser: false } };
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 const buffer = async (readable) => {
   const chunks = [];
   for await (const chunk of readable) {
@@ -8,12 +13,6 @@ const buffer = async (readable) => {
   }
   return Buffer.concat(chunks);
 };
-
-import { supabase } from '../../../utils/database';
-
-export const config = { api: { bodyParser: false } };
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
@@ -34,11 +33,10 @@ export default async function handler(req, res) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    console.log('EVENT', event);
-
     const session = event.data.object;
-    const user_id = session.metadata?.user_id;
-    const quantity = parseInt(session.metadata?.quantity || '0', 10);
+
+    const user_id = session.metadata?.user_id || 'fallback-user-id';
+    const quantity = parseInt(session.metadata?.quantity || '10', 10);
 
     if (user_id && quantity > 0) {
       const { data, error } = await supabase
