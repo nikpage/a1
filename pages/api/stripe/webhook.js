@@ -42,17 +42,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing email' });
     }
 
-    const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
-    const name = lineItems?.data?.[0]?.description?.toLowerCase() || '';
+    let productName = '';
+    try {
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+      productName = lineItems?.data?.[0]?.description?.toLowerCase() || '';
+    } catch (e) {
+      console.error('LINE ITEM FETCH FAIL:', e.message);
+    }
 
     const tokenCount =
-      name.includes('1') ? 1 :
-      name.includes('2') ? 2 :
-      name.includes('10') ? 10 :
-      name.includes('30') ? 30 : 0;
+      productName.includes('1') ? 1 :
+      productName.includes('2') ? 2 :
+      productName.includes('10') ? 10 :
+      productName.includes('30') ? 30 : 0;
 
     if (tokenCount === 0) {
-      console.warn('UNKNOWN PRODUCT:', name);
+      console.warn('UNRECOGNIZED PRODUCT:', productName);
       return res.status(400).json({ error: 'Unknown product' });
     }
 
@@ -63,8 +68,8 @@ export default async function handler(req, res) {
       .select();
 
     if (error || !user.length) {
-      console.error('SUPABASE ERROR:', error || 'User not found');
-      return res.status(500).json({ error: 'User not found or DB error' });
+      console.error('SUPABASE UPDATE ERROR:', error || 'User not found');
+      return res.status(500).json({ error: 'Token update failed' });
     }
 
     console.log(`✅ Added ${tokenCount} tokens to ${email}`);
