@@ -1,4 +1,3 @@
-// pages/api/stripe/webhook.js
 import Stripe from 'stripe';
 import { supabase } from '../../../utils/database';
 
@@ -12,6 +11,13 @@ const buffer = async (readable) => {
     chunks.push(Buffer.from(chunk));
   }
   return Buffer.concat(chunks);
+};
+
+const TOKEN_MAP = {
+  'Single Document': 1,
+  'CV & Cover Letter - Starter Pair': 2,
+  '10 Document Bundle': 10,
+  '30 Document Bundle': 30,
 };
 
 export default async function handler(req, res) {
@@ -34,25 +40,34 @@ export default async function handler(req, res) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
+    const email = session.customer_details?.email;
 
-    const user_id = session.metadata?.user_id || 'fallback-user-id';
-    const quantity = parseInt(session.metadata?.quantity || '10', 10);
-
-    if (user_id && quantity > 0) {
-      const { data, error } = await supabase
-        .from('users')
-        .update({ tokens: supabase.raw('tokens + ?', [quantity]) })
-        .eq('user_id', user_id)
-        .select('tokens');
-
-      if (error) {
-        console.error('SUPABASE UPDATE ERROR', error);
-      } else {
-        console.log('TOKENS ADDED', data);
-      }
-    } else {
-      console.warn('MISSING METADATA', { user_id, quantity });
+    if (!email) {
+      console.warn('MISSING EMAIL');
+      return res.status(400).json({ error: 'Missing email' });
     }
+
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+    const productName = lineItems?.data?.[0]?.description;
+    const tokenCount = TOKEN_MAP[productName] || 0;
+
+    if (tokenCount === 0) {
+      console.warn('UNKNOWN PRODUCT:', productName);
+      return res.status(400).json({ error: 'Unknown product' });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .update({ tokens: supabase.raw('tokens + ?', [tokenCount]) })
+      .eq('email', email)
+      .select();
+
+    if (error || !user.length) {
+      console.error('SUPABASE UPDATE ERROR:', error || 'User not found');
+      return res.status(500).json({ error: 'User not found or DB error' });
+    }
+
+    console.log(`✅ Added ${tokenCount} tokens to ${email}`);
   }
 
   res.json({ received: true });
