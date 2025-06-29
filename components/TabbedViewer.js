@@ -6,6 +6,7 @@ import CV_Cover_Display from './CV-Cover-Display';
 export default function TabbedViewer({ user_id, analysisText }) {
   const [activeTab, setActiveTab] = useState('analysis');
   const [docs, setDocs] = useState({ cv: null, cover: null });
+  const [showBuilder, setShowBuilder] = useState(false);
 
   // Fetch existing CV and cover letter from DB
   useEffect(() => {
@@ -70,7 +71,33 @@ export default function TabbedViewer({ user_id, analysisText }) {
         {activeTab === 'analysis' && (
           <div>
             {analysisText ? (
-              <div dangerouslySetInnerHTML={{ __html: analysisText.replace(/\n/g, '<br/>') }} />
+              <div>
+                <div dangerouslySetInnerHTML={{ __html: analysisText.replace(/\n/g, '<br/>') }} />
+
+                {!showBuilder && (
+                  <div style={{ marginTop: '2em', textAlign: 'center' }}>
+                    <button
+                      onClick={() => setShowBuilder(true)}
+                      style={{
+                        padding: '0.8rem 2.4rem',
+                        fontSize: '1.1rem',
+                        background: '#224488',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      Write Now!
+                    </button>
+                  </div>
+                )}
+
+                {showBuilder && (
+                  <CV_Cover_Display user_id={user_id} analysis={analysisText} />
+                )}
+              </div>
             ) : (
               <p>No analysis available</p>
             )}

@@ -1,6 +1,7 @@
 // pages/[user_id].js
 
 import { useState, useEffect } from 'react'
+import Header from '../components/Header'
 import TabbedViewer from '../components/TabbedViewer'
 import DashboardDisplay from '../components/DashboardDisplay';
 
@@ -27,6 +28,7 @@ export default function UserPage({ user_id }) {
 
   return (
     <div>
+      <Header />
       {typeof window !== 'undefined' && window.location.search.includes('success=true') ? (
         <DashboardDisplay />
       ) : (
