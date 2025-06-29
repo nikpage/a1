@@ -29,11 +29,8 @@ export default function UserPage({ user_id }) {
   return (
     <div>
       <Header />
-      {typeof window !== 'undefined' && window.location.search.includes('success=true') ? (
-        <DashboardDisplay />
-      ) : (
-        analysis && <TabbedViewer user_id={user_id} analysisText={analysis} />
-      )}
+      {analysis && <TabbedViewer user_id={user_id} analysisText={analysis} />}
+
     </div>
   )
 }

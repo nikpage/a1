@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         },
       ],
       mode: 'payment',
-      success_url: `https://www.thecv.pro/payment-success?user_id=${user_id}&quantity=${quantity}`,
+      success_url: `${req.headers.origin}/${user_id}?success=true`,
       cancel_url: 'https://www.thecv.pro/cancel',
       metadata: {
         user_id: user_id,
