@@ -1,7 +1,8 @@
-// components/CV-Cover-Display.js
+// path: components/CV-Cover-Display.js
+
 import { useState, useEffect } from 'react';
 import DownloadTokenPanel from './DownloadTokenPanel';
-
+import { supabase } from '../utils/database';  // Adjust the import if needed
 
 export default function CV_Cover_Display({ user_id, analysis }) {
   console.log('Analysis in CV_Cover_Display:', analysis);
@@ -11,6 +12,8 @@ export default function CV_Cover_Display({ user_id, analysis }) {
   const [error, setError] = useState(null);
   const [docs, setDocs] = useState(null);
   const [showBuyPanel, setShowBuyPanel] = useState(false);
+
+
   useEffect(() => {
     const loadDocs = async () => {
       if (!user_id || !analysis || !tone || !analysis.analysis_id) return;
@@ -43,9 +46,7 @@ export default function CV_Cover_Display({ user_id, analysis }) {
     loadDocs();
   }, [user_id, analysis, tone]);
 
-
-
-
+  // path: components/CV-Cover-Display.js
   const handleDownload = async (type, content) => {
     const res = await fetch('/api/download-token-check', {
       method: 'POST',
@@ -54,12 +55,11 @@ export default function CV_Cover_Display({ user_id, analysis }) {
     });
 
     if (res.status === 402) {
-  console.log('Triggering Buy Panel');
-  setShowBuyPanel(true);
-  return;
-}
+      setShowBuyPanel(true);  // Show Buy Tokens modal when tokens = 0
+      return;
+    }
 
-
+    // Proceed with downloading after tokens check
     if (!res.ok) {
       alert('Download failed');
       return;
@@ -72,8 +72,8 @@ export default function CV_Cover_Display({ user_id, analysis }) {
     a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+?)"/)?.[1] || 'download.docx';
     a.click();
     window.URL.revokeObjectURL(url);
-  };
 
+  };
 
 
   const toggleDocType = (type) => {
@@ -109,6 +109,14 @@ export default function CV_Cover_Display({ user_id, analysis }) {
     }
     setLoading(false);
   };
+  useEffect(() => {
+    const search = window.location.search;
+    if (search.includes('success=true')) {
+      setShowBuyPanel(false);
+
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   return (
     <div style={{ marginTop: 40, textAlign: 'center' }}>
@@ -171,6 +179,7 @@ export default function CV_Cover_Display({ user_id, analysis }) {
       </button>
 
       {error && <div style={{ color: 'red', marginTop: 16 }}>{error}</div>}
+
       {showBuyPanel && (
         <div style={{
           position: 'fixed',
@@ -188,30 +197,31 @@ export default function CV_Cover_Display({ user_id, analysis }) {
         </div>
       )}
 
+
+
       {docs && (
         <div style={{ marginTop: 32, textAlign: 'left' }}>
           {docs.cv && (
             <>
               <h3>CV</h3>
-            <pre style={{ background: '#f8f8fa', padding: 12, borderRadius: 8 }}>
-              {docs.cv}
-            </pre>
-            <button
-              onClick={() => handleDownload('cv', docs.cv)}
-              style={{
-                marginTop: 8,
-                padding: '6px 12px',
-                background: '#2255aa',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontWeight: 600
-              }}
-            >
-              Download CV
-            </button>
-
+              <pre style={{ background: '#f8f8fa', padding: 12, borderRadius: 8 }}>
+                {docs.cv}
+              </pre>
+              <button
+                onClick={() => handleDownload('cv', docs.cv)}
+                style={{
+                  marginTop: 8,
+                  padding: '6px 12px',
+                  background: '#2255aa',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Download CV
+              </button>
             </>
           )}
           {docs.cover && (
@@ -235,7 +245,6 @@ export default function CV_Cover_Display({ user_id, analysis }) {
               >
                 Download Cover Letter
               </button>
-
             </>
           )}
         </div>

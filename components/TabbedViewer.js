@@ -1,4 +1,3 @@
-// path: components/TabbedViewer.js
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/database';
 import CV_Cover_Display from './CV-Cover-Display';
@@ -41,36 +40,10 @@ export default function TabbedViewer({ user_id, analysisText }) {
     const params = new URLSearchParams(window.location.search);
     const success = params.get('success');
     if (success === 'true') {
-      const stored = localStorage.getItem('pendingDownload');
-      if (stored) {
-        const { type, content } = JSON.parse(stored);
-
-        fetch('/api/download-token-check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, type, content }),
-        })
-          .then(res => {
-            if (!res.ok) throw new Error('Token check failed');
-            setShowThankYou(true);
-            return res.blob();
-          })
-          .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${type}.docx`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-          })
-          .catch(err => console.error('Download failed:', err))
-          .finally(() => {
-            localStorage.removeItem('pendingDownload');
-          });
-      }
+      setShowThankYou(true); // Show ThankYouModal for payment success
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [user_id]);
+  }, []);
 
   const tabs = [
     { id: 'analysis', label: 'Analysis' },
@@ -203,7 +176,22 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </div>
       )}
 
-      {showThankYou && <ThankYouModal onClose={() => setShowThankYou(false)} />}
+      {showThankYou && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <ThankYouModal onClose={() => setShowThankYou(false)} />
+        </div>
+      )}
     </div>
   );
 }

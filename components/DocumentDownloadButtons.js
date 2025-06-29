@@ -1,5 +1,3 @@
-// path: components/DocumentDownloadButtons.js
-
 import { useState } from 'react';
 
 export default function DocumentDownloadButtons({ user_id, analysisText, cvText, coverText, onTokenFail, activeTab }) {
@@ -30,6 +28,7 @@ export default function DocumentDownloadButtons({ user_id, analysisText, cvText,
       document.body.appendChild(a);
       a.click();
       a.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       alert('Error downloading file.');
     }
@@ -83,7 +82,7 @@ export default function DocumentDownloadButtons({ user_id, analysisText, cvText,
           disabled={loading === 'coverletter'}
           className="bg-purple-600 text-white py-2 px-4 rounded"
         >
-          {loading === 'coverletter' ? 'Downloading...' : 'Download CoverLetter'}
+          {loading === 'coverletter' ? 'Downloading...' : 'Download Cover Letter'}
         </button>
       )}
     </div>
