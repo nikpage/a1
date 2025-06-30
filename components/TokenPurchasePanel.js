@@ -1,23 +1,22 @@
-// components/TokenPurchasePanel.js
-
+// path: components/TokenPurchasePanel.js
 import { useState } from 'react';
 
 export default function TokenPurchasePanel({ onClose }) {
   const [loading, setLoading] = useState(false);
-  const handlePurchase = async () => {
+
+  const handlePurchase = async (quantity) => {
     setLoading(true);
     try {
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert('Failed to initiate purchase.');
-      }
+      if (data.url) window.location.href = data.url;
+      else alert('Failed to initiate purchase.');
     } catch (err) {
-      console.error('Checkout error:', err);
+      console.error(err);
       alert('Something went wrong.');
     }
     setLoading(false);
@@ -46,25 +45,31 @@ export default function TokenPurchasePanel({ onClose }) {
       }}>
         <h2>Not enough tokens</h2>
         <p>You need at least 1 token to download. Buy more below.</p>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: 10,
+          marginTop: 20
+        }}>
+          <button onClick={() => handlePurchase(1)} disabled={loading}>1 for €6</button>
+          <button onClick={() => handlePurchase(2)} disabled={loading}>2 for €8</button>
+          <button onClick={() => handlePurchase(10)} disabled={loading}>10 for €23</button>
+          <button onClick={() => handlePurchase(30)} disabled={loading}>30 for €42</button>
+        </div>
         <button
-          onClick={handlePurchase}
-          disabled={loading}
+          onClick={onClose}
           style={{
             marginTop: 20,
             padding: '10px 20px',
-            background: '#2255aa',
-            color: '#fff',
+            background: 'none',
             border: 'none',
-            borderRadius: 6,
-            fontWeight: 600,
+            color: '#888',
             cursor: 'pointer'
           }}
         >
-          {loading ? 'Redirecting...' : 'Buy Tokens'}
+          Cancel
         </button>
-        <div style={{ marginTop: 16 }}>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888' }}>Cancel</button>
-        </div>
       </div>
     </div>
   );

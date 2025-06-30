@@ -23,7 +23,7 @@ export default function IndexPage() {
     const uploadRes = await fetch('/api/upload-cv', { method: 'POST', body: formData })
     const uploadData = await uploadRes.json()
 
-    console.log('Upload response:', uploadRes.status, uploadData); // Debug log
+  console.log('Upload response (truncated):', uploadRes.status, JSON.stringify(uploadData).slice(0, 230) + '…', '| Size:', (JSON.stringify(uploadData).length / 1024).toFixed(2), 'KB');
 
     if (!uploadRes.ok || !uploadData.user_id) {
       setError(uploadData.error || 'Upload failed')
@@ -32,7 +32,7 @@ export default function IndexPage() {
     }
 
     console.log('Making analysis request with user_id:', uploadData.user_id); // Debug log
-    console.log('Calling analyze-cv-job with:', uploadData.user_id, jobText)
+    console.log('Calling analyze-cv-job with:', uploadData.user_id, jobText.slice(0, 230) + '…', '| Size:', (jobText.length / 1024).toFixed(2), 'KB');
 const analyzeRes = await fetch('/api/analyze-cv-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,7 +44,7 @@ const analyzeRes = await fetch('/api/analyze-cv-job', {
 
     console.log('Analysis response status:', analyzeRes.status); // Debug log
     const analyzeData = await analyzeRes.json()
-    console.log('Analysis response data:', analyzeData); // Debug log
+    console.log('Analysis response data (truncated):', JSON.stringify(analyzeData).slice(0, 230) + '…', '| Size:', (JSON.stringify(analyzeData).length / 1024).toFixed(2), 'KB'); // Debug log
 
     if (!analyzeRes.ok || analyzeData.error) {
       setError(analyzeData.error || 'Analysis failed')

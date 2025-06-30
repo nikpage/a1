@@ -1,5 +1,3 @@
-// path: components/ToneDocModal.js
-
 import BaseModal from './BaseModal';
 import { useState } from 'react';
 
@@ -8,51 +6,81 @@ export default function ToneDocModal({ onClose, onSubmit }) {
   const [types, setTypes] = useState({ cv: false, cover: false });
 
   const handleGenerate = () => {
+    console.log('Button clicked!'); // Debug line
     const selected = Object.entries(types)
       .filter(([_, checked]) => checked)
       .map(([key]) => key);
+
+    console.log('Selected types:', selected); // Debug line
+
     if (selected.length === 0) return alert('Select at least one document type');
+
+    console.log('Calling onSubmit with:', { tone, selected }); // Debug line
     onSubmit({ tone, selected });
     onClose();
   };
 
   return (
-    <BaseModal onClose={onClose}>
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold">🎯 Choose Tone</h2>
-        <div className="flex gap-4">
-          {['formal', 'friendly', 'enthusiastic', 'cocky'].map(opt => (
+    <BaseModal onClose={onClose} showCloseButton={false}>
+      <div className="modal-container">
+        <div className="modal-content">
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>🎯 Choose Tone</h2>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {['formal', 'friendly', 'enthusiastic', 'cocky'].map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    border: '1px solid #ccc',
+                    backgroundColor: tone === opt ? '#2563eb' : '#fff',
+                    color: tone === opt ? 'white' : 'black',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setTone(opt)}
+                >
+                  {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>📄 Select Document Type</h2>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {['cv', 'cover'].map(doc => (
+                <label key={doc} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={types[doc]}
+                    onChange={() => setTypes(prev => ({ ...prev, [doc]: !prev[doc] }))}
+                  />
+                  {doc === 'cv' ? 'CV' : 'Cover Letter'}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
             <button
-              key={opt}
-              className={`px-3 py-1 rounded border ${tone === opt ? 'bg-blue-600 text-white' : 'bg-white text-black'}`}
-              onClick={() => setTone(opt)}
+              type="button"
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem 1.5rem',
+                backgroundColor: 'black',
+                color: 'white',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem'
+              }}
+              onClick={handleGenerate}
             >
-              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+              Generate
             </button>
-          ))}
-        </div>
-
-        <h2 className="text-xl font-bold">📄 Select Document Type</h2>
-        <div className="flex gap-4">
-          {['cv', 'cover'].map(doc => (
-            <label key={doc} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={types[doc]}
-                onChange={() => setTypes(prev => ({ ...prev, [doc]: !prev[doc] }))}
-              />
-              {doc === 'cv' ? 'CV' : 'Cover Letter'}
-            </label>
-          ))}
-        </div>
-
-        <div className="text-center">
-          <button
-            className="mt-4 px-6 py-2 bg-black text-white rounded"
-            onClick={handleGenerate}
-          >
-            Generate
-          </button>
+          </div>
         </div>
       </div>
     </BaseModal>

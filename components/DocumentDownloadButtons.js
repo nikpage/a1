@@ -1,10 +1,18 @@
-import { useState } from 'react';
+// path: components/DocumentDownloadButtons.js
+import { supabase } from '../utils/database';
 
-export default function DocumentDownloadButtons({ user_id, analysisText, cvText, coverText, onTokenFail, activeTab }) {
-  const [loading, setLoading] = useState('');
+export default function DocumentDownloadButtons({
+  user_id,
+  cvText,
+  coverText,
+  activeTab,
+  onTokenFail,
+}) {
+  const handleDownload = async () => {
+    const type = activeTab === 'cv' ? 'cv' : 'cover';
+    const content = type === 'cv' ? cvText : coverText;
+    if (!content) return;
 
-  const handleDownload = async (type, content) => {
-    setLoading(type);
     try {
       const res = await fetch('/api/download-token-check', {
         method: 'POST',
@@ -13,78 +21,33 @@ export default function DocumentDownloadButtons({ user_id, analysisText, cvText,
       });
 
       if (res.status === 402) {
-        onTokenFail();
-        setLoading('');
+        onTokenFail?.();
         return;
       }
 
-      if (!res.ok) throw new Error('Download failed');
+      if (!res.ok) {
+        alert('Download failed');
+        return;
+      }
 
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${type}.docx`;
-      document.body.appendChild(a);
+      a.download = `${type}-${user_id}.docx`;
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Error downloading file.');
+      console.error('Download error:', err);
+      alert('Download error');
     }
-    setLoading('');
   };
 
-  const available = [
-    ...(analysisText ? [{ label: 'Analysis', type: 'analysis', content: analysisText }] : []),
-    ...(cvText ? [{ label: 'CV', type: 'cv', content: cvText }] : []),
-    ...(coverText ? [{ label: 'Cover Letter', type: 'coverletter', content: coverText }] : [])
-  ];
-
-  const tooltip = `Download: ${available.map(a => a.label).join(', ')}`;
-
   return (
-    <div className="flex flex-col gap-4 mt-4 items-center">
-      {available.length > 0 && (
-        <button
-          onClick={() => available.forEach(doc => handleDownload(doc.type, doc.content))}
-          disabled={loading === 'all'}
-          title={tooltip}
-          className="bg-black text-white py-2 px-4 rounded"
-        >
-          {loading === 'all' ? 'Downloading All...' : 'Download All'}
-        </button>
-      )}
-
-      {activeTab === 'analysis' && analysisText && (
-        <button
-          onClick={() => handleDownload('analysis', analysisText)}
-          disabled={loading === 'analysis'}
-          className="bg-blue-600 text-white py-2 px-4 rounded"
-        >
-          {loading === 'analysis' ? 'Downloading...' : 'Download Analysis'}
-        </button>
-      )}
-
-      {activeTab === 'cv' && cvText && (
-        <button
-          onClick={() => handleDownload('cv', cvText)}
-          disabled={loading === 'cv'}
-          className="bg-green-600 text-white py-2 px-4 rounded"
-        >
-          {loading === 'cv' ? 'Downloading...' : 'Download CV'}
-        </button>
-      )}
-
-      {activeTab === 'cover' && coverText && (
-        <button
-          onClick={() => handleDownload('coverletter', coverText)}
-          disabled={loading === 'coverletter'}
-          className="bg-purple-600 text-white py-2 px-4 rounded"
-        >
-          {loading === 'coverletter' ? 'Downloading...' : 'Download Cover Letter'}
-        </button>
-      )}
+    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+      <button className="download-btn" onClick={handleDownload}>
+        Download {activeTab === 'cv' ? 'CV' : 'Cover Letter'}
+      </button>
     </div>
   );
 }

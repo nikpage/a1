@@ -163,7 +163,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     console.log('  total tokens:', data.usage.total_tokens)
 
     console.log('PROMPT:', JSON.stringify([systemMessage, userMessage], null, 2))
-    console.log('RESPONSE:', data)
+    console.log('RESPONSE (truncated):', JSON.stringify(data).slice(0, 230) + '…', '| Size:', (JSON.stringify(data).length / 1024).toFixed(2), 'KB');
 
     return {
       choices: data.choices,

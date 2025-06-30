@@ -1,21 +1,301 @@
-/* styles/globals.css */
-.formatted-analysis {
-  font-family: Arial, sans-serif;
-  line-height: 1.6;
-  margin-top: 20px;
+/* path: styles/globals.css */
+
+/* --- Tabs and Buttons (UNCHANGED) --- */
+.tabs-bar {
+  display: flex;
+  border-bottom: 1.5px solid #e6eaf0;
+  margin: 0 0 2.1rem 0;
+  background: none;
+  gap: 0.5rem;
 }
-.formatted-analysis h2,
-.formatted-analysis h3 {
-  margin-top: 1em;
-  color: #2c3e50;
+
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2.5px solid transparent;
+  color: #233e5c;
+  font-size: 1.07rem;
+  font-family: 'Inter', Arial, sans-serif;
+  font-weight: 500;
+  padding: 0.5rem 2.1rem 0.85rem 2.1rem;
+  margin: 0;
+  cursor: pointer;
+  transition: border-color 0.14s, color 0.14s, background 0.13s;
+  outline: none;
+  border-radius: 0;
 }
-.formatted-analysis ul,
-.formatted-analysis ol {
-  margin-left: 1.2em;
+
+.tab-btn.active {
+  border-bottom: 3.5px solid #41b4a2;
+  color: #23415c;
+  font-weight: 700;
+  background: #f7fafc;
 }
-.formatted-analysis hr {
-  margin: 20px 0;
-  border: 0;
-  height: 1px;
-  background: #ccc;
+
+.tab-btn:not(.active):hover {
+  color: #41b4a2;
+  border-bottom: 2.5px solid #b6e9e0;
+  background: #f7fafc;
+}
+
+/* --- General --- */
+header {
+  margin-bottom: 2.8rem !important;
+}
+
+button {
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- Buttons --- */
+.download-btn,
+.action-btn {
+  background: #41b4a2;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.download-btn {
+  padding: 0.6rem 1.6rem;
+  font-size: 1rem;
+  margin: 0.4rem;
+}
+
+.download-btn:hover,
+.action-btn:hover {
+  background: #2c9486;
+}
+
+.action-btn {
+  padding: 0.75rem 2rem;
+  font-size: 1.06rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* --- CV / Cover Layout --- */
+.cv-cover-container {
+  background: #fff;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 1rem 1.2rem;
+  margin: 1rem auto;
+  max-width: 860px;
+}
+
+/* --- Document Content --- */
+.doc-viewer {
+  font-size: 0.95rem;
+  color: #2d3748;
+  background: #fff;
+  border: none;
+  border-radius: 0;
+  padding: 1rem 1.2rem;
+  line-height: 1.42;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.doc-viewer * {
+  margin: 0;
+  padding: 0;
+  line-height: 1.42 !important;
+}
+
+.doc-viewer p,
+.doc-viewer li,
+.doc-viewer div {
+  margin: 0 !important;
+}
+
+.doc-viewer h1,
+.doc-viewer h2,
+.doc-viewer h3 {
+  margin: 1.5em 0 0.6em !important;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a202c;
+  line-height: 1.55 !important;
+}
+
+/* Spacer lines */
+.doc-viewer hr {
+  margin: 0.5em 0 !important;
+  border: none;
+  border-top: 1px solid #ccc;
+}
+
+/* --- Lists / Tables / Code / Quotes --- */
+.doc-viewer ul,
+.doc-viewer ol {
+  padding-left: 1.2rem;
+  margin: 0.5em 0 !important;
+}
+
+.doc-viewer blockquote {
+  border-left: 3px solid #41b4a2;
+  padding: 0.8em 1.4em;
+  background: #f7fafc;
+  font-style: italic;
+  border-radius: 0 8px 8px 0;
+  margin: 1em 0;
+  color: #23415c;
+}
+
+.doc-viewer code,
+.doc-viewer pre {
+  background: #f3f7fa;
+  color: #23415c;
+  padding: 0.2em 0.4em;
+  border-radius: 5px;
+  font-size: 0.97em;
+  font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+}
+
+.doc-viewer pre {
+  display: block;
+  padding: 1em 1.2em;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+.doc-viewer table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.doc-viewer th,
+.doc-viewer td {
+  border: 1px solid #e6eaf0;
+  padding: 0.6em 1em;
+  text-align: left;
+  font-size: 1rem;
+}
+
+.doc-viewer th {
+  background: #f7fafc;
+  color: #23415c;
+  font-weight: 600;
+}
+.download-btn {
+  background: #41b4a2;
+  color: #fff;
+  padding: 0.6rem 1.6rem;
+  font-size: 1.05rem;
+  border-radius: 8px;
+  border: none;
+  margin: 1rem auto 0;
+  font-weight: 600;
+  cursor: pointer;
+  display: block;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease;
+}
+
+.download-btn:hover {
+  background: #2c9486;
+}
+.download-btn {
+  background: #41b4a2;
+  color: #fff;
+  padding: 0.6rem 1.6rem;
+  font-size: 1.05rem;
+  border-radius: 8px;
+  border: none;
+  margin: 1rem auto 0;
+  font-weight: 600;
+  cursor: pointer;
+  display: block;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease;
+}
+
+.download-btn:hover {
+  background: #2c9486;
+}
+.modal-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5); /* Overlay background */
+  z-index: 9999; /* Ensure it's on top */
+}
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+}
+.modal-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5); /* Darkened background */
+  z-index: 9999 !important; /* Ensures it's above all other elements */
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+  overflow-y: auto; /* In case the content is too long */
+}
+.modal-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5); /* Darkened background */
+  z-index: 9999;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+}
+
+button {
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background-color: #f7fafc;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #41b4a2;
+  color: white;
 }

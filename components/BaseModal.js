@@ -1,30 +1,19 @@
 // path: components/BaseModal.js
 
-export default function BaseModal({ onClose, children }) {
+export default function BaseModal({ onClose, children, showCloseButton = true }) {
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      background: 'rgba(0,0,0,0.4)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 9999  // <-- bump from 1000 to 9999
-    }}>
-      <div style={{
-        background: '#fff',
-        padding: 40,
-        borderRadius: 12,
-        textAlign: 'center',
-        maxWidth: 480,
-        width: '90%',
-        boxShadow: '0 2px 20px rgba(0,0,0,0.3)'  // Optional: add visual lift
-      }}>
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white p-10 rounded-xl max-w-lg w-full shadow-2xl text-center relative">
         {children}
-        <button onClick={onClose} style={{ marginTop: 20 }}>Close</button>
+        {showCloseButton && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-6 px-5 py-2 bg-gray-700 text-white rounded hover:bg-gray-900"
+          >
+            Close
+          </button>
+        )}
       </div>
     </div>
   );
