@@ -1,5 +1,5 @@
 // path: components/TabbedViewer.js
-// NOTE: Ensure BaseModal implements backdrop (fixed inset-0 bg-black/40) and centers children
+
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/database';
 import ReactMarkdown from 'react-markdown';
@@ -9,6 +9,8 @@ import DownloadTokenPanel from './DownloadTokenPanel';
 import BaseModal from './BaseModal';
 import ThankYouModal from './ThankYouModal';
 import ToneDocModal from './ToneDocModal';
+import AnalysisDisplay from './AnalysisDisplay';
+
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [activeTab, setActiveTab] = useState('analysis');
@@ -73,107 +75,108 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   return (
     <div className="doc-viewer">
-      <div className="tabs-bar">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`tab-btn${activeTab === tab.id ? ' active' : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex border-b border-accent bg-bg mb-8 gap-12">
+        {tabs.map(tab => {
+          const isDisabled =
+            (tab.id === 'cv' && !docs.cv) ||
+            (tab.id === 'cover' && !docs.cover);
+
+
+    return (
+      <button
+        key={tab.id}
+        onClick={() => {
+          if (isDisabled) {
+            alert(`No ${tab.label} available`);
+          } else {
+            setActiveTab(tab.id);
+          }
+        }}
+        className={`tab-btn ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      >
+        {tab.label}
+      </button>
+    );
+  })}
+
+
       </div>
 
-      <div>
-        {activeTab === 'analysis' && (
-          <div>
-            {analysisText ? (
-              <>
-                <div className="doc-viewer">
-                  <ReactMarkdown>{analysisText}</ReactMarkdown>
-                </div>
-                {!showBuilder && (
-                  <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-                    <button onClick={() => setShowModal(true)} className="action-btn">
-                      Write Now!
-                    </button>
-                  </div>
-                )}
-                {showBuilder && <CV_Cover_Display user_id={user_id} analysis={analysisText} />}
-              </>
-            ) : (
-              <p>No analysis available</p>
-            )}
-          </div>
-        )}
+      {activeTab === 'analysis' && (
+        <div>
+          {analysisText ? (
+            <>
+              <AnalysisDisplay analysis={analysisText} />
 
-        {activeTab === 'cv' && (
-          <div>
-            {docs.cv ? (
-              <>
-                <div className="doc-viewer">
-                  <ReactMarkdown>{docs.cv}</ReactMarkdown>
-                </div>
-                <DocumentDownloadButtons
-                  user_id={user_id}
-                  cvText={docs.cv}
-                  coverText={docs.cover}
-                  activeTab={activeTab}
-                  onTokenFail={() => setShowBuyPanel(true)}
-                />
-              </>
-            ) : (
-              <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cv" />
-            )}
-          </div>
-        )}
 
-        {activeTab === 'cover' && (
-          <div>
-            {docs.cover ? (
-              <>
-                <div className="doc-viewer">
-                  <ReactMarkdown>{docs.cover}</ReactMarkdown>
+              {!showBuilder && (
+                <div className="text-center mt-8">
+                  <button onClick={() => setShowModal(true)} className="action-btn">
+                    Write Now!
+                  </button>
                 </div>
-                <DocumentDownloadButtons
-                  user_id={user_id}
-                  cvText={docs.cv}
-                  coverText={docs.cover}
-                  activeTab={activeTab}
-                  onTokenFail={() => setShowBuyPanel(true)}
-                />
-              </>
-            ) : (
-              <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cover" />
-            )}
-          </div>
-        )}
-      </div>
+              )}
+              {showBuilder && (
+                <CV_Cover_Display user_id={user_id} analysis={analysisText} />
+              )}
+            </>
+          ) : (
+            <p>No analysis available</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'cv' && (
+        <div>
+          {docs.cv ? (
+            <>
+              <div className="doc-viewer whitespace-pre-wrap">
+                <ReactMarkdown>{docs.cv}</ReactMarkdown>
+              </div>
+              <DocumentDownloadButtons
+                user_id={user_id}
+                cvText={docs.cv}
+                coverText={docs.cover}
+                activeTab={activeTab}
+                onTokenFail={() => setShowBuyPanel(true)}
+              />
+            </>
+          ) : (
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cv" />
+          )}
+        </div>
+      )}
+
+      {activeTab === 'cover' && (
+        <div>
+          {docs.cover ? (
+            <>
+              <div className="doc-viewer whitespace-pre-wrap">
+                <ReactMarkdown>{docs.cover}</ReactMarkdown>
+              </div>
+              <DocumentDownloadButtons
+                user_id={user_id}
+                cvText={docs.cv}
+                coverText={docs.cover}
+                activeTab={activeTab}
+                onTokenFail={() => setShowBuyPanel(true)}
+              />
+            </>
+          ) : (
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cover" />
+          )}
+        </div>
+      )}
 
       {showModal && (
         <ToneDocModal onClose={() => setShowModal(false)} onSubmit={handleSubmit} />
       )}
 
       {showBuyPanel && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
-        >
-          <DownloadTokenPanel
-            onClose={() => setShowBuyPanel(false)}
-            user_id={user_id}
-          />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} user_id={user_id} />
         </div>
       )}
-
 
       {showThankYou && (
         <BaseModal onClose={() => setShowThankYou(false)}>
@@ -181,5 +184,5 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </BaseModal>
       )}
     </div>
-  );
+  )
 }

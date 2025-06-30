@@ -1,9 +1,8 @@
-// pages/[user_id].js
+// path: pages/[user_id].js
 
 import { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import TabbedViewer from '../components/TabbedViewer'
-import DashboardDisplay from '../components/DashboardDisplay';
 
 export default function UserPage({ user_id }) {
   const [analysis, setAnalysis] = useState(null)
@@ -14,7 +13,7 @@ export default function UserPage({ user_id }) {
         const res = await fetch('/api/get-analysis', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id })
+          body: JSON.stringify({ user_id }),
         })
 
         const data = await res.json()
@@ -27,11 +26,16 @@ export default function UserPage({ user_id }) {
   }, [user_id])
 
   return (
-    <div>
+    <>
       <Header />
-      {analysis && <TabbedViewer user_id={user_id} analysisText={analysis} />}
-
-    </div>
+      <main className="max-w-4xl mx-auto px-4 py-10">
+        {analysis && (
+          <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
+            <TabbedViewer user_id={user_id} analysisText={analysis} />
+          </div>
+        )}
+      </main>
+    </>
   )
 }
 

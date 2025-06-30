@@ -1,4 +1,7 @@
 /* path: styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* --- Tabs and Buttons (UNCHANGED) --- */
 .tabs-bar {
@@ -298,4 +301,31 @@ button {
 button:hover {
   background-color: #41b4a2;
   color: white;
+}
+/* Tightened doc layout */
+.doc-viewer {
+  padding-top: 0.6rem;
+  line-height: 1.5;
+}
+
+.doc-viewer * {
+  margin-bottom: 0.5rem !important;
+  line-height: 1.5 !important;
+}
+
+.doc-viewer h1,
+.doc-viewer h2,
+.doc-viewer h3 {
+  margin-top: 1.2em !important;
+  margin-bottom: 0.4em !important;
+  line-height: 1.55 !important;
+}
+.doc-viewer:first-child {
+  margin-top: 1.5rem !important;
+}
+.doc-viewer p + p {
+  margin-top: 0.25rem !important;
+}
+.doc-viewer p + p {
+  margin-top: 0.2rem !important;
 }

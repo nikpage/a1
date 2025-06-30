@@ -14,127 +14,76 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   const userMessage = {
     role: 'user',
     content:
-  `### Extracted CV Metadata
-  - **Full Name:** Extract the applicant’s full name from the CV. Use best guess from heading or first section. Avoid email or initials.
-  - **Country:** Extract the most likely country from any part of the CV or context.
-  - **Industry:** Extract or infer the main industry from any relevant part of the CV.
-  - **Seniority:** Extract or infer the candidate’s likely seniority or experience level.
+      `### CV Content:\n` +
+      `${cvText}\n\n` +
+      (hasJobText ? `### Job Advertisement:\n${jobText}\n\n` : '') +
+      `### At a Glance\n` +
+      `- 1–2 sentence summary of candidate fit.\n` +
+      `- Specify exactly what the cover letter should address — no generic advice.\n\n` +
+      `### Extracted CV Data\n` +
+      `- **Full Name:**\n` +
+      `- **Seniority:**\n` +
+      `- **Industry:**\n` +
+      `- **Country:**\n\n` +
+      (hasJobText
+        ? `### Extracted Job Metadata\n` +
+          `- **Position/Title:**\n` +
+          `- **Seniority:**\n` +
+          `- **Company Name:**\n` +
+          `- **Industry:**\n` +
+          `- **HR Contact:**\n` +
+          `- **Country:**\n\n`
+        : '') +
+      `### Quick Analysis\n` +
+      `**Overall Score (1–10):**\n` +
+      `**ATS Compatibility (1–10):**\n\n` +
+      `**Scenario Tags:**\n` +
+      `- Choose from: older, career start, returner, gap, normal\n` +
+      `- If job ad present: pivot, overqualified\n` +
+      `- Multiple allowed\n\n` +
+      `**Quick Wins (3):**\n` +
+      `Only rewrite actual phrases from the CV.\n\n` +
+      `**Red Flags:**\n` +
+      `Gaps, clarity issues, anything critical.\n\n` +
+      `**Cultural Fit:**\n` +
+      `Formatting/style tips for the CV's country.\n\n` +
+      `**Overall Commentary:**\n` +
+      `How does this CV come across?\n\n` +
+      `**Suitable Positions:**\n` +
+      `Strong/moderate/unique fit roles.\n\n` +
+      `**Career Arc:**\n` +
+      `Summarise growth path in 1–2 lines.\n\n` +
+      `**Parallel Experience:**\n` +
+      `Side work that boosts credibility.\n\n` +
+      `**CV Style & Wording:**\n` +
+      `Clarity, structure, tone, grammar.\n\n` +
+      `**ATS Keyword Commentary:**\n` +
+      `Coverage of relevant keywords.\n\n` +
+      `**Action Items:**\n` +
+      `All changes, tagged as [Critical], [Advised], or [Optional]\n\n` +
+      (hasJobText
+        ? `### Job Match Analysis\n` +
+          `**Keyword Match:**\n` +
+          `CV vs ad skills\n\n` +
+          `**Inferred Keywords:**\n` +
+          `5–10 extras to add\n\n` +
+          `**Career Scenario:**\n` +
+          `normal progression / pivot / extreme pivot / overqualified / return from gap >3 months / career start / older applicant\n\n` +
+          `**Positioning Strategy:**\n` +
+          `Suggest any shifts in role/title.\n` +
+          `In 1–3 sentences, explain how to best position the applicant for the role.\n` +
+          `Be strictly verifiable and truthful based on the CV content.\n` +
+          `If it's an extreme pivot, emphasize transferable skills and allow more inventive but still truthful wording.\n\n`
+        : '') +
+      `### Tone\n` +
+      `Be blunt but constructive. No filler praise.\n` +
+      `Justify all ratings/flags.\n\n` +
+      `### Output Rules\n` +
+      `- Use compact formatting with **no empty lines** between bullet items or label-value pairs.\n` +
+      `- Leave **one blank line only** between major sections.\n` +
+      `- All sections must be tight, readable, and clean — no repeated blank lines.\n`
+  };
 
-  ${hasJobText ? `
-  ### Extracted Job Metadata
-  - **Position/Title:** Extract the most likely job title, even if phrased differently or not explicitly labeled.
-  - **Company Name:** Extract the company, organization, or employer—use any reasonable mention, not just explicit "Company Name".
-  - **HR Contact:** Extract any named contact, supervisor, or person mentioned—does not need to be labeled as HR.
-  - **Country:** Extract the most likely country/location from any relevant context, not just a labeled field.
-  - **Industry:** Infer the main industry from context and responsibilities, even if not labeled.
-  - **Seniority:** Infer the most likely seniority/level for this job, using any available clues.
-  ` : ''}
-
-  ### CV Content:
-  ${cvText}
-
-  ${hasJobText ? `
-  ### Job Advertisement:
-  ${jobText}
-  ` : ''}
-
-  ### At a Glance
-  - Give a 1–2 sentence summary of the candidate’s fit and what’s needed to get an interview.
-  - Always suggest whether a targeted cover letter is recommended. If so, specify exactly what issues should be addressed—highlight strengths, address weaknesses, gaps, age, or any scenario tags present.
-
-  ### Step 1: Scoring
-  **Overall Score (1–10):**
-  **ATS Compatibility (1–10):**
-
-  ---
-
-  ### Step 2: Scenario Tags
-  Identify *all applicable* from the CV. If job ad is present, also consider for pivot/overqualified.
-
-  **Scenario:**
-  - Options: older applicant, career start, returner, gap, normal
-  - If job ad is present, add: pivot, overqualified
-  - Multiple tags allowed (e.g., "Older + Gap")
-  - Do **not** use pivot/overqualified unless job ad supports it
-
-  ---
-
-  ### Step 3: Context Analysis
-
-  **## Quick Wins**
-  **IMPORTANT:**
-  - Do NOT use generic rewrite examples (e.g., "Led X..." or "Improved Y%...").
-  - Only rewrite actual phrases found in the provided CV.
-
-  3 fast, high-impact edits (same as before). Keep this short and punchy.
-
-  **## Red Flags**
-  **IMPORTANT:**
-  - Do NOT use generic rewrite examples (e.g., "Led X..." or "Improved Y%...").
-  - Only rewrite actual phrases found in the provided CV.
-
-  Move all critical concerns here (gaps, formatting, unclear roles, scenario justifications)
-
-  **## Cultural Fit**
-  Tips based on country format/style preferences.
-
-  **## Overall Commentary**
-  How does this CV come across? Typical, strong, uniquely qualified?
-  Summarise tone, clarity, professionalism.
-
-  **## Suitable Positions**
-  What roles is the candidate moderately / strongly / uniquely suited for?
-
-  **## Career Arc**
-  Summarise the visible trajectory or evolution in 1–2 lines.
-
-  **## Parallel Experience**
-  Mention any side projects, speaking, teaching, or advising that enhance credibility.
-
-  **## CV Style & Wording**
-  Review formatting, structure, phrasing, tone, grammar.
-
-  **## ATS Keyword Commentary**
-  Comment on keyword presence, clarity, sectioning, matchability.
-
-  ---
-
-  ### Step 4: Action Items
-  **IMPORTANT:**
-  - Do NOT use generic rewrite examples (e.g., "Led X..." or "Improved Y%...").
-  - Only rewrite actual phrases found in the provided CV.
-  Create a list of ALL specific changes from above.
-  Each must be tagged: **[Critical]**, **[Advised]**, or **[Optional]**
-  Keep this list clear and scannable.
-
-  ---
-
-  ${hasJobText ? `
-  ### Step 5: Job Match Analysis
-
-  **## Keyword Match**
-  List job-ad skills/keywords and how well the CV aligns.
-
-  **## Inferred Keywords**
-  Suggest 5–10 extra keywords the CV should contain.
-
-  **## Job Scenario**
-  Compare CV to job. List: normal / pivot / overqualified — only if job ad is present.
-
-  **## Positioning Strategy**
-  Suggest any role/title changes or emphasis shifts to better match the job ad.
-  ` : ''}
-
-  ---
-
-  ### Tone
-  Be brutally honest but constructive.
-  Avoid filler praise. Always justify ratings or concerns.
-
-  ### Output Format
-  Use all section headers (###, ##, -, etc) **exactly as shown**.
-  Do not skip or rename sections. No summary or intro text.`
-  }
 
   try {
     const response = await axios.post(
