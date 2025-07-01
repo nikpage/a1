@@ -6,19 +6,16 @@ export default function ToneDocModal({ onClose, onSubmit }) {
   const [types, setTypes] = useState({ cv: false, cover: false });
 
   const handleGenerate = () => {
-    console.log('Button clicked!'); // Debug line
     const selected = Object.entries(types)
       .filter(([_, checked]) => checked)
       .map(([key]) => key);
 
-    console.log('Selected types:', selected); // Debug line
-
     if (selected.length === 0) return alert('Select at least one document type');
 
-    console.log('Calling onSubmit with:', { tone, selected }); // Debug line
     onSubmit({ tone, selected });
     onClose();
   };
+
 
   return (
     <BaseModal onClose={onClose} showCloseButton={false}>
