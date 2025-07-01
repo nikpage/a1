@@ -13,8 +13,10 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 
   const userMessage = {
     role: 'user',
-    content:
-  `### Extracted CV Metadata
+    content:`
+You must return a strict JSON object only. No markdown tags, no commentary.
+
+  ### Extracted CV Metadata
   - **Full Name:** Extract the applicant’s full name from the CV. Use best guess from heading or first section. Avoid email or initials.
   - **Country:** Extract the most likely country from any part of the CV or context.
   - **Industry:** Extract or infer the main industry from any relevant part of the CV.
@@ -39,7 +41,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   ` : ''}
 
   ### At a Glance
-  - Give a 1–2 sentence summary of the candidate’s fit and what’s needed to get an interview.
+  - Give a 2–5 sentence summary of the candidate’s fit and what’s needed to get an interview.
   - Always suggest whether a targeted cover letter is recommended. If so, specify exactly what issues should be addressed—highlight strengths, address weaknesses, gaps, age, or any scenario tags present.
 
   ### Step 1: Scoring
@@ -49,11 +51,11 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   ---
 
   ### Step 2: Scenario Tags
-  Identify *all applicable* from the CV. If job ad is present, also consider for pivot/overqualified.
+  Identify *all applicable* from the CV. If job ad is present, also consider for pivot/extreme pivot/overqualified.
 
   **Scenario:**
   - Options: older applicant, career start, returner, gap, normal
-  - If job ad is present, add: pivot, overqualified
+  - If job ad is present, add: pivot, extreme pivot, overqualified
   - Multiple tags allowed (e.g., "Older + Gap")
   - Do **not** use pivot/overqualified unless job ad supports it
 
@@ -66,7 +68,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   - Do NOT use generic rewrite examples (e.g., "Led X..." or "Improved Y%...").
   - Only rewrite actual phrases found in the provided CV.
 
-  3 fast, high-impact edits (same as before). Keep this short and punchy.
+  3-5 fast, high-impact edits (same as before). Keep this short and punchy.
 
   **## Red Flags**
   **IMPORTANT:**
@@ -76,7 +78,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   Move all critical concerns here (gaps, formatting, unclear roles, scenario justifications)
 
   **## Cultural Fit**
-  Tips based on country format/style preferences.
+  Tips based on country CV & Cover letter  format/style preferences.
 
   **## Overall Commentary**
   How does this CV come across? Typical, strong, uniquely qualified?
@@ -86,7 +88,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   What roles is the candidate moderately / strongly / uniquely suited for?
 
   **## Career Arc**
-  Summarise the visible trajectory or evolution in 1–2 lines.
+  Summarise the visible trajectory or evolution in 1–4 lines.
 
   **## Parallel Experience**
   Mention any side projects, speaking, teaching, or advising that enhance credibility.
@@ -128,13 +130,62 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   ---
 
   ### Tone
-  Be brutally honest but constructive.
-  Avoid filler praise. Always justify ratings or concerns.
+  - Be brutally honest, not polite.
+  - No filler. Justify all comments and scores.
 
   ### Output Format
-  Use all section headers (###, ##, -, etc) **exactly as shown**.
-  Do not skip or rename sections. No summary or intro text.`
-  }
+  Return a strict JSON object only. No markdown, headers, or commentary.
+
+  Top-level keys must be:
+  - summary
+  - cv_data
+  - job_data
+  - analysis
+  - job_match
+
+  Subkey structure and detailed instructions:
+
+  cv_data:
+    - Name: Replace "full name" label with "Name" (capitalized).
+    - Order fields as: Name, Seniority, Industry, Country.
+    - Values extracted directly from CV.
+
+  job_data:
+    - If job data is missing, omit entire job_data section.
+    - Order fields as: Position, Seniority, Company, Industry, Country, HR Contact.
+    - Values extracted directly from job ad.
+
+  analysis:
+    - overall_score (number 1–10)
+    - ats_score (number 1–10)
+    - scenario_tags (array of strings)
+    - quick_wins (array of 3 specific phrase rewrites from CV)
+    - red_flags (array of specific CV issues)
+    - cultural_fit: Describe CV formatting style advice relevant to candidate's country (e.g., EU vs US formats). No personal commentary.
+    - overall_commentary: Concise summary of CV tone and clarity.
+    - suitable_positions: List roles directly extracted from CV content only.
+    - career_arc: Concise factual career trajectory.
+    - parallel_experience: List specific activities like speaking, mentoring; no commentary.
+    - style_wording: Specific formatting, tone, phrasing, grammar suggestions relevant to CV. Avoid generic comments.
+    - ats_keywords: Extract explicit skills and close synonyms from CV. If job ad present, include full and near-exact matches. Suggest realistic additions only.
+    - action_items:
+        - Separate CV and Cover Letter lists if relevant.
+        - Each item specifies exact, actionable change.
+        - Tag items: [Critical], [Advised], [Optional].
+        - Example: "[Critical] Clarify employment gaps 2017–2019 with explanation in Cover Letter."
+
+  job_match:
+    - keyword_match: List concrete matched keywords.
+    - inferred_keywords: List realistic suggested keywords.
+    - career_scenario: Factual positioning summary.
+    - positioning_strategy: 1–2 specific sentences with actionable advice.
+
+  Return only valid JSON parsable by JSON.parse().
+  Do not rename or omit any keys.
+
+
+`
+};
 
   try {
     const response = await axios.post(
@@ -163,7 +214,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     console.log('  total tokens:', data.usage.total_tokens)
 
     console.log('PROMPT:', JSON.stringify([systemMessage, userMessage], null, 2))
-    console.log('RESPONSE:', data)
+    console.log('RAW JSON OUTPUT:', data.choices?.[0]?.message?.content)
 
     return {
       choices: data.choices,

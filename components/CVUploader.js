@@ -43,7 +43,7 @@ export default function CVUploader() {
       const res = await fetch('/api/upload-cv', { method: 'POST', body: form })
       const data = await res.json()
       setUploading(false)
-      console.log("Upload response:", data)
+      console.log("Upload response (truncated):", JSON.stringify(data).slice(0, 230) + '…', '| Size:', (JSON.stringify(data).length / 1024).toFixed(2), 'KB');,
       if (data.user_id) {
         router.push(`/${data.user_id}`)
       } else {

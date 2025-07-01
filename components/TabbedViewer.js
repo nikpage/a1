@@ -1,9 +1,16 @@
+// path: components/TabbedViewer.js
+
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/database';
+import ReactMarkdown from 'react-markdown';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
 import DownloadTokenPanel from './DownloadTokenPanel';
+import BaseModal from './BaseModal';
 import ThankYouModal from './ThankYouModal';
+import ToneDocModal from './ToneDocModal';
+import AnalysisDisplay from './AnalysisDisplay';
+
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [activeTab, setActiveTab] = useState('analysis');
@@ -11,18 +18,49 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [showBuilder, setShowBuilder] = useState(false);
   const [showBuyPanel, setShowBuyPanel] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  const handleSubmit = async ({ tone, selected }) => {
+    if (!selected || !Array.isArray(selected) || selected.length === 0) {
+      alert('Please select at least one document type.');
+      return;
+    }
+
+    const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
+    const tokensData = await tokensRes.json();
+    if (!tokensRes.ok || tokensData.tokens < 1) {
+      setShowBuyPanel(true);
+      return;
+    }
+
+    const type = selected.length === 2 ? 'both' : selected[0];
+    const res = await fetch('/api/generate-cv-cover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, analysis: analysisText, tone, type }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Generation failed');
+      return;
+    }
+    const newDocs = {};
+    if (data.cv) newDocs.cv = data.cv;
+    if (data.cover) newDocs.cover = data.cover;
+    setDocs(prev => ({ ...prev, ...newDocs }));
+    setShowModal(false);
+    if (selected.length > 0) setActiveTab(selected[0]);
+  };
 
   useEffect(() => {
     const fetchDocs = async () => {
       if (!user_id) return;
-
       const { data, error } = await supabase
         .from('gen_data')
         .select('type, content')
         .eq('user_id', user_id)
         .in('type', ['cv', 'cover'])
         .order('created_at', { ascending: false });
-
       if (!error && data) {
         const result = { cv: null, cover: null };
         for (const row of data) {
@@ -32,18 +70,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
         setDocs(result);
       }
     };
-
     fetchDocs();
   }, [user_id, activeTab]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const success = params.get('success');
-    if (success === 'true') {
-      setShowThankYou(true); // Show ThankYouModal for payment success
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
 
   const tabs = [
     { id: 'analysis', label: 'Analysis' },
@@ -52,146 +80,115 @@ export default function TabbedViewer({ user_id, analysisText }) {
   ];
 
   return (
-    <div style={{ marginTop: '2em' }}>
-      <div style={{ display: 'flex', borderBottom: '2px solid #ddd', marginBottom: '1em' }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '12px 24px',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #224488' : '2px solid transparent',
-              background: activeTab === tab.id ? '#f8f9fa' : 'transparent',
-              cursor: 'pointer',
-              fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-              color: activeTab === tab.id ? '#224488' : '#666'
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="doc-viewer">
+      <div className="flex border-b border-accent bg-bg mb-8 gap-12">
+        {tabs.map(tab => {
+          const isDisabled =
+            (tab.id === 'cv' && !docs.cv) ||
+            (tab.id === 'cover' && !docs.cover);
+
+
+    return (
+      <button
+        key={tab.id}
+        onClick={() => {
+          if (isDisabled) {
+            alert(`No ${tab.label} available`);
+          } else {
+            setActiveTab(tab.id);
+          }
+        }}
+        className={`tab-btn ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      >
+        {tab.label}
+      </button>
+    );
+  })}
+
+
       </div>
 
-      <div>
-        {activeTab === 'analysis' && (
-          <div>
-            {analysisText ? (
-              <div>
-                <div dangerouslySetInnerHTML={{ __html: analysisText.replace(/\n/g, '<br/>') }} />
-                <DocumentDownloadButtons
-                  user_id={user_id}
-                  analysisText={analysisText}
-                  cvText={docs.cv}
-                  coverText={docs.cover}
-                  onTokenFail={() => setShowBuyPanel(true)}
-                  activeTab={activeTab}
-                />
+      {activeTab === 'analysis' && (
+        <div>
+          {analysisText ? (
+            <>
+              <AnalysisDisplay analysis={analysisText} />
 
-                {!showBuilder && (
-                  <div style={{ marginTop: '2em', textAlign: 'center' }}>
-                    <button
-                      onClick={() => setShowBuilder(true)}
-                      style={{
-                        padding: '0.8rem 2.4rem',
-                        fontSize: '1.1rem',
-                        background: '#224488',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      Write Now!
-                    </button>
-                  </div>
-                )}
 
-                {showBuilder && (
-                  <CV_Cover_Display user_id={user_id} analysis={analysisText} />
-                )}
+              {!showBuilder && (
+                <div className="text-center mt-8">
+                  <button onClick={() => setShowModal(true)} className="action-btn">
+                    Write Now!
+                  </button>
+                </div>
+              )}
+              {showBuilder && (
+                <CV_Cover_Display user_id={user_id} analysis={analysisText} />
+              )}
+            </>
+          ) : (
+            <p>No analysis available</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'cv' && (
+        <div>
+          {docs.cv ? (
+            <>
+              <div className="doc-viewer whitespace-pre-wrap">
+                <ReactMarkdown>{docs.cv}</ReactMarkdown>
               </div>
-            ) : (
-              <p>No analysis available</p>
-            )}
-          </div>
-        )}
+              <DocumentDownloadButtons
+                user_id={user_id}
+                cvText={docs.cv}
+                coverText={docs.cover}
+                activeTab={activeTab}
+                onTokenFail={() => setShowBuyPanel(true)}
+              />
+            </>
+          ) : (
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cv" />
+          )}
+        </div>
+      )}
 
-        {activeTab === 'cv' && (
-          <div>
-            {docs.cv ? (
-              <>
-                <pre style={{ background: '#f8f8fa', padding: 12, borderRadius: 8 }}>{docs.cv}</pre>
-                <DocumentDownloadButtons
-                  user_id={user_id}
-                  analysisText={analysisText}
-                  cvText={docs.cv}
-                  coverText={docs.cover}
-                  onTokenFail={() => setShowBuyPanel(true)}
-                  activeTab={activeTab}
-                />
-              </>
-            ) : (
-              <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cv" />
-            )}
-          </div>
-        )}
+      {activeTab === 'cover' && (
+        <div>
+          {docs.cover ? (
+            <>
+              <div className="doc-viewer whitespace-pre-wrap">
+                <ReactMarkdown>{docs.cover}</ReactMarkdown>
+              </div>
+              <DocumentDownloadButtons
+                user_id={user_id}
+                cvText={docs.cv}
+                coverText={docs.cover}
+                activeTab={activeTab}
+                onTokenFail={() => setShowBuyPanel(true)}
+              />
+            </>
+          ) : (
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cover" />
+          )}
+        </div>
+      )}
 
-        {activeTab === 'cover' && (
-          <div>
-            {docs.cover ? (
-              <>
-                <pre style={{ background: '#f8f8fa', padding: 12, borderRadius: 8 }}>{docs.cover}</pre>
-                <DocumentDownloadButtons
-                  user_id={user_id}
-                  analysisText={analysisText}
-                  cvText={docs.cv}
-                  coverText={docs.cover}
-                  onTokenFail={() => setShowBuyPanel(true)}
-                  activeTab={activeTab}
-                />
-              </>
-            ) : (
-              <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cover" />
-            )}
-          </div>
-        )}
-      </div>
+      {showModal && (
+        <ToneDocModal onClose={() => setShowModal(false)} onSubmit={handleSubmit} />
+      )}
 
       {showBuyPanel && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0,0,0,0.4)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} user_id={user_id} />
         </div>
       )}
 
       {showThankYou && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0,0,0,0.4)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
+        <BaseModal onClose={() => setShowThankYou(false)}>
           <ThankYouModal onClose={() => setShowThankYou(false)} />
-        </div>
+        </BaseModal>
       )}
     </div>
-  );
+  )
 }

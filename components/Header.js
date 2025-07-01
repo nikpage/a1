@@ -1,20 +1,19 @@
-//  components/Header.js
+// Header.js
+import Image from 'next/image';
 
-import Image from 'next/image'
-
-export default function Header({ tokens = null }) {
+export default function Header() {
   return (
-    <header className="w-full flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 mb-6">
+    <header className="flex items-center justify-between py-8 px-6 mb-8 border-b border-accent bg-bg">
       <div className="flex items-center">
-        <Image src="/logo_cvprp+trans.png" alt="Logo" width={44} height={44} priority />
-        <span className="ml-3 text-2xl font-bold text-gray-900">CVPRP</span>
+        <Image
+          src="/logo_cvprp+trans.png"
+          alt="CV App Logo"
+          width={120}
+          height={60}
+          className="h-16 w-auto object-contain"
+          priority
+        />
       </div>
-      {tokens !== null && (
-        <div className="flex items-center text-gray-800 font-medium text-lg">
-          <span className="mr-1">Tokens:</span>
-          <span className="font-mono">{tokens}</span>
-        </div>
-      )}
     </header>
-  )
+  );
 }

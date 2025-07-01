@@ -1,0 +1,173 @@
+.
+├── a1.zip
+├── apis.txt
+├── components
+│   ├── AnalysisDisplay.js
+│   ├── BaseModal.js
+│   ├── CV-Cover-Display.js
+│   ├── CVUploader.js
+│   ├── DashboardDisplay.js
+│   ├── DocumentDownloadButtons.js
+│   ├── DocumentGenerator.js
+│   ├── DownloadTokenPanel.js
+│   ├── Header.js
+│   ├── JobAdInput.js
+│   ├── TabbedViewer.js
+│   ├── ThankYouModal.js
+│   ├── TokenCounter.js
+│   ├── TokenPurchasePanel.js
+│   └── ToneDocModal.js
+├── database.js
+├── .env.local
+├── .gitignore
+├── .next
+│   ├── build-manifest.json
+│   ├── cache
+│   │   ├── images
+│   │   │   └── SVWXO0yWHH9VDWgAzpekjaWJn-IrIlp0EBoA4HpxEGw=
+│   │   ├── swc
+│   │   │   └── plugins
+│   │   └── webpack
+│   │       ├── client-development
+│   │       ├── client-development-fallback
+│   │       └── server-development
+│   ├── fallback-build-manifest.json
+│   ├── package.json
+│   ├── react-loadable-manifest.json
+│   ├── server
+│   │   ├── _error.js
+│   │   ├── middleware-build-manifest.js
+│   │   ├── middleware-manifest.json
+│   │   ├── middleware-react-loadable-manifest.js
+│   │   ├── next-font-manifest.js
+│   │   ├── next-font-manifest.json
+│   │   ├── pages
+│   │   │   ├── api
+│   │   │   ├── _app.js
+│   │   │   ├── _document.js
+│   │   │   ├── _error.js
+│   │   │   ├── index.js
+│   │   │   └── [user_id].js
+│   │   ├── pages-manifest.json
+│   │   ├── webpack-api-runtime.js
+│   │   └── webpack-runtime.js
+│   ├── static
+│   │   ├── chunks
+│   │   │   ├── _error.js
+│   │   │   ├── fallback
+│   │   │   ├── main.js
+│   │   │   ├── node_modules_cross-fetch_dist_browser-ponyfill_js.js
+│   │   │   ├── pages
+│   │   │   ├── polyfills.js
+│   │   │   ├── react-refresh.js
+│   │   │   └── webpack.js
+│   │   ├── development
+│   │   │   ├── _buildManifest.js
+│   │   │   └── _ssgManifest.js
+│   │   └── webpack
+│   │       ├── 0091b8b097dc1e08.webpack.hot-update.json
+│   │       ├── 07d7a2e943fd561c.webpack.hot-update.json
+│   │       ├── 09412d63b8a6be05.webpack.hot-update.json
+│   │       ├── 0d3d9d2f8abfa900.webpack.hot-update.json
+│   │       ├── 165b205dfb5f2702.webpack.hot-update.json
+│   │       ├── 28e11c5dc6fa759e.webpack.hot-update.json
+│   │       ├── 2cd5bc8935e8097d.webpack.hot-update.json
+│   │       ├── 39dcf81400672b42.webpack.hot-update.json
+│   │       ├── 4aad19fb39545f32.webpack.hot-update.json
+│   │       ├── 4c2eb1cb06b34203.webpack.hot-update.json
+│   │       ├── 4e67bd34ac8a99d3.webpack.hot-update.json
+│   │       ├── 4f77306284352d91.webpack.hot-update.json
+│   │       ├── 592e6a33df236475.webpack.hot-update.json
+│   │       ├── 5a2ad2f0c2b526aa.webpack.hot-update.json
+│   │       ├── 73a797c014e2f062.webpack.hot-update.json
+│   │       ├── 7b4099100b39faa7.webpack.hot-update.json
+│   │       ├── 7bd11e5c72d58a7a.webpack.hot-update.json
+│   │       ├── 80f235eab8e0feb1.webpack.hot-update.json
+│   │       ├── 902f6ef99b49a584.webpack.hot-update.json
+│   │       ├── 90e72a964c71bd97.webpack.hot-update.json
+│   │       ├── 94d6f997766f147a.webpack.hot-update.json
+│   │       ├── 9bebb9cfb8e319e6.webpack.hot-update.json
+│   │       ├── 9d5e67dd03e354fd.webpack.hot-update.json
+│   │       ├── c0f56f475a1120eb.webpack.hot-update.json
+│   │       ├── c69b82528198f1fc.webpack.hot-update.json
+│   │       ├── dfa37df21ffcfec0.webpack.hot-update.json
+│   │       ├── e15d5e0094bbe9ae.webpack.hot-update.json
+│   │       ├── e63432d4b478c040.webpack.hot-update.json
+│   │       ├── f0458b23b83ee00e.webpack.hot-update.json
+│   │       ├── f39eb89c432624ee.webpack.hot-update.json
+│   │       ├── f5e79d48e4dbb0df.webpack.hot-update.json
+│   │       ├── fa5d2d7d08b63fd7.webpack.hot-update.json
+│   │       ├── pages
+│   │       ├── webpack.0091b8b097dc1e08.hot-update.js
+│   │       ├── webpack.07d7a2e943fd561c.hot-update.js
+│   │       ├── webpack.09412d63b8a6be05.hot-update.js
+│   │       ├── webpack.0d3d9d2f8abfa900.hot-update.js
+│   │       ├── webpack.165b205dfb5f2702.hot-update.js
+│   │       ├── webpack.28e11c5dc6fa759e.hot-update.js
+│   │       ├── webpack.2cd5bc8935e8097d.hot-update.js
+│   │       ├── webpack.39dcf81400672b42.hot-update.js
+│   │       ├── webpack.4aad19fb39545f32.hot-update.js
+│   │       ├── webpack.4c2eb1cb06b34203.hot-update.js
+│   │       ├── webpack.4e67bd34ac8a99d3.hot-update.js
+│   │       ├── webpack.4f77306284352d91.hot-update.js
+│   │       ├── webpack.592e6a33df236475.hot-update.js
+│   │       ├── webpack.5a2ad2f0c2b526aa.hot-update.js
+│   │       ├── webpack.73a797c014e2f062.hot-update.js
+│   │       ├── webpack.7b4099100b39faa7.hot-update.js
+│   │       ├── webpack.7bd11e5c72d58a7a.hot-update.js
+│   │       ├── webpack.80f235eab8e0feb1.hot-update.js
+│   │       ├── webpack.902f6ef99b49a584.hot-update.js
+│   │       ├── webpack.90e72a964c71bd97.hot-update.js
+│   │       ├── webpack.94d6f997766f147a.hot-update.js
+│   │       ├── webpack.9bebb9cfb8e319e6.hot-update.js
+│   │       ├── webpack.9d5e67dd03e354fd.hot-update.js
+│   │       ├── webpack.c0f56f475a1120eb.hot-update.js
+│   │       ├── webpack.c69b82528198f1fc.hot-update.js
+│   │       ├── webpack.dfa37df21ffcfec0.hot-update.js
+│   │       ├── webpack.e15d5e0094bbe9ae.hot-update.js
+│   │       ├── webpack.e63432d4b478c040.hot-update.js
+│   │       ├── webpack.f0458b23b83ee00e.hot-update.js
+│   │       ├── webpack.f39eb89c432624ee.hot-update.js
+│   │       ├── webpack.f5e79d48e4dbb0df.hot-update.js
+│   │       └── webpack.fa5d2d7d08b63fd7.hot-update.js
+│   └── trace
+├── next.config.js
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── pages
+│   ├── api
+│   │   ├── analyze-cv-job.js
+│   │   ├── decrement-token.js
+│   │   ├── download-doc.js
+│   │   ├── download-token-check.js
+│   │   ├── generate-cover.js
+│   │   ├── generate-cv-cover.js
+│   │   ├── get-analysis.js
+│   │   ├── get-docs.js
+│   │   ├── stripe
+│   │   │   ├── add-tokens.js
+│   │   │   ├── create-checkout.js
+│   │   │   ├── create-session.js
+│   │   │   └── webhook.js
+│   │   ├── tokens.js
+│   │   └── upload-cv.js
+│   ├── _app.js
+│   ├── index.js
+│   ├── payment-success.js
+│   └── [user_id].js
+├── postcss.config.js
+├── project-tree.txt
+├── public
+│   ├── favicon-32x32.png
+│   └── logo_cvprp+trans.png
+├── styles
+│   └── globals.css
+├── tailwind.config.js
+├── utils
+│   ├── database.js
+│   ├── openai.js
+│   └── pdf-extract.js
+└── vercel.json
+
+28 directories, 143 files
