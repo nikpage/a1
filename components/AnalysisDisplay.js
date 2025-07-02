@@ -6,8 +6,8 @@ export default function AnalysisDisplay({ analysis }) {
 
   let data;
   if (typeof analysis === 'string') {
-  analysis = analysis.trim().replace(/^```json/, '').replace(/```$/, '').trim();
-}
+    analysis = analysis.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+  }
 
   try {
     data = typeof analysis === 'string' ? JSON.parse(analysis) : analysis;
@@ -20,7 +20,6 @@ export default function AnalysisDisplay({ analysis }) {
     );
   }
 
-
   const Section = ({ title, content }) => (
     <div style={{ marginBottom: '1.6rem' }}>
       <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{title}</h2>
@@ -29,23 +28,22 @@ export default function AnalysisDisplay({ analysis }) {
   );
 
   return (
-    <div className="analysis-fix">
-      <div className="doc-viewer">
+    <div className="prose lg:prose-lg leading-relaxed tracking-wide max-w-2xl mx-auto bg-gray-50 p-8 rounded-lg shadow-sm whitespace-pre-wrap">
+      <div className="analysis-fix">
         <Section
-    title="Summary"
-    content={
-      data.summary && typeof data.summary === 'object' ? (
-        <div>
-          <div><strong>Fit Summary:</strong> {data.summary.fit_summary}</div>
-          <div><strong>Cover Letter Recommended:</strong> {data.summary.cover_letter_recommended ? 'Yes' : 'No'}</div>
-          <div><strong>Cover Letter Focus:</strong> {data.summary.cover_letter_focus?.join(', ')}</div>
-        </div>
-      ) : (
-        data.summary
-      )
-    }
-  />
-
+          title="Summary"
+          content={
+            data.summary && typeof data.summary === 'object' ? (
+              <div>
+                <div><strong>Fit Summary:</strong> {data.summary.fit_summary}</div>
+                <div><strong>Cover Letter Recommended:</strong> {data.summary.cover_letter_recommended ? 'Yes' : 'No'}</div>
+                <div><strong>Cover Letter Focus:</strong> {data.summary.cover_letter_focus?.join(', ')}</div>
+              </div>
+            ) : (
+              data.summary
+            )
+          }
+        />
 
         <Section
           title="CV Data"
@@ -100,7 +98,6 @@ export default function AnalysisDisplay({ analysis }) {
           }
         />
 
-
         {data.job_match && (
           <Section
             title="Job Match"
@@ -114,7 +111,6 @@ export default function AnalysisDisplay({ analysis }) {
             }
           />
         )}
-
       </div>
     </div>
   );

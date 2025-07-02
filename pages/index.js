@@ -1,8 +1,7 @@
-// path: pages/index.js
-
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Header from '../components/Header'
+import supabase from '../utils/supabaseClient'
 
 export default function IndexPage() {
   const router = useRouter()
@@ -14,6 +13,7 @@ export default function IndexPage() {
   const handleUploadAndAnalyze = async (e) => {
     e.preventDefault()
     setError(null)
+
     setLoading(true)
 
     try {

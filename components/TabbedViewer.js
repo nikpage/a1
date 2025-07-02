@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/database';
-import ReactMarkdown from 'react-markdown';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
 import DownloadTokenPanel from './DownloadTokenPanel';
@@ -10,7 +9,6 @@ import BaseModal from './BaseModal';
 import ThankYouModal from './ThankYouModal';
 import ToneDocModal from './ToneDocModal';
 import AnalysisDisplay from './AnalysisDisplay';
-
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [activeTab, setActiveTab] = useState('analysis');
@@ -54,24 +52,32 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   useEffect(() => {
     const fetchDocs = async () => {
-      if (!user_id) return;
+      if (!user_id) {
+        console.error('No user_id provided');
+        return;
+      }
       const { data, error } = await supabase
         .from('gen_data')
         .select('type, content')
         .eq('user_id', user_id)
         .in('type', ['cv', 'cover'])
         .order('created_at', { ascending: false });
-      if (!error && data) {
+      if (error) {
+        console.error('Error fetching documents:', error);
+        return;
+      }
+      if (data) {
         const result = { cv: null, cover: null };
         for (const row of data) {
           if (row.type === 'cv' && !result.cv) result.cv = row.content;
           if (row.type === 'cover' && !result.cover) result.cover = row.content;
         }
         setDocs(result);
+        console.log('Fetched docs:', result);
       }
     };
     fetchDocs();
-  }, [user_id, activeTab]);
+  }, [user_id]); // Removed activeTab from dependencies
 
   const tabs = [
     { id: 'analysis', label: 'Analysis' },
@@ -81,31 +87,30 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   return (
     <div className="doc-viewer">
-      <div className="flex border-b border-accent bg-bg mb-8 gap-12">
+      <div className="flex border-b border-accent bg-bg mb-8 gap-12
+
+">
         {tabs.map(tab => {
           const isDisabled =
             (tab.id === 'cv' && !docs.cv) ||
             (tab.id === 'cover' && !docs.cover);
 
-
-    return (
-      <button
-        key={tab.id}
-        onClick={() => {
-          if (isDisabled) {
-            alert(`No ${tab.label} available`);
-          } else {
-            setActiveTab(tab.id);
-          }
-        }}
-        className={`tab-btn ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-      >
-        {tab.label}
-      </button>
-    );
-  })}
-
-
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (isDisabled) {
+                  alert(`No ${tab.label} available`);
+                } else {
+                  setActiveTab(tab.id);
+                }
+              }}
+              className={`tab-btn ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'analysis' && (
@@ -113,8 +118,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
           {analysisText ? (
             <>
               <AnalysisDisplay analysis={analysisText} />
-
-
               {!showBuilder && (
                 <div className="text-center mt-8">
                   <button onClick={() => setShowModal(true)} className="action-btn">
@@ -123,7 +126,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                 </div>
               )}
               {showBuilder && (
-                <CV_Cover_Display user_id={user_id} analysis={analysisText} />
+                <CV_Cover_Display user_id={user_id} analysis={analysisText} cvText={docs.cv} coverText={docs.cover} />
               )}
             </>
           ) : (
@@ -136,9 +139,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
         <div>
           {docs.cv ? (
             <>
-              <div className="doc-viewer whitespace-pre-wrap">
-                <ReactMarkdown>{docs.cv}</ReactMarkdown>
-              </div>
+              <CV_Cover_Display
+                user_id={user_id}
+                analysis={analysisText}
+                cvText={docs.cv}
+                coverText={docs.cover}
+                defaultType="cv"
+              />
               <DocumentDownloadButtons
                 user_id={user_id}
                 cvText={docs.cv}
@@ -148,7 +155,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cv" />
+            <CV_Cover_Display
+              user_id={user_id}
+              analysis={analysisText}
+              cvText={null}
+              coverText={null}
+              defaultType="cv"
+            />
           )}
         </div>
       )}
@@ -157,9 +170,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         <div>
           {docs.cover ? (
             <>
-              <div className="doc-viewer whitespace-pre-wrap">
-                <ReactMarkdown>{docs.cover}</ReactMarkdown>
-              </div>
+              <CV_Cover_Display user_id={user_id} analysis={analysisText} cvText={docs.cv} coverText={docs.cover} defaultType="cover" />
               <DocumentDownloadButtons
                 user_id={user_id}
                 cvText={docs.cv}
@@ -169,7 +180,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cover" />
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} cvText={null} coverText={null} defaultType="cover" />
           )}
         </div>
       )}
@@ -190,5 +201,5 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </BaseModal>
       )}
     </div>
-  )
+  );
 }

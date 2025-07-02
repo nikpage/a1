@@ -1,82 +1,92 @@
 // path: components/CV-Cover-Display.js
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import DownloadTokenPanel from './DownloadTokenPanel';
-import ToneDocModal from './ToneDocModal';
-import { supabase } from '../utils/database';
 
-export default function CV_Cover_Display({ user_id, analysis }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [docs, setDocs] = useState(null);
+export default function CV_Cover_Display({ user_id, analysis, cvText, coverText, defaultType }) {
   const [showBuyPanel, setShowBuyPanel] = useState(false);
-  const [showModal, setShowModal] = useState(false); // Modal state
 
-  const [selectedTone, setSelectedTone] = useState(null);
-  const [selectedTypes, setSelectedTypes] = useState([]);
+  // Prepare content based on defaultType
+  const content = defaultType === 'cv' ? cvText : coverText;
 
-  useEffect(() => {
-    const loadDocs = async () => {
-      if (!user_id || !analysis || !selectedTone || !analysis.analysis_id) return;
-      const { source_cv_id, analysis_id } = analysis;
-
-      const { data, error } = await supabase
-        .from('gen_data')
-        .select('type, content')
-        .eq('user_id', user_id)
-        .eq('source_cv_id', source_cv_id)
-        .eq('tone', selectedTone)
-        .eq('analysis_id', analysis_id);
-
-      if (error) {
-        setError('Error loading documents');
-        return;
-      }
-
-      setDocs(data);
-    };
-
-    loadDocs();
-  }, [user_id, analysis, selectedTone]);
-
-  const handleModalSubmit = ({ tone, selected }) => {
-    setSelectedTone(tone);
-    setSelectedTypes(selected);
+  const renderSection = (title, sectionData) => {
+    // Skip rendering the title if it's "cover_letter" and defaultType is "cover"
+    const displayTitle = defaultType === 'cover' && title.toLowerCase() === 'cover_letter' ? '' : title.replace(/_/g, ' ');
+    return (
+      <div style={{ marginBottom: '1.6rem' }} key={title}>
+        {displayTitle && (
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+            {displayTitle}
+          </h2>
+        )}
+        {typeof sectionData === 'string' ? (
+          <p>{sectionData}</p>
+        ) : Array.isArray(sectionData) ? (
+          <ul>
+            {sectionData.map((item, idx) => (
+              <li key={idx} className="ml-4">
+                {typeof item === 'object' && item !== null ? (
+                  <div>
+                    {Object.entries(item).map(([key, value]) => (
+                      <div key={key}>
+                        <strong>{key.replace(/_/g, ' ')}:</strong>{' '}
+                        {Array.isArray(value) ? value.join(', ') : String(value)}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  `• ${item}`
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : typeof sectionData === 'object' && sectionData !== null ? (
+          <div>
+            {Object.entries(sectionData).map(([key, value]) => (
+              <div key={key}>
+                <strong>{key.replace(/_/g, ' ')}:</strong>{' '}
+                {Array.isArray(value) ? value.join(', ') : String(value)}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
-  const handleWriteNowClick = () => {
-    console.log("showModal set to true");
-    setShowModal(true);  // Correctly trigger the modal
+  const renderContent = (data) => {
+    if (!data) {
+      return <p>No content available</p>;
+    }
+
+    // Remove JSON wrapping
+    let cleanedData = data.trim().replace(/^```json\n?/, '').replace(/```$/, '').trim();
+
+    // If content is a string, try to parse it as JSON
+    let parsedData;
+    try {
+      if (typeof cleanedData === 'string') {
+        parsedData = JSON.parse(cleanedData);
+      } else {
+        parsedData = cleanedData;
+      }
+    } catch (e) {
+      console.error('Error parsing content:', e);
+      return (
+        <div className="text-red-600">
+          Invalid document format.<br />
+          <pre style={{ whiteSpace: 'pre-wrap', color: '#444', fontSize: '0.85rem' }}>{data}</pre>
+        </div>
+      );
+    }
+
+    return Object.entries(parsedData).map(([title, sectionData]) => renderSection(title, sectionData));
   };
 
   return (
-    <div className="space-y-4">
-      <button
-        onClick={handleWriteNowClick}
-        className="px-4 py-2 bg-blue-600 text-white rounded"
-      >
-        Write Now
-      </button>
-
-      {docs && docs.map((doc, i) => (
-        <div key={i} className="border p-3 rounded bg-white shadow mt-6">
-          <h3 className="font-bold uppercase">{doc.type}</h3>
-          <div
-  className="doc-viewer"
-  style={{ lineHeight: '1.6', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}
->
-  {doc.content}
-</div>
-        </div>
-      ))}
-
+    <div className="prose lg:prose-lg leading-relaxed tracking-wide max-w-2xl mx-auto bg-gray-50 p-8 rounded-lg shadow-sm whitespace-pre-wrap">
+      {renderContent(content)}
       {showBuyPanel && <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} />}
-      {showModal && (
-        <ToneDocModal
-          onClose={() => setShowModal(false)}  // Close the modal
-          onSubmit={handleModalSubmit}         // Pass the submit handler
-        />
-      )}
     </div>
   );
 }

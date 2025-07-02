@@ -1,11 +1,12 @@
-// path: pages/[user_id].js
-
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import Header from '../components/Header'
 import TabbedViewer from '../components/TabbedViewer'
 
 export default function UserPage({ user_id }) {
   const [analysis, setAnalysis] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -15,15 +16,18 @@ export default function UserPage({ user_id }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id }),
         })
-
         const data = await res.json()
         setAnalysis(data.analysis)
-      } catch (err) {
+      } catch {
         setAnalysis('Failed to load analysis')
+      } finally {
+        setLoading(false)
       }
     }
-    if (user_id) fetchAnalysis()
-  }, [user_id])
+    fetchAnalysis()
+  }, [user_id, router])
+
+  if (loading) return null
 
   return (
     <>
@@ -41,7 +45,5 @@ export default function UserPage({ user_id }) {
 
 export async function getServerSideProps(context) {
   const { user_id } = context.params
-  return {
-    props: { user_id },
-  }
+  return { props: { user_id } }
 }
