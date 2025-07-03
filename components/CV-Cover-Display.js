@@ -59,9 +59,14 @@ export default function CV_Cover_Display({ user_id, analysis }) {
       </button>
 
       {docs && docs.map((doc, i) => (
-        <div key={i} className="border p-3 rounded bg-white shadow">
+        <div key={i} className="border p-3 rounded bg-white shadow mt-6">
           <h3 className="font-bold uppercase">{doc.type}</h3>
-          <pre className="whitespace-pre-wrap mt-2">{doc.content}</pre>
+          <div
+  className="doc-viewer"
+  style={{ lineHeight: '1.6', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}
+>
+  {doc.content}
+</div>
         </div>
       ))}
 

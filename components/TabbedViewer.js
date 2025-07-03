@@ -21,12 +21,18 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [showModal, setShowModal] = useState(false);
 
   const handleSubmit = async ({ tone, selected }) => {
+    if (!selected || !Array.isArray(selected) || selected.length === 0) {
+      alert('Please select at least one document type.');
+      return;
+    }
+
     const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
     const tokensData = await tokensRes.json();
     if (!tokensRes.ok || tokensData.tokens < 1) {
       setShowBuyPanel(true);
       return;
     }
+
     const type = selected.length === 2 ? 'both' : selected[0];
     const res = await fetch('/api/generate-cv-cover', {
       method: 'POST',

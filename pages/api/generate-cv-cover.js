@@ -1,5 +1,9 @@
+// path: pages/api/generate-cv-cover.js
+
 import { getCvData, getCV, saveGeneratedDoc } from '../../utils/database';
+import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
+
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,6 +16,16 @@ export default async function handler(req, res) {
   if (!user_id || !analysis || !type) {
     console.log('Missing field:', { user_id, analysis, type });
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const user = await getUserById(user_id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const cost = type === 'both' ? 2 : 1;
+  if (user.generations_left < cost) {
+    return res.status(403).json({ error: 'Not enough generations left' });
   }
 
   let cvRecord;
@@ -74,11 +88,18 @@ export default async function handler(req, res) {
       console.log('Invalid type:', type);
       return res.status(400).json({ error: 'Invalid type specified' });
     }
+
+    await decrementGenerations(user_id, cost);
   } catch (err) {
     console.error('Generation or saving error:', err);
     return res.status(500).json({ error: 'Document generation or saving failed' });
   }
 
   console.log('Generation success, returning:', { cv: !!cv, cover: !!cover });
-  return res.status(200).json({ cv, cover });
+  return res.status(200).json({
+  docs: [
+    ...(cv ? [{ type: 'cv', content: cv }] : []),
+    ...(cover ? [{ type: 'cover', content: cover }] : [])
+  ]
+});
 }
