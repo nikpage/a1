@@ -107,7 +107,7 @@ export default function AnalysisDisplay({ analysis }) {
             content={
               <div>
                 <div><strong>Keyword Match:</strong> {data.job_match.keyword_match}</div>
-                <div><strong>Inferred Keywords:</strong> {data.job_match.inferred_keywords?.join(', ')}</div>
+                <div><strong>Inferred Keywords:</strong> {Array.isArray(data.job_match.inferred_keywords) ? data.job_match.inferred_keywords.join(', ') : data.job_match.inferred_keywords}</div>
                 <div><strong>Career Scenario:</strong> {data.job_match.career_scenario}</div>
                 <div><strong>Positioning Strategy:</strong> {data.job_match.positioning_strategy}</div>
               </div>

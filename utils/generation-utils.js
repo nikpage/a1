@@ -21,10 +21,7 @@ export async function getUserById(user_id) {
 }
 
 export async function decrementGenerations(user_id, amount = 1) {
-  const { error } = await supabase
-    .from('users')
-    .update({ generations_left: supabase.rpc('decrement_generations', { user_id, amount }) })
-    .eq('user_id', user_id);
+  const { error } = await supabase.rpc('decrement_generations', { user_id, amount });
 
   if (error) {
     console.error('Error decrementing generations:', error);

@@ -1,8 +1,6 @@
 // path: components/TabbedViewer.js
-
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/database';
-import ReactMarkdown from 'react-markdown';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
 import DownloadTokenPanel from './DownloadTokenPanel';
@@ -10,7 +8,6 @@ import BaseModal from './BaseModal';
 import ThankYouModal from './ThankYouModal';
 import ToneDocModal from './ToneDocModal';
 import AnalysisDisplay from './AnalysisDisplay';
-
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [activeTab, setActiveTab] = useState('analysis');
@@ -68,15 +65,17 @@ export default function TabbedViewer({ user_id, analysisText }) {
           if (row.type === 'cover' && !result.cover) result.cover = row.content;
         }
         setDocs(result);
+        if (!analysisText && result.cv) setActiveTab('cv');
+        else if (!analysisText && result.cover) setActiveTab('cover');
       }
     };
     fetchDocs();
-  }, [user_id, activeTab]);
+  }, [user_id]);
 
   const tabs = [
     { id: 'analysis', label: 'Analysis' },
     { id: 'cv', label: 'CV' },
-    { id: 'cover', label: 'Cover Letter' }
+    { id: 'cover', label: 'Cover Letter' },
   ];
 
   return (
@@ -87,25 +86,22 @@ export default function TabbedViewer({ user_id, analysisText }) {
             (tab.id === 'cv' && !docs.cv) ||
             (tab.id === 'cover' && !docs.cover);
 
-
-    return (
-      <button
-        key={tab.id}
-        onClick={() => {
-          if (isDisabled) {
-            alert(`No ${tab.label} available`);
-          } else {
-            setActiveTab(tab.id);
-          }
-        }}
-        className={`tab-btn ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-      >
-        {tab.label}
-      </button>
-    );
-  })}
-
-
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (isDisabled) {
+                  alert(`No ${tab.label} available`);
+                } else {
+                  setActiveTab(tab.id);
+                }
+              }}
+              className={`tab-btn ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'analysis' && (
@@ -113,8 +109,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
           {analysisText ? (
             <>
               <AnalysisDisplay analysis={analysisText} />
-
-
               {!showBuilder && (
                 <div className="text-center mt-8">
                   <button onClick={() => setShowModal(true)} className="action-btn">
@@ -123,7 +117,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                 </div>
               )}
               {showBuilder && (
-                <CV_Cover_Display user_id={user_id} analysis={analysisText} />
+                <CV_Cover_Display user_id={user_id} analysis={analysisText} content={docs.cv} />
               )}
             </>
           ) : (
@@ -136,9 +130,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         <div>
           {docs.cv ? (
             <>
-              <div className="doc-viewer whitespace-pre-wrap">
-                <ReactMarkdown>{docs.cv}</ReactMarkdown>
-              </div>
+              <CV_Cover_Display content={docs.cv} />
               <DocumentDownloadButtons
                 user_id={user_id}
                 cvText={docs.cv}
@@ -148,7 +140,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cv" />
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={docs.cv} />
           )}
         </div>
       )}
@@ -157,9 +149,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         <div>
           {docs.cover ? (
             <>
-              <div className="doc-viewer whitespace-pre-wrap">
-                <ReactMarkdown>{docs.cover}</ReactMarkdown>
-              </div>
+              <CV_Cover_Display content={docs.cover} />
               <DocumentDownloadButtons
                 user_id={user_id}
                 cvText={docs.cv}
@@ -169,7 +159,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} defaultType="cover" />
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={docs.cv} />
           )}
         </div>
       )}
@@ -190,5 +180,5 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </BaseModal>
       )}
     </div>
-  )
+  );
 }

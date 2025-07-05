@@ -1,0 +1,89 @@
+.cv-doc-container {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd !important;
+  padding: 2rem !important;
+  margin-bottom: 2rem;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  overflow-wrap: break-word;
+}
+
+.cv-doc-container h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0d355c;
+  margin-bottom: 1rem;
+}
+
+.cv-doc-container h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2da197;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #2da197;
+  padding-bottom: 0.3rem;
+}
+
+.cv-doc-container h3 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #0d355c;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.cv-doc-container p {
+  margin-bottom: 0.5rem;
+  color: #333;
+  line-height: 1.5;
+}
+
+.cv-doc-container ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.cv-doc-container li {
+  margin-bottom: 0.25rem;
+}
+
+.cv-doc-container strong {
+  font-weight: 700;
+  color: #0d355c;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0d355c;
+}
+
+.tab-btn.active {
+  border-bottom: 3px solid #2da197;
+  color: #2da197;
+}
+
+.tab-btn.opacity-40 {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-btn {
+  background-color: #2da197;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.action-btn:hover {
+  background-color: #238f86;
+}

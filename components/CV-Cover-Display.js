@@ -1,82 +1,149 @@
-// path: components/CV-Cover-Display.js
+// components/CV-Cover-Display.js
 
-import { useState, useEffect } from 'react';
-import DownloadTokenPanel from './DownloadTokenPanel';
-import ToneDocModal from './ToneDocModal';
-import { supabase } from '../utils/database';
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
-export default function CV_Cover_Display({ user_id, analysis }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [docs, setDocs] = useState(null);
-  const [showBuyPanel, setShowBuyPanel] = useState(false);
-  const [showModal, setShowModal] = useState(false); // Modal state
+const markdownComponents = {
+  h1: ({ node, ...props }) => (
+    <h1 className="text-4xl font-bold text-gray-900 mb-2 text-center" {...props} />
+  ),
+  h2: ({ node, ...props }) => {
+    // Add page break before major sections (but not the first one)
+    const isFirstH2 = !node?.parent?.children?.slice(0, node.parent.children.indexOf(node))
+      .some(child => child.tagName === 'h2');
 
-  const [selectedTone, setSelectedTone] = useState(null);
-  const [selectedTypes, setSelectedTypes] = useState([]);
+    return (
+      <div>
+        {!isFirstH2 && <div style={{ pageBreakBefore: 'always' }} />}
+        <h2 className="text-lg font-semibold text-blue-700 mt-8 mb-4 uppercase tracking-wide" {...props} />
+      </div>
+    );
+  },
+  h3: ({ node, ...props }) => (
+    <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-1" {...props} />
+  ),
+  h4: ({ node, ...props }) => (
+    <h4 className="text-base font-medium text-gray-600 mt-1 mb-3" {...props} />
+  ),
+  p: ({ node, ...props }) => (
+    <p className="mb-4 text-gray-700 leading-relaxed text-base" {...props} />
+  ),
+  ul: ({ node, children, ...props }) => {
+    // Check if this is under Core Competencies or Key Achievements
+    const parentText = node?.parent?.children?.find(child =>
+      child.tagName === 'h2' || child.tagName === 'h3'
+    )?.children?.find(c => c.type === 'text')?.value || '';
 
-  useEffect(() => {
-    const loadDocs = async () => {
-      if (!user_id || !analysis || !selectedTone || !analysis.analysis_id) return;
-      const { source_cv_id, analysis_id } = analysis;
+    const isCompetenciesOrAchievements =
+      parentText.includes('Core Competencies') ||
+      parentText.includes('Key Achievements');
 
-      const { data, error } = await supabase
-        .from('gen_data')
-        .select('type, content')
-        .eq('user_id', user_id)
-        .eq('source_cv_id', source_cv_id)
-        .eq('tone', selectedTone)
-        .eq('analysis_id', analysis_id);
+    return (
+      <ul
+        className={`${
+          isCompetenciesOrAchievements
+            ? 'grid grid-cols-2 gap-x-6 gap-y-2 list-none mb-6'
+            : 'list-disc pl-5 mb-4 space-y-1'
+        }`}
+        {...props}
+      >
+        {children}
+      </ul>
+    );
+  },
+  li: ({ node, ...props }) => (
+    <li className="text-gray-700 leading-relaxed text-base" {...props} />
+  ),
+  strong: ({ node, ...props }) => (
+    <strong className="font-semibold text-gray-900" {...props} />
+  ),
+  em: ({ node, ...props }) => (
+    <em className="italic text-gray-600" {...props} />
+  ),
+  hr: () => (
+    <div style={{ pageBreakBefore: 'always' }} />
+  ),
+  a: ({ node, ...props }) => (
+    <a className="text-blue-600 hover:text-blue-800 transition-colors" {...props} />
+  ),
+};
 
-      if (error) {
-        setError('Error loading documents');
-        return;
-      }
-
-      setDocs(data);
-    };
-
-    loadDocs();
-  }, [user_id, analysis, selectedTone]);
-
-  const handleModalSubmit = ({ tone, selected }) => {
-    setSelectedTone(tone);
-    setSelectedTypes(selected);
-  };
-
-  const handleWriteNowClick = () => {
-    console.log("showModal set to true");
-    setShowModal(true);  // Correctly trigger the modal
-  };
+export default function CV_Cover_Display({ content }) {
+  if (!content) return null;
 
   return (
-    <div className="space-y-4">
-      <button
-        onClick={handleWriteNowClick}
-        className="px-4 py-2 bg-blue-600 text-white rounded"
-      >
-        Write Now
-      </button>
+    <div className="max-w-4xl mx-auto bg-white p-8 shadow-sm relative select-none"
+         style={{
+           userSelect: 'none',
+           WebkitUserSelect: 'none',
+           MozUserSelect: 'none',
+           msUserSelect: 'none'
+         }}
+         onContextMenu={(e) => e.preventDefault()}
+         onDragStart={(e) => e.preventDefault()}>
 
-      {docs && docs.map((doc, i) => (
-        <div key={i} className="border p-3 rounded bg-white shadow mt-6">
-          <h3 className="font-bold uppercase">{doc.type}</h3>
-          <div
-  className="doc-viewer"
-  style={{ lineHeight: '1.6', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}
->
-  {doc.content}
-</div>
-        </div>
-      ))}
+      {/* Invisible watermark overlay */}
+      <div className="absolute inset-0 pointer-events-none z-10 opacity-5"
+           style={{
+             backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(`
+               <svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'>
+                 <text x='100' y='100' font-family='Arial' font-size='16' fill='gray' text-anchor='middle' transform='rotate(-45 100 100)'>
+                   CONFIDENTIAL CV
+                 </text>
+               </svg>
+             `)}")`,
+             backgroundRepeat: 'repeat',
+             backgroundSize: '200px 200px'
+           }}>
+      </div>
 
-      {showBuyPanel && <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} />}
-      {showModal && (
-        <ToneDocModal
-          onClose={() => setShowModal(false)}  // Close the modal
-          onSubmit={handleModalSubmit}         // Pass the submit handler
-        />
-      )}
+      {/* Anti-screenshot detection overlay */}
+      <div className="absolute inset-0 pointer-events-none z-20"
+           style={{
+             background: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.01) 20px)',
+             mixBlendMode: 'difference'
+           }}>
+      </div>
+
+      <div className="relative z-30">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={markdownComponents}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+
+      <style jsx>{`
+        @media print {
+          .select-none {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+
+        /* Disable text selection */
+        .select-none {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -khtml-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+
+        /* Disable drag and drop */
+        .select-none * {
+          -webkit-user-drag: none;
+          -khtml-user-drag: none;
+          -moz-user-drag: none;
+          -o-user-drag: none;
+          user-drag: none;
+        }
+      `}</style>
     </div>
   );
 }
