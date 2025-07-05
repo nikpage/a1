@@ -65,8 +65,10 @@ export default function TabbedViewer({ user_id, analysisText }) {
           if (row.type === 'cover' && !result.cover) result.cover = row.content;
         }
         setDocs(result);
-        if (!analysisText && result.cv) setActiveTab('cv');
-        else if (!analysisText && result.cover) setActiveTab('cover');
+        if (!result.cv && !result.cover) setActiveTab('analysis');
+    else if (result.cv) setActiveTab('cv');
+    else if (result.cover) setActiveTab('cover');
+
       }
     };
     fetchDocs();
