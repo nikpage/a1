@@ -16,38 +16,43 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [showBuyPanel, setShowBuyPanel] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [showModal, setShowModal] = useState(false);
-
   const handleSubmit = async ({ tone, selected }) => {
-    if (!selected || !Array.isArray(selected) || selected.length === 0) {
-      alert('Please select at least one document type.');
-      return;
-    }
+  if (!selected || !Array.isArray(selected) || selected.length === 0) {
+    alert('Please select at least one document type.');
+    return;
+  }
 
-    const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
-    const tokensData = await tokensRes.json();
-    if (!tokensRes.ok || tokensData.tokens < 1) {
-      setShowBuyPanel(true);
-      return;
-    }
+  const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
+  const tokensData = await tokensRes.json();
+  if (!tokensRes.ok || tokensData.tokens < 1) {
+    setShowBuyPanel(true);
+    return;
+  }
 
-    const type = selected.length === 2 ? 'both' : selected[0];
-    const res = await fetch('/api/generate-cv-cover', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, analysis: analysisText, tone, type }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || 'Generation failed');
-      return;
-    }
-    const newDocs = {};
-    if (data.cv) newDocs.cv = data.cv;
-    if (data.cover) newDocs.cover = data.cover;
-    setDocs(prev => ({ ...prev, ...newDocs }));
-    setShowModal(false);
-    if (selected.length > 0) setActiveTab(selected[0]);
-  };
+  const type = selected.length === 2 ? 'both' : selected[0];
+  const res = await fetch('/api/generate-cv-cover', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id, analysis: analysisText, tone, type }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    alert(data.error || 'Generation failed');
+    return;
+  }
+
+  const result = { cv: null, cover: null };
+  if (data.cv) result.cv = data.cv;
+  if (data.cover) result.cover = data.cover;
+  setDocs(result);
+
+  if (!data.cv && !data.cover) setActiveTab('analysis');
+  else if (data.cv && !data.cover) setActiveTab('cv');
+  else if (!data.cv && data.cover) setActiveTab('cover');
+  else setActiveTab('cv');
+
+  setShowModal(false);
+};
 
   useEffect(() => {
     const fetchDocs = async () => {
