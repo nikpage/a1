@@ -1,7 +1,7 @@
 // path: pages/api/generate-cv-cover.js
 
 import { getCvData, getCV, saveGeneratedDoc } from '../../utils/database';
-import { getUserById, decrementGenerations } from '../../utils/generation-utils';
+import { getUserById, decrementGenerations, resetGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 
 
@@ -44,7 +44,8 @@ export default async function handler(req, res) {
   let cover = null;
 
   try {
-    console.log('Generating documents for type:', type);
+    console.log('Generating documents for type:', type)
+
     if (type === 'cv') {
       cv = await generateCV({ cv: cvRecord.cv_data, analysis, tone });
       await saveGeneratedDoc({
@@ -89,7 +90,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid type specified' });
     }
 
-    await decrementGenerations(user_id, cost);
+    setTimeout(() => {
+  decrementGenerations(user_id, cost);
+}, 500);
+    const updatedUser = await getUserById(user_id);
+if (updatedUser.generations_left === 0) {
+  await resetGenerations(user_id);
+  console.log('Generations reset to 10 after usage.');
+}
+
   } catch (err) {
     console.error('Generation or saving error:', err);
     return res.status(500).json({ error: 'Document generation or saving failed' });

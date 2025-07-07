@@ -2,6 +2,7 @@
 
   import axios from 'axios'
 
+
   export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     // DO NOT REMOVE THIS LINE OR MOVE IT
     const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
