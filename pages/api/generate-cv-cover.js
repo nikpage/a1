@@ -106,9 +106,7 @@ if (updatedUser.generations_left === 0) {
 
   console.log('Generation success, returning:', { cv: !!cv, cover: !!cover });
   return res.status(200).json({
-  docs: [
-    ...(cv ? [{ type: 'cv', content: cv }] : []),
-    ...(cover ? [{ type: 'cover', content: cover }] : [])
-  ]
-});
+    ...(cv && { cv }),
+    ...(cover && { cover })
+  });
 }

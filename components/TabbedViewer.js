@@ -42,14 +42,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
   }
 
   const result = { cv: null, cover: null };
-  if (data.cv) result.cv = data.cv;
-  if (data.cover) result.cover = data.cover;
-  setDocs(result);
+if (data.cv) result.cv = data.cv;
+if (data.cover) result.cover = data.cover;
+setDocs((prev) => {
+  if (prev.cv || prev.cover) return prev;
+  return result;
+});
 
-  if (!data.cv && !data.cover) setActiveTab('analysis');
-  else if (data.cv && !data.cover) setActiveTab('cv');
-  else if (!data.cv && data.cover) setActiveTab('cover');
-  else setActiveTab('cv');
 
   setShowModal(false);
 };
@@ -69,7 +68,10 @@ export default function TabbedViewer({ user_id, analysisText }) {
           if (row.type === 'cv' && !result.cv) result.cv = row.content;
           if (row.type === 'cover' && !result.cover) result.cover = row.content;
         }
-        setDocs(result);
+        setDocs((prev) => {
+  if (prev.cv || prev.cover) return prev;
+  return result;
+});
         if (!result.cv && !result.cover) setActiveTab('analysis');
     else if (result.cv) setActiveTab('cv');
     else if (result.cover) setActiveTab('cover');
@@ -84,6 +86,11 @@ export default function TabbedViewer({ user_id, analysisText }) {
     { id: 'cv', label: 'CV' },
     { id: 'cover', label: 'Cover Letter' },
   ];
+  useEffect(() => {
+    if (!docs.cv && !docs.cover) return;
+    if (activeTab !== 'cv' && docs.cv) setActiveTab('cv');
+    else if (activeTab !== 'cover' && docs.cover && !docs.cv) setActiveTab('cover');
+  }, [docs]);
 
   return (
     <div className="doc-viewer">

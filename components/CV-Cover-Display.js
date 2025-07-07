@@ -1,6 +1,6 @@
 // components/CV-Cover-Display.js
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -10,10 +10,8 @@ const markdownComponents = {
     <h1 className="text-4xl font-bold text-gray-900 mb-2 text-center" {...props} />
   ),
   h2: ({ node, ...props }) => {
-    // Add page break before major sections (but not the first one)
     const isFirstH2 = !node?.parent?.children?.slice(0, node.parent.children.indexOf(node))
       .some(child => child.tagName === 'h2');
-
     return (
       <div>
         {!isFirstH2 && <div style={{ pageBreakBefore: 'always' }} />}
@@ -31,19 +29,14 @@ const markdownComponents = {
     <p className="mb-4 text-gray-700 leading-relaxed text-base" {...props} />
   ),
   ul: ({ node, children, ...props }) => {
-    // Check if this is under Core Competencies or Key Achievements
     const parentText = node?.parent?.children?.find(child =>
       child.tagName === 'h2' || child.tagName === 'h3'
     )?.children?.find(c => c.type === 'text')?.value || '';
-
-    const isCompetenciesOrAchievements =
-      parentText.includes('Core Competencies') ||
-      parentText.includes('Key Achievements');
-
+    const isTarget = parentText.includes('Core Competencies') || parentText.includes('Key Achievements');
     return (
       <ul
         className={`${
-          isCompetenciesOrAchievements
+          isTarget
             ? 'grid grid-cols-2 gap-x-6 gap-y-2 list-none mb-6'
             : 'list-disc pl-5 mb-4 space-y-1'
         }`}
@@ -71,6 +64,14 @@ const markdownComponents = {
 };
 
 export default function CV_Cover_Display({ content }) {
+  useEffect(() => {
+    const container = document.querySelector('.relative.z-30');
+    if (container) {
+      container.scrollTop = 0;
+      container.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [content]);
+
   if (!content) return null;
 
   return (
@@ -79,12 +80,12 @@ export default function CV_Cover_Display({ content }) {
            userSelect: 'none',
            WebkitUserSelect: 'none',
            MozUserSelect: 'none',
-           msUserSelect: 'none'
+           msUserSelect: 'none',
+           transition: 'opacity 0.3s ease-in-out'
          }}
          onContextMenu={(e) => e.preventDefault()}
          onDragStart={(e) => e.preventDefault()}>
 
-      {/* Invisible watermark overlay */}
       <div className="absolute inset-0 pointer-events-none z-10 opacity-5"
            style={{
              backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(`
@@ -99,7 +100,6 @@ export default function CV_Cover_Display({ content }) {
            }}>
       </div>
 
-      {/* Anti-screenshot detection overlay */}
       <div className="absolute inset-0 pointer-events-none z-20"
            style={{
              background: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.01) 20px)',
@@ -124,8 +124,6 @@ export default function CV_Cover_Display({ content }) {
             print-color-adjust: exact !important;
           }
         }
-
-        /* Disable text selection */
         .select-none {
           -webkit-touch-callout: none;
           -webkit-user-select: none;
@@ -134,8 +132,6 @@ export default function CV_Cover_Display({ content }) {
           -ms-user-select: none;
           user-select: none;
         }
-
-        /* Disable drag and drop */
         .select-none * {
           -webkit-user-drag: none;
           -khtml-user-drag: none;
