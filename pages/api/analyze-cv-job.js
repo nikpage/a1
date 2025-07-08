@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { user_id, jobText } = req.body
+  const { user_id, jobText, created_at } = req.body
   const fileName = req.body.file_name || 'Unnamed file'
 
   if (!user_id) {
@@ -17,7 +17,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cv_data = await getCvData(user_id)
+    const { createClient } = await import('@supabase/supabase-js')
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+const { data, error } = await supabase
+  .from('cv_data')
+  .select('cv_data')
+  .eq('user_id', user_id)
+  .eq('created_at', created_at)
+  .single()
+
+if (error || !data) {
+  return res.status(404).json({ error: 'CV not found for given timestamp' })
+}
+
+const cv_data = data.cv_data
+
     if (!cv_data) {
       return res.status(404).json({ error: 'CV not found for user' })
     }

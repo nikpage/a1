@@ -8,6 +8,9 @@ import BaseModal from './BaseModal';
 import ThankYouModal from './ThankYouModal';
 import ToneDocModal from './ToneDocModal';
 import AnalysisDisplay from './AnalysisDisplay';
+import Regenerate from './Regenerate';
+import StartFreshModal from './StartFreshModal';
+
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [activeTab, setActiveTab] = useState('analysis');
@@ -16,42 +19,88 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [showBuyPanel, setShowBuyPanel] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const handleSubmit = async ({ tone, selected }) => {
-  if (!selected || !Array.isArray(selected) || selected.length === 0) {
-    alert('Please select at least one document type.');
-    return;
-  }
+  const [cvVersions, setCvVersions] = useState([]);
+  const [coverVersions, setCoverVersions] = useState([]);
+  const [cvCurrentIndex, setCvCurrentIndex] = useState(0);
+  const [coverCurrentIndex, setCoverCurrentIndex] = useState(0);
 
-  const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
-  const tokensData = await tokensRes.json();
-  if (!tokensRes.ok || tokensData.tokens < 1) {
-    setShowBuyPanel(true);
-    return;
-  }
+  const handleSubmit = async ({ tone, selected, jobText }) => {
 
-  const type = selected.length === 2 ? 'both' : selected[0];
-  const res = await fetch('/api/generate-cv-cover', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, analysis: analysisText, tone, type }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    alert(data.error || 'Generation failed');
-    return;
-  }
+    if (!selected || !Array.isArray(selected) || selected.length === 0) {
+      alert('Please select at least one document type.');
+      return;
+    }
 
-  const result = { cv: null, cover: null };
-if (data.cv) result.cv = data.cv;
-if (data.cover) result.cover = data.cover;
-setDocs((prev) => {
-  if (prev.cv || prev.cover) return prev;
-  return result;
-});
+    const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
+    const tokensData = await tokensRes.json();
+    if (!tokensRes.ok || tokensData.tokens < 1) {
+      setShowBuyPanel(true);
+      return;
+    }
 
+    const type = selected.length === 2 ? 'both' : selected[0];
+    const res = await fetch('/api/generate-cv-cover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, analysis: jobText || analysisText, tone, type }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Generation failed');
+      return;
+    }
 
-  setShowModal(false);
-};
+    if (data.cv) {
+      setCvVersions(prev => [...prev, data.cv]);
+      setCvCurrentIndex(prev => prev);
+    }
+    if (data.cover) {
+      setCoverVersions(prev => [...prev, data.cover]);
+      setCoverCurrentIndex(prev => prev);
+    }
+    setShowModal(false);
+  };
+
+  const handleRegen = async (docType, tone) => {
+    const res = await fetch('/api/generate-cv-cover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, analysis: analysisText, tone, type: docType }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Generation failed');
+      return;
+    }
+
+    if (data.cv) {
+      setCvVersions(prev => [...prev, data.cv]);
+      setCvCurrentIndex(cvVersions.length);
+    }
+    if (data.cover) {
+      setCoverVersions(prev => [...prev, data.cover]);
+      setCoverCurrentIndex(coverVersions.length);
+    }
+  };
+
+  const goToPrevVersion = (type) => {
+    if (type === 'cv') setCvCurrentIndex(Math.max(0, cvCurrentIndex - 1));
+    if (type === 'cover') setCoverCurrentIndex(Math.max(0, coverCurrentIndex - 1));
+  };
+
+  const goToNextVersion = (type) => {
+    if (type === 'cv') setCvCurrentIndex(Math.min(cvVersions.length - 1, cvCurrentIndex + 1));
+    if (type === 'cover') setCoverCurrentIndex(Math.min(coverVersions.length - 1, coverCurrentIndex + 1));
+  };
+
+  const startFresh = () => {
+    setCvVersions([]);
+    setCoverVersions([]);
+    setCvCurrentIndex(0);
+    setCoverCurrentIndex(0);
+    setDocs({ cv: null, cover: null });
+    setActiveTab('analysis');
+  };
 
   useEffect(() => {
     const fetchDocs = async () => {
@@ -63,19 +112,19 @@ setDocs((prev) => {
         .in('type', ['cv', 'cover'])
         .order('created_at', { ascending: false });
       if (!error && data) {
-        const result = { cv: null, cover: null };
         for (const row of data) {
-          if (row.type === 'cv' && !result.cv) result.cv = row.content;
-          if (row.type === 'cover' && !result.cover) result.cover = row.content;
+          if (row.type === 'cv' && cvVersions.length === 0) {
+            setCvVersions([row.content]);
+            setCvCurrentIndex(0);
+          }
+          if (row.type === 'cover' && coverVersions.length === 0) {
+            setCoverVersions([row.content]);
+            setCoverCurrentIndex(0);
+          }
         }
-        setDocs((prev) => {
-  if (prev.cv || prev.cover) return prev;
-  return result;
-});
-        if (!result.cv && !result.cover) setActiveTab('analysis');
-    else if (result.cv) setActiveTab('cv');
-    else if (result.cover) setActiveTab('cover');
-
+        if (cvVersions.length === 0 && coverVersions.length === 0) setActiveTab('analysis');
+        else if (cvVersions.length > 0) setActiveTab('cv');
+        else if (coverVersions.length > 0) setActiveTab('cover');
       }
     };
     fetchDocs();
@@ -86,6 +135,7 @@ setDocs((prev) => {
     { id: 'cv', label: 'CV' },
     { id: 'cover', label: 'Cover Letter' },
   ];
+
   useEffect(() => {
     if (!docs.cv && !docs.cover) return;
     if (activeTab !== 'cv' && docs.cv) setActiveTab('cv');
@@ -94,11 +144,18 @@ setDocs((prev) => {
 
   return (
     <div className="doc-viewer">
+      <div className="text-center mb-4">
+        <button onClick={() => setShowModal('startFresh')} className="action-btn">
+          Start Fresh
+        </button>
+
+      </div>
+
       <div className="flex border-b border-accent bg-bg mb-8 gap-12">
         {tabs.map(tab => {
           const isDisabled =
-            (tab.id === 'cv' && !docs.cv) ||
-            (tab.id === 'cover' && !docs.cover);
+            (tab.id === 'cv' && cvVersions.length === 0) ||
+            (tab.id === 'cover' && coverVersions.length === 0);
 
           return (
             <button
@@ -142,43 +199,86 @@ setDocs((prev) => {
 
       {activeTab === 'cv' && (
         <div>
-          {docs.cv ? (
+          {cvVersions.length > 0 ? (
             <>
-              <CV_Cover_Display content={docs.cv} />
+              <div className="flex justify-between items-center mb-4">
+                <button onClick={() => goToPrevVersion('cv')} disabled={cvCurrentIndex === 0}>
+                  &lt; Prev
+                </button>
+                <span>Version {cvCurrentIndex + 1} of {cvVersions.length}</span>
+                <button onClick={() => goToNextVersion('cv')} disabled={cvCurrentIndex === cvVersions.length - 1}>
+                  Next &gt;
+                </button>
+                <button onClick={() => setShowModal('regenerate')} className="action-btn">
+                  Regenerate
+                </button>
+              </div>
+              <CV_Cover_Display content={cvVersions[cvCurrentIndex]} />
               <DocumentDownloadButtons
                 user_id={user_id}
-                cvText={docs.cv}
-                coverText={docs.cover}
+                cvText={cvVersions[cvCurrentIndex]}
+                coverText={coverVersions[coverCurrentIndex]}
                 activeTab={activeTab}
                 onTokenFail={() => setShowBuyPanel(true)}
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={docs.cv} />
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={null} />
           )}
         </div>
       )}
 
       {activeTab === 'cover' && (
         <div>
-          {docs.cover ? (
+          {coverVersions.length > 0 ? (
             <>
-              <CV_Cover_Display content={docs.cover} />
+              <div className="flex justify-between items-center mb-4 gap-2">
+                <button onClick={() => goToPrevVersion('cover')} disabled={coverCurrentIndex === 0}>
+                  &lt; Prev
+                </button>
+                <span>Version {coverCurrentIndex + 1} of {coverVersions.length}</span>
+                <button onClick={() => goToNextVersion('cover')} disabled={coverCurrentIndex === coverVersions.length - 1}>
+                  Next &gt;
+                </button>
+                <button onClick={() => setShowModal('regenerate')} className="action-btn">
+                  Regenerate
+                </button>
+              </div>
+              <CV_Cover_Display content={coverVersions[coverCurrentIndex]} />
               <DocumentDownloadButtons
                 user_id={user_id}
-                cvText={docs.cv}
-                coverText={docs.cover}
+                cvText={cvVersions[cvCurrentIndex]}
+                coverText={coverVersions[coverCurrentIndex]}
                 activeTab={activeTab}
                 onTokenFail={() => setShowBuyPanel(true)}
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={docs.cv} />
+            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={null} />
           )}
         </div>
+
+
       )}
 
-      {showModal && (
+      {showModal === 'startFresh' && (
+        <StartFreshModal
+          user_id={user_id}
+          onClose={() => setShowModal(false)}
+          onSubmit={handleSubmit}
+        />
+      )}
+
+
+      {showModal === 'regenerate' && (
+        <ToneDocModal
+          onClose={() => setShowModal(false)}
+          onSubmit={handleSubmit}
+        />
+      )}
+
+
+      {showModal === true && (
         <ToneDocModal onClose={() => setShowModal(false)} onSubmit={handleSubmit} />
       )}
 
