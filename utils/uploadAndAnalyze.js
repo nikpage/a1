@@ -1,7 +1,6 @@
 // path: utils/uploadAndAnalyze.js
-
 export async function uploadAndAnalyze({ file, jobText, user_id, fallbackCvText, fallbackCreatedAt }) {
-  let finalUserId = user_id
+  let finalUserId = user_id ?? window.localStorage.getItem('user_id')
   let cvText = fallbackCvText || ''
   let createdAt = fallbackCreatedAt || null
 
@@ -9,6 +8,7 @@ export async function uploadAndAnalyze({ file, jobText, user_id, fallbackCvText,
   if (file) {
     const formData = new FormData()
     formData.append('file', file)
+    if (finalUserId) formData.append('user_id', finalUserId)
 
     const uploadRes = await fetch('/api/upload-cv', {
       method: 'POST',

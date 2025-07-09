@@ -5,7 +5,7 @@ import { useRouter } from 'next/router'
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
 
 
-export default function CVUploader({ onUpload, selectedCv }) {
+export default function CVUploader({ user_id, onUpload, selectedCv }) {
   const inputRef = useRef()
   const router = useRouter()
   const [file, setFile] = useState(null)
@@ -40,13 +40,18 @@ export default function CVUploader({ onUpload, selectedCv }) {
       const result = await uploadAndAnalyze({
         file,
         jobText,
-        user_id: null,
+        user_id: user_id || localStorage.getItem('user_id'),
         fallbackCvText: null,
         fallbackCreatedAt: null,
       })
 
-      if (typeof onUpload === 'function') onUpload()
-      else router.push(`/${result.user_id}`)
+
+      if (typeof onUpload === 'function') {
+        onUpload()
+      } else {
+        router.push(`/${result.user_id}`)
+      }
+
     } catch (err) {
       console.error(err)
       setError(err.message || 'Upload or analysis failed')

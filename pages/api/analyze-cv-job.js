@@ -20,12 +20,17 @@ export default async function handler(req, res) {
     const { createClient } = await import('@supabase/supabase-js')
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 
-const { data, error } = await supabase
+let query = supabase
   .from('cv_data')
   .select('cv_data')
-  .eq('user_id', user_id)
-  .eq('created_at', created_at)
-  .single()
+  .eq('user_id', user_id);
+
+if (created_at) {
+  query = query.eq('created_at', created_at);
+}
+
+const { data, error } = await query.single();
+
 
 if (error || !data) {
   return res.status(404).json({ error: 'CV not found for given timestamp' })

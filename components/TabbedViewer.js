@@ -13,6 +13,35 @@ import StartFreshModal from './StartFreshModal';
 
 
 export default function TabbedViewer({ user_id, analysisText }) {
+  const [analysisTextState, setAnalysisTextState] = useState(analysisText);
+  useEffect(() => {
+  const clear = () => setAnalysisTextState(null);
+  window.addEventListener('clear-analysis', clear);
+  return () => window.removeEventListener('clear-analysis', clear);
+}, []);
+
+  useEffect(() => {
+    if (!user_id) return;
+
+    const interval = setInterval(async () => {
+      const { data, error } = await supabase
+        .from('gen_data')
+        .select('type, content')
+        .eq('user_id', user_id)
+        .eq('type', 'analysis')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && data?.content && data.content !== analysisTextState) {
+        setAnalysisTextState(data.content);
+        setActiveTab('analysis');
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [user_id, analysisTextState]);
+
   const [activeTab, setActiveTab] = useState('analysis');
   const [docs, setDocs] = useState({ cv: null, cover: null });
   const [showBuilder, setShowBuilder] = useState(false);
@@ -50,15 +79,24 @@ export default function TabbedViewer({ user_id, analysisText }) {
       return;
     }
 
+    if (data.analysis) {
+      location.reload();
+      return;
+    }
+
+
     if (data.cv) {
-      setCvVersions(prev => [...prev, data.cv]);
-      setCvCurrentIndex(prev => prev);
-    }
-    if (data.cover) {
-      setCoverVersions(prev => [...prev, data.cover]);
-      setCoverCurrentIndex(prev => prev);
-    }
-    setShowModal(false);
+    setCvVersions(prev => [...prev, data.cv]);
+    setCvCurrentIndex(prev => prev);
+    setActiveTab('cv');
+  }
+  if (data.cover) {
+    setCoverVersions(prev => [...prev, data.cover]);
+    setCoverCurrentIndex(prev => prev);
+    if (!data.cv) setActiveTab('cover');
+  }
+  setShowModal(false);
+
   };
 
   const handleRegen = async (docType, tone) => {
@@ -177,8 +215,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
       {activeTab === 'analysis' && (
         <div>
-          {analysisText ? (
-            <>
+          {analysisTextState ? (            <>
               <AnalysisDisplay analysis={analysisText} />
               {!showBuilder && (
                 <div className="text-center mt-8">
@@ -262,12 +299,14 @@ export default function TabbedViewer({ user_id, analysisText }) {
       )}
 
       {showModal === 'startFresh' && (
-        <StartFreshModal
-          user_id={user_id}
-          onClose={() => setShowModal(false)}
-          onSubmit={handleSubmit}
-        />
-      )}
+      <StartFreshModal
+        user_id={user_id}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleSubmit}
+        onStartFresh={startFresh} // add this
+      />
+    )}
+
 
 
       {showModal === 'regenerate' && (

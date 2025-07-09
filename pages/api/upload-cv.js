@@ -107,8 +107,9 @@ export default async function handler(req, res) {
         console.log("No phone found in CV text")
       }
       // --- END PHONE EXTRACT & HASH ---
+      console.log('fields.user_id:', fields.user_id)
 
-      const user_id = genSessionId()
+      const user_id = fields.user_id || genSessionId()
 
       try {
         console.log("Generated user_id:", user_id)

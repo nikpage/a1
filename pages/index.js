@@ -38,8 +38,10 @@ export default function IndexPage() {
         body: JSON.stringify({
           user_id: uploadData.user_id,
           jobText,
+          created_at: uploadData.created_at,  // <--- ADD THIS LINE
         }),
       })
+
 
       const analyzeData = await analyzeRes.json()
 
