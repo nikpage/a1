@@ -1,5 +1,5 @@
 // path: components/TabbedViewer.js
-import { useState, useEffect } from 'react';
+
 import { supabase } from '../utils/database';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
@@ -10,6 +10,7 @@ import ToneDocModal from './ToneDocModal';
 import AnalysisDisplay from './AnalysisDisplay';
 import Regenerate from './Regenerate';
 import StartFreshModal from './StartFreshModal';
+import { useState, useEffect, useLayoutEffect } from 'react';
 
 
 export default function TabbedViewer({ user_id, analysisText }) {
@@ -180,6 +181,15 @@ export default function TabbedViewer({ user_id, analysisText }) {
     else if (activeTab !== 'cover' && docs.cover && !docs.cv) setActiveTab('cover');
   }, [docs]);
 
+  useLayoutEffect(() => {
+    // Block scroll jump on tab change
+    const prevScroll = window.scrollY;
+    setTimeout(() => {
+      window.scrollTo(0, prevScroll);
+    }, 1);
+  }, [activeTab]);
+
+
   return (
     <div className="doc-viewer">
       <div className="text-center mb-4">
@@ -238,17 +248,21 @@ export default function TabbedViewer({ user_id, analysisText }) {
         <div>
           {cvVersions.length > 0 ? (
             <>
-              <div className="flex justify-between items-center mb-4">
-                <button onClick={() => goToPrevVersion('cv')} disabled={cvCurrentIndex === 0}>
-                  &lt; Prev
-                </button>
-                <span>Version {cvCurrentIndex + 1} of {cvVersions.length}</span>
-                <button onClick={() => goToNextVersion('cv')} disabled={cvCurrentIndex === cvVersions.length - 1}>
-                  Next &gt;
-                </button>
-                <button onClick={() => setShowModal('regenerate')} className="action-btn">
-                  Regenerate
-                </button>
+              <div className="flex flex-col items-center mb-4">
+                <div className="mb-2 text-sm font-bold text-gray-800">
+                  Version {cvCurrentIndex + 1} of {cvVersions.length}
+                </div>
+                <div className="flex flex-row gap-4">
+                  <button onClick={() => goToPrevVersion('cv')} disabled={cvCurrentIndex === 0}>
+                    &lt; Prev
+                  </button>
+                  <button onClick={() => setShowModal('regenerate')} className="action-btn">
+                    Regenerate
+                  </button>
+                  <button onClick={() => goToNextVersion('cv')} disabled={cvCurrentIndex === cvVersions.length - 1}>
+                    Next &gt;
+                  </button>
+                </div>
               </div>
               <CV_Cover_Display content={cvVersions[cvCurrentIndex]} />
               <DocumentDownloadButtons
@@ -264,6 +278,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
           )}
         </div>
       )}
+
 
       {activeTab === 'cover' && (
         <div>

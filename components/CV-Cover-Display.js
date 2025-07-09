@@ -63,7 +63,7 @@ const markdownComponents = {
   ),
 };
 
-export default function CV_Cover_Display({ content }) {
+export default function CV_Cover_Display({ content, version, totalVersions }) {
   useEffect(() => {
     const container = document.querySelector('.relative.z-30');
     if (container) {
@@ -115,6 +115,17 @@ export default function CV_Cover_Display({ content }) {
         >
           {content}
         </ReactMarkdown>
+
+        <div className="flex flex-col items-center mt-8 space-y-2">
+          <div className="text-sm font-bold text-gray-800 mb-2">
+            Version {version} of {totalVersions}
+          </div>
+          <div className="flex items-center justify-center space-x-6">
+            <button className="action-btn">{'< Prev'}</button>
+            <button className="action-btn">Regenerate</button>
+            <button className="action-btn">{'Next >'}</button>
+          </div>
+        </div>
       </div>
 
       <style jsx>{`
