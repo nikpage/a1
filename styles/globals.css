@@ -43,7 +43,9 @@
 
 /* --- General --- */
 header {
-  margin-bottom: 2.8rem !important;
+  margin-bottom: 0.5rem !important; /* Reduced space below the header */
+  padding-top: 1rem !important;    /* Reduced internal top padding */
+  padding-bottom: 1rem !important; /* Reduced internal bottom padding */
 }
 
 button {
