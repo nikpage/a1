@@ -75,35 +75,31 @@ cv = cvRes.content;       await saveGeneratedDoc({
     if (updatedUser.generations_left === 0) await resetGenerations(user_id);
 
     const logTx = async (docType, usage = {}) => {
-      // pages/api/generate-cv-cover.js — inside logTx()
-      const baseURL =
-        process.env.NODE_ENV === 'development'
-          ? 'http://localhost:3000'
-          : `https://${process.env.VERCEL_URL}`;
-      const urlToFetch = `${baseURL}/api/log-transaction`;
+    const baseURL =
+      process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000'
+        : `https://${process.env.VERCEL_URL}`;
+    const urlToFetch = `${baseURL}/api/log-transaction`;
 
-      console.log('Attempting to fetch URL:', urlToFetch);
-      await fetch(urlToFetch, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ … })
-      });
+    await fetch(urlToFetch, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id,
+        source_gen_id: crypto.randomUUID(),
+        model: 'DS-v3',
+        cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
+        cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
+        completion_tokens: usage.completion_tokens || 0,
+        job_title: null,
+        company: null,
+        tone
+      })
+    });
+  };
 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id,
-          source_gen_id: crypto.randomUUID(),
-          model: 'DS-v3',
-          cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
-          cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
-          completion_tokens: usage.completion_tokens || 0,
-          job_title: null,
-          company: null,
-          tone
-        })
-      });
-    };
+
+  
 
     if (type === 'cv' || type === 'both') await logTx('cv', cvRes?.usage || {});
     if (type === 'cover' || type === 'both') await logTx('cover', coverRes?.usage || {});
