@@ -1,5 +1,8 @@
 // path: components/DocumentDownloadButtons.js
 import { supabase } from '../utils/database';
+import exportDocxWithDocxLib from '../utils/exportDocxFormatted';
+
+
 
 export default function DocumentDownloadButtons({
   user_id,
@@ -45,9 +48,19 @@ export default function DocumentDownloadButtons({
 
   return (
     <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-      <button className="download-btn" onClick={handleDownload}>
+      <button
+        className="download-btn"
+        onClick={() =>
+          exportDocxWithDocxLib({
+            type: activeTab === 'cv' ? 'cv' : 'cover',
+            user_id,
+            markdownText: activeTab === 'cv' ? cvText : coverText,
+          })
+        }
+      >
         Download {activeTab === 'cv' ? 'CV' : 'Cover Letter'}
       </button>
+
     </div>
   );
 }

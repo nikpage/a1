@@ -14,6 +14,8 @@ import LoadingModal from './LoadingModal';
 import { useState, useEffect, useLayoutEffect } from 'react';
 
 
+
+
 export default function TabbedViewer({ user_id, analysisText }) {
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
   useEffect(() => {
@@ -311,14 +313,21 @@ export default function TabbedViewer({ user_id, analysisText }) {
         <div>
           {coverVersions.length > 0 ? (
             <>
-              <div className="flex justify-between items-center mb-4 gap-2">
-                <button onClick={() => goToPrevVersion('cover')} disabled={coverCurrentIndex === 0}>
-                  &lt; Prev
-                </button>
-                <span>Version {coverCurrentIndex + 1} of {coverVersions.length}</span>
-                <button onClick={() => setShowModal('regenerate')} className="action-btn">
-                  Regenerate
-                </button>
+              <div className="flex flex-col items-center mb-4">
+                <div className="mb-2 text-sm font-bold text-gray-800">
+                  Version {coverCurrentIndex + 1} of {coverVersions.length}
+                </div>
+                <div className="flex flex-row gap-4">
+                  <button onClick={() => goToPrevVersion('cover')} disabled={coverCurrentIndex === 0}>
+                    &lt; Prev
+                  </button>
+                  <button onClick={() => setShowModal('regenerate')} className="action-btn">
+                    Regenerate
+                  </button>
+                  <button onClick={() => goToNextVersion('cover')} disabled={coverCurrentIndex === coverVersions.length - 1}>
+                    Next &gt;
+                  </button>
+                </div>
               </div>
               <CV_Cover_Display content={coverVersions[coverCurrentIndex]} />
               <DocumentDownloadButtons
@@ -333,8 +342,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
             <CV_Cover_Display user_id={user_id} analysis={analysisText} content={null} />
           )}
         </div>
-
-
       )}
 
       {showModal === 'startFresh' && (
