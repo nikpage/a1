@@ -75,7 +75,7 @@ cv = cvRes.content;       await saveGeneratedDoc({
     if (updatedUser.generations_left === 0) await resetGenerations(user_id);
 
     const logTx = async (docType, usage = {}) => {
-      await fetch(`/api/log-transaction`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/log-transaction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

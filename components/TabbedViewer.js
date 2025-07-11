@@ -10,6 +10,7 @@ import ToneDocModal from './ToneDocModal';
 import AnalysisDisplay from './AnalysisDisplay';
 import Regenerate from './Regenerate';
 import StartFreshModal from './StartFreshModal';
+import LoadingModal from './LoadingModal';
 import { useState, useEffect, useLayoutEffect } from 'react';
 
 
@@ -21,27 +22,28 @@ export default function TabbedViewer({ user_id, analysisText }) {
   return () => window.removeEventListener('clear-analysis', clear);
 }, []);
 
-  useEffect(() => {
-    if (!user_id) return;
+  // Removed setInterval polling as per your request
+  // useEffect(() => {
+  //   if (!user_id) return;
 
-    const interval = setInterval(async () => {
-      const { data, error } = await supabase
-        .from('gen_data')
-        .select('type, content')
-        .eq('user_id', user_id)
-        .eq('type', 'analysis')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+  //   const interval = setInterval(async () => {
+  //     const { data, error } = await supabase
+  //       .from('gen_data')
+  //       .select('type, content')
+  //       .eq('user_id', user_id)
+  //       .eq('type', 'analysis')
+  //       .order('created_at', { ascending: false })
+  //       .limit(1)
+  //       .single();
 
-      if (!error && data?.content && data.content !== analysisTextState) {
-        setAnalysisTextState(data.content);
-        setActiveTab('analysis');
-      }
-    }, 3000);
+  //     if (!error && data?.content && data.content !== analysisTextState) {
+  //       setAnalysisTextState(data.content);
+  //       setActiveTab('analysis');
+  //     }
+  //   }, 3000);
 
-    return () => clearInterval(interval);
-  }, [user_id, analysisTextState]);
+  //   return () => clearInterval(interval);
+  // }, [user_id, analysisTextState]);
 
   const [activeTab, setActiveTab] = useState('analysis');
   const [docs, setDocs] = useState({ cv: null, cover: null });
@@ -53,72 +55,98 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [coverVersions, setCoverVersions] = useState([]);
   const [cvCurrentIndex, setCvCurrentIndex] = useState(0);
   const [coverCurrentIndex, setCoverCurrentIndex] = useState(0);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [loadingModalMessage, setLoadingModalMessage] = useState('');
+  const [loadingModalTitle, setLoadingModalTitle] = useState('');
+
 
   const handleSubmit = async ({ tone, selected, jobText }) => {
+    setShowLoadingModal(true);
+    setLoadingModalTitle('Generating Documents');
+    setLoadingModalMessage('Preparing your tailored documents...');
 
-    if (!selected || !Array.isArray(selected) || selected.length === 0) {
-      alert('Please select at least one document type.');
-      return;
+    try {
+      if (!selected || !Array.isArray(selected) || selected.length === 0) {
+        alert('Please select at least one document type.');
+        return;
+      }
+
+      const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
+      const tokensData = await tokensRes.json();
+      if (!tokensRes.ok || tokensData.tokens < 1) {
+        setShowBuyPanel(true);
+        return;
+      }
+
+      setLoadingModalMessage('Sending request for generation...');
+      const type = selected.length === 2 ? 'both' : selected[0];
+      const res = await fetch('/api/generate-cv-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, analysis: jobText || analysisText, tone, type }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Generation failed');
+        return;
+      }
+
+      if (data.analysis) {
+        location.reload();
+        return;
+      }
+
+      setLoadingModalMessage('Updating document versions...');
+      if (data.cv) {
+        setCvVersions(prev => [...prev, data.cv]);
+        setCvCurrentIndex(prev => prev);
+        setActiveTab('cv');
+      }
+      if (data.cover) {
+        setCoverVersions(prev => [...prev, data.cover]);
+        setCoverCurrentIndex(prev => prev);
+        if (!data.cv) setActiveTab('cover');
+      }
+      setShowModal(false);
+    } catch (error) {
+      console.error("Generation error:", error);
+      alert("An error occurred during document generation.");
+    } finally {
+      setShowLoadingModal(false);
     }
-
-    const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
-    const tokensData = await tokensRes.json();
-    if (!tokensRes.ok || tokensData.tokens < 1) {
-      setShowBuyPanel(true);
-      return;
-    }
-
-    const type = selected.length === 2 ? 'both' : selected[0];
-    const res = await fetch('/api/generate-cv-cover', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, analysis: jobText || analysisText, tone, type }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || 'Generation failed');
-      return;
-    }
-
-    if (data.analysis) {
-      location.reload();
-      return;
-    }
-
-
-    if (data.cv) {
-    setCvVersions(prev => [...prev, data.cv]);
-    setCvCurrentIndex(prev => prev);
-    setActiveTab('cv');
-  }
-  if (data.cover) {
-    setCoverVersions(prev => [...prev, data.cover]);
-    setCoverCurrentIndex(prev => prev);
-    if (!data.cv) setActiveTab('cover');
-  }
-  setShowModal(false);
-
   };
 
   const handleRegen = async (docType, tone) => {
-    const res = await fetch('/api/generate-cv-cover', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, analysis: analysisText, tone, type: docType }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || 'Generation failed');
-      return;
-    }
+    setShowLoadingModal(true);
+    setLoadingModalTitle(`Regenerating ${docType === 'cv' ? 'CV' : 'Cover Letter'}`);
+    setLoadingModalMessage('Requesting a new version...');
 
-    if (data.cv) {
-      setCvVersions(prev => [...prev, data.cv]);
-      setCvCurrentIndex(cvVersions.length);
-    }
-    if (data.cover) {
-      setCoverVersions(prev => [...prev, data.cover]);
-      setCoverCurrentIndex(coverVersions.length);
+    try {
+      const res = await fetch('/api/generate-cv-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, analysis: analysisText, tone, type: docType }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Regeneration failed');
+        return;
+      }
+
+      setLoadingModalMessage('Adding new version...');
+      if (data.cv) {
+        setCvVersions(prev => [...prev, data.cv]);
+        setCvCurrentIndex(cvVersions.length);
+      }
+      if (data.cover) {
+        setCoverVersions(prev => [...prev, data.cover]);
+        setCoverCurrentIndex(coverVersions.length);
+      }
+    } catch (error) {
+      console.error("Regeneration error:", error);
+      alert("An error occurred during document regeneration.");
+    } finally {
+      setShowLoadingModal(false);
     }
   };
 
@@ -182,7 +210,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
   }, [docs]);
 
   useLayoutEffect(() => {
-    // Block scroll jump on tab change
     const prevScroll = window.scrollY;
     setTimeout(() => {
       window.scrollTo(0, prevScroll);
@@ -289,9 +316,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
                   &lt; Prev
                 </button>
                 <span>Version {coverCurrentIndex + 1} of {coverVersions.length}</span>
-                <button onClick={() => goToNextVersion('cover')} disabled={coverCurrentIndex === coverVersions.length - 1}>
-                  Next &gt;
-                </button>
                 <button onClick={() => setShowModal('regenerate')} className="action-btn">
                   Regenerate
                 </button>
@@ -318,7 +342,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         user_id={user_id}
         onClose={() => setShowModal(false)}
         onSubmit={handleSubmit}
-        onStartFresh={startFresh} // add this
+        onStartFresh={startFresh}
       />
     )}
 
@@ -346,6 +370,14 @@ export default function TabbedViewer({ user_id, analysisText }) {
         <BaseModal onClose={() => setShowThankYou(false)}>
           <ThankYouModal onClose={() => setShowThankYou(false)} />
         </BaseModal>
+      )}
+
+      {showLoadingModal && (
+        <LoadingModal
+          title={loadingModalTitle}
+          message={loadingModalMessage}
+          onClose={() => setShowLoadingModal(false)}
+        />
       )}
     </div>
   );
