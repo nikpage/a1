@@ -82,7 +82,12 @@ export default async function handler(req, res) {
     // Log the transaction by calling the API endpoint
     const usage = result?.usage || {}; // usage object contains all token counts
 
-    await fetch(`/api/log-transaction`, {
+    const baseURL =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : `https://${process.env.VERCEL_URL}`;
+
+await fetch(`${baseURL}/api/log-transaction`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
