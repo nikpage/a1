@@ -1,54 +1,56 @@
 // pages/api/analyze-cv-job.js
-import { getCvData, saveGeneratedDoc } from '../../utils/database'
-import { analyzeCvJob } from '../../utils/openai'
+import { getCvData, saveGeneratedDoc } from '../../utils/database';
+import { analyzeCvJob } from '../../utils/openai';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST'])
-    return res.status(405).json({ error: 'Method not allowed' })
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id, jobText, created_at } = req.body
-  const fileName = req.body.file_name || 'Unnamed file'
+  // Removed 'tone' from the destructuring of req.body
+  const { user_id, jobText, created_at } = req.body;
+  const fileName = req.body.file_name || 'Unnamed file';
 
   if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id in request body' })
+    return res.status(400).json({ error: 'Missing user_id in request body' });
   }
 
   try {
-    const { createClient } = await import('@supabase/supabase-js')
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+    let query = supabase
+      .from('cv_data')
+      .select('cv_data')
+      .eq('user_id', user_id);
 
-let query = supabase
-  .from('cv_data')
-  .select('cv_data')
-  .eq('user_id', user_id);
-
-if (created_at) {
-  query = query.eq('created_at', created_at);
-}
-
-const { data, error } = await query.single();
-
-
-if (error || !data) {
-  return res.status(404).json({ error: 'CV not found for given timestamp' })
-}
-
-const cv_data = data.cv_data
-
-    if (!cv_data) {
-      return res.status(404).json({ error: 'CV not found for user' })
+    if (created_at) {
+      query = query.eq('created_at', created_at);
     }
 
-    const result = await analyzeCvJob(cv_data, jobText, fileName)
+    const { data, error } = await query.single();
 
-    const content =
-      result?.choices?.[0]?.message?.content ||
-      result?.output ||
-      null
+    if (error || !data) {
+      return res.status(404).json({ error: 'CV not found for given timestamp' });
+    }
 
+    const cv_data = data.cv_data;
+
+    if (!cv_data) {
+      return res.status(400).json({ error: 'CV data is empty' });
+    }
+
+    // analyzeCvJob now returns usage data
+    const result = await analyzeCvJob(cv_data, jobText, fileName);
+
+    const content = result?.output || null; // Access the 'output' from the result
+
+    // Extract metadata from the content string
     const extractMeta = (label) => {
       const match = content.match(new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`));
       return match ? match[1].trim() : null;
@@ -59,7 +61,7 @@ const cv_data = data.cv_data
     const hr_contact = extractMeta('HR Contact');
 
     if (!content) {
-      return res.status(500).json({ error: 'No analysis content returned by DeepSeek', raw: result })
+      return res.status(500).json({ error: 'No analysis content returned by DeepSeek', raw: result });
     }
 
     const analysis_id = crypto.randomUUID();
@@ -68,18 +70,44 @@ const cv_data = data.cv_data
       user_id,
       source_cv_id: user_id,
       type: 'analysis',
-      tone: null,
+      tone: null, // Keeping tone null here for analysis type documents
       company,
       job_title,
-      file_name: null,
+      file_name: null, // Or derive from actual file upload
       content,
       analysis_id,
-      hr_contact
+      hr_contact,
+    });
+
+    // Log the transaction by calling the API endpoint
+    const usage = result?.usage || {}; // usage object contains all token counts
+
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/log-transaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id,
+        source_gen_id: analysis_id,
+        model: 'DS-v3', // Or make this dynamic based on the actual model used
+        // Using DeepSeek's specific usage properties
+        prompt_tokens: usage.prompt_tokens || 0, // DeepSeek might use prompt_tokens
+        completion_tokens: usage.completion_tokens || 0,
+        total_tokens: usage.total_tokens || 0,
+        cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
+        cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
+        job_title,
+        company,
+        // 'tone' removed from here
+      }),
     });
 
     return res.status(200).json({ analysis: content, analysis_id });
-
   } catch (e) {
-    return res.status(500).json({ error: 'Analysis failed', details: e.message || 'unknown' })
+    console.error('API Error:', e.message);
+    // Log more details for debugging if available
+    if (e.response?.data) {
+      console.error('DeepSeek API Response Error:', e.response.data);
+    }
+    return res.status(500).json({ error: e.message });
   }
 }

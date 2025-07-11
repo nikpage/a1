@@ -68,7 +68,7 @@ export default function IndexPage() {
              Regular CV<br /><em>plus</em> Job Add
            </div>
            <div className="w-[600px] text-4xl font-light text-slate-800 text-center leading-tight">
-             Targeted CV<br />Cover Letter
+             Targeted<br />CV & Cover Letter
            </div>
            <div className="w-[600px] text-4xl font-light text-slate-800 text-center leading-tight">
              More Interviews<br />More Offers
