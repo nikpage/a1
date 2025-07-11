@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     // Log the transaction by calling the API endpoint
     const usage = result?.usage || {}; // usage object contains all token counts
 
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/log-transaction`, {
+    await fetch(`/api/log-transaction`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
