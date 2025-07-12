@@ -24,29 +24,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
   return () => window.removeEventListener('clear-analysis', clear);
 }, []);
 
-  // Removed setInterval polling as per your request
-  // useEffect(() => {
-  //   if (!user_id) return;
-
-  //   const interval = setInterval(async () => {
-  //     const { data, error } = await supabase
-  //       .from('gen_data')
-  //       .select('type, content')
-  //       .eq('user_id', user_id)
-  //       .eq('type', 'analysis')
-  //       .order('created_at', { ascending: false })
-  //       .limit(1)
-  //       .single();
-
-  //     if (!error && data?.content && data.content !== analysisTextState) {
-  //       setAnalysisTextState(data.content);
-  //       setActiveTab('analysis');
-  //     }
-  //   }, 3000);
-
-  //   return () => clearInterval(interval);
-  // }, [user_id, analysisTextState]);
-
   const [activeTab, setActiveTab] = useState('analysis');
   const [docs, setDocs] = useState({ cv: null, cover: null });
   const [showBuilder, setShowBuilder] = useState(false);
@@ -211,6 +188,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
     else if (activeTab !== 'cover' && docs.cover && !docs.cv) setActiveTab('cover');
   }, [docs]);
 
+  useEffect(() => {
+    if (window.location.search.includes('success=true')) {
+      setShowBuyPanel(true); // show the modal once after Stripe redirect
+    }
+  }, []);
+
+
   useLayoutEffect(() => {
     const prevScroll = window.scrollY;
     setTimeout(() => {
@@ -369,9 +353,15 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
       {showBuyPanel && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <DownloadTokenPanel onClose={() => setShowBuyPanel(false)} user_id={user_id} />
+          <DownloadTokenPanel
+            onClose={() => setShowBuyPanel(false)}
+            user_id={user_id}
+            forceShowBuy={!window.location.search.includes('success=true')}
+          />
         </div>
       )}
+
+
 
       {showThankYou && (
         <BaseModal onClose={() => setShowThankYou(false)}>
