@@ -49,18 +49,10 @@ export default function DocumentDownloadButtons({
   return (
     <div style={{ textAlign: 'center', marginTop: '2rem' }}>
       <button
-        className="download-btn"
-        onClick={() =>
-          exportDocxWithDocxLib({
-            type: activeTab === 'cv' ? 'cv' : 'cover',
-            user_id,
-            markdownText: activeTab === 'cv' ? cvText : coverText,
-          })
-        }
+        onClick={handleDownload}
       >
         Download {activeTab === 'cv' ? 'CV' : 'Cover Letter'}
       </button>
-
     </div>
   );
 }
