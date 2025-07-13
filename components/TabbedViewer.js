@@ -18,28 +18,50 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
-  useEffect(() => {
-  const clear = () => setAnalysisTextState(null);
-  window.addEventListener('clear-analysis', clear);
-  return () => window.removeEventListener('clear-analysis', clear);
-}, []);
-useEffect(() => {
-  const onNewAnalysis = (e) => {
-    if (e.detail?.analysis) {
-      setAnalysisTextState(e.detail.analysis);
-  setCvVersions([]);
-  setCoverVersions([]);
-  setCvCurrentIndex(0);
-  setCoverCurrentIndex(0);
-  setDocs({ cv: null, cover: null });
-  setShowBuilder(false);
-  setActiveTab('analysis');
 
-    }
-  };
-  window.addEventListener('new-analysis', onNewAnalysis);
-  return () => window.removeEventListener('new-analysis', onNewAnalysis);
-}, []);
+  // Clear analysis event listener
+  useEffect(() => {
+    const clear = () => {
+      setAnalysisTextState(null);
+      // Also clear all document data when clearing analysis
+      setCvVersions([]);
+      setCoverVersions([]);
+      setCvCurrentIndex(0);
+      setCoverCurrentIndex(0);
+      setDocs({ cv: null, cover: null });
+      setActiveTab('analysis');
+    };
+    window.addEventListener('clear-analysis', clear);
+    return () => window.removeEventListener('clear-analysis', clear);
+  }, []);
+
+  // New analysis event listener - properly update state and clear old data
+  useEffect(() => {
+    const onNewAnalysis = (e) => {
+      if (e.detail?.analysis) {
+        // Update analysis text state
+        setAnalysisTextState(e.detail.analysis);
+
+        // Clear all old document data
+        setCvVersions([]);
+        setCoverVersions([]);
+        setCvCurrentIndex(0);
+        setCoverCurrentIndex(0);
+        setDocs({ cv: null, cover: null });
+
+        // Reset UI state
+        setShowBuilder(false);
+        setActiveTab('analysis');
+      }
+    };
+    window.addEventListener('new-analysis', onNewAnalysis);
+    return () => window.removeEventListener('new-analysis', onNewAnalysis);
+  }, []);
+
+  // Update analysisTextState when prop changes
+  useEffect(() => {
+    setAnalysisTextState(analysisText);
+  }, [analysisText]);
 
   const [activeTab, setActiveTab] = useState('analysis');
   const [docs, setDocs] = useState({ cv: null, cover: null });
@@ -79,7 +101,7 @@ useEffect(() => {
       const res = await fetch('/api/generate-cv-cover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, analysis: jobText || analysisText, tone, type }),
+        body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -121,7 +143,7 @@ useEffect(() => {
       const res = await fetch('/api/generate-cv-cover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, analysis: analysisText, tone, type: docType }),
+        body: JSON.stringify({ user_id, analysis: analysisTextState, tone, type: docType }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -255,8 +277,9 @@ useEffect(() => {
 
       {activeTab === 'analysis' && (
         <div>
-          {analysisTextState ? (            <>
-              <AnalysisDisplay analysis={analysisText} />
+          {analysisTextState ? (
+            <>
+              <AnalysisDisplay analysis={analysisTextState} />
               {!showBuilder && (
                 <div className="text-center mt-8">
                   <button onClick={() => setShowModal(true)} className="action-btn">
@@ -265,7 +288,7 @@ useEffect(() => {
                 </div>
               )}
               {showBuilder && (
-                <CV_Cover_Display user_id={user_id} analysis={analysisText} content={docs.cv} />
+                <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={docs.cv} />
               )}
             </>
           ) : (
@@ -304,7 +327,7 @@ useEffect(() => {
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={null} />
+            <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={null} />
           )}
         </div>
       )}
@@ -340,7 +363,7 @@ useEffect(() => {
               />
             </>
           ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisText} content={null} />
+            <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={null} />
           )}
         </div>
       )}
