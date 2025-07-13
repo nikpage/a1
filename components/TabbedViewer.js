@@ -23,6 +23,23 @@ export default function TabbedViewer({ user_id, analysisText }) {
   window.addEventListener('clear-analysis', clear);
   return () => window.removeEventListener('clear-analysis', clear);
 }, []);
+useEffect(() => {
+  const onNewAnalysis = (e) => {
+    if (e.detail?.analysis) {
+      setAnalysisTextState(e.detail.analysis);
+  setCvVersions([]);
+  setCoverVersions([]);
+  setCvCurrentIndex(0);
+  setCoverCurrentIndex(0);
+  setDocs({ cv: null, cover: null });
+  setShowBuilder(false);
+  setActiveTab('analysis');
+
+    }
+  };
+  window.addEventListener('new-analysis', onNewAnalysis);
+  return () => window.removeEventListener('new-analysis', onNewAnalysis);
+}, []);
 
   const [activeTab, setActiveTab] = useState('analysis');
   const [docs, setDocs] = useState({ cv: null, cover: null });
