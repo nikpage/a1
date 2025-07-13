@@ -1,8 +1,8 @@
 // utils/openai.js
 
 import axios from 'axios'
-
-
+import { KeyManager } from './key-manager.js';
+const keyManager = new KeyManager();
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   // DO NOT REMOVE THIS LINE OR MOVE IT
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
@@ -128,7 +128,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
+          Authorization: `Bearer ${keyManager.getNextKey()}`,
           'Content-Type': 'application/json'
         }
       }
@@ -243,7 +243,7 @@ const response = await axios.post(
   },
   {
     headers: {
-      Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
+      Authorization: `Bearer ${keyManager.getNextKey()}`,
       'Content-Type': 'application/json'
     }
   }
@@ -307,7 +307,7 @@ const response = await axios.post(
   },
   {
     headers: {
-      Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY_1}`,
+      Authorization: `Bearer ${keyManager.getNextKey()}`,
       'Content-Type': 'application/json'
     }
   }
