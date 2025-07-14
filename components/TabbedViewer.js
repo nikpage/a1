@@ -79,60 +79,71 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
 
   const handleSubmit = async ({ tone, selected, jobText }) => {
-    setShowLoadingModal(true);
-    setLoadingModalTitle('Generating Documents');
-    setLoadingModalMessage('Preparing your tailored documents...');
+      setShowLoadingModal(true);
+      setLoadingModalTitle('Generating Documents');
+      setLoadingModalMessage('Preparing your tailored documents...');
 
-    try {
-      if (!selected || !Array.isArray(selected) || selected.length === 0) {
-        alert('Please select at least one document type.');
-        return;
-      }
+      try {
+        if (!selected || !Array.isArray(selected) || selected.length === 0) {
+          alert('Please select at least one document type.');
+          setShowLoadingModal(false);
+          return;
+        }
 
-      const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
-      const tokensData = await tokensRes.json();
-      if (!tokensRes.ok || tokensData.tokens < 1) {
-        setShowBuyPanel(true);
-        return;
-      }
+        const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
+        const tokensData = await tokensRes.json();
+        if (!tokensRes.ok || tokensData.tokens < selected.length) {
+          setShowBuyPanel(true);
+          setShowLoadingModal(false);
+          return;
+        }
 
-      setLoadingModalMessage('Sending request for generation...');
-      const type = selected.length === 2 ? 'both' : selected[0];
-      const res = await fetch('/api/generate-cv-cover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Generation failed');
-        return;
-      }
+        // Create and immediately handle each request individually
+        const generationPromises = selected.map(docType => {
+          return fetch('/api/generate-cv-cover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType }),
+          })
+          .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || `Generation failed for ${docType}`);
+            }
+            return data;
+          })
+          .then(data => {
+            // This is the key change: update the UI as soon as data arrives
+            if (data.cv) {
+              setCvVersions(prev => {
+                const newVersions = [...prev, data.cv];
+                setCvCurrentIndex(newVersions.length - 1);
+                return newVersions;
+              });
+              setActiveTab('cv');
+            }
+            if (data.cover) {
+              setCoverVersions(prev => {
+                const newCovers = [...prev, data.cover];
+                setCoverCurrentIndex(newCovers.length - 1);
+                return newCovers;
+              });
+              setActiveTab('cover');
+            }
+          });
+        });
 
-      if (data.analysis) {
-        location.reload();
-        return;
-      }
+        // Wait for all requests to finish before closing the modals
+        await Promise.all(generationPromises);
+        setShowModal(false);
 
-      setLoadingModalMessage('Updating document versions...');
-      if (data.cv) {
-        setCvVersions(prev => [...prev, data.cv]);
-        setCvCurrentIndex(prev => prev);
-        setActiveTab('cv');
+      } catch (error) {
+        console.error("Generation error:", error);
+        alert(error.message || "An error occurred during document generation.");
+      } finally {
+        setShowLoadingModal(false);
       }
-      if (data.cover) {
-        setCoverVersions(prev => [...prev, data.cover]);
-        setCoverCurrentIndex(prev => prev);
-        if (!data.cv) setActiveTab('cover');
-      }
-      setShowModal(false);
-    } catch (error) {
-      console.error("Generation error:", error);
-      alert("An error occurred during document generation.");
-    } finally {
-      setShowLoadingModal(false);
-    }
-  };
+    };
 
   const handleRegen = async (docType, tone) => {
     setShowLoadingModal(true);

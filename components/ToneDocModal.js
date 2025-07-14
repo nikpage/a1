@@ -3,7 +3,8 @@ import { useState } from 'react';
 
 export default function ToneDocModal({ onClose, onSubmit }) {
   const [tone, setTone] = useState('formal');
-  const [types, setTypes] = useState({ cv: false, cover: false });
+  const [types, setTypes] = useState({ cv: true, cover: true });
+
 
   const handleGenerate = () => {
     const selected = Object.entries(types)

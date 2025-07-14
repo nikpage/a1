@@ -3,7 +3,8 @@ import { getCvData, saveGeneratedDoc } from '../../utils/database';
 import { analyzeCvJob } from '../../utils/openai';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { KeyManager } from '../../js/key-manager.js';
+import { KeyManager } from '../../utils/key-manager.js';
+
 const keyManager = new KeyManager();
 
 const supabase = createClient(

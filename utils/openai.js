@@ -214,6 +214,8 @@ All of your output, including in the "cocky" tone, must be in the same language 
 - Write in the "${tone}" tone: (${toneInstructions(tone)}).
 - CV must perform extremely well if re-analyzed by our own analysis engine.
 - Style can be creative and personalized (within the chosen tone) but factual accuracy is required.
+- IMPORTANT: Do NOT include any notes, explanations, summaries, or commentary. Your response must ONLY include the candidate's CV in standard CV format, with no trailing comments or remarks of any kind.
+
 
 # Inputs
 ## CV:
@@ -278,6 +280,7 @@ All of your output, including in the "cocky" tone, must be in the same language 
 - No generic filler, no invented claims, no placeholders.
 - Use ATS and matched keywords for the job, if provided.
 - If the job ad is present, reference specific company and position as appropriate.
+- Always include a line at the top: Date: [today's date in DD.MM.YYYY format]. Replace any placeholder or empty Date fields with the correct date of generation.
 
 # Inputs
 ## CV:
@@ -320,6 +323,23 @@ if (data.usage.prompt_cache_hit_tokens !== undefined)
 if (data.usage.completion_tokens !== undefined)
   console.log('  completion tokens:', data.usage.completion_tokens)
 console.log('  total tokens:', data.usage.total_tokens)
+
+const rawContent = data.choices?.[0]?.message?.content || '';
+const today = new Date().toLocaleDateString('en-GB');
+
+// Replace or clean Date: line
+const processedContent = rawContent
+  .split('\n')
+  .filter(line => !/^Date:\s*(\[.*\]|\{.*\}|\<.*\>|\s*)$/i.test(line)) // Remove blank/placeholder Date lines
+  .map(line => /^Date:/i.test(line) ? `Date: ${today}` : line) // Replace valid Date lines
+  .join('\n')
+  .trim();
+
+return {
+  content: processedContent,
+  usage: data.usage
+};
+
 
 return {
   content: data.choices?.[0]?.message?.content || '',
