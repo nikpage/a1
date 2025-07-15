@@ -39,6 +39,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
   );
 }
 
+
 export async function getServerSideProps(context) {
   const { user_id } = context.params;
 
@@ -50,11 +51,18 @@ export async function getServerSideProps(context) {
     .eq('user_id', user_id)
     .single();
 
+  // If no user is found, default tokeyboard to 0 for both values
+  if (!user) {
+    return {
+      notFound: true,
+    };
+  }
+
   return {
     props: {
       user_id,
-      generationsRemaining: user.generations_left,
-      docDownloadsRemaining: user.tokens,
+      generationsRemaining: user?.generations_left ?? 0,
+      docDownloadsRemaining: user?.tokens ?? 0,
     },
   };
 }

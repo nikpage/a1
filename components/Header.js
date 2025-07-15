@@ -1,13 +1,47 @@
 // path: /Header.js
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
 import Link from 'next/link';
 
 export default function Header({ user_id, generationsRemaining, docDownloadsRemaining }) {
-  const [email, setEmail] = useState('');
+  const [downloads, setDownloads] = useState(0);
+const [generations, setGenerations] = useState(0);  const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+
+  const fetchHeaderStats = async () => {
+    if (!user_id) return;
+    const res = await fetch(`/api/header-stats?user_id=${user_id}`);
+    if (res.ok) {
+      const { generations, downloads } = await res.json();
+      setGenerations(generations);
+      setDownloads(downloads);
+    }
+  };
+
+  useEffect(() => {
+    fetchHeaderStats();
+  }, [user_id]);
+
+  useEffect(() => {
+    const updateStats = () => fetchHeaderStats();
+    window.addEventListener('header-stats-updated', updateStats);
+    return () => window.removeEventListener('header-stats-updated', updateStats);
+  }, []);
+
+
+  useEffect(() => {
+    const updateDownloads = (e) => {
+      if (e.detail?.tokens !== undefined) {
+        setDownloads(e.detail.tokens);
+      }
+    };
+    window.addEventListener('tokens-updated', updateDownloads);
+    return () => window.removeEventListener('tokens-updated', updateDownloads);
+  }, []);
+
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -69,12 +103,12 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
             {/* Usage Stats */}
             <div className="flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-lg">
               <div className="text-center">
-                <div className="text-sm font-semibold text-slate-800">{generationsRemaining}</div>
+                <div className="text-sm font-semibold text-slate-800">{generations}</div>
                 <div className="text-xs text-slate-600">Generations</div>
               </div>
               <div className="h-8 w-px bg-gray-300"></div>
               <div className="text-center">
-                <div className="text-sm font-semibold text-slate-800">{docDownloadsRemaining}</div>
+                <div className="text-sm font-semibold text-slate-800">{downloads}</div>
                 <div className="text-xs text-slate-600">Downloads</div>
               </div>
             </div>

@@ -136,6 +136,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
         // Wait for all requests to finish before closing the modals
         await Promise.all(generationPromises);
         setShowModal(false);
+        window.dispatchEvent(new Event('header-stats-updated'));
+
 
       } catch (error) {
         console.error("Generation error:", error);

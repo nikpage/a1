@@ -39,6 +39,11 @@ export default function DocumentDownloadButtons({
         user_id,
         markdownText: content,
       });
+
+
+      window.dispatchEvent(new Event('header-stats-updated'));
+
+
     } catch (err) {
       console.error('Download error:', err);
       alert('Download error');
