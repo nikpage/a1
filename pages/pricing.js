@@ -1,9 +1,15 @@
 // path: pages/pricing.js
+import Head from 'next/head'; // Import Head
 import Header from '../components/Header';
 
 export default function Pricing() {
   return (
     <>
+      <Head>
+        <title>CV Secret Weapon Pricing</title>
+        <meta name="description" content="Transparent, pay-as-you-go pricing for targeted CVs & cover letters. Generate for free, pay only when you download. Boost your job applications." />
+        <link rel="icon" href="/favicon-32x32.png" /> {/* Favicon link */}
+      </Head>
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-12">
         {/* Hero Section */}

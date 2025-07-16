@@ -1,9 +1,15 @@
 // path: pages/simple-steps.js
+import Head from 'next/head'; // Import Head
 import Header from '../components/Header';
 
 export default function SimpleSteps() {
   return (
     <>
+      <Head>
+        <title>Simple Steps to CV Secret Weapon</title>
+        <meta name="description" content="Follow our simple, proven steps to transform your CV and job applications. Maximize your interview success with targeted, ATS-optimized documents." />
+        <link rel="icon" href="/favicon-32x32.png" /> {/* Favicon link */}
+      </Head>
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-12">
         {/* Hero Section */}
@@ -138,4 +144,11 @@ export default function SimpleSteps() {
       </main>
     </>
   );
+}
+
+// Add getStaticProps for static site generation
+export async function getStaticProps() {
+  return {
+    props: {}, // No specific props needed for this page as content is hardcoded in JSX
+  };
 }
