@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import Head from 'next/head'; // Import Head
+import Head from 'next/head';
 import Header from '../components/Header';
 import LoadingModal from '../components/LoadingModal';
 
@@ -28,8 +28,6 @@ export default function IndexPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      // This part of the logic assumes no login, as per previous discussions.
-      // If authentication is needed, this flow would need to be adjusted.
       const uploadRes = await fetch('/api/upload-cv', {
         method: 'POST',
         body: formData,
@@ -76,22 +74,27 @@ export default function IndexPage() {
       </Head>
       <Header />
       <main className="mx-auto px-4 py-4 text-center">
-        <div className="flex flex-row justify-center items-start mb-6 gap-20">
-          <div className="w-[600px] text-4xl font-light text-slate-800 text-center leading-tight">
+        {/* Hero Section - 3 columns on desktop, stacked on mobile */}
+        <div className="flex flex-col lg:flex-row justify-center items-start mb-6 lg:gap-20 gap-8">
+          <div className="w-full lg:w-[600px] text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 text-center leading-tight">
             Regular CV<br /><em>plus</em> Job Add
           </div>
-          <div className="w-[600px] text-4xl font-light text-slate-800 text-center leading-tight">
+          <div className="w-full lg:w-[600px] text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 text-center leading-tight">
             Targeted<br />CV & Cover Letter
           </div>
-          <div className="w-[600px] text-4xl font-light text-slate-800 text-center leading-tight">
+          <div className="w-full lg:w-[600px] text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 text-center leading-tight">
             More Interviews<br />More Offers
           </div>
         </div>
-        <div className="mb-8 text-xl text-slate-500 font-normal text-center">
+
+        {/* Subtitle */}
+        <div className="mb-8 text-lg sm:text-xl text-slate-500 font-normal text-center px-4">
           Because Average CVs Are for Average People.
         </div>
 
-        <form onSubmit={handleUploadAndAnalyze} className="flex flex-col gap-6 items-center mb-16">
+        {/* Form Section */}
+        <form onSubmit={handleUploadAndAnalyze} className="flex flex-col gap-6 items-center mb-16 px-4">
+          {/* File Upload */}
           <div
             onClick={() => document.getElementById('file-input').click()}
             onDragOver={(e) => e.preventDefault()}
@@ -100,12 +103,14 @@ export default function IndexPage() {
               const droppedFile = e.dataTransfer.files[0];
               if (droppedFile) setFile(droppedFile);
             }}
-            className="w-full max-w-xl border-2 border-dashed border-gray-300 rounded-lg py-6 bg-white cursor-pointer flex flex-col items-center justify-center h-28"
+            className="w-full max-w-xl border-2 border-dashed border-gray-300 rounded-lg py-6 bg-white cursor-pointer flex flex-col items-center justify-center h-28 touch-manipulation"
           >
-            {file ? file.name : (
+            {file ? (
+              <p className="text-black text-sm sm:text-base px-4 text-center break-words">{file.name}</p>
+            ) : (
               <>
-                <p className="text-black text-base">Drop CV or LinkedIn Profile</p>
-                <p className="text-black text-base mt-1">PDF or Word</p>
+                <p className="text-black text-sm sm:text-base">Drop CV or LinkedIn Profile</p>
+                <p className="text-black text-sm sm:text-base mt-1">PDF or Word</p>
               </>
             )}
             <input
@@ -117,25 +122,29 @@ export default function IndexPage() {
             />
           </div>
 
+          {/* Job Text Area */}
           <textarea
-            placeholder="Paste Job Ad (highly recomneded)"
+            placeholder="Paste Job Ad (highly recommended)"
             value={jobText}
             onChange={(e) => setJobText(e.target.value)}
             rows={5}
-            className="w-full max-w-xl border border-gray-300 rounded-lg p-3 text-base text-black text-center placeholder-text-black placeholder-opacity-100"
+            className="w-full max-w-xl border border-gray-300 rounded-lg p-3 text-sm sm:text-base text-black text-center placeholder-text-black placeholder-opacity-100 resize-none"
           />
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading || !file}
-            className="action-btn w-full max-w-xl"
+            className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 touch-manipulation"
           >
             {loading ? 'Uploading & Analyzing…' : 'Upload & Analyze'}
           </button>
 
-          {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+          {/* Error Message */}
+          {error && <div className="text-red-600 text-sm mt-2 px-4 text-center">{error}</div>}
         </form>
 
+        {/* Loading Modal */}
         {showLoadingModal && (
           <LoadingModal
             title={loadingModalTitle}
