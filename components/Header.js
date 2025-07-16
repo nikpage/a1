@@ -98,7 +98,7 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
     <header className="bg-white border-b border-gray-200 py-4 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
 
-        {/* Desktop Layout - unchanged for desktop */}
+        {/* Desktop Layout - reordered counter above email */}
         <div className="hidden lg:flex items-center justify-between">
           {/* Logo and Title */}
           <div className="flex flex-col items-start">
@@ -124,7 +124,7 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
 
           {/* User Info Panel (only shown when user_id exists) */}
           {user_id && (
-            <div className="flex items-center space-x-6">
+            <div className="flex flex-col items-end space-y-4">
               {/* Usage Stats */}
               <div className="flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-lg">
                 <div className="text-center">
