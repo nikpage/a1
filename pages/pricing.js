@@ -20,17 +20,17 @@ export default function Pricing() {
         <div className="bg-[#41b4a2] bg-opacity-10 border border-[#41b4a2] rounded-2xl p-8 mb-16 text-center">
           <h2 className="text-2xl font-semibold text-slate-800 mb-4">Try Before You Buy</h2>
           <p className="text-lg text-slate-600 mb-6">
-            Generate unlimited CVs and cover letters for free. Experiment with different tones and styles.
+            Generate CVs and cover letters for FREE. No registration or cards required. Experiment with different tones.
             You only pay when you're ready to download your final documents.
           </p>
           <div className="flex items-center justify-center space-x-8">
             <div className="text-center">
-              <div className="text-3xl font-light text-[#41b4a2] mb-2">∞</div>
-              <div className="text-slate-700 font-medium">Free Generations</div>
+              <div className="text-3xl font-light text-[#41b4a2] mb-2">1</div>
+              <div className="text-slate-700 font-medium">Free CV Analysys</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-light text-[#41b4a2] mb-2">10</div>
-              <div className="text-slate-700 font-medium">Free Experiments</div>
+              <div className="text-slate-700 font-medium">Free Generated Docs</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-light text-[#41b4a2] mb-2">€0</div>
@@ -49,10 +49,10 @@ export default function Pricing() {
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          {/* Starter */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
+          {/* Single Doc */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 relative hover:shadow-lg transition-all duration-200">
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-slate-800 mb-2">Starter</h3>
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">Single Doc</h3>
               <div className="text-3xl font-light text-[#41b4a2] mb-1">€6</div>
               <div className="text-slate-500 text-sm mb-4">1 Download</div>
               <div className="text-slate-600 text-sm mb-6">Perfect for trying out</div>
@@ -85,10 +85,7 @@ export default function Pricing() {
           </div>
 
           {/* Essential */}
-          <div className="bg-white border-2 border-[#41b4a2] rounded-xl p-6 relative hover:shadow-lg transition-all duration-200">
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#41b4a2] text-white px-3 py-1 rounded-full text-xs font-medium">
-              Most Popular
-            </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-6 relative hover:shadow-lg transition-all duration-200">
             <div className="text-center">
               <h3 className="text-xl font-semibold text-slate-800 mb-2">Essential</h3>
               <div className="text-3xl font-light text-[#41b4a2] mb-1">€8</div>
@@ -116,16 +113,20 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full bg-[#41b4a2] hover:bg-[#369185] text-white py-2 rounded-lg font-medium transition-colors text-sm">
+              <button className="w-full bg-gray-100 text-slate-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm">
                 €4.00 per download
               </button>
             </div>
           </div>
 
-          {/* Professional */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
+          {/* Serious */}
+          <div className="bg-white border-2 border-[#41b4a2] rounded-xl p-6 relative hover:shadow-lg transition-all duration-200">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#41b4a2] text-white px-3 py-1 rounded-full text-xs font-medium">
+              Most Popular
+            </div>
+
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-slate-800 mb-2">Professional</h3>
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">Serious</h3>
               <div className="text-3xl font-light text-[#41b4a2] mb-1">€23</div>
               <div className="text-slate-500 text-sm mb-4">10 Downloads</div>
               <div className="text-slate-600 text-sm mb-6">Best for job hunting</div>
@@ -151,19 +152,19 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full bg-slate-700 hover:bg-slate-800 text-white py-2 rounded-lg font-medium transition-colors text-sm">
+              <button className="w-full bg-[#41b4a2] hover:bg-[#369185] text-white py-2 rounded-lg font-medium transition-colors text-sm">
                 €2.30 per download
               </button>
             </div>
           </div>
 
-          {/* Enterprise */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
+          {/* Driven */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 relative hover:shadow-lg transition-all duration-200">
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-slate-800 mb-2">Enterprise</h3>
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">Driven</h3>
               <div className="text-3xl font-light text-[#41b4a2] mb-1">€42</div>
               <div className="text-slate-500 text-sm mb-4">30 Downloads</div>
-              <div className="text-slate-600 text-sm mb-6">Professional package</div>
+              <div className="text-slate-600 text-sm mb-6">Serious package</div>
 
               <ul className="text-left space-y-2 mb-6 text-sm">
                 <li className="flex items-center text-slate-700">
@@ -186,7 +187,7 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full bg-slate-700 hover:bg-slate-800 text-white py-2 rounded-lg font-medium transition-colors text-sm">
+              <button className="w-full bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg font-medium transition-colors text-sm">
                 €1.40 per download
               </button>
             </div>
@@ -201,22 +202,22 @@ export default function Pricing() {
               <div className="w-12 h-12 bg-[#41b4a2] bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-[#41b4a2] font-semibold">1</span>
               </div>
-              <h3 className="font-semibold text-slate-800 mb-2">Generate for Free</h3>
-              <p className="text-slate-600 text-sm">Upload your CV and job description. Generate unlimited variations with different tones and styles.</p>
+              <h3 className="font-semibold text-slate-800 mb-2">Professional Analysis FREE</h3>
+              <p className="text-slate-600 text-sm">Upload your CV and get yoye professioanl analysis FREE.</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-[#41b4a2] bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-[#41b4a2] font-semibold">2</span>
               </div>
-              <h3 className="font-semibold text-slate-800 mb-2">Perfect Your Documents</h3>
-              <p className="text-slate-600 text-sm">Try up to 10 different versions. Experiment with professional, casual, or creative tones.</p>
+              <h3 className="font-semibold text-slate-800 mb-2">Target those Jobs</h3>
+              <p className="text-slate-600 text-sm">Copy the job description right off the web and past it in for an analysis ans specific strategy how to trune your CV and write a cover letter targeting that specific opportunity.</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-[#41b4a2] bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-[#41b4a2] font-semibold">3</span>
               </div>
-              <h3 className="font-semibold text-slate-800 mb-2">Download When Ready</h3>
-              <p className="text-slate-600 text-sm">Only pay when you're satisfied. Download your optimized documents in PDF or DOCX format.</p>
+              <h3 className="font-semibold text-slate-800 mb-2">Generate Targeted CV and Cover Letter</h3>
+              <p className="text-slate-600 text-sm">Select the right tone from formal to Kick-Ass Cocky and download the word doc. Always perfectly written, optimized for ATS, with skills listed in your CV echoing the the exact requirements listed in the job ad.</p>
             </div>
           </div>
         </div>
@@ -250,7 +251,7 @@ export default function Pricing() {
           <div className="text-left max-w-2xl mx-auto space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-2">How many times can I generate documents for free?</h3>
-              <p className="text-slate-600">You can generate unlimited documents and try up to 10 different versions before needing to purchase downloads.</p>
+              <p className="text-slate-600">You can generate unlimited verions but after 10 we ask you to download a document to keep ourt costs under comntrol and as low as possible for you. After each download the Generations Counter is reset back to 10.</p>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-2">What file formats do you provide?</h3>

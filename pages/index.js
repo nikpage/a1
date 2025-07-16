@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head'; // Import Head
 import Header from '../components/Header';
 import LoadingModal from '../components/LoadingModal';
 
@@ -69,6 +70,10 @@ export default function IndexPage() {
 
   return (
     <>
+      <Head>
+        <title>Job Targeted CV & Cover Letter</title>
+        <meta name="description" content="Target your applications to every job you apply to with keyword matched and ATS optimized CV and cover letters that make you not only get noticed but stand out and got onto the interview A-List." />
+      </Head>
       <Header />
       <main className="mx-auto px-4 py-4 text-center">
         <div className="flex flex-row justify-center items-start mb-6 gap-20">
@@ -141,4 +146,11 @@ export default function IndexPage() {
       </main>
     </>
   );
+}
+
+// Add getStaticProps for static site generation
+export async function getStaticProps() {
+  return {
+    props: {}, // No specific props needed for this page as content is hardcoded in JSX
+  };
 }

@@ -6,7 +6,8 @@ import Link from 'next/link';
 
 export default function Header({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [downloads, setDownloads] = useState(0);
-const [generations, setGenerations] = useState(0);  const [email, setEmail] = useState('');
+  const [generations, setGenerations] = useState(0);
+  const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -72,16 +73,21 @@ const [generations, setGenerations] = useState(0);  const [email, setEmail] = us
   return (
     <header className="bg-white border-b border-gray-200 py-4 px-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center">
-          <Image
-            src="/logo_cvprp+trans.png"
-            alt="CV App Logo"
-            width={120}
-            height={60}
-            className="h-12 w-auto object-contain"
-            priority
-          />
+        {/* Logo and Title */}
+        <div className="flex flex-col items-start">
+          <Link href="/">
+            <Image
+              src="/logo_cvprp+trans.png"
+              alt="TheCV.Pro Logo - Your Secret Weapon to Interview Calls"
+              width={120}
+              height={60}
+              className="h-12 w-auto object-contain"
+              priority
+            />
+          </Link>
+          <h1 className="text-xl font-bold text-[#41b4a2] hidden lg:block">
+            Your Secret Weapon to Interview Calls <em className="text-[#2c9486] font-normal">...or his?</em>
+          </h1>
         </div>
 
         {/* Navigation */}
