@@ -13,9 +13,6 @@ import StartFreshModal from './StartFreshModal';
 import LoadingModal from './LoadingModal';
 import { useState, useEffect, useLayoutEffect } from 'react';
 
-
-
-
 export default function TabbedViewer({ user_id, analysisText }) {
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
 
@@ -77,7 +74,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [loadingModalMessage, setLoadingModalMessage] = useState('');
   const [loadingModalTitle, setLoadingModalTitle] = useState('');
 
-
   const handleSubmit = async ({ tone, selected, jobText }) => {
       setShowLoadingModal(true);
       setLoadingModalTitle('Generating Documents');
@@ -137,7 +133,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
         await Promise.all(generationPromises);
         setShowModal(false);
         window.dispatchEvent(new Event('header-stats-updated'));
-
 
       } catch (error) {
         console.error("Generation error:", error);
@@ -246,7 +241,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
     }
   }, []);
 
-
   useLayoutEffect(() => {
     const prevScroll = window.scrollY;
     setTimeout(() => {
@@ -254,143 +248,230 @@ export default function TabbedViewer({ user_id, analysisText }) {
     }, 1);
   }, [activeTab]);
 
-
   return (
-    <div className="doc-viewer">
-      <div className="text-center mb-4">
-        <button onClick={() => setShowModal('startFresh')} className="action-btn">
+    <div className="doc-viewer px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      {/* Start Fresh Button */}
+      <div className="text-center mb-6">
+        <button
+          onClick={() => setShowModal('startFresh')}
+          className="action-btn px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base"
+        >
           Start Fresh
         </button>
-
       </div>
 
-      <div className="flex border-b border-accent bg-bg mb-8 gap-12">
-        {tabs.map(tab => {
-          const isDisabled =
-            (tab.id === 'cv' && cvVersions.length === 0) ||
-            (tab.id === 'cover' && coverVersions.length === 0);
+      {/* Responsive Tab Navigation */}
+      <div className="flex flex-col sm:flex-row border-b border-accent bg-bg mb-6 sm:mb-8">
+        {/* Mobile: Dropdown-style tabs */}
+        <div className="sm:hidden">
+          <select
+            value={activeTab}
+            onChange={(e) => {
+              const tabId = e.target.value;
+              const tab = tabs.find(t => t.id === tabId);
+              const isDisabled =
+                (tab.id === 'cv' && cvVersions.length === 0) ||
+                (tab.id === 'cover' && coverVersions.length === 0);
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (isDisabled) {
-                  alert(`No ${tab.label} available`);
-                } else {
-                  setActiveTab(tab.id);
-                }
-              }}
-              className={`tab-btn ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
+              if (isDisabled) {
+                alert(`No ${tab.label} available`);
+              } else {
+                setActiveTab(tabId);
+              }
+            }}
+            className="w-full p-3 border border-gray-300 rounded-lg bg-white text-base"
+          >
+            {tabs.map(tab => {
+              const isDisabled =
+                (tab.id === 'cv' && cvVersions.length === 0) ||
+                (tab.id === 'cover' && coverVersions.length === 0);
+
+              return (
+                <option
+                  key={tab.id}
+                  value={tab.id}
+                  disabled={isDisabled}
+                >
+                  {tab.label} {isDisabled ? '(Not Available)' : ''}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        {/* Desktop: Horizontal tabs */}
+        <div className="hidden sm:flex sm:gap-6 lg:gap-12">
+          {tabs.map(tab => {
+            const isDisabled =
+              (tab.id === 'cv' && cvVersions.length === 0) ||
+              (tab.id === 'cover' && coverVersions.length === 0);
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (isDisabled) {
+                    alert(`No ${tab.label} available`);
+                  } else {
+                    setActiveTab(tab.id);
+                  }
+                }}
+                className={`tab-btn text-sm sm:text-base px-2 py-3 sm:px-4 ${
+                  activeTab === tab.id ? 'active' : ''
+                } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {activeTab === 'analysis' && (
-        <div>
-          {analysisTextState ? (
-            <>
-              <AnalysisDisplay analysis={analysisTextState} />
-              {!showBuilder && (
-                <div className="text-center mt-8">
-                  <button onClick={() => setShowModal(true)} className="action-btn">
-                    Write Now!
-                  </button>
-                </div>
-              )}
-              {showBuilder && (
-                <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={docs.cv} />
-              )}
-            </>
-          ) : (
-            <p>No analysis available</p>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'cv' && (
-        <div>
-          {cvVersions.length > 0 ? (
-            <>
-              <div className="flex flex-col items-center mb-4">
-                <div className="mb-2 text-sm font-bold text-gray-800">
-                  Version {cvCurrentIndex + 1} of {cvVersions.length}
-                </div>
-                <div className="flex flex-row gap-4">
-                  <button onClick={() => goToPrevVersion('cv')} disabled={cvCurrentIndex === 0}>
-                    &lt; Prev
-                  </button>
-                  <button onClick={() => setShowModal('regenerate')} className="action-btn">
-                    Regenerate
-                  </button>
-                  <button onClick={() => goToNextVersion('cv')} disabled={cvCurrentIndex === cvVersions.length - 1}>
-                    Next &gt;
-                  </button>
-                </div>
+      {/* Tab Content */}
+      <div className="tab-content">
+        {activeTab === 'analysis' && (
+          <div>
+            {analysisTextState ? (
+              <>
+                <AnalysisDisplay analysis={analysisTextState} />
+                {!showBuilder && (
+                  <div className="text-center mt-6 sm:mt-8">
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="action-btn px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base"
+                    >
+                      Write Now!
+                    </button>
+                  </div>
+                )}
+                {showBuilder && (
+                  <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={docs.cv} />
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 sm:py-12">
+                <p className="text-gray-600 text-base sm:text-lg">No analysis available</p>
               </div>
-              <CV_Cover_Display content={cvVersions[cvCurrentIndex]} />
-              <DocumentDownloadButtons
-                user_id={user_id}
-                cvText={cvVersions[cvCurrentIndex]}
-                coverText={coverVersions[coverCurrentIndex]}
-                activeTab={activeTab}
-                onTokenFail={() => setShowBuyPanel(true)}
-              />
-            </>
-          ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={null} />
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
-
-      {activeTab === 'cover' && (
-        <div>
-          {coverVersions.length > 0 ? (
-            <>
-              <div className="flex flex-col items-center mb-4">
-                <div className="mb-2 text-sm font-bold text-gray-800">
-                  Version {coverCurrentIndex + 1} of {coverVersions.length}
+        {activeTab === 'cv' && (
+          <div>
+            {cvVersions.length > 0 ? (
+              <>
+                {/* Version Controls */}
+                <div className="flex flex-col items-center mb-4 sm:mb-6">
+                  <div className="mb-3 text-sm font-bold text-gray-800">
+                    Version {cvCurrentIndex + 1} of {cvVersions.length}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
+                    <div className="flex gap-2 sm:gap-4">
+                      <button
+                        onClick={() => goToPrevVersion('cv')}
+                        disabled={cvCurrentIndex === 0}
+                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      >
+                        &lt; Prev
+                      </button>
+                      <button
+                        onClick={() => goToNextVersion('cv')}
+                        disabled={cvCurrentIndex === cvVersions.length - 1}
+                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      >
+                        Next &gt;
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setShowModal('regenerate')}
+                      className="action-btn px-4 py-2 text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-row gap-4">
-                  <button onClick={() => goToPrevVersion('cover')} disabled={coverCurrentIndex === 0}>
-                    &lt; Prev
-                  </button>
-                  <button onClick={() => setShowModal('regenerate')} className="action-btn">
-                    Regenerate
-                  </button>
-                  <button onClick={() => goToNextVersion('cover')} disabled={coverCurrentIndex === coverVersions.length - 1}>
-                    Next &gt;
-                  </button>
-                </div>
-              </div>
-              <CV_Cover_Display content={coverVersions[coverCurrentIndex]} />
-              <DocumentDownloadButtons
-                user_id={user_id}
-                cvText={cvVersions[cvCurrentIndex]}
-                coverText={coverVersions[coverCurrentIndex]}
-                activeTab={activeTab}
-                onTokenFail={() => setShowBuyPanel(true)}
-              />
-            </>
-          ) : (
-            <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={null} />
-          )}
-        </div>
-      )}
 
+                <CV_Cover_Display content={cvVersions[cvCurrentIndex]} />
+
+                <div className="mt-6 sm:mt-8">
+                  <DocumentDownloadButtons
+                    user_id={user_id}
+                    cvText={cvVersions[cvCurrentIndex]}
+                    coverText={coverVersions[coverCurrentIndex]}
+                    activeTab={activeTab}
+                    onTokenFail={() => setShowBuyPanel(true)}
+                  />
+                </div>
+              </>
+            ) : (
+              <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={null} />
+            )}
+          </div>
+        )}
+
+        {activeTab === 'cover' && (
+          <div>
+            {coverVersions.length > 0 ? (
+              <>
+                {/* Version Controls */}
+                <div className="flex flex-col items-center mb-4 sm:mb-6">
+                  <div className="mb-3 text-sm font-bold text-gray-800">
+                    Version {coverCurrentIndex + 1} of {coverVersions.length}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
+                    <div className="flex gap-2 sm:gap-4">
+                      <button
+                        onClick={() => goToPrevVersion('cover')}
+                        disabled={coverCurrentIndex === 0}
+                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      >
+                        &lt; Prev
+                      </button>
+                      <button
+                        onClick={() => goToNextVersion('cover')}
+                        disabled={coverCurrentIndex === coverVersions.length - 1}
+                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      >
+                        Next &gt;
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setShowModal('regenerate')}
+                      className="action-btn px-4 py-2 text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                </div>
+
+                <CV_Cover_Display content={coverVersions[coverCurrentIndex]} />
+
+                <div className="mt-6 sm:mt-8">
+                  <DocumentDownloadButtons
+                    user_id={user_id}
+                    cvText={cvVersions[cvCurrentIndex]}
+                    coverText={coverVersions[coverCurrentIndex]}
+                    activeTab={activeTab}
+                    onTokenFail={() => setShowBuyPanel(true)}
+                  />
+                </div>
+              </>
+            ) : (
+              <CV_Cover_Display user_id={user_id} analysis={analysisTextState} content={null} />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
       {showModal === 'startFresh' && (
-      <StartFreshModal
-        user_id={user_id}
-        onClose={() => setShowModal(false)}
-        onSubmit={handleSubmit}
-        onStartFresh={startFresh}
-      />
-    )}
-
-
+        <StartFreshModal
+          user_id={user_id}
+          onClose={() => setShowModal(false)}
+          onSubmit={handleSubmit}
+          onStartFresh={startFresh}
+        />
+      )}
 
       {showModal === 'regenerate' && (
         <ToneDocModal
@@ -399,22 +480,21 @@ export default function TabbedViewer({ user_id, analysisText }) {
         />
       )}
 
-
       {showModal === true && (
         <ToneDocModal onClose={() => setShowModal(false)} onSubmit={handleSubmit} />
       )}
 
       {showBuyPanel && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <DownloadTokenPanel
-            onClose={() => setShowBuyPanel(false)}
-            user_id={user_id}
-            forceShowBuy={!window.location.search.includes('success=true')}
-          />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl">
+            <DownloadTokenPanel
+              onClose={() => setShowBuyPanel(false)}
+              user_id={user_id}
+              forceShowBuy={!window.location.search.includes('success=true')}
+            />
+          </div>
         </div>
       )}
-
-
 
       {showThankYou && (
         <BaseModal onClose={() => setShowThankYou(false)}>

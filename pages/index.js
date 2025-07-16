@@ -71,7 +71,8 @@ export default function IndexPage() {
       <Head>
         <title>Job Targeted CV & Cover Letter</title>
         <meta name="description" content="Target your applications to every job you apply to with keyword matched and ATS optimized CV and cover letters that make you not only get noticed but stand out and got onto the interview A-List." />
-      </Head>
+<link rel="icon" href="/favicon-32x32.png" />
+    </Head>
       <Header />
       <main className="mx-auto px-4 py-4 text-center">
         {/* Hero Section - 3 columns on desktop, stacked on mobile */}
