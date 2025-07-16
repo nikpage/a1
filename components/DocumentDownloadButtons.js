@@ -29,17 +29,21 @@ export default function DocumentDownloadButtons({
       }
 
       if (!res.ok) {
-        alert('Download failed');
+        alert('Token check failed');
         return;
       }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${type}-${user_id}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Token valid — generate and download
+      await exportDocxWithDocxLib({
+        type,
+        user_id,
+        markdownText: content,
+      });
+
+
+      window.dispatchEvent(new Event('header-stats-updated'));
+
+
     } catch (err) {
       console.error('Download error:', err);
       alert('Download error');
@@ -49,10 +53,12 @@ export default function DocumentDownloadButtons({
   return (
     <div style={{ textAlign: 'center', marginTop: '2rem' }}>
       <button
-        onClick={handleDownload}
-      >
-        Download {activeTab === 'cv' ? 'CV' : 'Cover Letter'}
-      </button>
+    className="download-btn"
+    onClick={handleDownload}
+  >
+    Download {activeTab === 'cv' ? 'CV' : 'Cover Letter'}
+  </button>
+
     </div>
   );
 }

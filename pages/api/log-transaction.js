@@ -1,6 +1,8 @@
 // pages/api/log-transaction.js
 
 import { createClient } from '@supabase/supabase-js'
+import { KeyManager } from '../../utils/key-manager.js'
+const keyManager = new KeyManager()
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -60,7 +62,8 @@ export default async function handler(req, res) {
       completion_tokens,
       amount_usd,
       detail: { job_title, company, tone },
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+       key_index: keyManager.currentKeyIndex
     }
   ])
 

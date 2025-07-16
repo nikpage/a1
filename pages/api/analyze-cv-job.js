@@ -3,6 +3,9 @@ import { getCvData, saveGeneratedDoc } from '../../utils/database';
 import { analyzeCvJob } from '../../utils/openai';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { KeyManager } from '../../utils/key-manager.js';
+
+const keyManager = new KeyManager();
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -87,24 +90,23 @@ export default async function handler(req, res) {
     ? 'http://localhost:3000'
     : `https://${process.env.VERCEL_URL}`;
 
-await fetch(`${baseURL}/api/log-transaction`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id,
-        source_gen_id: analysis_id,
-        model: 'DS-v3', // Or make this dynamic based on the actual model used
-        // Using DeepSeek's specific usage properties
-        prompt_tokens: usage.prompt_tokens || 0, // DeepSeek might use prompt_tokens
-        completion_tokens: usage.completion_tokens || 0,
-        total_tokens: usage.total_tokens || 0,
-        cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
-        cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
-        job_title,
-        company,
-        // 'tone' removed from here
-      }),
-    });
+  await fetch(`${baseURL}/api/log-transaction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id,
+      source_gen_id: analysis_id,
+      model: 'DS-v3',
+      prompt_tokens: usage.prompt_tokens || 0,
+      completion_tokens: usage.completion_tokens || 0,
+      total_tokens: usage.total_tokens || 0,
+      cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
+      cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
+      job_title,
+      company,
+      key_index: keyManager.currentKeyIndex
+    }),
+  });
 
     return res.status(200).json({ analysis: content, analysis_id });
   } catch (e) {
