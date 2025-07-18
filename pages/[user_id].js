@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
 import { createClient } from '@supabase/supabase-js';
+import Head from 'next/head';
+
 
 export default function UserPage({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [analysis, setAnalysis] = useState('');
@@ -21,6 +23,10 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
 
   return (
     <>
+      <Head>
+        <link rel="icon" href="/favicon-32x32.png" /> 
+      </Head>
+
       <Header
     user_id={user_id}
     generationsRemaining={generationsRemaining}
