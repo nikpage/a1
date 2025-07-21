@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../utils/supabase';
 import Head from 'next/head';
 
 
@@ -24,7 +24,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
   return (
     <>
       <Head>
-        <link rel="icon" href="/favicon-32x32.png" /> 
+        <link rel="icon" href="/favicon-32x32.png" />
       </Head>
 
       <Header
@@ -49,8 +49,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
 export async function getServerSideProps(context) {
   const { user_id } = context.params;
 
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-
+  
   const { data: user } = await supabase
     .from('users')
     .select('generations_left, tokens')
