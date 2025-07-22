@@ -1,6 +1,7 @@
 // pages/api/get-analysis.js
 
-import { supabase } from '../../utils/database'
+import { supabase } from '../../utils/supabase';
+
 
 export default async function handler(req, res) {
   const { user_id, type, cv_text_hash, job_text_hash } = req.body

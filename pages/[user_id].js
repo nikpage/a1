@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../utils/supabase';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
 
@@ -64,8 +64,13 @@ export async function getServerSideProps(context) {
     return { redirect: { destination: '/?error=unauthorized', permanent: false } };
   }
 
+<<<<<<< HEAD
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data: user, error } = await supabase
+=======
+  
+  const { data: user } = await supabase
+>>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540
     .from('users')
     .select('generations_left, tokens, email')
     .eq('user_id', user_id)
