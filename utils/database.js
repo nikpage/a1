@@ -9,11 +9,16 @@ const supabase = createClient(
 
 // Upsert user
 export async function upsertUser(user_id, phone_hash = null, email = null) {
-  const { data, error } = await supabase
-    .from('users')
-    .upsert([{ user_id, phone_hash, email }], { onConflict: ['user_id'] })
-  if (error) throw error
-  return data
+    const { data, error } = await supabase
+        .from('users')
+        .upsert([{ user_id, phone_hash, email }], { onConflict: ['user_id'] })
+        .select();
+    if (error) {
+        console.error('UpsertUser error:', error.message, error.details);
+        throw new Error(`UpsertUser failed: ${error.message}`);
+    }
+    console.log('User upserted:', user_id, data);
+    return data;
 }
 
 

@@ -1,10 +1,10 @@
-// path: pages/index.js
-
+// pages/index.js
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Header from '../components/Header';
 import LoadingModal from '../components/LoadingModal';
+import LoginModal from '../components/LoginModal';
 
 export default function IndexPage() {
   const router = useRouter();
@@ -15,6 +15,28 @@ export default function IndexPage() {
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [loadingModalMessage, setLoadingModalMessage] = useState('');
   const [loadingModalTitle, setLoadingModalTitle] = useState('');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Check for error messages from auth redirects
+  const { error: urlError } = router.query;
+  useState(() => {
+    if (urlError) {
+      switch (urlError) {
+        case 'unauthorized':
+          setError('Please log in to access your CV analysis.');
+          break;
+        case 'invalid-token':
+        case 'invalid-or-expired-token':
+          setError('Login link is invalid or expired. Please request a new one.');
+          break;
+        case 'verification-failed':
+        case 'login-failed':
+          setError('Login failed. Please try again.');
+          break;
+      }
+    }
+  }, [urlError]);
 
   const handleUploadAndAnalyze = async (e) => {
     e.preventDefault();
@@ -38,6 +60,7 @@ export default function IndexPage() {
         throw new Error(uploadData.error || 'Upload failed');
       }
 
+      setCurrentUserId(uploadData.user_id);
       setLoadingModalMessage('Analysis in progress...');
 
       const analyzeRes = await fetch('/api/analyze-cv-job', {
@@ -56,14 +79,24 @@ export default function IndexPage() {
         throw new Error(analyzeData.error || 'Analysis failed');
       }
 
-      router.push(`/${uploadData.user_id}`);
+      // Analysis complete - show Write Now button
+      setShowLoadingModal(false);
+      setLoading(false);
+
     } catch (err) {
       console.error("Upload/Analysis Error:", err);
       setError('Error: ' + err.message);
-    } finally {
-      setLoading(false);
       setShowLoadingModal(false);
+      setLoading(false);
     }
+  };
+
+  const handleWriteNowClick = () => {
+    if (!currentUserId) {
+      setError('Please upload and analyze your CV first.');
+      return;
+    }
+    setShowLoginModal(true);
   };
 
   return (
@@ -71,8 +104,8 @@ export default function IndexPage() {
       <Head>
         <title>Job Targeted CV & Cover Letter</title>
         <meta name="description" content="Target your applications to every job you apply to with keyword matched and ATS optimized CV and cover letters that make you not only get noticed but stand out and got onto the interview A-List." />
-<link rel="icon" href="/favicon-32x32.png" />
-    </Head>
+        <link rel="icon" href="/favicon-32x32.png" />
+      </Head>
       <Header />
       <main className="mx-auto px-4 py-4 text-center">
         {/* Hero Section - 3 columns on desktop, stacked on mobile */}
@@ -145,6 +178,16 @@ export default function IndexPage() {
           {error && <div className="text-red-600 text-sm mt-2 px-4 text-center">{error}</div>}
         </form>
 
+        {/* Write Now button - only show after successful analysis */}
+        {currentUserId && !loading && (
+          <button
+            onClick={handleWriteNowClick}
+            className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 mt-8 touch-manipulation"
+          >
+            Write Now
+          </button>
+        )}
+
         {/* Loading Modal */}
         {showLoadingModal && (
           <LoadingModal
@@ -153,14 +196,21 @@ export default function IndexPage() {
             onClose={() => setShowLoadingModal(false)}
           />
         )}
+
+        {/* Login Modal */}
+        {showLoginModal && (
+          <LoginModal
+            onClose={() => setShowLoginModal(false)}
+            userId={currentUserId}
+          />
+        )}
       </main>
     </>
   );
 }
 
-// Add getStaticProps for static site generation
 export async function getStaticProps() {
   return {
-    props: {}, // No specific props needed for this page as content is hardcoded in JSX
+    props: {},
   };
 }

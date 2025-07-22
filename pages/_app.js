@@ -1,3 +1,4 @@
+// pages/_app.js
 import '../styles/globals.css';
 import '../styles/cv-cover.css';
 import Script from 'next/script';

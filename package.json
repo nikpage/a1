@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.3.0",
+    "@magic-sdk/admin": "^2.4.1",
     "@supabase/supabase-js": "^1.35.7",
     "@tailwindcss/typography": "^0.5.16",
     "autoprefixer": "^10.4.19",
@@ -19,6 +21,8 @@
     "formidable": "^2.1.5",
     "franc": "^6.2.0",
     "iso-639-3": "^3.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "magic-sdk": "^29.2.1",
     "mammoth": "^1.9.1",
     "marked": "^15.0.12",
     "micro": "^10.0.1",
@@ -32,7 +36,7 @@
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "resend": "^4.6.0",
+    "resend": "^4.7.0",
     "stripe": "^18.2.1",
     "tailwindcss": "^3.4.1",
     "textract": "^2.5.0",
