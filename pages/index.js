@@ -1,19 +1,11 @@
-<<<<<<< HEAD
 // pages/index.js
-import { useState } from 'react';
-=======
-// path: pages/index.js
 import { useState, useEffect } from 'react';
->>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Header from '../components/Header';
 import LoadingModal from '../components/LoadingModal';
-<<<<<<< HEAD
-import LoginModal from '../components/LoginModal';
-=======
 import AnalysisDisplay from '../components/AnalysisDisplay';
->>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540
+import LoginModal from '../components/LoginModal';
 
 export default function IndexPage() {
   const router = useRouter();
@@ -28,31 +20,16 @@ export default function IndexPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
 
-  // Check for error messages from auth redirects
-  const { error: urlError } = router.query;
-  useState(() => {
-    if (urlError) {
-      switch (urlError) {
-        case 'unauthorized':
-          setError('Please log in to access your CV analysis.');
-          break;
-        case 'invalid-token':
-        case 'invalid-or-expired-token':
-          setError('Login link is invalid or expired. Please request a new one.');
-          break;
-        case 'verification-failed':
-        case 'login-failed':
-          setError('Login failed. Please try again.');
-          break;
-      }
-    }
-  }, [urlError]);
-
   useEffect(() => {
     const stored = localStorage.getItem('parsed_cv');
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (parsed?.analysis) setAnalysis(parsed.analysis);
+      if (parsed?.analysis) {
+        setAnalysis(parsed.analysis);
+      }
+      if (parsed?.user_id) {
+        setCurrentUserId(parsed.user_id);
+      }
     }
   }, []);
 
@@ -76,6 +53,7 @@ export default function IndexPage() {
       if (!uploadRes.ok || !uploadData.user_id) throw new Error(uploadData.error || 'Upload failed');
 
       setCurrentUserId(uploadData.user_id);
+
       setLoadingModalMessage('Analysis in progress...');
 
       const analyzeRes = await fetch('/api/analyze-cv-job', {
@@ -86,30 +64,20 @@ export default function IndexPage() {
       const analyzeData = await analyzeRes.json();
       if (!analyzeRes.ok || analyzeData.error) throw new Error(analyzeData.error || 'Analysis failed');
 
-<<<<<<< HEAD
-      if (!analyzeRes.ok || analyzeData.error) {
-        throw new Error(analyzeData.error || 'Analysis failed');
-      }
-
-      // Analysis complete - show Write Now button
-      setShowLoadingModal(false);
-      setLoading(false);
-
-=======
-      const payload = { analysis: analyzeData.analysis };
+      const payload = { analysis: analyzeData.analysis, user_id: uploadData.user_id };
       localStorage.setItem('parsed_cv', JSON.stringify(payload));
       setAnalysis(analyzeData.analysis);
->>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540
     } catch (err) {
       setError('Error: ' + err.message);
-      setShowLoadingModal(false);
+    } finally {
       setLoading(false);
+      setShowLoadingModal(false);
     }
   };
 
   const handleWriteNowClick = () => {
     if (!currentUserId) {
-      setError('Please upload and analyze your CV first.');
+      setError('User ID not found. Please analyze again.');
       return;
     }
     setShowLoginModal(true);
@@ -186,46 +154,14 @@ export default function IndexPage() {
           <div className="border rounded-lg p-6 bg-white shadow-sm max-w-3xl mx-auto text-left">
             <div className="mb-6 text-2xl font-bold text-center">Your CV Analysis</div>
             <AnalysisDisplay analysis={analysis} />
-            <a href="/login" className="mt-6 inline-block text-blue-600 underline text-lg">Log in to save it permanently.</a>
+            <button
+              onClick={handleWriteNowClick}
+              className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 mt-6 touch-manipulation mx-auto block"
+            >
+              Write Now
+            </button>
           </div>
-<<<<<<< HEAD
-
-          {/* Job Text Area */}
-          <textarea
-            placeholder="Paste Job Ad (highly recommended)"
-            value={jobText}
-            onChange={(e) => setJobText(e.target.value)}
-            rows={5}
-            className="w-full max-w-xl border border-gray-300 rounded-lg p-3 text-sm sm:text-base text-black text-center placeholder-text-black placeholder-opacity-100 resize-none"
-          />
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading || !file}
-            className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 touch-manipulation"
-          >
-            {loading ? 'Uploading & Analyzing…' : 'Upload & Analyze'}
-          </button>
-
-          {/* Error Message */}
-          {error && <div className="text-red-600 text-sm mt-2 px-4 text-center">{error}</div>}
-        </form>
-
-        {/* Write Now button - only show after successful analysis */}
-        {currentUserId && !loading && (
-          <button
-            onClick={handleWriteNowClick}
-            className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 mt-8 touch-manipulation"
-          >
-            Write Now
-          </button>
         )}
-
-        {/* Loading Modal */}
-=======
-        )}
->>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540
         {showLoadingModal && (
           <LoadingModal
             title={loadingModalTitle}
@@ -233,8 +169,6 @@ export default function IndexPage() {
             onClose={() => setShowLoadingModal(false)}
           />
         )}
-
-        {/* Login Modal */}
         {showLoginModal && (
           <LoginModal
             onClose={() => setShowLoginModal(false)}
@@ -245,12 +179,3 @@ export default function IndexPage() {
     </>
   );
 }
-<<<<<<< HEAD
-
-export async function getStaticProps() {
-  return {
-    props: {},
-  };
-}
-=======
->>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540

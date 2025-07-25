@@ -1,12 +1,14 @@
 // utils/database.js
 
-// ❗ REMOVED the createClient call from this file.
-// ✅ ADDED this line to import the single, shared client.
-import { supabase } from './supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Upsert user
 export async function upsertUser(user_id, phone_hash = null, email = null) {
-<<<<<<< HEAD
     const { data, error } = await supabase
         .from('users')
         .upsert([{ user_id, phone_hash, email }], { onConflict: ['user_id'] })
@@ -17,13 +19,6 @@ export async function upsertUser(user_id, phone_hash = null, email = null) {
     }
     console.log('User upserted:', user_id, data);
     return data;
-=======
-  const { data, error } = await supabase
-    .from('users')
-    .upsert([{ user_id, phone_hash, email }], { onConflict: ['user_id'] });
-  if (error) throw error;
-  return data;
->>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540
 }
 
 // Upsert CV
@@ -103,6 +98,3 @@ export async function saveGeneratedDoc({
   if (error) throw error;
   return data;
 }
-
-// ❗ This export is no longer needed, as files should import the client
-// from its source in 'utils/supabase.js'. It is removed for clarity.

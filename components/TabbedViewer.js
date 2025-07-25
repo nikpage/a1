@@ -13,6 +13,7 @@ import StartFreshModal from './StartFreshModal';
 import LoadingModal from './LoadingModal';
 import { useState, useEffect, useLayoutEffect } from 'react';
 
+
 export default function TabbedViewer({ user_id, analysisText }) {
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
 
@@ -365,28 +366,28 @@ export default function TabbedViewer({ user_id, analysisText }) {
                   <div className="mb-3 text-sm font-bold text-gray-800">
                     Version {cvCurrentIndex + 1} of {cvVersions.length}
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-                    <div className="flex gap-2 sm:gap-4">
-                      <button
-                        onClick={() => goToPrevVersion('cv')}
-                        disabled={cvCurrentIndex === 0}
-                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      >
-                        &lt; Prev
-                      </button>
-                      <button
-                        onClick={() => goToNextVersion('cv')}
-                        disabled={cvCurrentIndex === cvVersions.length - 1}
-                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      >
-                        Next &gt;
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <button
+                      onClick={() => goToPrevVersion('cv')}
+                      disabled={cvCurrentIndex === 0}
+                      className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      aria-label="Previous Version"
+                    >
+                      &larr;
+                    </button>
                     <button
                       onClick={() => setShowModal('regenerate')}
-                      className="action-btn px-4 py-2 text-sm sm:text-base w-full sm:w-auto"
+                      className="action-btn px-4 py-2 text-sm sm:text-base"
                     >
                       Regenerate
+                    </button>
+                    <button
+                      onClick={() => goToNextVersion('cv')}
+                      disabled={cvCurrentIndex === cvVersions.length - 1}
+                      className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      aria-label="Next Version"
+                    >
+                      &rarr;
                     </button>
                   </div>
                 </div>
@@ -418,28 +419,28 @@ export default function TabbedViewer({ user_id, analysisText }) {
                   <div className="mb-3 text-sm font-bold text-gray-800">
                     Version {coverCurrentIndex + 1} of {coverVersions.length}
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-                    <div className="flex gap-2 sm:gap-4">
-                      <button
-                        onClick={() => goToPrevVersion('cover')}
-                        disabled={coverCurrentIndex === 0}
-                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      >
-                        &lt; Prev
-                      </button>
-                      <button
-                        onClick={() => goToNextVersion('cover')}
-                        disabled={coverCurrentIndex === coverVersions.length - 1}
-                        className="flex-1 sm:flex-none px-3 py-2 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      >
-                        Next &gt;
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <button
+                      onClick={() => goToPrevVersion('cover')}
+                      disabled={coverCurrentIndex === 0}
+                      className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      aria-label="Previous Version"
+                    >
+                      &larr;
+                    </button>
                     <button
                       onClick={() => setShowModal('regenerate')}
-                      className="action-btn px-4 py-2 text-sm sm:text-base w-full sm:w-auto"
+                      className="action-btn px-4 py-2 text-sm sm:text-base"
                     >
                       Regenerate
+                    </button>
+                    <button
+                      onClick={() => goToNextVersion('cover')}
+                      disabled={coverCurrentIndex === coverVersions.length - 1}
+                      className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                      aria-label="Next Version"
+                    >
+                      &rarr;
                     </button>
                   </div>
                 </div>

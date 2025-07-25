@@ -2,11 +2,11 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
-import { supabase } from '../utils/supabase';
+import { createClient } from '@supabase/supabase-js';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
 
-export default function UserPage({ user_id, generationsRemaining, docDownloadsRemaining, userEmail }) {
+export default function UserPage({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [analysis, setAnalysis] = useState('');
 
   useEffect(() => {
@@ -30,7 +30,6 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
         user_id={user_id}
         generationsRemaining={generationsRemaining}
         docDownloadsRemaining={docDownloadsRemaining}
-        userEmail={userEmail}
       />
       <main className="max-w-4xl mx-auto px-4 py-10">
         {analysis ? (
@@ -64,15 +63,10 @@ export async function getServerSideProps(context) {
     return { redirect: { destination: '/?error=unauthorized', permanent: false } };
   }
 
-<<<<<<< HEAD
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data: user, error } = await supabase
-=======
-  
-  const { data: user } = await supabase
->>>>>>> 0dc90bed97c2b789059cc7aec82817ab86fb6540
     .from('users')
-    .select('generations_left, tokens, email')
+    .select('generations_left, tokens')
     .eq('user_id', user_id)
     .single();
 
@@ -86,7 +80,6 @@ export async function getServerSideProps(context) {
       user_id,
       generationsRemaining: user?.generations_left ?? 0,
       docDownloadsRemaining: user?.tokens ?? 0,
-      userEmail: user?.email || decoded.email,
     },
   };
 }
