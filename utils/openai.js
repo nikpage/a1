@@ -214,8 +214,68 @@ All of your output, including in the "cocky" tone, must be in the same language 
 - Write in the "${tone}" tone: (${toneInstructions(tone)}).
 - CV must perform extremely well if re-analyzed by our own analysis engine.
 - Style can be creative and personalized (within the chosen tone) but factual accuracy is required.
-- IMPORTANT: Do NOT include any notes, explanations, summaries, or commentary. Your response must ONLY include the candidate's CV in standard CV format, with no trailing comments or remarks of any kind.
+- IMPORTANT: Do NOT include any notes, explanations, summaries, or commentary. Your response must ONLY include the candidate's CV with no trailing comments, "Note:" lines, or remarks of any kind.
+- NEVER include phrases like "Full career history available upon request" or any similar commentary.
 
+# Formatting Requirements
+Output in Markdown format with this exact structure:
+
+## CENTERED INTRO SECTION (use HTML center tags):
+<center>
+
+### **[Full Name]**
+[Optional tagline/headline if present in original CV]
+[Phone] | [Email] | [LinkedIn/Portfolio URLs]
+
+</center>
+
+---
+
+## LEFT-ALIGNED SECTIONS:
+
+### **Professional Summary**
+[Summary content]
+
+---
+
+### **Key Skills**
+Format as 2-column bullet list:
+<div style="display: flex; flex-wrap: wrap;">
+<div style="width: 50%; padding-right: 10px;">
+
+- [Skill 1]
+- [Skill 3]
+- [Skill 5]
+
+</div>
+<div style="width: 50%;">
+
+- [Skill 2]
+- [Skill 4]
+- [Skill 6]
+
+</div>
+</div>
+
+---
+
+### **Professional Experience**
+For each role, emphasize the role title FIRST and most prominently:
+
+#### **[Job Title]**
+<strong style="color: black;">[Company Name]</strong> | [Dates] | [Location]
+- [Achievement/responsibility]
+- [Achievement/responsibility]
+
+---
+
+### **Education**
+[Education content]
+
+---
+
+### **[Any Other Sections]**
+[Other content as needed]
 
 # Inputs
 ## CV:
@@ -225,7 +285,7 @@ ${cv}
 ${analysis}
 
 # Output
-Return only the full, formatted CV. Do NOT include a cover letter or any extra commentary. No placeholders or fake data.
+Return only the formatted CV in the exact Markdown structure shown above. No additional commentary, notes, or explanations whatsoever.
 `;
 
 const response = await axios.post(
@@ -235,7 +295,7 @@ const response = await axios.post(
     messages: [
       {
         role: 'system',
-        content: 'You are an expert in writing professional CVs for CEE tech roles.'
+        content: 'You are an expert in writing professional CVs. Follow the formatting instructions exactly and never add commentary or notes.'
       },
       {
         role: 'user',
