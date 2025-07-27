@@ -9,8 +9,15 @@
   overflow-wrap: break-word;
 }
 
+/* New class for the centered header */
+.cv-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* Updated h1 style for bigger font */
 .cv-doc-container h1 {
-  font-size: 2rem;
+  font-size: 2.5rem; /* Increased size */
   font-weight: 700;
   color: #0d355c;
   margin-bottom: 1rem;
@@ -44,6 +51,13 @@
   list-style-type: disc;
   padding-left: 1.5rem;
   margin-bottom: 1rem;
+}
+
+/* New class for the two-column list */
+.two-column-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 1.5rem; /* 0 row gap, 1.5rem column gap */
 }
 
 .cv-doc-container li {

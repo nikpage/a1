@@ -214,8 +214,68 @@ All of your output, including in the "cocky" tone, must be in the same language 
 - Write in the "${tone}" tone: (${toneInstructions(tone)}).
 - CV must perform extremely well if re-analyzed by our own analysis engine.
 - Style can be creative and personalized (within the chosen tone) but factual accuracy is required.
-- IMPORTANT: Do NOT include any notes, explanations, summaries, or commentary. Your response must ONLY include the candidate's CV in standard CV format, with no trailing comments or remarks of any kind.
+- IMPORTANT: Do NOT include any notes, explanations, summaries, or commentary. Your response must ONLY include the candidate's CV with no trailing comments, "Note:" lines, or remarks of any kind.
+- NEVER include phrases like "Full career history available upon request" or any similar commentary.
 
+# Formatting Requirements
+Output in Markdown format with this exact structure:
+
+## CENTERED INTRO SECTION (use HTML center tags):
+<center>
+
+### **[Full Name]**
+[Optional tagline/headline if present in original CV]
+[Phone] | [Email] | [LinkedIn/Portfolio URLs]
+
+</center>
+
+---
+
+## LEFT-ALIGNED SECTIONS:
+
+### **Professional Summary**
+[Summary content]
+
+---
+
+### **Key Skills**
+Format as 2-column bullet list:
+<div style="display: flex; flex-wrap: wrap;">
+<div style="width: 50%; padding-right: 10px;">
+
+- [Skill 1]
+- [Skill 3]
+- [Skill 5]
+
+</div>
+<div style="width: 50%;">
+
+- [Skill 2]
+- [Skill 4]
+- [Skill 6]
+
+</div>
+</div>
+
+---
+
+### **Professional Experience**
+For each role, emphasize the role title FIRST and most prominently:
+
+#### **[Job Title]**
+<strong style="color: black;">[Company Name]</strong> | [Dates] | [Location]
+- [Achievement/responsibility]
+- [Achievement/responsibility]
+
+---
+
+### **Education**
+[Education content]
+
+---
+
+### **[Any Other Sections]**
+[Other content as needed]
 
 # Inputs
 ## CV:
@@ -225,7 +285,7 @@ ${cv}
 ${analysis}
 
 # Output
-Return only the full, formatted CV. Do NOT include a cover letter or any extra commentary. No placeholders or fake data.
+Return only the formatted CV in the exact Markdown structure shown above. No additional commentary, notes, or explanations whatsoever.
 `;
 
 const response = await axios.post(
@@ -235,7 +295,7 @@ const response = await axios.post(
     messages: [
       {
         role: 'system',
-        content: 'You are an expert in writing professional CVs for CEE tech roles.'
+        content: 'You are an expert in writing professional CVs. Follow the formatting instructions exactly and never add commentary or notes.'
       },
       {
         role: 'user',
@@ -265,22 +325,28 @@ return {
 };
 }
 //===============================================================================
-//                 Cover Letter Prompt
+//         Cover Letter Prompt
 //===============================================================================
+
 export async function generateCoverLetter({ cv, analysis, tone }) {
-const prompt = `
+  const todayString = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const prompt = `
 # Task
 Write a cover letter in the "${tone}" tone for the following application, using only real facts from the CV and analysis. DO NOT invent or fabricate any information.
 All of your output, including in the "cocky" tone, must be in the same language as the CV. If the job ad is in a different language, the CV's language takes precedence.
+
 # Rules
-- Use, IF PRESENT: Job Title, Company Name, HR Contact from the analysis. If missing, skip (no placeholders).
-- Letter must sound like a natural, professional application in the selected tone (${toneInstructions(tone)}).
-- Directly address critical scenario tags and red flags from the analysis.
-- Make best use of the candidate's career arc, parallel experience, and position strategy as found in the analysis.
-- No generic filler, no invented claims, no placeholders.
-- Use ATS and matched keywords for the job, if provided.
-- If the job ad is present, reference specific company and position as appropriate.
-- Always include a line at the top: Date: [today's date in DD.MM.YYYY format]. Replace any placeholder or empty Date fields with the correct date of generation.
+- The top of the letter should ONLY contain the date. DO NOT add the applicant's name or contact details (phone, email) at the top of the letter.
+- The salutation must be "Dear [First Name] [Last Name]". If the contact name is not available, it must be "Dear Hiring Manager". Do not use titles like Mr., Ms., etc.
+- The letter must end with a signature block in this exact format, using data from the CV:
+Sincerely,
+
+**[Applicant's Full Name]**
+[Applicant's Telephone]
+[Applicant's Email]
+[Applicant's LinkedIn URL]
+- No generic filler, no invented claims, no placeholders like [Company Address].
 
 # Inputs
 ## CV:
@@ -290,59 +356,58 @@ ${cv}
 ${analysis}
 
 # Output
-Return only the cover letter, no commentary or extra text. Do NOT include the CV. No placeholders or fake data.
+Return only the cover letter. Start with the date, then the salutation, then the body, and end with the signature block as specified.
 `;
 
-const response = await axios.post(
-  process.env.DEEPSEEK_API_URL,
-  {
-    model: 'deepseek-chat',
-    messages: [
-      {
-        role: 'system',
-        content: 'You are an expert in writing professional cover letters for CEE tech roles.'
-      },
-      {
-        role: 'user',
-        content: prompt
+  const response = await axios.post(
+    process.env.DEEPSEEK_API_URL,
+    {
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert in writing professional cover letters for CEE tech roles who follows formatting rules precisely.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${keyManager.getNextKey()}`,
+        'Content-Type': 'application/json'
       }
-    ]
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${keyManager.getNextKey()}`,
-      'Content-Type': 'application/json'
     }
-  }
-);
+  );
 
-const data = response.data;
-console.log('DeepSeek token usage (Generate Cover Letter):')
-if (data.usage.prompt_cache_hit_tokens !== undefined)
-  console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
-if (data.usage.completion_tokens !== undefined)
-  console.log('  completion tokens:', data.usage.completion_tokens)
-console.log('  total tokens:', data.usage.total_tokens)
+  const data = response.data;
+  console.log('DeepSeek token usage (Generate Cover Letter):')
+  if (data.usage.prompt_cache_hit_tokens !== undefined)
+    console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
+  if (data.usage.completion_tokens !== undefined)
+    console.log('  completion tokens:', data.usage.completion_tokens)
+  console.log('  total tokens:', data.usage.total_tokens)
 
-const rawContent = data.choices?.[0]?.message?.content || '';
-const today = new Date().toLocaleDateString('en-GB');
+  const rawContent = data.choices?.[0]?.message?.content || '';
 
-// Replace or clean Date: line
-const processedContent = rawContent
-  .split('\n')
-  .filter(line => !/^Date:\s*(\[.*\]|\{.*\}|\<.*\>|\s*)$/i.test(line)) // Remove blank/placeholder Date lines
-  .map(line => /^Date:/i.test(line) ? `Date: ${today}` : line) // Replace valid Date lines
-  .join('\n')
-  .trim();
+  // This regex is used to find and remove any line that looks like a date.
+  const dateFilterRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/i;
 
-return {
-  content: processedContent,
-  usage: data.usage
-};
+  // Clean up any stray placeholders and hallucinated dates from the AI.
+  let processedContent = rawContent
+    .split('\n')
+    .filter(line => !line.trim().includes('[Company Address]'))
+    .filter(line => !line.trim().includes('[Date]'))
+    .filter(line => !dateFilterRegex.test(line.trim())) // Aggressively remove any line that contains a date
+    .join('\n');
 
+  // Add just the date value to the very top.
+  processedContent = `${todayString}\n\n${processedContent.trim()}`;
 
-return {
-  content: data.choices?.[0]?.message?.content || '',
-  usage: data.usage
-};
+  return {
+    content: processedContent.trim(),
+    usage: data.usage
+  };
 }
