@@ -46,7 +46,8 @@ export default function IndexPage() {
           const formData = new FormData();
           formData.append('file', file);
 
-          const uploadRes = await axios.post('/api/upload-cv', formData);
+console.log('File details:', file?.name, file?.type, file?.size);
+        const uploadRes = await axios.post('http://localhost:3000/api/upload-cv', formData);
           const uploadData = uploadRes.data;
           if (!uploadData?.user_id) throw new Error(uploadData.error || 'Upload failed to return a user ID.');
 
@@ -111,6 +112,7 @@ export default function IndexPage() {
               onDrop={(e) => {
                 e.preventDefault();
                 const droppedFile = e.dataTransfer.files[0];
+                console.log('Dropped file:', droppedFile);
                 if (droppedFile) setFile(droppedFile);
               }}
               className="w-full max-w-xl border-2 border-dashed border-gray-300 rounded-lg py-6 bg-white cursor-pointer flex flex-col items-center justify-center h-28 touch-manipulation"
@@ -127,7 +129,11 @@ export default function IndexPage() {
                 id="file-input"
                 type="file"
                 accept="application/pdf"
-                onChange={(e) => setFile(e.target.files[0])}
+                onChange={(e) => {
+  const selectedFile = e.target.files[0];
+  console.log('Selected file:', selectedFile);
+  setFile(selectedFile);
+}}
                 className="hidden"
               />
             </div>

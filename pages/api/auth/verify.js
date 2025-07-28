@@ -1,4 +1,3 @@
-// pages/api/auth/verify.js
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 
@@ -6,19 +5,14 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const { token } = req.query;
-  console.log('✅ Verify API hit:', token);
-
-  if (!token) {
-    return res.status(400).json({ error: 'missing-token' });
-  }
+  if (!token) return res.status(400).json({ error: 'Token required' });
 
   try {
-    const { data: tokenData, error } = await supabase
+    // 1. Verify token exists and is valid
+    const { data: tokenData, error: tokenError } = await supabase
       .from('magic_tokens')
       .select('*')
       .eq('token', token)
@@ -26,38 +20,44 @@ export default async function handler(req, res) {
       .gt('expires_at', new Date().toISOString())
       .single();
 
-    if (error || !tokenData) {
-      console.log('❌ Invalid token or error:', error);
-      return res.status(400).json({ error: 'invalid-token' });
-    }
+    if (tokenError || !tokenData) return res.status(401).json({ error: 'Invalid token' });
 
-    console.log('✅ Token verified:', tokenData);
+    // 2. Verify email-user association exists
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('id', tokenData.user_id)
+      .eq('email', tokenData.email)
+      .single();
 
+    if (userError || !user) return res.status(401).json({ error: 'Account not found' });
+
+    // 3. Mark token as used
+    await supabase
+      .from('magic_tokens')
+      .update({ used: true })
+      .eq('token', token);
+
+    // 4. Create session
     const sessionToken = jwt.sign(
       {
-        email: tokenData.email,
-        user_id: tokenData.user_id
+        email: user.email,
+        user_id: user.id,
+        session_id: crypto.randomBytes(16).toString('hex') // Extra security
       },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
 
-    console.log('✅ Session token created:', sessionToken);
-
-    await supabase
-      .from('magic_tokens')
-      .delete()
-      .eq('token', token);
-
+    // 5. Set secure cookie
     res.setHeader('Set-Cookie', [
-      `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Strict`
+      `auth-token=${sessionToken}; HttpOnly; Secure; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Domain=thecv.pro' : ''}`
     ]);
 
-    console.log('✅ Cookie set, redirecting');
-    return res.status(200).json({ redirect: `/${tokenData.user_id}` });
+    return res.status(200).json({ redirect: `/${user.id}` });
 
   } catch (error) {
-    console.error('Verify error:', error);
-    return res.status(500).json({ error: 'login-failed' });
+    console.error('Verification error:', error);
+    return res.status(500).json({ error: 'Login failed' });
   }
 }

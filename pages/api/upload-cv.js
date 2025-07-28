@@ -1,5 +1,10 @@
 // pages/api/upload-cv.js
 
+import formidable from 'formidable'
+import { upsertUser, upsertCV } from '../../utils/database'
+import extractTextFromPDF from '../../utils/pdf-extract'
+import mammoth from 'mammoth'
+
 console.log('ENV VARS CHECK:', {
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -8,10 +13,6 @@ console.log('ENV VARS CHECK:', {
 })
 
 console.log("Handler HIT")
-
-import formidable from 'formidable'
-import { upsertUser, upsertCV } from '../../utils/database'
-import extractTextFromPDF from '../../utils/pdf-extract'
 
 function genSessionId() {
   return crypto.randomUUID()
@@ -34,6 +35,17 @@ async function sha256(str) {
     const data = encoder.encode(str)
     const hash = await window.crypto.subtle.digest('SHA-256', data)
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+}
+
+// Extract text from DOCX files
+async function extractTextFromDOCX(buffer) {
+  try {
+    const result = await mammoth.extractRawText({ buffer })
+    return result.value
+  } catch (error) {
+    console.error('DOCX extraction error:', error)
+    throw new Error('Failed to extract text from DOCX file')
   }
 }
 
@@ -60,12 +72,15 @@ export default async function handler(req, res) {
       }
 
       console.log("File received:", file.originalFilename || file.newFilename || file.filepath || file.name, file.mimetype, file.size)
-      const uploadedFileName = file.originalFilename || file.newFilename || file.name || 'unknown.pdf'
+      const uploadedFileName = file.originalFilename || file.newFilename || file.name || 'unknown'
 
-      if (!file.mimetype || file.mimetype !== 'application/pdf') {
-        console.log("Not a PDF:", file.mimetype)
-        return res.status(400).json({ error: 'Not a PDF' })
+      // Check for supported file types
+      const supportedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+      if (!file.mimetype || !supportedTypes.includes(file.mimetype)) {
+        console.log("Unsupported file type:", file.mimetype)
+        return res.status(400).json({ error: 'File must be PDF or DOCX format' })
       }
+
       if (file.size > 200 * 1024) {
         console.log("File too large:", file.size)
         return res.status(400).json({ error: 'File too large' })
@@ -86,15 +101,22 @@ export default async function handler(req, res) {
 
       let text
       try {
-        text = await extractTextFromPDF(buffer)
-        console.log("Extracted CV text:", text && text.length > 400 ? text.slice(0, 400) + '…' : text)
+        // Extract text based on file type
+        if (file.mimetype === 'application/pdf') {
+          text = await extractTextFromPDF(buffer)
+          console.log("Extracted PDF text:", text && text.length > 400 ? text.slice(0, 400) + '…' : text)
+        } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          text = await extractTextFromDOCX(buffer)
+          console.log("Extracted DOCX text:", text && text.length > 400 ? text.slice(0, 400) + '…' : text)
+        }
+
         if (!text || !text.trim()) {
-          console.log("No text extracted from PDF")
-          return res.status(400).json({ error: "No text extracted from PDF" })
+          console.log("No text extracted from file")
+          return res.status(400).json({ error: "No text extracted from file" })
         }
       } catch (err) {
-        console.log("PDF parse error:", err)
-        return res.status(400).json({ error: 'PDF parse error', details: String(err) })
+        console.log("File parse error:", err)
+        return res.status(400).json({ error: 'File parse error', details: String(err) })
       }
 
       // --- PHONE EXTRACT & HASH ---
