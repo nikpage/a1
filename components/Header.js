@@ -1,3 +1,4 @@
+// path: /Header.js
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -6,7 +7,6 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
   const [downloads, setDownloads] = useState(0);
   const [generations, setGenerations] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
 
   const fetchHeaderStats = async () => {
     if (!user_id) return;
@@ -38,14 +38,6 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
     return () => window.removeEventListener('tokens-updated', updateDownloads);
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   const NavigationLinks = ({ mobile = false }) => (
     <>
       <Link
@@ -73,58 +65,52 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
   );
 
   return (
-    <header className={`bg-white border-b border-gray-200 sticky top-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'pt-1 px-4 sm:px-6' : 'py-4 px-4 sm:px-6'
-    }`}>
+    <header className="bg-white border-b border-gray-200 py-4 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
 
-        <div className={`hidden lg:flex justify-between ${isScrolled ? 'items-start' : 'items-end'}`}>
-                  <div className="flex flex-col items-start">
-                    <Link href="/">
-                      <Image
-                        src="/logo_cvprp+trans.png"
-                        alt="TheCV.Pro Logo - Your Secret Weapon to Interview Calls"
-                        width={120}
-                        height={60}
-                        className={`w-auto object-contain transition-all duration-300 ${
-                          isScrolled ? 'h-8' : 'h-12'
-                        }`}
-                        priority
-                      />
-                    </Link>
-                    <div className={`flex items-baseline justify-between w-full min-w-0 transition-all duration-300 overflow-hidden ${
-                      isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
-                    }`}>
-                      <h1 className="text-xl font-bold text-[#41b4a2]">
-                        Your Secret Weapon to Interview Calls <em className="text-[#2c9486] font-normal">...or his?</em>
-                      </h1>
-                    </div>
-                  </div>
+        {/* Desktop Layout */}
+        <div className="hidden lg:flex items-center justify-between">
+          {/* Logo and Title */}
+          <div className="flex flex-col items-start">
+            <Link href="/">
+              <Image
+                src="/logo_cvprp+trans.png"
+                alt="TheCV.Pro Logo - Your Secret Weapon to Interview Calls"
+                width={120}
+                height={60}
+                className="h-12 w-auto object-contain"
+                priority
+              />
+            </Link>
+            <h1 className="text-xl font-bold text-[#41b4a2]">
+              Your Secret Weapon to Interview Calls <em className="text-[#2c9486] font-normal">...or his?</em>
+            </h1>
+          </div>
 
-                  <div className="flex flex-col items-end">
-                    {user_id && (
-                      <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg text-sm mb-2">
-                        <div className="text-center">
-                          <div className="font-semibold text-slate-800">{generations}</div>
-                          <div className="text-xs text-slate-600">Generations</div>
-                        </div>
-                        <div className="h-6 w-px bg-gray-300"></div>
-                        <div className="text-center">
-                          <div className="font-semibold text-slate-800">{downloads}</div>
-                          <div className="text-xs text-slate-600">Downloads</div>
-                        </div>
-                      </div>
-                    )}
+          {/* Navigation */}
+          <nav className="flex items-center space-x-8">
+            <NavigationLinks />
+          </nav>
 
-                    <nav className={`flex items-center space-x-8 transition-all duration-300 overflow-hidden ${
-                      isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
-                    }`}>
-                      <NavigationLinks />
-                    </nav>
-                  </div>
-                </div>
+          {/* Usage Stats (only shown when user_id exists) */}
+          {user_id && (
+            <div className="flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-lg">
+              <div className="text-center">
+                <div className="text-sm font-semibold text-slate-800">{generations}</div>
+                <div className="text-xs text-slate-600">Generations</div>
+              </div>
+              <div className="h-8 w-px bg-gray-300"></div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-slate-800">{downloads}</div>
+                <div className="text-xs text-slate-600">Downloads</div>
+              </div>
+            </div>
+          )}
+        </div>
 
+        {/* Mobile/Tablet Layout */}
         <div className="lg:hidden">
+          {/* Top Row: Logo and Menu Button */}
           <div className="flex items-center justify-between">
             <Link href="/">
               <Image
@@ -132,9 +118,7 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
                 alt="TheCV.Pro Logo - Your Secret Weapon to Interview Calls"
                 width={120}
                 height={60}
-                className={`w-auto object-contain transition-all duration-300 ${
-                  isScrolled ? 'h-6 sm:h-8' : 'h-10 sm:h-12'
-                }`}
+                className="h-10 w-auto object-contain sm:h-12"
                 priority
               />
             </Link>
@@ -153,19 +137,19 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
             </button>
           </div>
 
+          {/* Tagline - only show on index page (no user_id) */}
           {!user_id && (
-            <div className={`mt-2 transition-all duration-300 overflow-hidden ${
-              isScrolled ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
-            }`}>
+            <div className="mt-2">
               <h1 className="text-sm sm:text-base font-bold text-[#41b4a2] text-center">
                 Your Secret Weapon to Interview Calls
               </h1>
             </div>
           )}
 
+          {/* User Stats Row - only show when user_id exists */}
           {user_id && (
             <div className="mt-3 flex justify-end">
-              <div className="flex items-center space-x-4 bg-gray-50 px-3 py-1.5 rounded-lg">
+              <div className="flex items-center space-x-6 bg-gray-50 px-4 py-2 rounded-lg">
                 <div className="text-center">
                   <div className="text-sm font-semibold text-slate-800">{generations}</div>
                   <div className="text-xs text-slate-600">Generations</div>
@@ -179,6 +163,7 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
             </div>
           )}
 
+          {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="mt-4 py-4 border-t border-gray-200">
               <nav className="flex flex-col space-y-2">

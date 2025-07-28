@@ -1,4 +1,5 @@
 //  pages/index.js
+import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -42,39 +43,35 @@ export default function IndexPage() {
     setLoadingModalMessage('Uploading your CV and preparing for analysis...');
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+          const formData = new FormData();
+          formData.append('file', file);
 
-      const uploadRes = await fetch('/api/upload-cv', {
-        method: 'POST',
-        body: formData,
-      });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok || !uploadData.user_id) throw new Error(uploadData.error || 'Upload failed');
+          const uploadRes = await axios.post('/api/upload-cv', formData);
+          const uploadData = uploadRes.data;
+          if (!uploadData?.user_id) throw new Error(uploadData.error || 'Upload failed to return a user ID.');
 
-      setCurrentUserId(uploadData.user_id);
+          setCurrentUserId(uploadData.user_id);
+          setLoadingModalMessage('Analysis in progress...');
 
-      setLoadingModalMessage('Analysis in progress...');
+          const analyzeRes = await axios.post('/api/analyze-cv-job', {
+            user_id: uploadData.user_id,
+            jobText,
+          });
+          const analyzeData = analyzeRes.data;
+          if (analyzeData.error) throw new Error(analyzeData.error || 'Analysis failed.');
 
-      const analyzeRes = await fetch('/api/analyze-cv-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: uploadData.user_id, jobText }),
-      });
-      const analyzeData = await analyzeRes.json();
-      if (!analyzeRes.ok || analyzeData.error) throw new Error(analyzeData.error || 'Analysis failed');
+          const payload = { analysis: analyzeData.analysis, user_id: uploadData.user_id };
+          localStorage.setItem('parsed_cv', JSON.stringify(payload));
+          setAnalysis(analyzeData.analysis);
 
-      const payload = { analysis: analyzeData.analysis, user_id: uploadData.user_id };
-      localStorage.setItem('parsed_cv', JSON.stringify(payload));
-      setAnalysis(analyzeData.analysis);
-    } catch (err) {
-      setError('Error: ' + err.message);
-    } finally {
-      setLoading(false);
-      setShowLoadingModal(false);
-    }
-  };
-
+        } catch (err) {
+          const message = err.response?.data?.error || err.message;
+          setError('Error: ' + message);
+        } finally {
+              setLoading(false);
+              setShowLoadingModal(false);
+            }
+          };
   const handleWriteNowClick = () => {
     if (!currentUserId) {
       setError('User ID not found. Please analyze again.');
