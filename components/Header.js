@@ -74,55 +74,55 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
 
   return (
     <header className={`bg-white border-b border-gray-200 sticky top-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'py-1 px-4 sm:px-6' : 'py-4 px-4 sm:px-6'
+      isScrolled ? 'pt-1 px-4 sm:px-6' : 'py-4 px-4 sm:px-6'
     }`}>
       <div className="max-w-7xl mx-auto">
 
-        <div className="hidden lg:flex items-end justify-between">
-          <div className="flex flex-col items-start">
-            <Link href="/">
-              <Image
-                src="/logo_cvprp+trans.png"
-                alt="TheCV.Pro Logo - Your Secret Weapon to Interview Calls"
-                width={120}
-                height={60}
-                className={`w-auto object-contain transition-all duration-300 ${
-                  isScrolled ? 'h-8' : 'h-12'
-                }`}
-                priority
-              />
-            </Link>
-            <div className={`flex items-baseline justify-between w-full min-w-0 transition-all duration-300 overflow-hidden ${
-              isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
-            }`}>
-              <h1 className="text-xl font-bold text-[#41b4a2]">
-                Your Secret Weapon to Interview Calls <em className="text-[#2c9486] font-normal">...or his?</em>
-              </h1>
-            </div>
-          </div>
+        <div className={`hidden lg:flex justify-between ${isScrolled ? 'items-start' : 'items-end'}`}>
+                  <div className="flex flex-col items-start">
+                    <Link href="/">
+                      <Image
+                        src="/logo_cvprp+trans.png"
+                        alt="TheCV.Pro Logo - Your Secret Weapon to Interview Calls"
+                        width={120}
+                        height={60}
+                        className={`w-auto object-contain transition-all duration-300 ${
+                          isScrolled ? 'h-8' : 'h-12'
+                        }`}
+                        priority
+                      />
+                    </Link>
+                    <div className={`flex items-baseline justify-between w-full min-w-0 transition-all duration-300 overflow-hidden ${
+                      isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
+                    }`}>
+                      <h1 className="text-xl font-bold text-[#41b4a2]">
+                        Your Secret Weapon to Interview Calls <em className="text-[#2c9486] font-normal">...or his?</em>
+                      </h1>
+                    </div>
+                  </div>
 
-          <div className="flex flex-col items-end">
-            {user_id && (
-              <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg text-sm mb-2">
-                <div className="text-center">
-                  <div className="font-semibold text-slate-800">{generations}</div>
-                  <div className="text-xs text-slate-600">Generations</div>
-                </div>
-                <div className="h-6 w-px bg-gray-300"></div>
-                <div className="text-center">
-                  <div className="font-semibold text-slate-800">{downloads}</div>
-                  <div className="text-xs text-slate-600">Downloads</div>
-                </div>
-              </div>
-            )}
+                  <div className="flex flex-col items-end">
+                    {user_id && (
+                      <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg text-sm mb-2">
+                        <div className="text-center">
+                          <div className="font-semibold text-slate-800">{generations}</div>
+                          <div className="text-xs text-slate-600">Generations</div>
+                        </div>
+                        <div className="h-6 w-px bg-gray-300"></div>
+                        <div className="text-center">
+                          <div className="font-semibold text-slate-800">{downloads}</div>
+                          <div className="text-xs text-slate-600">Downloads</div>
+                        </div>
+                      </div>
+                    )}
 
-            <nav className={`flex items-center space-x-8 transition-all duration-300 overflow-hidden ${
-              isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
-            }`}>
-              <NavigationLinks />
-            </nav>
-          </div>
-        </div>
+                    <nav className={`flex items-center space-x-8 transition-all duration-300 overflow-hidden ${
+                      isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
+                    }`}>
+                      <NavigationLinks />
+                    </nav>
+                  </div>
+                </div>
 
         <div className="lg:hidden">
           <div className="flex items-center justify-between">

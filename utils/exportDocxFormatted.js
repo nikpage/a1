@@ -1,27 +1,15 @@
 // utils/exportDocxFormatted.js
-
 import { saveAs } from 'file-saver';
 import {
   Document,
   Packer,
   Paragraph,
   TextRun,
-  HeadingLevel,
   AlignmentType,
-  Table,
-  TableRow,
-  TableCell,
-  WidthType,
-  BorderStyle,
-  ShadingType,
-  UnderlineType,
-  TabStopPosition,
   TabStopType,
-  Header,
-  Footer,
 } from 'docx';
 
-export default async function exportDocxWithDocxLib({
+export default async function exportDocxFormatted({
   type = 'cv',
   user_id = 'user',
   markdownText = '',
@@ -31,16 +19,9 @@ export default async function exportDocxWithDocxLib({
     return;
   }
 
-  const lines = markdownText.split('\n');
-  const docParagraphs = [];
-  let inCenterBlock = false;
-  let inSkillsSection = false;
-  let skillsBuffer = [];
-  let currentSection = '';
-
-  // Define consistent styling
+  // --- STYLES & DEFINITIONS ---
   const styles = {
-    name: { size: 32, bold: true, color: '1f4e79' }, // Professional blue
+    name: { size: 32, bold: true, color: '1f4e79' },
     tagline: { size: 24, bold: false, color: '5b9bd5', italics: true },
     contact: { size: 20, color: '404040' },
     sectionHeader: { size: 26, bold: true, color: '1f4e79' },
@@ -50,230 +31,166 @@ export default async function exportDocxWithDocxLib({
     bodyText: { size: 22, color: '2d2d2d' },
     bulletText: { size: 22, color: '2d2d2d' },
     skillText: { size: 21, color: '2d2d2d' },
+    tabStop: { type: TabStopType.LEFT, position: 4500 },
+    underline: { text: '________________________________', size: 16, color: 'e6e6e6' },
   };
 
+  const lines = markdownText.split('\n');
+  const docParagraphs = [];
+  let currentSectionTitle = '';
+  let inCenterBlock = false;
+
+  // --- PARSING LOOP ---
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i].trim();
 
-    if (raw === '---') {
-      // Add section spacing
-      docParagraphs.push(new Paragraph({ spacing: { after: 300 } }));
-      continue;
-    }
+    if (raw === '') continue;
 
-    // Track center blocks
-    if (raw.includes('<center>')) {
-      inCenterBlock = true;
-      continue;
-    }
+    // --- HEADER SECTION (<center> tag) ---
+    if (raw.includes('<center>')) { inCenterBlock = true; continue; }
     if (raw.includes('</center>')) {
       inCenterBlock = false;
-      // Add spacing after header section
       docParagraphs.push(new Paragraph({ spacing: { after: 400 } }));
       continue;
     }
-
-    // Handle skills section
-    if (raw.startsWith('<div') || raw === '</div>') {
-      if (raw.includes('display: flex')) {
-        inSkillsSection = true;
-      } else if (raw === '</div>' && inSkillsSection) {
-        // Create professional two-column skills table
-        if (skillsBuffer.length > 0) {
-          const rows = [];
-          for (let j = 0; j < skillsBuffer.length; j += 2) {
-            const leftSkill = skillsBuffer[j] || '';
-            const rightSkill = skillsBuffer[j + 1] || '';
-
-            rows.push(
-              new TableRow({
-                children: [
-                  new TableCell({
-                    children: [new Paragraph({
-                      children: leftSkill ? [
-                        new TextRun({ text: '• ', ...styles.skillText }),
-                        new TextRun({ text: leftSkill, ...styles.skillText })
-                      ] : [],
-                      spacing: { after: 120 },
-                    })],
-                    width: { size: 48, type: WidthType.PERCENTAGE },
-                    margins: { top: 100, bottom: 100, left: 0, right: 200 },
-                    borders: {
-                      top: { style: BorderStyle.NONE },
-                      bottom: { style: BorderStyle.NONE },
-                      left: { style: BorderStyle.NONE },
-                      right: { style: BorderStyle.NONE },
-                    },
-                  }),
-                  new TableCell({
-                    children: [new Paragraph({
-                      children: rightSkill ? [
-                        new TextRun({ text: '• ', ...styles.skillText }),
-                        new TextRun({ text: rightSkill, ...styles.skillText })
-                      ] : [],
-                      spacing: { after: 120 },
-                    })],
-                    width: { size: 48, type: WidthType.PERCENTAGE },
-                    margins: { top: 100, bottom: 100, left: 200, right: 0 },
-                    borders: {
-                      top: { style: BorderStyle.NONE },
-                      bottom: { style: BorderStyle.NONE },
-                      left: { style: BorderStyle.NONE },
-                      right: { style: BorderStyle.NONE },
-                    },
-                  }),
-                ],
-              })
-            );
-          }
-
-          const skillsTable = new Table({
-            rows: rows,
-            width: { size: 100, type: WidthType.PERCENTAGE },
-          });
-
-          docParagraphs.push(skillsTable);
-          skillsBuffer = [];
-        }
-        inSkillsSection = false;
+    if (inCenterBlock) {
+      const cleaned = raw.replace(/\*\*|<\/?strong[^>]*>|\*/g, '');
+      if (raw.startsWith('###')) {
+        docParagraphs.push(new Paragraph({
+          children: [new TextRun({ text: cleaned.replace(/^###\s*/, ''), ...styles.name })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 150 },
+        }));
+      } else {
+        const isContact = cleaned.includes('@') || cleaned.includes('|') || /linkedin|www\./.test(cleaned);
+        docParagraphs.push(new Paragraph({
+          children: [new TextRun({ text: cleaned, ...(isContact ? styles.contact : styles.tagline) })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 100 },
+        }));
       }
       continue;
     }
 
-    // Clean markdown formatting
-    const cleaned = raw
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/<\/?strong[^>]*>/g, '')
-      .replace(/^• /, '')
-      .replace(/^- /, '');
+    if (raw === '---') continue;
 
-    // Handle different content types
-    if (raw.startsWith('### **') && inCenterBlock) {
-      // Name in header
-      const nameText = cleaned.replace(/^### /, '').replace(/\*\*/g, '');
-      docParagraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: nameText, ...styles.name })],
-          spacing: { after: 200 },
-          alignment: AlignmentType.CENTER,
-        })
-      );
-    } else if (inCenterBlock && cleaned && !cleaned.startsWith('#')) {
-      // Contact info and taglines in header
-      const isContactInfo = cleaned.includes('@') || cleaned.includes('|') || cleaned.includes('linkedin') || cleaned.includes('www.');
-      const style = isContactInfo ? styles.contact : styles.tagline;
+    // --- JOB TITLE (any # inside Experience section) ---
+    if (raw.startsWith('#') && /experience/i.test(currentSectionTitle)) {
+        const cleaned = raw.replace(/^#+\s*/, '').replace(/\*+/g, '').trim();
+        docParagraphs.push(new Paragraph({
+            children: [new TextRun({ text: cleaned, ...styles.jobTitle })],
+            spacing: { before: 300, after: 100 },
+            keepNext: true,
+        }));
+        continue;
+    }
 
-      docParagraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: cleaned, ...style })],
-          spacing: { after: 150 },
-          alignment: AlignmentType.CENTER,
-        })
-      );
-    } else if (raw.startsWith('### **')) {
-      // Section headers
-      currentSection = cleaned.replace(/^### /, '').replace(/\*\*/g, '');
-      docParagraphs.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: currentSection, ...styles.sectionHeader }),
-          ],
-          spacing: { before: 400, after: 200 },
-          alignment: AlignmentType.LEFT,
-        })
-      );
+    // --- SECTION HEADER (###) ---
+    if (raw.startsWith('###')) {
+      currentSectionTitle = raw.replace(/###\s*\**|\**/g, '').trim();
 
-      // Add underline for section headers
-      docParagraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: '________________________________', size: 16, color: 'e6e6e6' })],
-          spacing: { after: 300 },
-          alignment: AlignmentType.LEFT,
-        })
-      );
-    } else if (raw.startsWith('#### **')) {
-      // Job titles - most prominent
-      const jobTitle = cleaned.replace(/^#### /, '').replace(/\*\*/g, '');
-      docParagraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: jobTitle, ...styles.jobTitle })],
-          spacing: { before: 300, after: 100 },
-          alignment: AlignmentType.LEFT,
-        })
-      );
-    } else if (raw.startsWith('**') && raw.includes('|') && currentSection === 'Professional Experience') {
-      // Company, dates, location line
-      const parts = cleaned.replace(/\*\*/g, '').split('|').map(p => p.trim());
-      const children = [];
+      docParagraphs.push(new Paragraph({
+        children: [new TextRun(styles.underline)],
+        spacing: { before: 400, after: 200 },
+        keepNext: true,
+      }));
 
-      if (parts[0]) {
-        children.push(new TextRun({ text: parts[0], ...styles.company }));
+      docParagraphs.push(new Paragraph({
+        children: [new TextRun({ text: currentSectionTitle, ...styles.sectionHeader })],
+        spacing: { after: 150 },
+        keepNext: true,
+      }));
+
+      // FLEXIBLE SKILLS SECTION LOGIC
+      if (/skills|competencies/i.test(currentSectionTitle)) {
+        const skillsBuffer = [];
+        let j = i + 1;
+        while (j < lines.length && !lines[j].includes('---') && !lines[j].startsWith('#')) {
+          const skillLine = lines[j].trim();
+          if (skillLine.startsWith('- ') || skillLine.startsWith('• ')) {
+            skillsBuffer.push(skillLine.replace(/^- |^• /, '').trim());
+          }
+          j++;
+        }
+        i = j - 1;
+
+        for (let k = 0; k < skillsBuffer.length; k += 2) {
+          const leftSkill = skillsBuffer[k] || '';
+          const rightSkill = skillsBuffer[k + 1] || '';
+          const children = [];
+          if (leftSkill) {
+            children.push(new TextRun({ text: '• ', ...styles.skillText }));
+            children.push(new TextRun({ text: leftSkill, ...styles.skillText }));
+          }
+          if (rightSkill) {
+            children.push(new TextRun({ text: '\t' }));
+            children.push(new TextRun({ text: '• ', ...styles.skillText }));
+            children.push(new TextRun({ text: rightSkill, ...styles.skillText }));
+          }
+          docParagraphs.push(new Paragraph({
+            children: children,
+            tabStops: [styles.tabStop],
+            spacing: { after: 150 },
+            keepLines: true,
+          }));
+        }
+        continue;
       }
-
-      if (parts[1]) {
-        children.push(new TextRun({ text: ' | ', ...styles.dates }));
-        children.push(new TextRun({ text: parts[1], ...styles.dates }));
-      }
-
-      if (parts[2]) {
-        children.push(new TextRun({ text: ' | ', ...styles.dates }));
-        children.push(new TextRun({ text: parts[2], ...styles.dates }));
-      }
-
-      docParagraphs.push(
-        new Paragraph({
-          children: children,
-          spacing: { after: 200 },
-          alignment: AlignmentType.LEFT,
-        })
-      );
-    } else if (inSkillsSection && (raw.startsWith('- ') || raw.startsWith('• '))) {
-      // Collect skills for two-column layout
-      skillsBuffer.push(cleaned);
-    } else if (raw.startsWith('- ') || raw.startsWith('• ')) {
-      // Regular bullet points with better formatting
-      docParagraphs.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: '• ', ...styles.bulletText }),
-            new TextRun({ text: cleaned, ...styles.bulletText })
-          ],
-          spacing: { after: 150 },
-          alignment: AlignmentType.LEFT,
-          indent: { left: 360, hanging: 360 }, // Proper bullet indent
-        })
-      );
-    } else if (raw === '') {
-      // Skip empty lines - spacing is handled by paragraph spacing
       continue;
-    } else if (cleaned && !cleaned.startsWith('#')) {
-      // Regular paragraphs
-      docParagraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: cleaned, ...styles.bodyText })],
-          spacing: { after: 200 },
-          alignment: AlignmentType.LEFT,
-        })
-      );
+    }
+
+    const cleaned = raw.replace(/\*\*|<\/?strong[^>]*>|\*/g, '').replace(/^- |^• /, '');
+
+    // --- COMPANY/DATE LINE (contains |) ---
+    if (raw.includes('|') && /experience|education/i.test(currentSectionTitle)) {
+      const parts = cleaned.split('|').map(p => p.trim());
+      const children = [new TextRun({ text: parts[0], ...styles.company })];
+      if (parts[1]) children.push(new TextRun({ text: ` | ${parts[1]}`, ...styles.dates }));
+      if (parts[2]) children.push(new TextRun({ text: ` | ${parts[2]}`, ...styles.dates }));
+      docParagraphs.push(new Paragraph({
+        children: children,
+        spacing: { after: 200 },
+        keepNext: true,
+      }));
+      continue;
+    }
+
+    // --- STANDARD BULLET POINT (- or •) ---
+    if (raw.startsWith('- ') || raw.startsWith('• ')) {
+      docParagraphs.push(new Paragraph({
+        children: [
+          new TextRun({ text: '• ', ...styles.bulletText }),
+          new TextRun({ text: cleaned, ...styles.bulletText }),
+        ],
+        spacing: { after: 150 },
+        indent: { left: 360, hanging: 360 },
+        keepLines: true,
+      }));
+      continue;
+    }
+
+    // --- REGULAR PARAGRAPH TEXT ---
+    if (cleaned) {
+      docParagraphs.push(new Paragraph({
+        children: [new TextRun({ text: cleaned, ...styles.bodyText })],
+        spacing: { after: 200 },
+        keepLines: true,
+      }));
     }
   }
 
-  // Create document with professional styling
+  // --- DOCUMENT CREATION ---
   const doc = new Document({
     styles: {
       paragraphStyles: [
         {
           id: "Normal",
           name: "Normal",
-          baseCharacterStyle: {
-            font: "Calibri",
-          },
-          paragraph: {
-            spacing: {
-              line: 276, // 1.15 line spacing
-            },
-          },
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: { font: "Calibri", size: 22 },
+          paragraph: { spacing: { line: 276 }, widowControl: true },
         },
       ],
     },
@@ -281,12 +198,7 @@ export default async function exportDocxWithDocxLib({
       {
         properties: {
           page: {
-            margin: {
-              top: 1440, // 1 inch
-              right: 1440,
-              bottom: 1440,
-              left: 1440,
-            },
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
           },
         },
         children: docParagraphs,
