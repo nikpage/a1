@@ -200,6 +200,7 @@ switch ((tone || '').toLowerCase()) {
 ///===============================================================================
 //                 CV Prompt
 //===============================================================================
+
 export async function generateCV({ cv, analysis, tone }) {
 const prompt = `
 # Task
@@ -263,7 +264,7 @@ Format as 2-column bullet list:
 For each role, emphasize the role title FIRST and most prominently:
 
 #### **[Job Title]**
-<strong style="color: black;">[Company Name]</strong> | [Dates] | [Location]
+**[Company Name]** | [Dates] | [Location]
 - [Achievement/responsibility]
 - [Achievement/responsibility]
 

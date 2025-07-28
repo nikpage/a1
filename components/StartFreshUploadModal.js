@@ -15,11 +15,8 @@ export default function StartFreshUploadModal({
 }) {
 
   const handleUploadAndAnalyze = async () => {
-      const newCvId = await handleCvUploadFromModal();
-      if (newCvId) {
-        onSubmit(newCvId, jobDescription);
-      }
-    };
+    onSubmit(null, jobDescription);
+  };
 
     return (
       <StartFreshHeader mode="select" onClose={onClose}>
@@ -32,8 +29,9 @@ export default function StartFreshUploadModal({
           <button
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-medium transition-colors"
             onClick={handleUploadAndAnalyze}
+            disabled={loading}
           >
-            Generate Analysis
+            {loading ? 'Generating...' : 'Generate Analysis'}
           </button>
         </div>
 
@@ -41,18 +39,20 @@ export default function StartFreshUploadModal({
           <button
             className="text-gray-600 hover:underline"
             onClick={onBack}
+            disabled={loading}
           >
             Back
           </button>
           <button
             className="text-gray-600 hover:underline"
             onClick={onClose}
+            disabled={loading}
           >
             Close
           </button>
         </div>
 
-        {loading && <LoadingModal />}
+        {loading && <LoadingModal onClose={onClose} />}
       </StartFreshHeader>
     )
   }

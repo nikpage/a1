@@ -1,5 +1,4 @@
 // path: components/TabbedViewer.js
-
 import { supabase } from '../utils/database';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
@@ -83,6 +82,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       try {
         if (!selected || !Array.isArray(selected) || selected.length === 0) {
           alert('Please select at least one document type.');
+          setShowModal(false); // Close tone modal
           setShowLoadingModal(false);
           return;
         }
@@ -90,6 +90,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
         const tokensData = await tokensRes.json();
         if (!tokensRes.ok || tokensData.tokens < selected.length) {
+          setShowModal(false); // Close tone modal
           setShowBuyPanel(true);
           setShowLoadingModal(false);
           return;
@@ -171,7 +172,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       }
     } catch (error) {
       console.error("Regeneration error:", error);
-      alert("An error occurred during document regeneration.");
+      alert("An error occurred during document generation.");
     } finally {
       setShowLoadingModal(false);
     }
@@ -474,15 +475,11 @@ export default function TabbedViewer({ user_id, analysisText }) {
         />
       )}
 
-      {showModal === 'regenerate' && (
+      {(showModal === true || showModal === 'regenerate') && (
         <ToneDocModal
           onClose={() => setShowModal(false)}
           onSubmit={handleSubmit}
         />
-      )}
-
-      {showModal === true && (
-        <ToneDocModal onClose={() => setShowModal(false)} onSubmit={handleSubmit} />
       )}
 
       {showBuyPanel && (

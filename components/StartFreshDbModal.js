@@ -86,12 +86,13 @@ export default function StartFreshDbModal({
             const id = selectedCvId || cvOptions[0]?.id;
             onSubmit(id, jobDescription);
           }}
+          disabled={isButtonDisabled}
         >
           {loading ? 'Generating Analysis...' : 'Generate Analysis'}
         </button>
       </div>
 
-      {loading && <LoadingModal />}
+      {loading && <LoadingModal onClose={onClose} />}
     </StartFreshHeader>
   )
 }
