@@ -5,19 +5,22 @@ import TabbedViewer from '../components/TabbedViewer';
 import { createClient } from '@supabase/supabase-js';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
+import axios from 'axios';
 
 export default function UserPage({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [analysis, setAnalysis] = useState('');
 
   useEffect(() => {
-    fetch('/api/get-analysis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id }),
-    })
-      .then(res => res.json())
-      .then(data => setAnalysis(data.analysis || ''))
-      .catch(() => setAnalysis(''));
+    axios.get('/api/get-analysis')
+      .then(response => {
+        if (response.data && response.data.analysis) {
+          setAnalysis(response.data.analysis);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to fetch analysis:', error);
+        setAnalysis('');
+      });
   }, [user_id]);
 
   return (
@@ -48,16 +51,13 @@ export async function getServerSideProps(context) {
   const { req, res, params, query } = context;
   const { user_id } = params;
 
-  // Get token from request
   let token = getTokenFromReq(req);
 
-  // If token is in query, set it as a cookie
   if (query.token && !req.cookies['auth-token']) {
     res.setHeader('Set-Cookie', `auth-token=${query.token}; Path=/; HttpOnly; Max-Age=${query.rememberMe ? '2592000' : '900'}`);
     token = query.token;
   }
 
-  // Check authentication
   const decoded = verifyToken(token);
   if (!decoded || decoded.user_id !== user_id) {
     return { redirect: { destination: '/?error=unauthorized', permanent: false } };

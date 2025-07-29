@@ -1,8 +1,10 @@
+//api/auth/verify.js
+
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-const JWT_SECRET = process.env.JWT_SECRET;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -11,53 +13,54 @@ export default async function handler(req, res) {
   if (!token) return res.status(400).json({ error: 'Token required' });
 
   try {
-    // 1. Verify token exists and is valid
     const { data: tokenData, error: tokenError } = await supabase
       .from('magic_tokens')
       .select('*')
       .eq('token', token)
       .eq('used', false)
-      .gt('expires_at', new Date().toISOString())
+      .gte('expires_at', new Date().toISOString())
       .single();
 
-    if (tokenError || !tokenData) return res.status(401).json({ error: 'Invalid token' });
+    if (tokenError || !tokenData) {
+      console.error('Token error:', tokenError);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
 
-    // 2. Verify email-user association exists
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, email')
-      .eq('id', tokenData.user_id)
+      .select('user_id, email')
+      .eq('user_id', tokenData.user_id)
       .eq('email', tokenData.email)
       .single();
 
-    if (userError || !user) return res.status(401).json({ error: 'Account not found' });
+    if (userError || !user) {
+      console.error('User error:', userError);
+      return res.status(401).json({ error: 'Account not found' });
+    }
 
-    // 3. Mark token as used
     await supabase
       .from('magic_tokens')
       .update({ used: true })
       .eq('token', token);
 
-    // 4. Create session
     const sessionToken = jwt.sign(
       {
         email: user.email,
-        user_id: user.id,
-        session_id: crypto.randomBytes(16).toString('hex') // Extra security
+        user_id: user.user_id,
+        session_id: crypto.randomBytes(16).toString('hex')
       },
-      JWT_SECRET,
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
 
-    // 5. Set secure cookie
-    res.setHeader('Set-Cookie', [
-      `auth-token=${sessionToken}; HttpOnly; Secure; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Domain=thecv.pro' : ''}`
-    ]);
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieString = `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Lax${isProduction ? '; Secure; Domain=thecv.pro' : ''}`;
 
-    return res.status(200).json({ redirect: `/${user.id}` });
+    res.setHeader('Set-Cookie', cookieString);
+    return res.status(200).json({ redirect: `/${user.user_id}` });
 
   } catch (error) {
-    console.error('Verification error:', error);
+    console.error('Verification process error:', error);
     return res.status(500).json({ error: 'Login failed' });
   }
 }

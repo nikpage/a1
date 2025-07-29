@@ -47,7 +47,7 @@ export default function IndexPage() {
           formData.append('file', file);
 
 console.log('File details:', file?.name, file?.type, file?.size);
-        const uploadRes = await axios.post('http://localhost:3000/api/upload-cv', formData);
+        const uploadRes = await axios.post('/api/upload-cv', formData);
           const uploadData = uploadRes.data;
           if (!uploadData?.user_id) throw new Error(uploadData.error || 'Upload failed to return a user ID.');
 

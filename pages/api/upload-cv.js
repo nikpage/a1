@@ -4,6 +4,7 @@ import formidable from 'formidable'
 import { upsertUser, upsertCV } from '../../utils/database'
 import extractTextFromPDF from '../../utils/pdf-extract'
 import mammoth from 'mammoth'
+import crypto from 'crypto'
 
 console.log('ENV VARS CHECK:', {
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
