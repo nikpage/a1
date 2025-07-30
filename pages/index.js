@@ -54,7 +54,11 @@ console.log('File details:', file?.name, file?.type, file?.size);
           setCurrentUserId(uploadData.user_id);
           setLoadingModalMessage('Analysis in progress...');
 
+          const tokenRes = await axios.post('/api/generate-csrf-token');
+          const { token } = tokenRes.data;
+
           const analyzeRes = await axios.post('/api/analyze-cv-job', {
+            csrfToken: token,
             user_id: uploadData.user_id,
             jobText,
           });

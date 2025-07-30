@@ -1,4 +1,5 @@
 // pages/api/analyze-cv-job.js
+import { validateCSRFToken } from './generate-csrf-token';
 import { getCvData, saveGeneratedDoc } from '../../utils/database';
 import { analyzeCvJob } from '../../utils/openai';
 import crypto from 'crypto';
@@ -18,9 +19,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Removed 'tone' from the destructuring of req.body
-  const { user_id, jobText, created_at } = req.body;
+  const { csrfToken, user_id, jobText, created_at } = req.body;
   const fileName = req.body.file_name || 'Unnamed file';
+
+  if (!validateCSRFToken(csrfToken)) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
 
   if (!user_id) {
     return res.status(400).json({ error: 'Missing user_id in request body' });
@@ -48,12 +52,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'CV data is empty' });
     }
 
-    // analyzeCvJob now returns usage data
     const result = await analyzeCvJob(cv_data, jobText, fileName);
 
-    const content = result?.output || null; // Access the 'output' from the result
+    const content = result?.output || null;
 
-    // Extract metadata from the content string
     const extractMeta = (label) => {
       const match = content.match(new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`));
       return match ? match[1].trim() : null;
@@ -73,17 +75,16 @@ export default async function handler(req, res) {
       user_id,
       source_cv_id: user_id,
       type: 'analysis',
-      tone: null, // Keeping tone null here for analysis type documents
+      tone: null,
       company,
       job_title,
-      file_name: null, // Or derive from actual file upload
+      file_name: null,
       content,
       analysis_id,
       hr_contact,
     });
 
-    // Log the transaction by calling the API endpoint
-    const usage = result?.usage || {}; // usage object contains all token counts
+    const usage = result?.usage || {};
 
     const baseURL =
   process.env.NODE_ENV === 'development'
@@ -111,7 +112,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ analysis: content, analysis_id });
   } catch (e) {
     console.error('API Error:', e.message);
-    // Log more details for debugging if available
     if (e.response?.data) {
       console.error('DeepSeek API Response Error:', e.response.data);
     }
