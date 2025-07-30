@@ -8,10 +8,18 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST allowed' });
-  }
-
-  try {
+  return res.status(405).json({ error: 'Only POST allowed' });
+}
+const authHeader = req.headers.authorization;
+if (!authHeader?.startsWith('Bearer ')) {
+  return res.status(401).json({ error: 'Unauthorized' });
+}
+const token = authHeader.substring(7);
+const { data: { user } } = await supabase.auth.getUser(token);
+if (!user) {
+  return res.status(401).json({ error: 'Invalid token' });
+}
+try {
     const {
       user_id,
       tone,

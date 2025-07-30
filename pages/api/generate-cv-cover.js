@@ -12,9 +12,19 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+ if (req.method !== 'POST') {
+   return res.status(405).json({ error: 'Method not allowed' });
+ }
+
+ const authHeader = req.headers.authorization;
+ if (!authHeader?.startsWith('Bearer ')) {
+   return res.status(401).json({ error: 'Unauthorized' });
+ }
+ const token = authHeader.substring(7);
+ const { data: { user } } = await supabase.auth.getUser(token);
+ if (!user) {
+   return res.status(401).json({ error: 'Invalid token' });
+ }
 
   const { user_id, analysis, tone = 'Formal', type = 'both' } = req.body;
   if (!user_id || !analysis || !type) {
@@ -99,7 +109,7 @@ cv = cvRes.content;       await saveGeneratedDoc({
   };
 
 
-  
+
 
     if (type === 'cv' || type === 'both') await logTx('cv', cvRes?.usage || {});
     if (type === 'cover' || type === 'both') await logTx('cover', coverRes?.usage || {});
