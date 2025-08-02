@@ -25,7 +25,11 @@ export default async function handler(req, res) {
       .eq('used', false)
       .gte('expires_at', new Date().toISOString())
       .single();
-
+    console.log('Debug times:', {
+      now: new Date().toISOString(),
+      token_expires: tokenData?.expires_at,
+      comparison: new Date().toISOString()
+    });
     if (tokenError || !tokenData) {
       console.error('Token error:', tokenError);
       return res.status(401).json({ error: 'Invalid token' });
