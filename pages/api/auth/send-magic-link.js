@@ -1,4 +1,6 @@
 // pages/api/auth/send-magic-link.js
+import rateLimiter from '../../../lib/rateLimiter';
+import originCheck from '../../../lib/originCheck';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
@@ -6,11 +8,20 @@ import crypto from 'crypto';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+function getBaseUrl() {
+  return process.env.APP_URL || 'http://localhost:3000';
+}
+
 export default async function handler(req, res) {
+  // Security middleware from your new version
+  if (!originCheck(req, res)) return;
+  if (!rateLimiter(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Simplified logic from your working version
   const { email, user_id, rememberMe = false } = req.body;
 
   if (!email || !email.includes('@')) {
@@ -22,69 +33,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Generate magic link token
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 15 * 60 * 1000);
-const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.APP_URL || 'http://localhost:3000';
-const magicLink = `${baseUrl}/verify?token=${token}`;
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
- // 15 minutes
-
-    // Store token in database
-    const { data: insertedToken, error: insertError } = await supabase
+    // The single, direct database write from your working version
+    const { error: insertError } = await supabase
       .from('magic_tokens')
-      .insert([
-        {
-          email: email.toLowerCase(),
-          token,
-          user_id,
-          expires_at: expires.toISOString(),
-          remember_me: rememberMe,
-          used: false
-        }
-      ])
-      .select()
-      .single();
-
-    console.log('✅ Inserted token:', insertedToken);
-
+      .insert([{
+        email: email.toLowerCase(),
+        token,
+        user_id: user_id, // Use user_id directly
+        expires_at: expires.toISOString(),
+        remember_me: rememberMe,
+        used: false
+      }]);
 
     if (insertError) {
-      console.error('Token storage error:', insertError);
-      return res.status(500).json({ error: 'Failed to generate login link' });
+      // This will now report the true database error if it fails
+      console.error('Magic token insert error:', insertError);
+      throw insertError;
     }
 
-
-    // Send email via Resend
-    const { error: emailError } = await resend.emails.send({
+    const magicLink = `${getBaseUrl()}/verify?token=${token}`;
+    await resend.emails.send({
       from: 'login@thecv.pro',
       to: email,
-      subject: 'Your TheCV.Pro Login Link',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Login to TheCV.Pro</h2>
-          <p>Click the link below to access your CV analysis:</p>
-          <a href="${magicLink}" style="display: inline-block; background: #007cba; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
-            Login to TheCV.Pro
-          </a>
-          <p style="color: #666; font-size: 14px;">This link expires in 15 minutes.</p>
-          <p style="color: #666; font-size: 14px;">If you didn't request this login, you can safely ignore this email.</p>
-        </div>
-      `
+      subject: 'Your Secure Login Link',
+      html: `<p>Click <a href="${magicLink}">here</a> to log in.</p>`
     });
 
-    if (emailError) {
-      console.error('Email send error:', emailError);
-      return res.status(500).json({ error: 'Failed to send email' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: `Login link sent to ${email}`
-    });
+    return res.status(200).json({ success: true });
 
   } catch (error) {
-    console.error('Magic link error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error in send-magic-link:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
