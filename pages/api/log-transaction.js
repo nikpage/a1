@@ -1,55 +1,57 @@
 // pages/api/log-transaction.js
 
-import { createClient } from '@supabase/supabase-js'
-import { KeyManager } from '../../utils/key-manager.js'
-const keyManager = new KeyManager()
 
+import { createClient } from '@supabase/supabase-js';
+import { KeyManager } from './key-manager.js'; // Assuming key-manager is in utils
+
+const keyManager = new KeyManager();
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+);
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end()
-
+export async function logTransaction(data) {
   const {
     user_id,
     source_gen_id = null,
     model = 'DS-v3',
-    event_type = 'completion',
+    // We now see the original file doesn't use prompt_tokens,
+    // so we will match its logic exactly.
     cache_hit_tokens = 0,
     cache_miss_tokens = 0,
     completion_tokens = 0,
     job_title = null,
     company = null,
-    tone = null
-  } = req.body
+    tone = null,
+    key_index = keyManager.currentKeyIndex // Pass key_index if available
+  } = data;
 
-  if (!user_id || !model || !event_type) {
-    return res.status(400).json({ error: 'Missing required fields' })
+  if (!user_id || !model) {
+    console.error('logTransaction requires user_id and model');
+    return;
   }
 
+  // --- Logic from your log-transaction.js file ---
   const { data: pricing, error: pricingError } = await supabase
     .from('model_pricing')
     .select('event_type, cost_per_call')
-    .eq('model', model)
+    .eq('model', model);
 
   if (pricingError || !pricing || pricing.length === 0) {
-    console.error('Pricing lookup failed:', pricingError)
-    return res.status(500).json({ error: 'Pricing lookup failed' })
+    console.error('Pricing lookup failed:', pricingError);
+    return; // Exit gracefully
   }
 
-  const priceMap = {}
+  const priceMap = {};
   for (const row of pricing) {
-    priceMap[row.event_type] = parseFloat(row.cost_per_call)
+    priceMap[row.event_type] = parseFloat(row.cost_per_call);
   }
 
-  // ✅ Per-token pricing — no division
   const amount_usd = (
     cache_hit_tokens * (priceMap['cache_hit'] || 0) +
     cache_miss_tokens * (priceMap['cache_miss'] || 0) +
     completion_tokens * (priceMap['completion'] || 0)
-  ).toFixed(12)
+  ).toFixed(12);
 
   const { error: insertError } = await supabase.from('transactions').insert([
     {
@@ -63,14 +65,11 @@ export default async function handler(req, res) {
       amount_usd,
       detail: { job_title, company, tone },
       created_at: new Date().toISOString(),
-       key_index: keyManager.currentKeyIndex
+      key_index: key_index
     }
-  ])
+  ]);
 
   if (insertError) {
-    console.error('Transaction insert failed:', insertError)
-    return res.status(500).json({ error: 'Insert failed' })
+    console.error('Transaction insert failed:', insertError);
   }
-
-  return res.status(200).json({ success: true, amount_usd })
 }
