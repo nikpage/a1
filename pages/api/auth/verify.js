@@ -1,58 +1,37 @@
-// pages/api/auth/verify.js
+//api/auth/verify.js
 
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import rateLimiter from '../../../lib/rateLimiter';
-import originCheck from '../../../lib/originCheck';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
-  
-  if (!rateLimiter(req, res)) return;
-
+  console.log('Env check:', {
+  jwt: !!process.env.JWT_SECRET,
+  supabase: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+  service: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+});
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const { token } = req.query;
   if (!token) return res.status(400).json({ error: 'Token required' });
 
   try {
-    // Log environment for debugging
-    console.log('Supabase config:', {
-      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Missing'
-    });
-
     const { data: tokenData, error: tokenError } = await supabase
       .from('magic_tokens')
-      .select('user_id, email, used, expires_at')
+      .select('*')
       .eq('token', token)
-      .maybeSingle();
+      .eq('used', false)
+      .gte('expires_at', new Date().toISOString())
+      .single();
 
-    if (tokenError) {
-      console.error('Token query error:', { tokenError, token });
-      return res.status(500).json({ error: 'Database error', debug: { tokenError, token } });
-    }
-    if (!tokenData) {
-      console.error('Token not found:', { token });
-      return res.status(401).json({ error: 'Token not found', debug: { token } });
-    }
-    if (tokenData.used) {
-      console.error('Token already used:', { token, used: tokenData.used });
-      return res.status(401).json({ error: 'Token already used', debug: { token, used: tokenData.used } });
-    }
-    if (new Date(tokenData.expires_at) < new Date()) {
-      console.error('Token expired:', { token, expires_at: tokenData.expires_at });
-      return res.status(401).json({ error: 'Token expired', debug: { token, expires_at: tokenData.expires_at } });
+    if (tokenError || !tokenData) {
+      console.error('Token error:', tokenError);
+      return res.status(401).json({ error: 'Invalid token' });
     }
 
-    console.log('Looking up user with:', {
-      user_id: tokenData.user_id,
-      email: tokenData.email
-    });
-
-    let { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('user_id, email')
       .eq('user_id', tokenData.user_id)
@@ -60,40 +39,14 @@ export default async function handler(req, res) {
       .single();
 
     if (userError || !user) {
-      console.warn('Strict user lookup failed:', { userError, user, tokenData });
-
-      const { data: fallbackUser, error: fallbackError } = await supabase
-        .from('users')
-        .select('user_id, email')
-        .eq('user_id', tokenData.user_id)
-        .maybeSingle();
-
-      if (fallbackError || !fallbackUser) {
-        console.error('User fallback lookup failed:', { fallbackError, fallbackUser, tokenData });
-        return res.status(401).json({
-          error: 'Account not found',
-          debug: {
-            userError,
-            fallbackError,
-            tokenData,
-            tried_user_id: tokenData.user_id,
-            tried_email: tokenData.email
-          }
-        });
-      }
-
-      user = fallbackUser;
-      console.log('User found by user_id only:', user);
+      console.error('User error:', userError);
+      return res.status(401).json({ error: 'Account not found' });
     }
 
-    const { error: updateError } = await supabase
+    await supabase
       .from('magic_tokens')
       .update({ used: true })
       .eq('token', token);
-
-    if (updateError) {
-      console.error('Failed to mark token as used:', updateError);
-    }
 
     const sessionToken = jwt.sign(
       {
@@ -113,6 +66,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Verification process error:', error);
-    return res.status(500).json({ error: 'Login failed', debug: error?.message || error });
+    return res.status(500).json({ error: 'Login failed' });
   }
 }
