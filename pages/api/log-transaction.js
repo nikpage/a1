@@ -1,6 +1,6 @@
 // pages/api/log-transaction.js
 import { createClient } from '@supabase/supabase-js';
-import { KeyManager } from '../../utils/key-manager.js'; // Corrected Path
+import { KeyManager } from '../../utils/key-manager.js';
 
 const keyManager = new KeyManager();
 const supabase = createClient(
@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export async function logTransaction(data) {
+export default async function handler(req, res) {
   const {
     user_id,
     source_gen_id = null,
@@ -20,11 +20,10 @@ export async function logTransaction(data) {
     company = null,
     tone = null,
     key_index = keyManager.currentKeyIndex
-  } = data;
+  } = req.body;
 
   if (!user_id || !model) {
-    console.error('logTransaction requires user_id and model');
-    return;
+    return res.status(400).json({ error: 'Missing user_id or model' });
   }
 
   const { data: pricing, error: pricingError } = await supabase
@@ -33,14 +32,13 @@ export async function logTransaction(data) {
     .eq('model', model);
 
   if (pricingError || !pricing || pricing.length === 0) {
-    console.error('Pricing lookup failed:', pricingError);
-    return;
+    return res.status(500).json({ error: 'Failed to get pricing' });
   }
 
-  const priceMap = {};
-  for (const row of pricing) {
-    priceMap[row.event_type] = parseFloat(row.cost_per_call);
-  }
+  const priceMap = pricing.reduce((acc, row) => ({
+    ...acc,
+    [row.event_type]: parseFloat(row.cost_per_call)
+  }), {});
 
   const amount_usd = (
     cache_hit_tokens * (priceMap['cache_hit'] || 0) +
@@ -60,11 +58,13 @@ export async function logTransaction(data) {
       amount_usd,
       detail: { job_title, company, tone },
       created_at: new Date().toISOString(),
-      key_index: key_index
+      key_index
     }
   ]);
 
   if (insertError) {
-    console.error('Transaction insert failed:', insertError);
+    return res.status(500).json({ error: 'Failed to save transaction' });
   }
+
+  return res.status(200).json({ message: 'Transaction saved' });
 }
