@@ -22,11 +22,11 @@ export default async function handler(req, res) {
       .from('magic_tokens')
       .select('user_id, email, used, expires_at')
       .eq('token', token)
-      .single();
+      .maybeSingle();
 
     if (tokenError || !tokenData) {
       console.error('Token lookup failed:', { tokenError, tokenData, token });
-      return res.status(401).json({ error: 'Invalid or expired token', debug: { tokenError, tokenData, token } });
+      return res.status(401).json({ error: 'Token not found', debug: { tokenError, tokenData, token } });
     }
 
     if (tokenData.used || new Date(tokenData.expires_at) < new Date()) {
