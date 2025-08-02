@@ -18,20 +18,33 @@ export default async function handler(req, res) {
   if (!token) return res.status(400).json({ error: 'Token required' });
 
   try {
+    // Log environment for debugging
+    console.log('Supabase config:', {
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Missing'
+    });
+
     const { data: tokenData, error: tokenError } = await supabase
       .from('magic_tokens')
       .select('user_id, email, used, expires_at')
       .eq('token', token)
       .maybeSingle();
 
-    if (tokenError || !tokenData) {
-      console.error('Token lookup failed:', { tokenError, tokenData, token });
-      return res.status(401).json({ error: 'Token not found', debug: { tokenError, tokenData, token } });
+    if (tokenError) {
+      console.error('Token query error:', { tokenError, token });
+      return res.status(500).json({ error: 'Database error', debug: { tokenError, token } });
     }
-
-    if (tokenData.used || new Date(tokenData.expires_at) < new Date()) {
-      console.error('Token invalid:', { used: tokenData.used, expires_at: tokenData.expires_at, token });
-      return res.status(401).json({ error: 'Token already used or expired', debug: { tokenData, token } });
+    if (!tokenData) {
+      console.error('Token not found:', { token });
+      return res.status(401).json({ error: 'Token not found', debug: { token } });
+    }
+    if (tokenData.used) {
+      console.error('Token already used:', { token, used: tokenData.used });
+      return res.status(401).json({ error: 'Token already used', debug: { token, used: tokenData.used } });
+    }
+    if (new Date(tokenData.expires_at) < new Date()) {
+      console.error('Token expired:', { token, expires_at: tokenData.expires_at });
+      return res.status(401).json({ error: 'Token expired', debug: { token, expires_at: tokenData.expires_at } });
     }
 
     console.log('Looking up user with:', {
