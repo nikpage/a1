@@ -1,8 +1,6 @@
 // pages/api/log-transaction.js
-
-
 import { createClient } from '@supabase/supabase-js';
-import { KeyManager } from './key-manager.js'; // Assuming key-manager is in utils
+import { KeyManager } from '../../utils/key-manager.js'; // Corrected Path
 
 const keyManager = new KeyManager();
 const supabase = createClient(
@@ -15,15 +13,13 @@ export async function logTransaction(data) {
     user_id,
     source_gen_id = null,
     model = 'DS-v3',
-    // We now see the original file doesn't use prompt_tokens,
-    // so we will match its logic exactly.
     cache_hit_tokens = 0,
     cache_miss_tokens = 0,
     completion_tokens = 0,
     job_title = null,
     company = null,
     tone = null,
-    key_index = keyManager.currentKeyIndex // Pass key_index if available
+    key_index = keyManager.currentKeyIndex
   } = data;
 
   if (!user_id || !model) {
@@ -31,7 +27,6 @@ export async function logTransaction(data) {
     return;
   }
 
-  // --- Logic from your log-transaction.js file ---
   const { data: pricing, error: pricingError } = await supabase
     .from('model_pricing')
     .select('event_type, cost_per_call')
@@ -39,7 +34,7 @@ export async function logTransaction(data) {
 
   if (pricingError || !pricing || pricing.length === 0) {
     console.error('Pricing lookup failed:', pricingError);
-    return; // Exit gracefully
+    return;
   }
 
   const priceMap = {};
