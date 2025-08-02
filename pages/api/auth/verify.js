@@ -1,4 +1,5 @@
 // pages/api/auth/verify.js
+
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -19,24 +20,25 @@ export default async function handler(req, res) {
   try {
     const { data: tokenData, error: tokenError } = await supabase
       .from('magic_tokens')
-      .select('*')
+      .select('user_id, email, used, expires_at')
       .eq('token', token)
-      .eq('used', false)
-      .gte('expires_at', new Date().toISOString())
       .single();
 
     if (tokenError || !tokenData) {
-      console.error('Token error:', tokenError, 'tokenData:', tokenData, 'token:', token);
-      return res.status(401).json({ error: 'Invalid token', debug: { tokenError, tokenData, token } });
+      console.error('Token lookup failed:', { tokenError, tokenData, token });
+      return res.status(401).json({ error: 'Invalid or expired token', debug: { tokenError, tokenData, token } });
     }
 
-    // Log what we're about to query for user
+    if (tokenData.used || new Date(tokenData.expires_at) < new Date()) {
+      console.error('Token invalid:', { used: tokenData.used, expires_at: tokenData.expires_at, token });
+      return res.status(401).json({ error: 'Token already used or expired', debug: { tokenData, token } });
+    }
+
     console.log('Looking up user with:', {
       user_id: tokenData.user_id,
       email: tokenData.email
     });
 
-    // Try strict match: user_id AND email
     let { data: user, error: userError } = await supabase
       .from('users')
       .select('user_id, email')
@@ -47,7 +49,6 @@ export default async function handler(req, res) {
     if (userError || !user) {
       console.warn('Strict user lookup failed:', { userError, user, tokenData });
 
-      // Fallback: try by user_id only
       const { data: fallbackUser, error: fallbackError } = await supabase
         .from('users')
         .select('user_id, email')
@@ -72,7 +73,6 @@ export default async function handler(req, res) {
       console.log('User found by user_id only:', user);
     }
 
-    // Mark token as used
     const { error: updateError } = await supabase
       .from('magic_tokens')
       .update({ used: true })
@@ -80,7 +80,6 @@ export default async function handler(req, res) {
 
     if (updateError) {
       console.error('Failed to mark token as used:', updateError);
-      // Don't block login, just log
     }
 
     const sessionToken = jwt.sign(
