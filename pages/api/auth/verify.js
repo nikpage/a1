@@ -20,6 +20,19 @@ export default async function handler(req, res) {
 
   try {
     // Find unused token that hasn't expired (48 hours)
+    console.log('--- VERIFY DEBUG LOG START ---');
+console.log('Token received:', `"${token}"`, 'Length:', token?.length);
+console.log('Current UTC time:', new Date().toISOString());
+
+const { data: checkTokens, error: checkError } = await supabase
+  .from('magic_tokens')
+  .select('*')
+  .eq('token', token);
+
+console.log('Tokens found ignoring filters:', checkTokens);
+console.log('Error (if any) on check query:', checkError);
+console.log('--- VERIFY DEBUG LOG END ---');
+
     const { data: tokenData, error: tokenError } = await supabase
       .from('magic_tokens')
       .select('*')
