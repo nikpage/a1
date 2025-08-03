@@ -1,4 +1,5 @@
 //api/auth/verify.js
+console.log('VERIFY HANDLER CALLED - token:', req.query.token);
 
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
