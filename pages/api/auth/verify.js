@@ -20,60 +20,19 @@ export default async function handler(req, res) {
 
   try {
     // First, let's see ALL tokens with this value (without any filters)
-    const { data: allTokens, error: allTokensError } = await supabase
-      .from('magic_tokens')
-      .select('*')
-      .eq('token', token);
-
-    console.log('All tokens query error:', allTokensError);
-    console.log('All tokens found:', allTokens?.length || 0);
-    console.log('All tokens data:', JSON.stringify(allTokens, null, 2));
-
-    // Now try with just the 'used' filter
     const { data: unusedTokens, error: unusedError } = await supabase
       .from('magic_tokens')
       .select('*')
       .eq('token', token)
-      .eq('used', false);
+      .eq('used', false)
+      .gte('expires_at', new Date().toISOString());
 
-    console.log('Unused tokens query error:', unusedError);
-    console.log('Unused tokens found:', unusedTokens?.length || 0);
-    console.log('Unused tokens data:', JSON.stringify(unusedTokens, null, 2));
-
-    // Check if we have exactly one unused token
-    if (!unusedTokens || unusedTokens.length === 0) {
-      console.log('❌ No unused tokens found');
-      return res.status(401).json({ error: 'Invalid or used token' });
-    }
-
-    if (unusedTokens.length > 1) {
-      console.log('❌ Multiple unused tokens found - this shouldn\'t happen');
-      return res.status(401).json({ error: 'Token conflict' });
+    if (unusedError || !unusedTokens || unusedTokens.length === 0) {
+      console.error('Token error:', unusedError);
+      return res.status(401).json({ error: 'Invalid token' });
     }
 
     const tokenData = unusedTokens[0];
-    console.log('✅ Found valid unused token');
-
-    // Now check expiration manually
-    const now = new Date();
-    const expiresAt = new Date(tokenData.expires_at);
-    const isExpired = now > expiresAt;
-
-    console.log('Time comparison:', {
-      now_iso: now.toISOString(),
-      expires_at_iso: tokenData.expires_at,
-      now_timestamp: now.getTime(),
-      expires_timestamp: expiresAt.getTime(),
-      difference_minutes: (expiresAt.getTime() - now.getTime()) / (1000 * 60),
-      is_expired: isExpired
-    });
-
-    if (isExpired) {
-      console.log('❌ Token is expired');
-      return res.status(401).json({ error: 'Token expired' });
-    }
-
-    // Token is valid, proceed with user lookup
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('user_id, email')
@@ -86,18 +45,10 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Account not found' });
     }
 
-    console.log('✅ User found:', user.email);
-
-    // Mark token as used
-    const { error: updateError } = await supabase
+    await supabase
       .from('magic_tokens')
       .update({ used: true })
       .eq('token', token);
-
-    if (updateError) {
-      console.error('Error marking token as used:', updateError);
-    }
-
     // Create session token
     const sessionToken = jwt.sign(
       {
