@@ -41,10 +41,10 @@ console.log('--- VERIFY DEBUG LOG END ---');
       .gte('expires_at', new Date().toISOString())
       .single();
 
-    if (tokenError || !tokenData) {
-      console.error('Token not found or expired:', tokenError);
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
+      if (tokenError || !tokenData) {
+        console.error('Token not found or expired:', tokenError);
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
 
     // Find user
     const { data: user, error: userError } = await supabase
