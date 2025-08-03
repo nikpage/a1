@@ -40,8 +40,7 @@ console.log('--- VERIFY DEBUG LOG END ---');
       .eq('token', token)
       .eq('used', false)
       .gte('expires_at', new Date().toISOString())
-      .single();
-
+      .limit(1);
       if (tokenError || !tokenData) {
         console.error('Token not found or expired:', tokenError);
         return res.status(401).json({ error: 'Invalid or expired token' });
@@ -53,8 +52,7 @@ console.log('--- VERIFY DEBUG LOG END ---');
       .select('user_id, email')
       .eq('user_id', tokenData.user_id)
       .eq('email', tokenData.email)
-      .single();
-
+      .limit(1);
     if (userError || !user) {
       console.error('User not found:', userError);
       return res.status(401).json({ error: 'Account not found' });
