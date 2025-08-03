@@ -24,11 +24,9 @@ export default async function handler(req, res) {
   try {
     // Generate magic link token
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 15 * 60 * 1000);
+    const expires = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000); // 2 days
 const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.APP_URL || 'http://localhost:3000';
 const magicLink = `${baseUrl}/verify?token=${token}`;
-
- // 15 minutes
 
     // Store token in database
     const { data: insertedToken, error: insertError } = await supabase
@@ -67,7 +65,7 @@ const magicLink = `${baseUrl}/verify?token=${token}`;
           <a href="${magicLink}" style="display: inline-block; background: #007cba; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
             Login to TheCV.Pro
           </a>
-          <p style="color: #666; font-size: 14px;">This link expires in 15 minutes.</p>
+          <p style="color: #666; font-size: 14px;">This link expires in 2 days.</p>
           <p style="color: #666; font-size: 14px;">If you didn't request this login, you can safely ignore this email.</p>
         </div>
       `
