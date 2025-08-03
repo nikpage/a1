@@ -19,20 +19,21 @@ export default async function handler(req, res) {
   console.log('Token received:', token);
 
   try {
-    // First, let's see ALL tokens with this value (without any filters)
-    const { data: unusedTokens, error: unusedError } = await supabase
+    // Find unused token that hasn't expired (48 hours)
+    const { data: tokenData, error: tokenError } = await supabase
       .from('magic_tokens')
       .select('*')
       .eq('token', token)
       .eq('used', false)
-      .gte('expires_at', new Date().toISOString());
+      .gte('expires_at', new Date().toISOString())
+      .single();
 
-    if (unusedError || !unusedTokens || unusedTokens.length === 0) {
-      console.error('Token error:', unusedError);
-      return res.status(401).json({ error: 'Invalid token' });
+    if (tokenError || !tokenData) {
+      console.error('Token not found or expired:', tokenError);
+      return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    const tokenData = unusedTokens[0];
+    // Find user
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('user_id, email')
@@ -41,14 +42,16 @@ export default async function handler(req, res) {
       .single();
 
     if (userError || !user) {
-      console.error('User error:', userError);
+      console.error('User not found:', userError);
       return res.status(401).json({ error: 'Account not found' });
     }
 
+    // Mark token as used
     await supabase
       .from('magic_tokens')
       .update({ used: true })
       .eq('token', token);
+
     // Create session token
     const sessionToken = jwt.sign(
       {
