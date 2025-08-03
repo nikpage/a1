@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       .select('*')
       .eq('token', token)
       .eq('used', false)
-      .gte('expires_at', new Date(Date.now()).toISOString())
+    //  .gte('expires_at', new Date(Date.now()).toISOString())
       .single();
     console.log('Debug times:', {
       now: new Date().toISOString(),
