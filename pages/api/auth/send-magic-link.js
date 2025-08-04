@@ -1,8 +1,9 @@
 // pages/api/auth/send-magic-link.js
+
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
-import { rateLimiter } from '../../../lib/rate-limiter';
+import rateLimiter from '../../../lib/rateLimiter';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
   if (!user_id) { return res.status(400).json({ error: 'User ID required' }); }
 
   try {
-    const isAllowed = await rateLimiter(email.toLowerCase(), 3, 60);
+    const isAllowed = await rateLimiter(req, 3, 60);
     if (!isAllowed) {
       return res.status(429).json({ error: 'Too many requests. Please try again in a minute.' });
     }
