@@ -163,7 +163,7 @@ export default async function handler(req, res) {
   })
 }
 
-// Buffer utility, never remove!
+// Buffer utility, never  remove!
 function streamToBuffer(file) {
   return new Promise((resolve, reject) => {
     const chunks = []
