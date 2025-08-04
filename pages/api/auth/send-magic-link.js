@@ -1,4 +1,4 @@
-// pages/api/auth/send-magic-link.js
+// pages/api/auth/ send-magic-link.js
 
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
