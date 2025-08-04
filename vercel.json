@@ -1,11 +1,5 @@
 {
   "framework": "nextjs",
-  "routes": [
-    {
-      "src": "/api/stripe/webhook",
-      "dest": "/api/stripe/webhook.js"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -15,5 +9,5 @@
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
       ]
     }
-  ] 
+  ]
 }
