@@ -4,9 +4,34 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "https://www.thecv.pro, https://thecv.pro" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "origin",
+          "value": "https://www.thecv.pro"
+        }
+      ],
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://www.thecv.pro" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "origin",
+          "value": "https://thecv.pro"
+        }
+      ],
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://thecv.pro" }
       ]
     }
   ]
