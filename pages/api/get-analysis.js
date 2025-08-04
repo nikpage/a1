@@ -1,19 +1,25 @@
 // pages/api/get-analysis.js
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth } from '../../lib/auth';
+import userRateLimiter from '../../lib/userRateLimiter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function getAnalysisHandler(req, res) {
-  try {
-    const { user_id } = req.user;
+export default requireAuth(async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: `Method ${req.method} not allowed` });
+  }
 
-    if (!user_id) {
-      return res.status(400).json({ error: 'User ID missing in token' });
+  try {
+    if (!userRateLimiter(req.user.user_id, res)) {
+      return;
     }
+
+    const { user_id } = req.user;
 
     const { data, error } = await supabase
       .from('gen_data')
@@ -37,14 +43,4 @@ async function getAnalysisHandler(req, res) {
     console.error('Unexpected error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
-}
-
-export default function handler(req, res) {
-  // Since vercel.json handles CORS, the OPTIONS check and custom headers are removed.
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: `Method ${req.method} not allowed` });
-  }
-
-  return requireAuth(getAnalysisHandler)(req, res);
-}
+});
