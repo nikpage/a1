@@ -6,6 +6,13 @@ import crypto from 'crypto';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+const getBaseUrl = () => {
+  if (process.env.VERCEL) {
+    return 'https://thecv.pro';
+  }
+  return 'http://localhost:3000';
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -22,15 +29,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Generate magic link token
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 15 * 60 * 1000);
-const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.APP_URL || 'http://localhost:3000';
-const magicLink = `${baseUrl}/verify?token=${token}`;
+    const expires = new Date(Date.now() + 900000);
+    const baseUrl = getBaseUrl();
+    const magicLink = `${baseUrl}/verify?token=${token}`;
 
- // 15 minutes
-
-    // Store token in database
     const { data: insertedToken, error: insertError } = await supabase
       .from('magic_tokens')
       .insert([
@@ -46,16 +49,11 @@ const magicLink = `${baseUrl}/verify?token=${token}`;
       .select()
       .single();
 
-    console.log('✅ Inserted token:', insertedToken);
-
-
     if (insertError) {
       console.error('Token storage error:', insertError);
       return res.status(500).json({ error: 'Failed to generate login link' });
     }
 
-
-    // Send email via Resend
     const { error: emailError } = await resend.emails.send({
       from: 'login@thecv.pro',
       to: email,
