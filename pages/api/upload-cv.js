@@ -1,5 +1,13 @@
 // pages/api/upload-cv.js
 
+import formidable from 'formidable'
+import { upsertUser, upsertCV } from '../../utils/database'
+import extractTextFromPDF from '../../utils/pdf-extract'
+import mammoth from 'mammoth'
+import crypto from 'crypto'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 console.log('ENV VARS CHECK:', {
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -8,10 +16,6 @@ console.log('ENV VARS CHECK:', {
 })
 
 console.log("Handler HIT")
-
-import formidable from 'formidable'
-import { upsertUser, upsertCV } from '../../utils/database'
-import extractTextFromPDF from '../../utils/pdf-extract'
 
 function genSessionId() {
   return crypto.randomUUID()
@@ -37,19 +41,19 @@ async function sha256(str) {
   }
 }
 
+// Extract text from DOCX files
+async function extractTextFromDOCX(buffer) {
+  try {
+    const result = await mammoth.extractRawText({ buffer })
+    return result.value
+  } catch (error) {
+    console.error('DOCX extraction error:', error)
+    throw new Error('Failed to extract text from DOCX file')
+  }
+}
+
 // Main API handler
 export default async function handler(req, res) {
-  // Add CORS headers
-  res.setHeader('Access-Control-Allow-Origin', 'https://www.thecv.pro')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
-  // Handle preflight OPTIONS request
-  if (req.method === 'OPTIONS') {
-    console.log("Handling OPTIONS preflight request")
-    return res.status(200).end()
-  }
-
   console.log("Upload handler called:", req.method, req.url)
   if (req.method !== 'POST') {
     console.log("Method not allowed:", req.method)
@@ -71,12 +75,15 @@ export default async function handler(req, res) {
       }
 
       console.log("File received:", file.originalFilename || file.newFilename || file.filepath || file.name, file.mimetype, file.size)
-      const uploadedFileName = file.originalFilename || file.newFilename || file.name || 'unknown.pdf'
+      const uploadedFileName = file.originalFilename || file.newFilename || file.name || 'unknown'
 
-      if (!file.mimetype || file.mimetype !== 'application/pdf') {
-        console.log("Not a PDF:", file.mimetype)
-        return res.status(400).json({ error: 'Not a PDF' })
+      // Check for supported file types
+      const supportedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+      if (!file.mimetype || !supportedTypes.includes(file.mimetype)) {
+        console.log("Unsupported file type:", file.mimetype)
+        return res.status(400).json({ error: 'File must be PDF or DOCX format' })
       }
+
       if (file.size > 200 * 1024) {
         console.log("File too large:", file.size)
         return res.status(400).json({ error: 'File too large' })
@@ -97,15 +104,22 @@ export default async function handler(req, res) {
 
       let text
       try {
-        text = await extractTextFromPDF(buffer)
-        console.log("Extracted CV text:", text && text.length > 400 ? text.slice(0, 400) + '…' : text)
+        // Extract text based on file type
+        if (file.mimetype === 'application/pdf') {
+          text = await extractTextFromPDF(buffer)
+          console.log("Extracted PDF text:", text && text.length > 400 ? text.slice(0, 400) + '…' : text)
+        } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          text = await extractTextFromDOCX(buffer)
+          console.log("Extracted DOCX text:", text && text.length > 400 ? text.slice(0, 400) + '…' : text)
+        }
+
         if (!text || !text.trim()) {
-          console.log("No text extracted from PDF")
-          return res.status(400).json({ error: "No text extracted from PDF" })
+          console.log("No text extracted from file")
+          return res.status(400).json({ error: "No text extracted from file" })
         }
       } catch (err) {
-        console.log("PDF parse error:", err)
-        return res.status(400).json({ error: 'PDF parse error', details: String(err) })
+        console.log("File parse error:", err)
+        return res.status(400).json({ error: 'File parse error', details: String(err) })
       }
 
       // --- PHONE EXTRACT & HASH ---
@@ -120,12 +134,21 @@ export default async function handler(req, res) {
       // --- END PHONE EXTRACT & HASH ---
       console.log('fields.user_id:', fields.user_id)
 
-      const user_id = fields.user_id || genSessionId()
+      // THIS BLOCK IS THE REQUIRED CHANGE
+      const user_id = fields.user_id || genSessionId();
+      const { data, error } = await supabase
+        .from('gen_data')
+        .select('content')
+        .eq('user_id', user_id.toString())
+        .eq('type', 'analysis')
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       try {
-        console.log("Generated user_id:", user_id)
+        console.log('Before upsertUser:', user_id, phone_hash);
         await upsertUser(user_id, phone_hash)
         await upsertCV(user_id, text)
+        await supabase.from('data_gen').upsert({ user_id, content: text, type: 'cv' });
         console.log("DB save successful:", user_id)
 
         return res.status(200).json({ user_id })
