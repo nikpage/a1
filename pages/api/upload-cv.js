@@ -39,6 +39,17 @@ async function sha256(str) {
 
 // Main API handler
 export default async function handler(req, res) {
+  // Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.thecv.pro')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    console.log("Handling OPTIONS preflight request")
+    return res.status(200).end()
+  }
+
   console.log("Upload handler called:", req.method, req.url)
   if (req.method !== 'POST') {
     console.log("Method not allowed:", req.method)
