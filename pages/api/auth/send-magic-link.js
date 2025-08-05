@@ -5,6 +5,7 @@ import { Redis } from "@upstash/redis";
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import { getBaseUrl, isValidOrigin } from "../../../utils/originCheck";
 
 const redis = Redis.fromEnv();
 const ratelimit = new Ratelimit({
@@ -15,11 +16,6 @@ const ratelimit = new Ratelimit({
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-const getBaseUrl = () => {
-  if (process.env.VERCEL) return "https://thecv.pro";
-  return "http://localhost:3000";
-};
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -27,8 +23,7 @@ export default async function handler(req, res) {
   }
 
   const origin = req.headers.origin;
-  const trustedOrigin = getBaseUrl();
-  if (origin && origin !== trustedOrigin) {
+  if (!isValidOrigin(origin)) {
     return res.status(403).json({ error: "Invalid origin" });
   }
 
