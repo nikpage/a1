@@ -21,7 +21,7 @@ export default function LoginModal({ onClose, userId }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          user_id: userId,
+          user_id: userId, // May be undefined for index page login
           rememberMe
         }),
       });
@@ -47,7 +47,9 @@ export default function LoginModal({ onClose, userId }) {
 
       <form onSubmit={handleSendMagicLink} className="flex flex-col gap-4">
         <p className="text-gray-600 mb-2">
-          Enter your email to receive a secure login link.
+          {userId
+            ? 'Enter your email to receive a secure login link.'
+            : 'Enter your email to log in or create an account.'}
         </p>
 
         <input

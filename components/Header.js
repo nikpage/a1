@@ -1,12 +1,15 @@
-// path: /Header.js
+// components/Header.js
+
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import LoginModal from './LoginModal';
 
 export default function Header({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [downloads, setDownloads] = useState(0);
   const [generations, setGenerations] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const fetchHeaderStats = async () => {
     if (!user_id) return;
@@ -67,7 +70,6 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
   return (
     <header className="bg-white border-b border-gray-200 py-4 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-
         {/* Desktop Layout */}
         <div className="hidden lg:flex items-center justify-between">
           {/* Logo and Title */}
@@ -90,6 +92,14 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
           {/* Navigation */}
           <nav className="flex items-center space-x-8">
             <NavigationLinks />
+            {!user_id && (
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="text-slate-700 hover:text-[#41b4a2] font-medium transition-colors"
+              >
+                Login
+              </button>
+            )}
           </nav>
 
           {/* Usage Stats (only shown when user_id exists) */}
@@ -168,11 +178,29 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
             <div className="mt-4 py-4 border-t border-gray-200">
               <nav className="flex flex-col space-y-2">
                 <NavigationLinks mobile={true} />
+                {!user_id && (
+                  <button
+                    onClick={() => {
+                      setIsLoginModalOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="text-slate-700 hover:text-[#41b4a2] font-medium transition-colors block py-2"
+                  >
+                    Login
+                  </button>
+                )}
               </nav>
             </div>
           )}
-
         </div>
+
+        {/* Login Modal */}
+        {isLoginModalOpen && (
+          <LoginModal
+            onClose={() => setIsLoginModalOpen(false)}
+            userId={user_id}
+          />
+        )}
       </div>
     </header>
   );
