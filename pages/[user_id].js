@@ -10,14 +10,28 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
   const [analysis, setAnalysis] = useState('');
 
   useEffect(() => {
-    fetch('/api/get-analysis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id }),
-    })
-      .then(res => res.json())
-      .then(data => setAnalysis(data.analysis || ''))
-      .catch(() => setAnalysis(''));
+    if (user_id) {
+      fetch('/api/get-analysis', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id }),
+      })
+      .then(res => {
+        if (!res.ok) {
+          console.error('API Error Response:', res.status, res.statusText);
+          return res.json().then(err => Promise.reject(err));
+        }
+        return res.json();
+      })
+      .then(data => {
+        setAnalysis(data.analysis || '');
+      })
+      .catch((error) => {
+        console.error('Failed to fetch analysis:', error);
+        setAnalysis('');
+      });
+    }
   }, [user_id]);
 
   return (
@@ -45,22 +59,17 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
 }
 
 export async function getServerSideProps(context) {
-  const { req, res, params, query } = context;
+  const { req, params } = context;
   const { user_id } = params;
 
-  // Get token from request
-  let token = getTokenFromReq(req);
-
-  // If token is in query, set it as a cookie
-  if (query.token && !req.cookies['auth-token']) {
-    res.setHeader('Set-Cookie', `auth-token=${query.token}; Path=/; HttpOnly; Max-Age=${query.rememberMe ? '2592000' : '900'}`);
-    token = query.token;
-  }
-
-  // Check authentication
-  const decoded = verifyToken(token);
-  if (!decoded || decoded.user_id !== user_id) {
-    return { redirect: { destination: '/?error=unauthorized', permanent: false } };
+  const token = getTokenFromReq(req);
+  try {
+    const decoded = await verifyToken(token);
+    if (!decoded || decoded.user_id !== user_id) {
+      return { redirect: { destination: '/?error=unauthorized', permanent: false } };
+    }
+  } catch (error) {
+    return { redirect: { destination: '/?error=invalid-token', permanent: false } };
   }
 
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);

@@ -1,9 +1,9 @@
 // pages/api/auth/verify.js
 import { createClient } from '@supabase/supabase-js';
-import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import redis from '../../../lib/redis';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-const JWT_SECRET = process.env.JWT_SECRET;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -28,19 +28,17 @@ export default async function handler(req, res) {
 
     if (error || !tokenData) {
       console.log('❌ Invalid token or error:', error);
-      return res.status(400).json({ error: 'invalid-token' });
+      console.log('❌ REDIRECTING TO LOGIN-FAILED FROM TOKEN CHECK');
+      res.redirect(302, '/?error=login-failed');
+      return;
     }
 
     console.log('✅ Token verified:', tokenData);
-
-    const sessionToken = jwt.sign(
-      {
-        email: tokenData.email,
-        user_id: tokenData.user_id
-      },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    await redis.set(`session:${sessionToken}`, JSON.stringify({
+      email: tokenData.email,
+      user_id: tokenData.user_id
+    }), 'EX', 30 * 24 * 60 * 60);
 
     console.log('✅ Session token created:', sessionToken);
 
@@ -50,14 +48,17 @@ export default async function handler(req, res) {
       .eq('token', token);
 
     res.setHeader('Set-Cookie', [
-      `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Strict`
+      `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Strict; Secure`
     ]);
 
     console.log('✅ Cookie set, redirecting');
-    return res.status(200).json({ redirect: `/${tokenData.user_id}` });
+    res.redirect(302, `/${tokenData.user_id}`);
+    return;
 
   } catch (error) {
     console.error('Verify error:', error);
-    return res.status(500).json({ error: 'login-failed' });
+    console.log('❌ REDIRECTING TO LOGIN-FAILED FROM CATCH BLOCK');
+    res.redirect(302, '/?error=login-failed');
+    return;
   }
 }

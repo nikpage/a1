@@ -71,7 +71,7 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
     <header className="bg-white border-b border-gray-200 py-4 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
         {/* Desktop Layout */}
-        <div className="hidden lg:flex items-center justify-between">
+        <div className="hidden lg:flex items-start justify-between">
           {/* Logo and Title */}
           <div className="flex flex-col items-start">
             <Link href="/">
@@ -89,33 +89,37 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
             </h1>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex items-center space-x-8">
-            <NavigationLinks />
-            {!user_id && (
-              <button
-                onClick={() => setIsLoginModalOpen(true)}
-                className="text-slate-700 hover:text-[#41b4a2] font-medium transition-colors"
-              >
-                Login
-              </button>
+          {/* Right Side: Stats/Login and Navigation */}
+          <div className="flex flex-col items-end">
+            {/* Usage Stats or Login Button */}
+            {user_id ? (
+              <div className="flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-lg mb-2">
+                <div className="text-center">
+                  <div className="text-sm font-semibold text-slate-800">{generations}</div>
+                  <div className="text-xs text-slate-600">Generations</div>
+                </div>
+                <div className="h-8 w-px bg-gray-300"></div>
+                <div className="text-center">
+                  <div className="text-sm font-semibold text-slate-800">{downloads}</div>
+                  <div className="text-xs text-slate-600">Downloads</div>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-2">
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="bg-[#41b4a2] hover:bg-[#2c9486] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Login
+                </button>
+              </div>
             )}
-          </nav>
 
-          {/* Usage Stats (only shown when user_id exists) */}
-          {user_id && (
-            <div className="flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-lg">
-              <div className="text-center">
-                <div className="text-sm font-semibold text-slate-800">{generations}</div>
-                <div className="text-xs text-slate-600">Generations</div>
-              </div>
-              <div className="h-8 w-px bg-gray-300"></div>
-              <div className="text-center">
-                <div className="text-sm font-semibold text-slate-800">{downloads}</div>
-                <div className="text-xs text-slate-600">Downloads</div>
-              </div>
-            </div>
-          )}
+            {/* Navigation Links */}
+            <nav className="flex items-center space-x-8">
+              <NavigationLinks />
+            </nav>
+          </div>
         </div>
 
         {/* Mobile/Tablet Layout */}
@@ -184,7 +188,7 @@ export default function Header({ user_id, generationsRemaining, docDownloadsRema
                       setIsLoginModalOpen(true);
                       setMobileMenuOpen(false);
                     }}
-                    className="text-slate-700 hover:text-[#41b4a2] font-medium transition-colors block py-2"
+                    className="bg-[#41b4a2] hover:bg-[#2c9486] text-white px-4 py-2 rounded-lg font-medium transition-colors block"
                   >
                     Login
                   </button>

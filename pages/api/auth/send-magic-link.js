@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 900000);
     const baseUrl = getBaseUrl();
-    const magicLink = `${baseUrl}/verify?token=${token}`;
+    const magicLink = `${baseUrl}/api/auth/verify?token=${token}`;
 
     const { error: insertError } = await supabase.from("magic_tokens").insert([
       {
