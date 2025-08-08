@@ -41,10 +41,13 @@ export function buildAnalysisPrompt(cvText, jobText, hasJobText) {
     A candidate can have multiple tags. Use these to guide tone and analysis.
 
     // STEP 3: PERFORM STRATEGIC ANALYSIS
-    Critically analyze the CV in context of the job (if provided). Be strategic, honest, and practical, like a top-tier HR consultant. Always provide critical action items, even for bad, mismatched, or extreme pivot profiles. Reference only real CV content—never invent or assume. Identify real employment gaps (>6 months) and overlapping roles from the extracted job list for analysis.
+    Critically analyze the CV in context of the job (if provided). Be strategic, honest, and practical, like a top-tier HR consultant. Always provide critical action items, even for bad, mismatched, or extreme pivot profiles. Reference only real CV content—never invent or assume. Identify real employment gaps (>6 months) and overlapping roles from the extracted job list for analysis. As part of this, ensure the 'action_items' object becomes a comprehensive summary of ALL actionable advice from the entire analysis (including quick wins, positioning strategy, keywords, etc.) to be used for final document writing.
 
-    // STEP 4: OUTPUT STRICT JSON
-    Return only a strict JSON object with these top-level keys: summary, cv_data, job_data, jobs_extracted, analysis, job_match, final_thought. Follow this structure exactly:
+    // STEP 4: CREATE GENERATION FRAMEWORK
+    Based on the strategic analysis in STEP 3, especially the 'action_items', create a generation framework. This framework is a machine-readable blueprint for the subsequent CV and cover letter writing prompts. It must be invisible to the end-user. Its purpose is to translate the strategic advice into a concrete, actionable plan to ensure the final documents are built exactly as recommended. The framework should specify the exact structure and content to be used.
+
+    // STEP 5: OUTPUT STRICT JSON
+    Return only a strict JSON object with these top-level keys: summary, cv_data, job_data, jobs_extracted, analysis, job_match, final_thought, generation_framework. Follow this structure exactly:
 
     {
       "summary": "1–2 sentence TL;DR that grabs attention, reflects the candidate's real situation, and encourages deeper reading.",
@@ -90,15 +93,20 @@ export function buildAnalysisPrompt(cvText, jobText, hasJobText) {
         "style_wording": "Tone, professionalism, clarity—refer to CV wording directly",
         "ats_keywords": "Detect strong/missing ATS terms, prioritizing job ad terms if available—quote exact CV and job ad phrases",
         "action_items": {
+          "master_plan": {
+            "strategic_positioning": "Consolidate the positioning_strategy from job_match into a clear, actionable directive for the writer.",
+            "quick_wins_to_implement": ["List of all quick_wins from the main analysis, framed as a checklist."],
+            "keyword_integration_plan": ["Provide a specific plan for weaving the most important ats_keywords and inferred_keywords into the CV and cover letter."]
+          },
           "cv_changes": {
             "critical": ["Must-fix issues—structure, length, missing info, overlapping role clarity; quote CV phrases"],
             "advised": ["Strongly suggested improvements for clarity/impact; quote CV phrases"],
             "optional": ["Minor fixes—design, layout, polish"]
           },
-          "cover_letter": {
-            "critical": ["Must-address points—gaps, pivots, red flags, overlapping roles; quote CV phrases"],
-            "advised": ["Suggestions for tone, tailoring, structure"],
-            "optional": ["Style tweaks—sign-off, flair, formatting"]
+          "cover_letter_guidance": {
+            "critical_points_to_address": ["Must-address points—gaps, pivots, red flags, overlapping roles. This must directly reflect the master_plan.strategic_positioning."],
+            "suggested_narrative_flow": ["A brief outline for the cover letter story, explaining how to handle the critical points."],
+            "tone_and_style": ["Specific advice on tone, drawn from style_wording analysis."]
           }
         }
       },
@@ -108,7 +116,35 @@ export function buildAnalysisPrompt(cvText, jobText, hasJobText) {
         "career_scenario": "${hasJobText ? 'One of: normal, pivot, overqualified, extreme_pivot' : 'null'}",
         "positioning_strategy": "${hasJobText ? 'Specific strategy—emphasize/reframe/de-emphasize CV content; quote exact phrases' : 'null'}"
       },
-      "final_thought": "Motivational closing—practical, optimistic, tailored to scenario"
+      "final_thought": "Motivational closing—practical, optimistic, tailored to scenario",
+      "generation_framework": {
+        "cv_blueprint": {
+          "target_length_pages": "Number based on analysis (e.g., 1 or 2)",
+          "section_order": ["An array of strings defining the exact CV section order, e.g., 'summary', 'experience', 'projects', 'education', 'skills'. This must be derived from analysis.action_items.cv_changes.critical"],
+          "job_selection": {
+            "include_jobs": ["List of job titles from 'jobs_extracted' to include in the new CV"],
+            "condense_jobs": [
+              {
+                "new_title": "New condensed role title",
+                "jobs_to_combine": ["Job title 1", "Job title 2"],
+                "new_key_points": ["A rewritten list of key points for the combined role"]
+              }
+            ],
+            "rewrite_jobs": [
+              {
+                "original_title": "Job title to rewrite",
+                "new_key_points": ["A rewritten list of key points to better align with the target job or strategy"]
+              }
+            ]
+          },
+          "summary_rewrite": "A rewritten professional summary based on analysis and career_arc.",
+          "skills_to_highlight": ["List of specific skills/keywords to feature prominently, derived from ats_keywords and transferable_skills."]
+        },
+        "cover_letter_blueprint": {
+          "tone_and_style": "Recommended tone, e.g., 'Confident and direct', 'Formal and respectful'",
+          "key_points_to_address": ["An array of critical points that MUST be included, derived from action_items.cover_letter_guidance.critical_points_to_address. E.g., 'Explain the 8-month career gap between 2021-2022', 'Justify the pivot from Marketing to Data Science'"]
+        }
+      }
     }
 
     CV Content:
