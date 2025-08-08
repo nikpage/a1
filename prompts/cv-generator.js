@@ -18,104 +18,118 @@ function toneInstructions(tone) {
 export function buildCvPrompt(cv, analysis, tone) {
   const systemMessage = {
     role: 'system',
-    content: 'You are an expert in writing professional CVs. Follow the formatting instructions exactly and never add commentary or notes.'
+    content: 'You are an expert in writing professional CVs. Follow the generation framework blueprint exactly and never add commentary or notes.'
   };
 
   const userMessage = {
     role: 'user',
     content: `
-    # MANDATORY STEPS - DO THESE FIRST
+# MANDATORY STEPS - DO THESE FIRST
 
-    STEP 1 (Context): First, read 'analysis.summary' and 'analysis.overall_commentary' to get a general understanding of the candidate.
+STEP 0 (Read Blueprint): Extract and follow these blueprint specifications:
+  - Target length: generation_framework.cv_blueprint.target_length_pages
+  - Section order: generation_framework.cv_blueprint.section_order
+  - Job selection: generation_framework.cv_blueprint.job_selection (include_jobs, condense_jobs, rewrite_jobs)
+  - Summary rewrite: generation_framework.cv_blueprint.summary_rewrite
+  - Skills to highlight: generation_framework.cv_blueprint.skills_to_highlight
 
-    STEP 2 (Implement Actions): You MUST address every point from the 'analysis.quick_wins' and 'analysis.red_flags' arrays.
-      - For each item in 'analysis.quick_wins', implement the suggestion directly. For example, if a win is "Quantify leadership impact," you must add metrics (e.g., team size, revenue influenced) to the relevant job descriptions.
-      - For each item in 'analysis.red_flags', you must resolve the issue. For example, if a flag is "Overlapping advisory roles," you must clarify or consolidate these roles in the experience section.
+STEP 1 (Apply Employment Intelligence):
+  - Use analysis.scenario_tags to adjust tone and approach
+  - Build summary from analysis.career_arc and blueprint summary_rewrite
+  - Address EVERY item in analysis.red_flags specifically
+  - Apply analysis.quick_wins directly to relevant sections
 
-    STEP 3 (Rewrite Summary): Based on the context from Step 1 and the actions from Step 2, rewrite the "Professional Summary" to be impactful and sharply focused on the target "Product Director" role.
+STEP 2 (Strategic Positioning):
+  - Weave in analysis.ats_keywords naturally throughout
+  - Emphasize analysis.transferable_skills using exact quoted phrases
+  - Apply job_match.positioning_strategy to job descriptions
+  - Use analysis.suitable_positions context for role framing
 
-    # Task
-    Generate a new CV in the "${tone}" tone, based ONLY on the provided CV and analysis. Do NOT invent facts, roles, or skills. All claims must be fact-based. Output must match the CV's detected language (fallback to English if unclear). If the job ad is in another language, CV language takes precedence.
+STEP 3 (Job History Management):
+  - Use jobs_extracted as definitive source for all employment
+  - Follow blueprint job_selection rules exactly
+  - For overlapping jobs: include all and indicate concurrency clearly
+  - For ongoing jobs: show as "[start_date] - Present"
+  - Never create artificial gaps between roles
 
-    # Rules
-    - Use the jobs_extracted array as the definitive source for job history. List ALL jobs from jobs_extracted in exact chronological order by start_date (most recent first).
-    - For overlapping jobs (concurrent roles), include ALL jobs and indicate concurrency in descriptions (e.g., 'Concurrent with [Role Title]').
-    - For ongoing jobs (where end_date is "ongoing" or is_current is true), show dates as "[start_date] - Present" or equivalent in the detected language.
-    - Preserve real employment gaps exactly as they appear between jobs in jobs_extracted. Never create artificial gaps.
-    - Write in "${tone}" tone: (${toneInstructions(tone)}).
-    - Output ONLY the candidate's CV—no notes, explanations, or commentary.
-    - Never include phrases like "Full career history available upon request."
+# Task
+Generate a new CV in the "${tone}" tone, based ONLY on the provided CV and analysis. Do NOT invent facts, roles, or skills. All claims must be fact-based. Output must match the CV's detected language (fallback to English if unclear). If the job ad is in another language, CV language takes precedence.
 
-    # Formatting Requirements
-    Output in Markdown format with this exact structure:
+# Rules
+- Follow generation_framework.cv_blueprint specifications exactly
+- Write in "${tone}" tone: ${toneInstructions(tone)}
+- Output ONLY the candidate's CV—no notes, explanations, or commentary
+- Never include phrases like "Full career history available upon request"
+- **Do not output square brackets [] anywhere in the entire CV.**
+- Format ALL lists (skills, job achievements, responsibilities) as bullet points, each item on a new line prefixed with a dash (-). Do NOT output any brackets, commas, or array syntax within text.
 
-    ## CENTERED INTRO SECTION (use HTML center tags):
-    <center>
+# Formatting Requirements
+Output in Markdown format with this exact structure:
 
-    ### **[Full Name]**
-    [Optional tagline/headline if present in original CV]
-    [Phone] | [Email] | [LinkedIn/Portfolio URLs]
+## CENTERED INTRO SECTION (use HTML center tags):
+<center>
 
-    </center>
+### **[Full Name]**
+[Optional tagline/headline if present in original CV]
+[Phone] | [Email] | [LinkedIn/Portfolio URLs]
 
-    ---
+</center>
 
-    ## LEFT-ALIGNED SECTIONS:
+---
 
-    ### **Professional Summary**
-    [Summary content]
+## LEFT-ALIGNED SECTIONS (follow blueprint.section_order):
 
-    ---
+### **Professional Summary**
+[Use blueprint.summary_rewrite as base, enhanced with career_arc insights]
 
-    ### **Key Skills**
-    Format as 2-column bullet list:
-    <div style="display: flex; flex-wrap: wrap;">
-    <div style="width: 50%; padding-right: 10px;">
+---
 
-    - [Skill 1]
-    - [Skill 3]
-    - [Skill 5]
+### **Key Skills**
+[Prioritize blueprint.skills_to_highlight, format as a 2-column bullet list without brackets; each skill as "- Skill"]
 
-    </div>
-    <div style="width: 50%;">
+<div style="display: flex; flex-wrap: wrap;">
+  <div style="width: 50%; padding-right: 10px;">
+- [Skill 1]
+- [Skill 3]
+- [Skill 5]
+  </div>
+  <div style="width: 50%;">
+- [Skill 2]
+- [Skill 4]
+- [Skill 6]
+  </div>
+</div>
 
-    - [Skill 2]
-    - [Skill 4]
-    - [Skill 6]
+---
 
-    </div>
-    </div>
+### **Professional Experience**
+[Apply job_selection rules from blueprint. For each role, emphasize job title FIRST]
 
-    ---
+#### **[Job Title]**
+**[Company Name]** | [Start Date] - [End Date or Present] | [Location]
+- [Achievement/responsibility - weave in ats_keywords and transferable_skills, no brackets]
+- [Achievement/responsibility - address red_flags if relevant to this role, no brackets]
 
-    ### **Professional Experience**
-    For each role from jobs_extracted, emphasize the role title FIRST and most prominently:
+---
 
-    #### **[Job Title]**
-    **[Company Name]** | [Start Date] - [End Date or Present] | [Location]
-    - [Achievement/responsibility]
-    - [Achievement/responsibility]
+### **Education**
+[Education content, no brackets]
 
-    ---
+---
 
-    ### **Education**
-    [Education content]
+### **[Any Other Sections per blueprint.section_order]**
+[Other content as needed, formatted without brackets]
 
-    ---
+# Inputs
+## CV:
+${cv}
 
-    ### **[Any Other Sections]**
-    [Other content as needed]
+## Analysis:
+${JSON.stringify(analysis, null, 2)}
 
-    # Inputs
-    ## CV:
-    ${cv}
-
-    ## Analysis:
-    ${JSON.stringify(analysis, null, 2)}
-
-    # Output
-    Return only the formatted CV in the exact Markdown structure shown above. No additional commentary, notes, or explanations.
-    `
+# Output
+Return only the formatted CV in the exact Markdown structure shown above. Follow the generation_framework blueprint precisely. No additional commentary, notes, or explanations.
+`
   };
 
   return [systemMessage, userMessage];
