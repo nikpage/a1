@@ -1,10 +1,11 @@
-// path: pages/api/generate-cv-cover.js
+// pages/api/generate-cv-cover.js
 
 import { getCvData, getCV, saveGeneratedDoc } from '../../utils/database';
 import { getUserById, decrementGenerations, resetGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import userRateLimiter from '../../lib/userRateLimiter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,6 +21,16 @@ export default async function handler(req, res) {
   if (!user_id || !analysis || !type) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+
+  // --- Start: Security Fixes ---
+  // The input validation for user_id and tone has been removed to fix the bug.
+  // The rate limiter is still in place as a separate security measure.
+
+  const isAllowed = await userRateLimiter(user_id, res);
+  if (!isAllowed) {
+    return;
+  }
+  // --- End: Security Fixes ---
 
   const user = await getUserById(user_id);
   if (!user) return res.status(404).json({ error: 'User not found' });
@@ -47,7 +58,7 @@ export default async function handler(req, res) {
   try {
     if (type === 'cv' || type === 'both') {
       cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone });
-cv = cvRes.content;       await saveGeneratedDoc({
+      cv = cvRes.content;       await saveGeneratedDoc({
         user_id,
         source_cv_id: user_id,
         type: 'cv',
@@ -97,9 +108,6 @@ cv = cvRes.content;       await saveGeneratedDoc({
       })
     });
   };
-
-
-  
 
     if (type === 'cv' || type === 'both') await logTx('cv', cvRes?.usage || {});
     if (type === 'cover' || type === 'both') await logTx('cover', coverRes?.usage || {});
