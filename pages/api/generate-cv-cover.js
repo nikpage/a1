@@ -5,7 +5,6 @@ import { getUserById, decrementGenerations, resetGenerations } from '../../utils
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
-import userRateLimiter from '../../lib/userRateLimiter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -22,18 +21,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // --- Start: Security Fixes ---
-  // The input validation for user_id and tone has been removed to fix the bug.
-  // The rate limiter is still in place as a separate security measure.
+  // Removed userRateLimiter call as it does not exist.
 
-  const isAllowed = await userRateLimiter(user_id, res);
-  if (!isAllowed) {
-    return;
+  let user;
+  try {
+    user = await getUserById(user_id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+  } catch (userErr) {
+    console.error('User fetch error:', userErr);
+    return res.status(500).json({ error: 'Error fetching user data' });
   }
-  // --- End: Security Fixes ---
-
-  const user = await getUserById(user_id);
-  if (!user) return res.status(404).json({ error: 'User not found' });
 
   const cost = type === 'both' ? 2 : 1;
   if (user.generations_left < cost) {
@@ -47,6 +44,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'CV not found for user' });
     }
   } catch (dbErr) {
+    console.error('CV fetch error:', dbErr);
     return res.status(500).json({ error: 'Error fetching CV data' });
   }
 
@@ -58,7 +56,8 @@ export default async function handler(req, res) {
   try {
     if (type === 'cv' || type === 'both') {
       cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone });
-      cv = cvRes.content;       await saveGeneratedDoc({
+      cv = cvRes.content;
+      await saveGeneratedDoc({
         user_id,
         source_cv_id: user_id,
         type: 'cv',
@@ -82,32 +81,39 @@ export default async function handler(req, res) {
     }
 
     setTimeout(() => decrementGenerations(user_id, cost), 500);
+
     const updatedUser = await getUserById(user_id);
-    if (updatedUser.generations_left === 0) await resetGenerations(user_id);
+    if (updatedUser.generations_left === 0) {
+      await resetGenerations(user_id);
+    }
 
     const logTx = async (docType, usage = {}) => {
-    const baseURL =
-      process.env.NODE_ENV === 'development'
-        ? 'http://localhost:3000'
-        : `https://${process.env.VERCEL_URL}`;
-    const urlToFetch = `${baseURL}/api/log-transaction`;
+      const baseURL =
+        process.env.NODE_ENV === 'development'
+          ? 'http://localhost:3000'
+          : `https://${process.env.VERCEL_URL}`;
+      const urlToFetch = `${baseURL}/api/log-transaction`;
 
-    await fetch(urlToFetch, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id,
-        source_gen_id: crypto.randomUUID(),
-        model: 'DS-v3',
-        cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
-        cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
-        completion_tokens: usage.completion_tokens || 0,
-        job_title: null,
-        company: null,
-        tone
-      })
-    });
-  };
+      try {
+        await fetch(urlToFetch, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id,
+            source_gen_id: crypto.randomUUID(),
+            model: 'DS-v3',
+            cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
+            cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
+            completion_tokens: usage.completion_tokens || 0,
+            job_title: null,
+            company: null,
+            tone
+          })
+        });
+      } catch (logErr) {
+        console.error('Logging transaction failed:', logErr);
+      }
+    };
 
     if (type === 'cv' || type === 'both') await logTx('cv', cvRes?.usage || {});
     if (type === 'cover' || type === 'both') await logTx('cover', coverRes?.usage || {});
