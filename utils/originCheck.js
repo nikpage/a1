@@ -1,23 +1,21 @@
-// utils/originCheck.js
-
-export function getBaseUrl() {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  if (process.env.VERCEL) return "https://thecv.pro";
-  return "http://localhost:3000";
-}
+const ALLOWED_PRODUCTION_ORIGINS = [
+  'https://thecv.pro',
+  'https://www.thecv.pro',
+];
 
 export function isValidOrigin(origin) {
-  if (!origin) return false;
-
-  const trustedOrigins = [
-    "https://thecv.pro",
-    "http://localhost:3000",
-  ];
-
-  // Add Vercel preview URLs
-  if (process.env.VERCEL_URL) {
-    trustedOrigins.push(`https://${process.env.VERCEL_URL}`);
+  if (process.env.NEXT_PUBLIC_VERCEL_ENV !== 'production') {
+    return true;
   }
+  return origin && ALLOWED_PRODUCTION_ORIGINS.includes(origin);
+}
 
-  return trustedOrigins.includes(origin);
+export function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') {
+    return 'https://www.thecv.pro';
+  }
+  if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+    return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+  }
+  return 'http://localhost:3000';
 }
