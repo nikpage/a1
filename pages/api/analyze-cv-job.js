@@ -48,7 +48,7 @@ export default async function handler(req, res) {
      return res.status(400).json({ error: 'CV data is empty' });
    }
 
-   // analyzeCvJob now returns usage data
+   // analyzeCvJob   Snow returns usage data
    const result = await analyzeCvJob(cv_data, jobText, fileName);
 
    const content = result?.output || null; // Access the 'output' from the result
