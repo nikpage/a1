@@ -6,18 +6,21 @@ import { createClient } from '@supabase/supabase-js';
 import { KeyManager } from '../../utils/key-manager.js';
 
 const keyManager = new KeyManager();
-
 const supabase = createClient(
- process.env.NEXT_PUBLIC_SUPABASE_URL,
- process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
- if (req.method !== 'POST') {
-   res.setHeader('Allow', ['POST']);
-   return res.status(405).json({ error: 'Method not allowed' });
- }
+  // File size check
+  if (req.body && JSON.stringify(req.body).length > 1000000) { // 1MB limit
+    return res.status(413).json({ error: 'File too large' })
+  }
 
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
  // Removed 'tone' from the destructuring of req.body
  const { user_id, jobText, created_at } = req.body;
  const fileName = req.body.file_name || 'Unnamed file';
