@@ -11,10 +11,47 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Rate limiting storage
+const requestCounts = new Map();
+
+// Cleanup function to prevent memory leaks
+function cleanupOldEntries() {
+  const now = Date.now();
+  const hour = 60 * 60 * 1000;
+
+  for (const [ip, data] of requestCounts.entries()) {
+    if (now > data.resetTime) {
+      requestCounts.delete(ip);
+    }
+  }
+}
+
 export default async function handler(req, res) {
+  // Rate limiting check - FIRST THING
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  const hour = 60 * 60 * 1000;
+
+  cleanupOldEntries();
+
+  const current = requestCounts.get(ip) || { count: 0, resetTime: now + hour };
+
+  if (current.count >= 5) {
+    return res.status(429).json({ error: 'Too many requests. Try again in an hour.' });
+  }
+
+  current.count++;
+  current.resetTime = now + hour;
+  requestCounts.set(ip, current);
+
   // File size check
-  if (req.body && JSON.stringify(req.body).length > 1000000) { // 1MB limit
-    return res.status(413).json({ error: 'File too large' })
+  if (req.body && JSON.stringify(req.body).length > 200000) { // 200k limit
+    return res.status(413).json({ error: 'File too large' });
+  }
+
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   if (req.method !== 'POST') {
