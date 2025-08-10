@@ -1,34 +1,31 @@
-import { NextResponse } from 'next/server'
+// middleware.js
 
-const rateLimitMap = new Map()
+import { NextResponse } from 'next/server';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
-export function middleware(request) {
-  const ip = request.ip || 'anonymous'
-  const now = Date.now()
-  const windowMs = 60 * 60 * 1000 // 1 hour
-  const maxRequests = 5
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
-  // Clean old entries
-  const cutoff = now - windowMs
-  for (const [key, data] of rateLimitMap.entries()) {
-    if (data.resetTime < cutoff) {
-      rateLimitMap.delete(key)
-    }
+const ratelimit = new Ratelimit({
+  redis: redis,
+  limiter: Ratelimit.slidingWindow(5, '1 h'),
+  prefix: 'ratelimit_middleware',
+});
+
+export async function middleware(request) {
+  const ip = request.ip ?? '127.0.0.1';
+  const { success } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return new NextResponse('Too many requests.', { status: 429 });
   }
 
-  // Check current IP
-  const current = rateLimitMap.get(ip) || { count: 0, resetTime: now + windowMs }
-
-  if (current.count >= maxRequests) {
-    return new NextResponse('Rate limited', { status: 429 })
-  }
-
-  current.count++
-  rateLimitMap.set(ip, current)
-
-  return NextResponse.next()
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: '/api/analyze'  // Change this to match your actual CV analysis route
-}
+  matcher: '/api/analyze-cv-job',
+};
