@@ -61,7 +61,9 @@ Generate a new CV in the "${tone}" tone, based ONLY on the provided CV and analy
 - Output ONLY the candidate's CV—no notes, explanations, or commentary
 - Never include phrases like "Full career history available upon request"
 - **Do not output square brackets [] anywhere in the entire CV.**
-- Format ALL lists (skills, job achievements, responsibilities) as bullet points, each item on a new line prefixed with a dash (-). Do NOT output any brackets, commas, or array syntax within text.
+- For LinkedIn URLs, display them without the "www." prefix (e.g., show "linkedin.com/in/username").
+- Standardize all locations to a "City, Country" format (e.g., "Prague, Czech Republic"). Use the CV's primary language for all location names.
+- Format ALL lists (job achievements, responsibilities) as bullet points, each item on a new line prefixed with a dash (-).
 
 # Formatting Requirements
 Output in Markdown format with this exact structure:
@@ -69,8 +71,8 @@ Output in Markdown format with this exact structure:
 ## CENTERED INTRO SECTION (use HTML center tags):
 <center>
 
-### **[Full Name]**
-[Optional tagline/headline if present in original CV]
+# [Full Name]
+**[Optional tagline/headline if present in original CV]**
 [Phone] | [Email] | [LinkedIn/Portfolio URLs]
 
 </center>
@@ -85,18 +87,22 @@ Output in Markdown format with this exact structure:
 ---
 
 ### **Key Skills**
-[Prioritize blueprint.skills_to_highlight, format as a 2-column bullet list without brackets; each skill as "- Skill"]
+[Prioritize blueprint.skills_to_highlight, format as a 2-column bullet list]
 
 <div style="display: flex; flex-wrap: wrap;">
   <div style="width: 50%; padding-right: 10px;">
-- [Skill 1]
-- [Skill 3]
-- [Skill 5]
+    <ul>
+      <li>[Skill 1]</li>
+      <li>[Skill 3]</li>
+      <li>[Skill 5]</li>
+    </ul>
   </div>
   <div style="width: 50%;">
-- [Skill 2]
-- [Skill 4]
-- [Skill 6]
+    <ul>
+      <li>[Skill 2]</li>
+      <li>[Skill 4]</li>
+      <li>[Skill 6]</li>
+    </ul>
   </div>
 </div>
 
@@ -106,19 +112,19 @@ Output in Markdown format with this exact structure:
 [Apply job_selection rules from blueprint. For each role, emphasize job title FIRST]
 
 #### **[Job Title]**
-**[Company Name]** | [Start Date] - [End Date or Present] | [Location]
-- [Achievement/responsibility - weave in ats_keywords and transferable_skills, no brackets]
-- [Achievement/responsibility - address red_flags if relevant to this role, no brackets]
+**[Company Name]** | [Start Date] - [End Date or Present] | [City, Country]
+- [Achievement/responsibility - weave in ats_keywords and transferable_skills]
+- [Achievement/responsibility - address red_flags if relevant to this role]
 
 ---
 
 ### **Education**
-[Education content, no brackets]
+[Education content]
 
 ---
 
 ### **[Any Other Sections per blueprint.section_order]**
-[Other content as needed, formatted without brackets]
+[Other content as needed]
 
 # Inputs
 ## CV:
