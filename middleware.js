@@ -1,5 +1,3 @@
-// middleware.js
-
 import { NextResponse } from 'next/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
@@ -11,21 +9,41 @@ const redis = new Redis({
 
 const ratelimit = new Ratelimit({
   redis: redis,
-  limiter: Ratelimit.slidingWindow(5, '1 h'),
+  limiter: Ratelimit.slidingWindow(2, '30 s'),
   prefix: 'ratelimit_middleware',
 });
-
-export async function middleware(request) {
-  const ip = request.ip ?? '127.0.0.1';
-  const { success } = await ratelimit.limit(ip);
-
-  if (!success) {
-    return new NextResponse('Too many requests.', { status: 429 });
-  }
-
-  return NextResponse.next();
-}
 
 export const config = {
   matcher: '/api/analyze-cv-job',
 };
+
+export async function middleware(request) {
+  const maxSizeKB = Number(process.env.MAX_FILE_SIZE_KB) || 100;
+  const limitInBytes = maxSizeKB * 1024;
+  const contentLength = Number(request.headers.get('content-length'));
+
+  if (isNaN(contentLength) || contentLength > limitInBytes) {
+    return new NextResponse(
+      JSON.stringify({ error: 'Payload too large' }),
+      {
+        status: 413,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  const ip = request.ip ?? '127.0.0.1';
+  const { success } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return new NextResponse(
+      JSON.stringify({ error: 'Too many requests' }),
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  return NextResponse.next();
+}
