@@ -5,34 +5,17 @@ import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { finalizeAnalysisJson } from './an-format.js';
-import { extractCvSections } from './cv-extractor.js';
+import { extractAndFormatCv } from './cv-extractor.js';
+import { extractAndFormatJob } from './job-extractor.js';
 
 const keyManager = new KeyManager();
 
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
-  // Call the extractor to pre-process the CV text, defaulting to English.
-  const { extractedSections, remainingText } = extractCvSections({ cvText, language: 'English' });
-  console.log('UTIL EXTRACTION RESULT:', {
-  extractedKeys: Object.keys(extractedSections),
-  extractedLengths: Object.fromEntries(Object.entries(extractedSections).map(([k, v]) => [k, v.length])),
-  remainingLength: remainingText.length
-});
-
-
-  // Format the extracted sections into a single, structured string to reduce the AI's workload.
-  let preProcessedCv = '';
-  const sectionOrder = ['experience', 'education', 'skills'];
-  sectionOrder.forEach(section => {
-    if (extractedSections[section]) {
-      const title = section.charAt(0).toUpperCase() + section.slice(1);
-      preProcessedCv += `--- [Extracted ${title} Section] ---\n${extractedSections[section]}\n\n`;
-    }
-  });
-  preProcessedCv += `--- [Remaining CV Text] ---\n${remainingText}`;
-
-  const job = jobText;
+  const preProcessedCv = extractAndFormatCv({ cvText, language: 'English' });
+  const preProcessedJob = jobText ? extractAndFormatJob({ jobText }) : '';
+  const job = preProcessedJob || jobText || '';
   const hasJobText = !!job;
-  const language = null; // This is passed to the downstream finalizeAnalysisJson function.
+  const language = null;
 
   const messages = buildAnalysisPrompt(preProcessedCv, job, hasJobText);
 

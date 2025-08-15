@@ -3,7 +3,15 @@ const LANGUAGE_CONFIG = {
   English: {
     experience: ['experience', 'work history', 'employment history', 'professional experience'],
     education: ['education', 'qualifications'],
-    skills: ['skills', 'key skills', 'technical skills', 'competencies']
+    skills: ['skills', 'key skills', 'technical skills', 'competencies'],
+    certifications: ['certifications', 'certificates', 'licenses'],
+    languages: ['languages', 'spoken languages', 'language skills'],
+    awards: ['awards', 'recognition', 'honors'],
+    projects: ['projects', 'side projects', 'personal projects'],
+    publications: ['publications'],
+    volunteer: ['volunteer', 'volunteering', 'community'],
+    summary: ['summary', 'profile', 'about me'],
+    contact: ['contact', 'contact details']
   },
   Polish: {
     experience: ['doświadczenie', 'doświadczenie zawodowe'],
@@ -32,67 +40,68 @@ const LANGUAGE_CONFIG = {
   }
 };
 
-/**
- * Extracts structured sections (experience, education, skills) from raw CV text.
- * @param {object} params - The parameters object.
- * @param {string} params.cvText - The raw text of the CV.
- * @param {string} [params.language='English'] - The language of the CV.
- * @returns {{extractedSections: object, remainingText: string}} - An object containing extracted sections and the remaining text.
- */
+function titleCase(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function extractCvSections({ cvText, language = 'English' }) {
   const keywords = LANGUAGE_CONFIG[language] || LANGUAGE_CONFIG.English;
   const lines = cvText.split('\n');
   const foundSections = [];
-
-  // 1. Find all section headers and their line numbers
   lines.forEach((line, index) => {
     const lowerLine = line.toLowerCase().trim();
-    if (lowerLine.length > 0 && lowerLine.length < 50) { // Headers are usually short
+    if (lowerLine.length > 0 && lowerLine.length < 80) {
       for (const sectionName in keywords) {
         for (const keyword of keywords[sectionName]) {
           if (lowerLine.includes(keyword.toLowerCase())) {
             foundSections.push({ name: sectionName, index });
-            return; // Move to the next line once a section is found
+            return;
           }
         }
       }
     }
   });
-
-  // 2. If no sections are found, return the original text (graceful fallback)
   if (foundSections.length === 0) {
-    return {
-      extractedSections: {},
-      remainingText: cvText,
-    };
+    return { extractedSections: {}, remainingText: cvText, sectionOrderFound: [] };
   }
-
-  // 3. Sort sections by their appearance in the document
   foundSections.sort((a, b) => a.index - b.index);
-
   const extractedSections = {};
   const usedLineIndexes = new Set();
-
-  // 4. Extract content for each found section
   for (let i = 0; i < foundSections.length; i++) {
-    const currentSection = foundSections[i];
-    const nextSection = foundSections[i + 1];
-
-    const startLine = currentSection.index;
-    const endLine = nextSection ? nextSection.index : lines.length;
-
+    const current = foundSections[i];
+    const next = foundSections[i + 1];
+    const startLine = current.index;
+    const endLine = next ? next.index : lines.length;
     const sectionLines = lines.slice(startLine, endLine);
-    extractedSections[currentSection.name] = sectionLines.join('\n').trim();
-
-    // Mark these lines as "used"
-    for (let j = startLine; j < endLine; j++) {
-      usedLineIndexes.add(j);
-    }
+    extractedSections[current.name] = sectionLines.join('\n').trim();
+    for (let j = startLine; j < endLine; j++) usedLineIndexes.add(j);
   }
-
-  // 5. Collect any text that wasn't part of an extracted section
   const remainingLines = lines.filter((_, index) => !usedLineIndexes.has(index));
   const remainingText = remainingLines.join('\n').trim();
+  return { extractedSections, remainingText, sectionOrderFound: foundSections.map(s => s.name) };
+}
 
-  return { extractedSections, remainingText };
+export function formatCvExtractionForPrompt({ extractedSections, remainingText, order }) {
+  const seen = new Set();
+  let out = '';
+  order.forEach(name => {
+    if (extractedSections[name] && !seen.has(name)) {
+      out += `--- [Extracted ${titleCase(name)} Section] ---\n${extractedSections[name]}\n\n`;
+      seen.add(name);
+    }
+  });
+  for (const name in extractedSections) {
+    if (!seen.has(name)) {
+      out += `--- [Extracted ${titleCase(name)} Section] ---\n${extractedSections[name]}\n\n`;
+      seen.add(name);
+    }
+  }
+  out += `--- [Remaining CV Text] ---\n${remainingText || ''}`;
+  return out.trim();
+}
+
+export function extractAndFormatCv({ cvText, language = 'English' }) {
+  const { extractedSections, remainingText, sectionOrderFound } = extractCvSections({ cvText, language });
+  if (Object.keys(extractedSections).length === 0) return cvText;
+  return formatCvExtractionForPrompt({ extractedSections, remainingText, order: sectionOrderFound });
 }
