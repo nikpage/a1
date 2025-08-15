@@ -1,15 +1,60 @@
+// components/AnalysisDisplay.js
 import React from 'react';
+
+// --- Helper Components for a clean structure ---
+
+// Renders a main section with a title (H2)
+const Section = ({ title, children, emoji = '' }) => (
+  <section style={{ marginBottom: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem', color: '#1a202c' }}>
+      {emoji} {title}
+    </h2>
+    <div style={{ color: '#4a5568', lineHeight: '1.6' }}>{children}</div>
+  </section>
+);
+
+// Renders a sub-section with a title (H3)
+const SubSection = ({ title, children }) => (
+  <div style={{ marginBottom: '1.5rem' }}>
+    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: '#2d3748' }}>
+      {title}
+    </h3>
+    {children}
+  </div>
+);
+
+// Renders a key-value pair, like "Name: John Doe"
+const KeyValue = ({ label, value }) => {
+  if (!value || (Array.isArray(value) && value.length === 0)) return null;
+  const displayValue = Array.isArray(value) ? value.join(', ') : String(value);
+  return (
+    <div style={{ marginBottom: '0.25rem' }}>
+      <strong style={{ color: '#2d3748' }}>{label}:</strong> {displayValue}
+    </div>
+  );
+};
+
+// Renders a bulleted list from an array of strings
+const BulletList = ({ items }) => {
+  if (!items || !Array.isArray(items) || items.length === 0) return null;
+  return (
+    <ul style={{ listStyleType: 'none', paddingLeft: '1rem' }}>
+      {items.map((item, i) => (
+        <li key={i} style={{ marginBottom: '0.25rem' }}>{item}</li>
+      ))}
+    </ul>
+  );
+};
+
+
+// --- Main Display Component ---
 
 export default function AnalysisDisplay({ analysis }) {
   if (!analysis) return null;
 
   let data;
-  if (typeof analysis === 'string') {
-    analysis = analysis.trim().replace(/^```json/, '').replace(/```$/, '').trim();
-  }
-
   try {
-    data = typeof analysis === 'string' ? JSON.parse(analysis) : analysis;
+    data = typeof analysis === 'string' ? JSON.parse(analysis.trim().replace(/^```json/, '').replace(/```$/, '').trim()) : analysis;
   } catch (e) {
     return (
       <div className="text-red-600">
@@ -19,180 +64,94 @@ export default function AnalysisDisplay({ analysis }) {
     );
   }
 
-  const Section = ({ title, content }) => (
-    <div style={{ marginBottom: '1.6rem' }}>
-      <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{title}</h2>
-      <div>{content}</div>
-    </div>
-  );
-
-  const hasJobMatch = data.job_data?.Position !== 'null' && data.job_data?.Position;
+  const hasJobData = data.job_data?.Position !== 'n/a' && data.job_data?.Position;
 
   return (
-    <div className="analysis-fix">
-      <div className="doc-viewer">
-        {/* 1. Summary */}
-        <Section
-          title="Summary"
-          content={
-            data.summary && typeof data.summary === 'object' ? (
-              <div>
-                <div><strong>Fit Summary:</strong> {data.summary.fit_summary}</div>
-                <div><strong>Cover Letter Recommended:</strong> {data.summary.cover_letter_recommended ? 'Yes' : 'No'}</div>
-                <div><strong>Cover Letter Focus:</strong> {data.summary.cover_letter_focus?.join(', ')}</div>
-              </div>
-            ) : (
-              data.summary
-            )
-          }
-        />
+    <div>
+      <h1 style={{ fontSize: '1.875rem', fontWeight: 800, marginBottom: '2rem', color: '#1a202c' }}>
+        CV Analysis Report
+      </h1>
 
-        {/* 2. CV Data */}
-        <Section
-          title="CV Data"
-          content={
-            <div>
-              {Object.entries(data.cv_data || {}).map(([k, v]) => (
-                <div key={k}>
-                  <strong>{k.replace(/_/g, ' ')}:</strong> {Array.isArray(v) ? v.join(', ') : v}
-                </div>
-              ))}
+      {data.summary && <Section emoji="📝" title="Professional Summary"><p>{data.summary}</p></Section>}
 
-              {hasJobMatch && (
-                <div style={{ marginTop: '1rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Job Ad Data</h3>
-                  {Object.entries(data.job_data || {}).map(([k, v]) => (
-                    <div key={k}>
-                      <strong>{k.replace(/_/g, ' ')}:</strong> {Array.isArray(v) ? v.join(', ') : v}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          }
-        />
-
-        {/* 3. Analysis */}
-        <Section
-          title="Analysis"
-          content={
-            <div>
-              {hasJobMatch && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Job Match Evaluation</h3>
-                  {data.analysis?.overall_score != null && <div><strong>Overall Match Score:</strong> {data.analysis.overall_score}/10</div>}
-                  {data.analysis?.ats_score != null && <div><strong>ATS Score:</strong> {data.analysis.ats_score}/10</div>}
-                  {Array.isArray(data.analysis?.scenario_tags) && data.analysis.scenario_tags.length > 0 && (
-                    <div><strong>Scenarios:</strong> {data.analysis.scenario_tags.join(', ')}</div>
-                  )}
-                  {data.job_match?.keyword_match !== 'null' && (
-                    <div style={{ marginTop: '1rem' }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.25rem' }}>Keyword & Skills Analysis</h4>
-                      <div><strong>Matches:</strong> {data.job_match.keyword_match}</div>
-                      <div><strong>Suggested Additions:</strong> {Array.isArray(data.job_match.inferred_keywords) ? data.job_match.inferred_keywords.join(', ') : data.job_match.inferred_keywords}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>CV Assessment</h3>
-                {data.analysis?.cv_format_analysis && <div><strong>Structure & Length:</strong> {data.analysis.cv_format_analysis}</div>}
-                {data.analysis?.style_wording && <div><strong>Writing Style:</strong> {data.analysis.style_wording}</div>}
-                {data.analysis?.ats_keywords && <div><strong>ATS Optimization:</strong> {data.analysis.ats_keywords}</div>}
-              </div>
-
-              {hasJobMatch && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Applicant Fit</h3>
-                  {data.analysis?.cultural_fit && <div><strong>Cultural Fit:</strong> {data.analysis.cultural_fit}</div>}
-                  {data.analysis?.overall_commentary && <div><strong>Job Match Commentary:</strong> {data.analysis.overall_commentary}</div>}
-                </div>
-              )}
-
-              {!hasJobMatch && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>General Assessment</h3>
-                  {data.analysis?.cultural_fit && <div><strong>Cultural Fit:</strong> {data.analysis.cultural_fit}</div>}
-                  {data.analysis?.overall_commentary && <div><strong>Commentary:</strong> {data.analysis.overall_commentary}</div>}
-                  {Array.isArray(data.analysis?.suitable_positions) && <div><strong>Suitable Positions:</strong> {data.analysis.suitable_positions.join(', ')}</div>}
-                  {data.analysis?.career_arc && <div><strong>Career Arc:</strong> {data.analysis.career_arc}</div>}
-                  {data.analysis?.parallel_experience && <div><strong>Parallel Experience:</strong> {data.analysis.parallel_experience}</div>}
-                  {data.analysis?.transferable_skills && <div><strong>Transferable Skills:</strong> {data.analysis.transferable_skills}</div>}
-                </div>
-              )}
-
-              {Array.isArray(data.analysis?.quick_wins) && (
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>Quick Wins:</strong>
-                  <ul>{data.analysis.quick_wins.map((item, i) => <li key={i}>• {item}</li>)}</ul>
-                </div>
-              )}
-              {Array.isArray(data.analysis?.red_flags) && (
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>Red Flags:</strong>
-                  <ul>{data.analysis.red_flags.map((item, i) => <li key={i}>• {item}</li>)}</ul>
-                </div>
-              )}
-            </div>
-          }
-        />
-
-        {/* 4. Suggestions */}
-        <Section
-          title="Suggestions"
-          content={
-            <div>
-              {hasJobMatch && (
-                <div>
-                  {data.job_match?.positioning_strategy && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong>Positioning Strategy:</strong> {data.job_match.positioning_strategy}
-                    </div>
-                  )}
-                  {data.job_match?.career_scenario && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong>Career Scenario:</strong> {data.job_match.career_scenario}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {data.analysis?.action_items && Object.keys(data.analysis.action_items).length > 0 && (
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>Action Items:</strong>
-                  {Object.entries(data.analysis.action_items).map(([section, categories]) => (
-                    <div key={section} style={{ marginTop: '0.5rem' }}>
-                      <div style={{ fontWeight: 'bold' }}>
-                        {section === 'cv_changes' ? 'CV' : section === 'cover_letter' ? 'Cover Letter' : section}
-                      </div>
-                      {Object.entries(categories).map(([priority, items]) =>
-                        Array.isArray(items) && items.length > 0 ? (
-                          <div key={priority} style={{ marginLeft: '1rem', marginTop: '0.25rem' }}>
-                            <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>{priority}:</div>
-                            <ul style={{ marginLeft: '1rem' }}>
-                              {items.map((text, i) => (
-                                <li key={i}>• {text}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          }
-        />
-
-        {data.final_thought && (
-          <Section
-            title="Final Thought"
-            content={<div>{data.final_thought}</div>}
-          />
+      <Section emoji="📊" title="Candidate & Role Overview">
+        <SubSection title="Candidate Details">
+          {Object.entries(data.cv_data || {}).map(([key, value]) => (
+            <KeyValue key={key} label={key} value={value} />
+          ))}
+        </SubSection>
+        {hasJobData && (
+          <SubSection title="Job Details">
+            {Object.entries(data.job_data || {}).map(([key, value]) => (
+              <KeyValue key={key} label={key} value={value} />
+            ))}
+          </SubSection>
         )}
-      </div>
+      </Section>
+
+      {data.analysis && (
+        <Section emoji="🔍" title="In-Depth Analysis">
+          {hasJobData && data.job_match && (
+            <SubSection title="Job Match Assessment">
+              <KeyValue label="Overall Match Score" value={data.job_match.overall_score ? `${data.job_match.overall_score}/10` : null} />
+              <KeyValue label="Career Scenario" value={data.job_match.career_scenario} />
+              <KeyValue label="Positioning Strategy" value={data.job_match.positioning_strategy} />
+              <KeyValue label="Keyword Match" value={data.job_match.keyword_match} />
+              <KeyValue label="Inferred Keywords" value={data.job_match.inferred_keywords} />
+            </SubSection>
+          )}
+          <SubSection title="CV Assessment">
+            <KeyValue label="Structure & Formatting" value={data.analysis.cv_format_analysis} />
+            <KeyValue label="Writing Style & Wording" value={data.analysis.style_wording} />
+            <KeyValue label="Career Arc" value={data.analysis.career_arc} />
+          </SubSection>
+          <SubSection title="Skills Assessment">
+            <KeyValue label="Transferable Skills" value={data.analysis.transferable_skills} />
+            <KeyValue label="ATS Keywords" value={data.analysis.ats_keywords} />
+          </SubSection>
+          <SubSection title="General Commentary">
+            <KeyValue label="Overall Commentary" value={data.analysis.overall_commentary} />
+            <KeyValue label="Cultural Fit" value={data.analysis.cultural_fit} />
+            <KeyValue label="Red Flags" value={data.analysis.red_flags} />
+            {!hasJobData && <KeyValue label="Suitable Positions" value={data.analysis.suitable_positions} />}
+          </SubSection>
+        </Section>
+      )}
+
+      {data.analysis?.action_items && (
+        <Section emoji="🚀" title="Action Plan">
+          <SubSection title="CV Changes">
+            <div style={{ marginBottom: '0.75rem' }}>
+              <h4 style={{ fontWeight: 600, color: '#c53030' }}>Critical</h4>
+              <BulletList items={data.analysis.action_items.cv_changes.critical} />
+            </div>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <h4 style={{ fontWeight: 600, color: '#dd6b20' }}>Advised</h4>
+              <BulletList items={data.analysis.action_items.cv_changes.advised} />
+            </div>
+            <div>
+              <h4 style={{ fontWeight: 600, color: '#3182ce' }}>Optional</h4>
+              <BulletList items={data.analysis.action_items.cv_changes.optional} />
+            </div>
+          </SubSection>
+          <SubSection title="Cover Letter Guidance">
+            <div style={{ marginBottom: '0.75rem' }}>
+              <h4 style={{ fontWeight: 600 }}>Points to Address</h4>
+              <BulletList items={data.analysis.action_items['Cover Letter']['Points to Address']} />
+            </div>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <h4 style={{ fontWeight: 600 }}>Narrative Flow</h4>
+              <BulletList items={data.analysis.action_items['Cover Letter']['Narrative Flow']} />
+            </div>
+            <div>
+              <h4 style={{ fontWeight: 600 }}>Tone and Style</h4>
+              <BulletList items={data.analysis.action_items['Cover Letter']['Tone and Style']} />
+            </div>
+          </SubSection>
+        </Section>
+      )}
+
+      {data.final_thought && <Section emoji="💡" title="Final Thought"><p>{data.final_thought}</p></Section>}
     </div>
   );
 }

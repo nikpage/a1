@@ -11,10 +11,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Rate limiting storage
 const requestCounts = new Map();
 
-// Cleanup function to prevent memory leaks
 function cleanupOldEntries() {
   const now = Date.now();
   const hour = 60 * 60 * 1000;
@@ -27,7 +25,6 @@ function cleanupOldEntries() {
 }
 
 export default async function handler(req, res) {
-  // Rate limiting check - FIRST THING
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'unknown';
   const now = Date.now();
   const hour = 60 * 60 * 1000;
@@ -44,8 +41,7 @@ export default async function handler(req, res) {
   current.resetTime = now + hour;
   requestCounts.set(ip, current);
 
-  // File size check
-  if (req.body && JSON.stringify(req.body).length > 200000) { // 200k limit
+  if (req.body && JSON.stringify(req.body).length > 200000) {
     return res.status(413).json({ error: 'File too large' });
   }
 
@@ -54,11 +50,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
- // Removed 'tone' from the destructuring of req.body
  const { user_id, jobText, created_at } = req.body;
  const fileName = req.body.file_name || 'Unnamed file';
 
@@ -88,20 +79,11 @@ export default async function handler(req, res) {
      return res.status(400).json({ error: 'CV data is empty' });
    }
 
-   // analyzeCvJob   Snow returns usage data
    const result = await analyzeCvJob(cv_data, jobText, fileName);
-
-   const content = result?.output || null; // Access the 'output' from the result
-
-   // Extract metadata from the content string
-   const extractMeta = (label) => {
-     const match = content.match(new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`));
-     return match ? match[1].trim() : null;
-   };
-
-   const company = extractMeta('Company Name');
-   const job_title = extractMeta('Position/Title');
-   const hr_contact = extractMeta('HR Contact');
+   const content = result?.output || null;
+   const company = content?.job_data?.Company || null;
+   const job_title = content?.job_data?.Position || null;
+   const hr_contact = content?.job_data['HR Contact'] || null;
 
    if (!content) {
      return res.status(500).json({ error: 'No analysis content returned by DeepSeek', raw: result });
@@ -113,19 +95,17 @@ export default async function handler(req, res) {
      user_id,
      source_cv_id: user_id,
      type: 'analysis',
-     tone: null, // Keeping tone null here for analysis type documents
+     tone: null,
      company,
      job_title,
-     file_name: null, // Or derive from actual file upload
+     file_name: null,
      content,
      analysis_id,
      hr_contact,
    });
 
-   // Send response immediately - don't wait for logging
    res.status(200).json({ analysis: content, analysis_id });
 
-   // Log transaction without waiting
    const usage = result?.usage || {};
    const baseURL = process.env.NODE_ENV === 'development'
      ? 'http://localhost:3000'
@@ -147,10 +127,8 @@ export default async function handler(req, res) {
      }),
    }).catch(err => console.error('Logging failed:', err));
 
-
  } catch (e) {
    console.error('API Error:', e.message);
-   // Log more details for debugging if available
    if (e.response?.data) {
      console.error('DeepSeek API Response Error:', e.response.data);
    }

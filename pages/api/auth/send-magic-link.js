@@ -17,7 +17,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  try {  if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: `Method ${req.method} not allowed` });
   }
@@ -84,4 +84,9 @@ export default async function handler(req, res) {
     console.error("Magic link process failed:", error.message);
     return res.status(200).json({ success: true, message: "If that email is registered, a login link has been sent." });
   }
+  } catch (err) {
+  console.error("Magic link API error:", err);
+  return res.status(500).json({ error: "Internal server error" });
+}
+
 }

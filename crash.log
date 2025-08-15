@@ -1,0 +1,104 @@
+
+> cv-ai-mvp@1.0.0 dev
+> next dev
+
+- ready started server on 0.0.0.0:3000, url: http://localhost:3000
+- [36minfo[39m Loaded env from /home/nik/repos/a1/.env.local
+- [33mwarn[39m [1mYou have enabled experimental feature (appDir) in next.config.js.[22m
+- [33mwarn[39m Experimental features are not covered by semver, and may cause unexpected or broken application behavior. Use at your own risk.
+
+- [35mevent[39m compiled client and server successfully in 257 ms (18 modules)
+- [36mwait[39m compiling /_error (client and server)...
+- [36mwait[39m compiling / (client and server)...
+- [35mevent[39m compiled client and server successfully in 6.8s (290 modules)
+- [33mwarn[39m Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+- [36mwait[39m compiling /api/auth/send-magic-link (client and server)...
+- [35mevent[39m compiled successfully in 95 ms (94 modules)
+- [36mwait[39m compiling /api/auth/verify (client and server)...
+- [35mevent[39m compiled successfully in 229 ms (91 modules)
+✅ Verify API hit: e0e93d73ecdb80eb489d3a1f5d2f33c82522657c80c8751bb28ffa0e27598bce
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+✅ Token verified: {
+  id: [32m'b9aeb622-2786-45eb-ace4-ff0f9a9f404f'[39m,
+  email: [32m'5@nik.page'[39m,
+  token: [32m'e0e93d73ecdb80eb489d3a1f5d2f33c82522657c80c8751bb28ffa0e27598bce'[39m,
+  user_id: [32m'03f2c7cc-db6b-4e58-b7b5-ffe579863e37'[39m,
+  expires_at: [32m'2025-08-17T12:38:03.076191+00:00'[39m,
+  remember_me: [33mfalse[39m,
+  used: [33mfalse[39m,
+  created_at: [32m'2025-08-15T12:38:03.076191+00:00'[39m,
+  temp_user_id: [1mnull[22m
+}
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+Verify error: MaxRetriesPerRequestError: Reached the max retries per request limit (which is 20). Refer to "maxRetriesPerRequest" option for details.
+    at Socket.<anonymous> [90m(/home/nik/repos/a1/[39mnode_modules/[4mioredis[24m/built/redis/event_handler.js:182:37[90m)[39m
+[90m    at Object.onceWrapper (node:events:632:26)[39m
+[90m    at Socket.emit (node:events:517:28)[39m
+[90m    at Pipe.<anonymous> (node:net:351:12)[39m
+❌ REDIRECTING TO LOGIN-FAILED FROM CATCH BLOCK
+- [36mwait[39m compiling /_error (client and server)...
+- [35mevent[39m compiled client and server successfully in 431 ms (303 modules)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)
+[ioredis] Unhandled error event: Error: connect EACCES /
+    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1549:16)

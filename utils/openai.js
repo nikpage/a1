@@ -1,18 +1,40 @@
 // utils/openai.js
-
 import axios from 'axios'
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { finalizeAnalysisJson } from './an-format.js';
+import { extractCvSections } from './cv-extractor.js';
 
 const keyManager = new KeyManager();
 
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
-  // DO NOT REMOVE THIS LINE OR MOVE IT
-  const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
+  // Call the extractor to pre-process the CV text, defaulting to English.
+  const { extractedSections, remainingText } = extractCvSections({ cvText, language: 'English' });
+  console.log('UTIL EXTRACTION RESULT:', {
+  extractedKeys: Object.keys(extractedSections),
+  extractedLengths: Object.fromEntries(Object.entries(extractedSections).map(([k, v]) => [k, v.length])),
+  remainingLength: remainingText.length
+});
 
-  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText);
+
+  // Format the extracted sections into a single, structured string to reduce the AI's workload.
+  let preProcessedCv = '';
+  const sectionOrder = ['experience', 'education', 'skills'];
+  sectionOrder.forEach(section => {
+    if (extractedSections[section]) {
+      const title = section.charAt(0).toUpperCase() + section.slice(1);
+      preProcessedCv += `--- [Extracted ${title} Section] ---\n${extractedSections[section]}\n\n`;
+    }
+  });
+  preProcessedCv += `--- [Remaining CV Text] ---\n${remainingText}`;
+
+  const job = jobText;
+  const hasJobText = !!job;
+  const language = null; // This is passed to the downstream finalizeAnalysisJson function.
+
+  const messages = buildAnalysisPrompt(preProcessedCv, job, hasJobText);
 
   try {
     const response = await axios.post(
@@ -45,25 +67,22 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     const rawOutputString = data.choices?.[0]?.message?.content || '';
     console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
 
-    // Extract JSON from potential markdown code blocks
     let jsonOutput = data.choices?.[0]?.message?.content || ''
 
-    // Remove markdown code blocks if present
     if (jsonOutput.includes('```json')) {
       jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '')
     } else if (jsonOutput.includes('```')) {
       jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '')
     }
 
-    // Trim whitespace
     jsonOutput = jsonOutput.trim()
 
-    // Validate JSON before returning
     try {
-      JSON.parse(jsonOutput)
+      const rawAnalysisObject = JSON.parse(jsonOutput)
+      const finalOutput = finalizeAnalysisJson(rawAnalysisObject, { language, hasJobText });
+
       return {
-        choices: data.choices,
-        output: jsonOutput,
+        output: finalOutput,
         usage: data.usage
       }
     } catch (jsonError) {
@@ -134,19 +153,15 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
   console.log('  total tokens:', data.usage.total_tokens)
 
   const rawContent = data.choices?.[0]?.message?.content || '';
-
-  // This regex is used to find and remove any line that looks like a date.
   const dateFilterRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/i;
 
-  // Clean up any stray placeholders and hallucinated dates from the AI.
   let processedContent = rawContent
     .split('\n')
     .filter(line => !line.trim().includes('[Company Address]'))
     .filter(line => !line.trim().includes('[Date]'))
-    .filter(line => !dateFilterRegex.test(line.trim())) // Aggressively remove any line that contains a date
+    .filter(line => !dateFilterRegex.test(line.trim()))
     .join('\n');
 
-  // Add just the date value to the very top.
   const todayString = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   processedContent = `${todayString}\n\n${processedContent.trim()}`;
 
