@@ -14,6 +14,7 @@ export function formatAnalysisOutput(rawAnalysis) {
 
 function formatBulletPoints(obj) {
   if (typeof obj === 'string') {
+    if (!obj.match(/^\s*[-*+•▪▫▬►&bull;]\s+/gm)) return obj; // Early exit if no bullets
     return formatStringBullets(obj);
   }
 
@@ -40,21 +41,13 @@ function formatStringBullets(str) {
 
   // Convert various bullet formats to consistent "•"
   let formatted = str
-    // Replace markdown bullets
     .replace(/^\s*[-*+]\s+/gm, '• ')
-    // Replace numbered lists
     .replace(/^\s*\d+\.\s+/gm, '• ')
-    // Replace existing bullets with consistent format
     .replace(/^\s*[•▪▫▬►]\s*/gm, '• ')
-    // Replace HTML bullets
     .replace(/^\s*&bull;\s*/gm, '• ')
-    // Normalize whitespace around bullets
     .replace(/•\s+/g, '• ')
-    // Ensure line breaks after bullets
     .replace(/•\s*([^•\n]+)(?=\s*•)/g, '• $1\n')
-    // Clean up multiple line breaks
     .replace(/\n\s*\n/g, '\n')
-    // Trim whitespace
     .trim();
 
   return formatted;
@@ -87,29 +80,21 @@ function cleanMarkdownFromString(str) {
   if (!str || typeof str !== 'string') return str;
 
   return str
-    // Remove bold/italic markers
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
     .replace(/_([^_]+)_/g, '$1')
-    // Remove code blocks
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`([^`]+)`/g, '$1')
-    // Remove headers
     .replace(/^#{1,6}\s+/gm, '')
-    // Remove links but keep text
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Remove horizontal rules
     .replace(/^[-*_]{3,}$/gm, '')
-    // Remove blockquotes
     .replace(/^>\s*/gm, '')
-    // Clean up extra whitespace
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function validateJSONStructure(obj) {
-  // Ensure required top-level keys exist
   const requiredKeys = [
     'summary',
     'cv_data',
@@ -126,7 +111,6 @@ function validateJSONStructure(obj) {
     }
   });
 
-  // Validate nested structures
   validateCVData(obj.cv_data);
   validateJobData(obj.job_data);
   validateAnalysis(obj.analysis);
@@ -137,18 +121,18 @@ function getDefaultValue(key) {
   const defaults = {
     'summary': '',
     'cv_data': {
-      'Name': 'n/a',
-      'Seniority': 'n/a',
-      'Industry': 'n/a',
-      'Country': 'n/a'
+      'Name': '',
+      'Seniority': '',
+      'Industry': '',
+      'Country': ''
     },
     'job_data': {
-      'Position': 'n/a',
-      'Seniority': 'n/a',
-      'Company': 'n/a',
-      'Industry': 'n/a',
-      'Country': 'n/a',
-      'HR Contact': 'n/a'
+      'Position': '',
+      'Seniority': '',
+      'Company': '',
+      'Industry': '',
+      'Country': '',
+      'HR Contact': ''
     },
     'jobs_extracted': [],
     'analysis': {},
@@ -163,7 +147,7 @@ function validateCVData(cvData) {
   const required = ['Name', 'Seniority', 'Industry', 'Country'];
   required.forEach(field => {
     if (!(field in cvData)) {
-      cvData[field] = 'n/a';
+      cvData[field] = '';
     }
   });
 }
@@ -172,7 +156,7 @@ function validateJobData(jobData) {
   const required = ['Position', 'Seniority', 'Company', 'Industry', 'Country', 'HR Contact'];
   required.forEach(field => {
     if (!(field in jobData)) {
-      jobData[field] = 'n/a';
+      jobData[field] = '';
     }
   });
 }
@@ -201,7 +185,6 @@ function validateAnalysis(analysis) {
     }
   });
 
-  // Validate action_items structure
   if (!analysis.action_items || typeof analysis.action_items !== 'object') {
     analysis.action_items = {};
   }
@@ -230,9 +213,9 @@ function getAnalysisDefault(field) {
     'scenario_tags': [],
     'cv_format_analysis': '',
     'cultural_fit': '',
-    'red_flags': '',
+    'red_flags': [],
     'overall_commentary': '',
-    'suitable_positions': '',
+    'suitable_positions': [],
     'career_arc': '',
     'parallel_experience': '',
     'transferable_skills': '',
@@ -248,16 +231,14 @@ function validateJobMatch(jobMatch) {
   const required = ['keyword_match', 'inferred_keywords', 'career_scenario', 'positioning_strategy'];
   required.forEach(field => {
     if (!(field in jobMatch)) {
-      jobMatch[field] = 'n/a';
+      jobMatch[field] = '';
     }
   });
 }
 
-// Helper function for web output formatting
 export function formatForWeb(analysis) {
   const webFormatted = formatAnalysisOutput(analysis);
 
-  // Additional web-specific formatting
   webFormatted.summary = ensureWebSummary(webFormatted.summary);
   webFormatted.final_thought = ensureWebClosing(webFormatted.final_thought);
 
@@ -269,7 +250,6 @@ function ensureWebSummary(summary) {
     return 'Professional CV analysis revealing key insights and strategic recommendations for career advancement.';
   }
 
-  // Ensure summary is engaging and concise
   if (summary.length > 300) {
     return summary.substring(0, 297) + '...';
   }
@@ -285,11 +265,10 @@ function ensureWebClosing(finalThought) {
   return finalThought;
 }
 
-// Quality assurance function
 export function validateOutput(analysis) {
   const issues = [];
 
-  // Check for empty critical sections
+  // Check for empty or low-quality critical sections
   if (!analysis.summary || analysis.summary.trim().length < 20) {
     issues.push('Summary too short or missing');
   }
@@ -302,13 +281,13 @@ export function validateOutput(analysis) {
     issues.push('No critical CV changes identified');
   }
 
-  // Check for placeholder values
-  const placeholders = ['n/a', 'tbd', 'todo', 'placeholder'];
+  // Check for any placeholder-like values
+  const forbiddenValues = ['tbd', 'todo', 'placeholder', 'n/a', 'na', 'unknown'];
   const jsonStr = JSON.stringify(analysis).toLowerCase();
-  const hasPlaceholders = placeholders.some(p => jsonStr.includes(p));
+  const hasForbidden = forbiddenValues.some(p => jsonStr.includes(p));
 
-  if (hasPlaceholders) {
-    issues.push('Contains placeholder values that should be filled');
+  if (hasForbidden) {
+    issues.push('Contains forbidden placeholder-like values');
   }
 
   return {
