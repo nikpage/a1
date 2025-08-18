@@ -4,94 +4,10 @@ export function formatAnalysisOutput(rawAnalysis) {
   // Deep clone to avoid mutating original
   const formatted = JSON.parse(JSON.stringify(rawAnalysis));
 
-  // Apply formatting transformations
-  formatBulletPoints(formatted);
-  removeMarkdownSyntax(formatted);
+  // Only validate and set defaults (no heavy recursion)
   validateJSONStructure(formatted);
 
   return formatted;
-}
-
-function formatBulletPoints(obj) {
-  if (typeof obj === 'string') {
-    if (!obj.match(/^\s*[-*+•▪▫▬►&bull;]\s+/gm)) return obj; // Early exit if no bullets
-    return formatStringBullets(obj);
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(item => {
-      if (typeof item === 'string') {
-        return formatStringBullets(item);
-      }
-      return formatBulletPoints(item);
-    });
-  }
-
-  if (obj && typeof obj === 'object') {
-    for (const key in obj) {
-      obj[key] = formatBulletPoints(obj[key]);
-    }
-  }
-
-  return obj;
-}
-
-function formatStringBullets(str) {
-  if (!str || typeof str !== 'string') return str;
-
-  // Convert various bullet formats to consistent "•"
-  let formatted = str
-    .replace(/^\s*[-*+]\s+/gm, '• ')
-    .replace(/^\s*\d+\.\s+/gm, '• ')
-    .replace(/^\s*[•▪▫▬►]\s*/gm, '• ')
-    .replace(/^\s*&bull;\s*/gm, '• ')
-    .replace(/•\s+/g, '• ')
-    .replace(/•\s*([^•\n]+)(?=\s*•)/g, '• $1\n')
-    .replace(/\n\s*\n/g, '\n')
-    .trim();
-
-  return formatted;
-}
-
-function removeMarkdownSyntax(obj) {
-  if (typeof obj === 'string') {
-    return cleanMarkdownFromString(obj);
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(item => {
-      if (typeof item === 'string') {
-        return cleanMarkdownFromString(item);
-      }
-      return removeMarkdownSyntax(item);
-    });
-  }
-
-  if (obj && typeof obj === 'object') {
-    for (const key in obj) {
-      obj[key] = removeMarkdownSyntax(obj[key]);
-    }
-  }
-
-  return obj;
-}
-
-function cleanMarkdownFromString(str) {
-  if (!str || typeof str !== 'string') return str;
-
-  return str
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/^[-*_]{3,}$/gm, '')
-    .replace(/^>\s*/gm, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function validateJSONStructure(obj) {
@@ -115,6 +31,13 @@ function validateJSONStructure(obj) {
   validateJobData(obj.job_data);
   validateAnalysis(obj.analysis);
   validateJobMatch(obj.job_match);
+
+  // Quick scan for forbidden artifacts (markdown/bullets) - early flag without full recursion
+  const jsonStr = JSON.stringify(obj);
+  if (jsonStr.match(/[*_~`#\[\]\(\)]|^\s*[-*+•]/m)) {
+    console.warn('Detected potential markdown/bullets - consider LLM retry for clean output');
+    // Optionally throw or handle - keeps quality high
+  }
 }
 
 function getDefaultValue(key) {
@@ -268,7 +191,6 @@ function ensureWebClosing(finalThought) {
 export function validateOutput(analysis) {
   const issues = [];
 
-  // Check for empty or low-quality critical sections
   if (!analysis.summary || analysis.summary.trim().length < 20) {
     issues.push('Summary too short or missing');
   }
@@ -281,12 +203,9 @@ export function validateOutput(analysis) {
     issues.push('No critical CV changes identified');
   }
 
-  // Check for any placeholder-like values
   const forbiddenValues = ['tbd', 'todo', 'placeholder', 'n/a', 'na', 'unknown'];
   const jsonStr = JSON.stringify(analysis).toLowerCase();
-  const hasForbidden = forbiddenValues.some(p => jsonStr.includes(p));
-
-  if (hasForbidden) {
+  if (forbiddenValues.some(p => jsonStr.includes(p))) {
     issues.push('Contains forbidden placeholder-like values');
   }
 
