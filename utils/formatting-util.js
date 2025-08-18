@@ -1,318 +1,239 @@
 // utils/formatting-util.js
+//
+// Purpose: Make the LLM's analysis JSON safe to consume without changing its meaning.
+// Priorities (strict): 1) preserve output quality, 2) be fast, 3) avoid extra tokens.
+// Scope: formatting + light validation only. No content rewrites, no bullet injection.
 
-export function formatAnalysisOutput(rawAnalysis) {
-  // Deep clone to avoid mutating original
-  const formatted = JSON.parse(JSON.stringify(rawAnalysis));
-
-  // Apply formatting transformations
-  formatBulletPoints(formatted);
-  removeMarkdownSyntax(formatted);
-  validateJSONStructure(formatted);
-
-  return formatted;
+function isObject(x) {
+  return x !== null && typeof x === "object" && !Array.isArray(x);
 }
 
-function formatBulletPoints(obj) {
-  if (typeof obj === 'string') {
-    return formatStringBullets(obj);
+const hasMarkdownChars = (s) => /[*_\[\]`>#]/.test(s);
+
+function stripCodeFences(input) {
+  // Removes ```json ... ``` or ``` ... ``` fences and leading/trailing backticks
+  let s = String(input).trim();
+  // Triple backtick fences
+  const fenceMatch = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenceMatch) return fenceMatch[1].trim();
+  // Single backticks around the whole payload (rare but seen)
+  const tickMatch = s.match(/^`([\s\S]*?)`$/);
+  if (tickMatch) return tickMatch[1].trim();
+  return s;
+}
+
+function removeMarkdownSyntax(s) {
+  // Conservative: only strip obvious leading markers; preserve newlines and spacing.
+  // Do NOT collapse whitespace or inject bullets. Keep the author's original flow.
+  let out = s;
+
+  // Strip leading list markers at line starts: -, *, •, digits.
+  out = out.replace(/^[\s]*([-*•]|\d+\.)\s+/gm, "");
+  // Strip leading blockquote markers
+  out = out.replace(/^[\s]*>\s?/gm, "");
+  // Strip heading markers
+  out = out.replace(/^[\s]*#{1,6}\s+/gm, "");
+  // Remove inline code backticks (keep content)
+  out = out.replace(/`([^`]+)`/g, "$1");
+  // Remove remaining stray markdown emphasis markers when they wrap words
+  out = out.replace(/\*([^\*\n]+)\*/g, "$1");
+  out = out.replace(/_([^_\n]+)_/g, "$1");
+  // Preserve newlines; no global whitespace collapsing.
+  return out;
+}
+
+function cleanStringMaybe(s) {
+  if (typeof s !== "string") return s;
+  if (!hasMarkdownChars(s)) return s; // fast path
+  return removeMarkdownSyntax(s);
+}
+
+function deepCleanAndValidate(node, path = [], issues = []) {
+  // Returns { value, issues } where value is cleaned clone of node.
+  if (typeof node === "string") {
+    return { value: cleanStringMaybe(node), issues };
   }
 
-  if (Array.isArray(obj)) {
-    return obj.map(item => {
-      if (typeof item === 'string') {
-        return formatStringBullets(item);
-      }
-      return formatBulletPoints(item);
-    });
-  }
-
-  if (obj && typeof obj === 'object') {
-    for (const key in obj) {
-      obj[key] = formatBulletPoints(obj[key]);
+  if (Array.isArray(node)) {
+    const arr = new Array(node.length);
+    for (let i = 0; i < node.length; i++) {
+      const { value } = deepCleanAndValidate(node[i], path.concat(i), issues);
+      arr[i] = value;
     }
+    return { value: arr, issues };
   }
 
-  return obj;
-}
-
-function formatStringBullets(str) {
-  if (!str || typeof str !== 'string') return str;
-
-  // Convert various bullet formats to consistent "•"
-  let formatted = str
-    // Replace markdown bullets
-    .replace(/^\s*[-*+]\s+/gm, '• ')
-    // Replace numbered lists
-    .replace(/^\s*\d+\.\s+/gm, '• ')
-    // Replace existing bullets with consistent format
-    .replace(/^\s*[•▪▫▬►]\s*/gm, '• ')
-    // Replace HTML bullets
-    .replace(/^\s*&bull;\s*/gm, '• ')
-    // Normalize whitespace around bullets
-    .replace(/•\s+/g, '• ')
-    // Ensure line breaks after bullets
-    .replace(/•\s*([^•\n]+)(?=\s*•)/g, '• $1\n')
-    // Clean up multiple line breaks
-    .replace(/\n\s*\n/g, '\n')
-    // Trim whitespace
-    .trim();
-
-  return formatted;
-}
-
-function removeMarkdownSyntax(obj) {
-  if (typeof obj === 'string') {
-    return cleanMarkdownFromString(obj);
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(item => {
-      if (typeof item === 'string') {
-        return cleanMarkdownFromString(item);
-      }
-      return removeMarkdownSyntax(item);
-    });
-  }
-
-  if (obj && typeof obj === 'object') {
-    for (const key in obj) {
-      obj[key] = removeMarkdownSyntax(obj[key]);
+  if (isObject(node)) {
+    const out = {};
+    for (const [k, v] of Object.entries(node)) {
+      const { value } = deepCleanAndValidate(v, path.concat(k), issues);
+      out[k] = value;
     }
+    return { value: out, issues };
   }
 
-  return obj;
+  // Primitives other than string
+  return { value: node, issues };
 }
 
-function cleanMarkdownFromString(str) {
-  if (!str || typeof str !== 'string') return str;
+function parseMaybe(raw) {
+  if (isObject(raw)) return { obj: raw, error: null };
 
-  return str
-    // Remove bold/italic markers
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    // Remove code blocks
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/`([^`]+)`/g, '$1')
-    // Remove headers
-    .replace(/^#{1,6}\s+/gm, '')
-    // Remove links but keep text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Remove horizontal rules
-    .replace(/^[-*_]{3,}$/gm, '')
-    // Remove blockquotes
-    .replace(/^>\s*/gm, '')
-    // Clean up extra whitespace
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function validateJSONStructure(obj) {
-  // Ensure required top-level keys exist
-  const requiredKeys = [
-    'summary',
-    'cv_data',
-    'job_data',
-    'jobs_extracted',
-    'analysis',
-    'job_match',
-    'final_thought'
-  ];
-
-  requiredKeys.forEach(key => {
-    if (!(key in obj)) {
-      obj[key] = getDefaultValue(key);
+  if (typeof raw === "string") {
+    const unwrapped = stripCodeFences(raw);
+    try {
+      const obj = JSON.parse(unwrapped);
+      return { obj, error: null };
+    } catch (e) {
+      return {
+        obj: { _error: "Invalid JSON from model", _raw: unwrapped.slice(0, 2000) },
+        error: e,
+      };
     }
-  });
-
-  // Validate nested structures
-  validateCVData(obj.cv_data);
-  validateJobData(obj.job_data);
-  validateAnalysis(obj.analysis);
-  validateJobMatch(obj.job_match);
-}
-
-function getDefaultValue(key) {
-  const defaults = {
-    'summary': '',
-    'cv_data': {
-      'Name': 'n/a',
-      'Seniority': 'n/a',
-      'Industry': 'n/a',
-      'Country': 'n/a'
-    },
-    'job_data': {
-      'Position': 'n/a',
-      'Seniority': 'n/a',
-      'Company': 'n/a',
-      'Industry': 'n/a',
-      'Country': 'n/a',
-      'HR Contact': 'n/a'
-    },
-    'jobs_extracted': [],
-    'analysis': {},
-    'job_match': {},
-    'final_thought': ''
-  };
-
-  return defaults[key] || '';
-}
-
-function validateCVData(cvData) {
-  const required = ['Name', 'Seniority', 'Industry', 'Country'];
-  required.forEach(field => {
-    if (!(field in cvData)) {
-      cvData[field] = 'n/a';
-    }
-  });
-}
-
-function validateJobData(jobData) {
-  const required = ['Position', 'Seniority', 'Company', 'Industry', 'Country', 'HR Contact'];
-  required.forEach(field => {
-    if (!(field in jobData)) {
-      jobData[field] = 'n/a';
-    }
-  });
-}
-
-function validateAnalysis(analysis) {
-  const requiredFields = [
-    'overall_score',
-    'ats_score',
-    'scenario_tags',
-    'cv_format_analysis',
-    'cultural_fit',
-    'red_flags',
-    'overall_commentary',
-    'suitable_positions',
-    'career_arc',
-    'parallel_experience',
-    'transferable_skills',
-    'style_wording',
-    'ats_keywords',
-    'action_items'
-  ];
-
-  requiredFields.forEach(field => {
-    if (!(field in analysis)) {
-      analysis[field] = getAnalysisDefault(field);
-    }
-  });
-
-  // Validate action_items structure
-  if (!analysis.action_items || typeof analysis.action_items !== 'object') {
-    analysis.action_items = {};
-  }
-
-  if (!analysis.action_items.cv_changes) {
-    analysis.action_items.cv_changes = {
-      critical: [],
-      advised: [],
-      optional: []
-    };
-  }
-
-  if (!analysis.action_items['Cover Letter']) {
-    analysis.action_items['Cover Letter'] = {
-      'Points to Address': [],
-      'Narrative Flow': [],
-      'Tone and Style': []
-    };
-  }
-}
-
-function getAnalysisDefault(field) {
-  const defaults = {
-    'overall_score': '0',
-    'ats_score': '0',
-    'scenario_tags': [],
-    'cv_format_analysis': '',
-    'cultural_fit': '',
-    'red_flags': '',
-    'overall_commentary': '',
-    'suitable_positions': '',
-    'career_arc': '',
-    'parallel_experience': '',
-    'transferable_skills': '',
-    'style_wording': '',
-    'ats_keywords': '',
-    'action_items': {}
-  };
-
-  return defaults[field] || '';
-}
-
-function validateJobMatch(jobMatch) {
-  const required = ['keyword_match', 'inferred_keywords', 'career_scenario', 'positioning_strategy'];
-  required.forEach(field => {
-    if (!(field in jobMatch)) {
-      jobMatch[field] = 'n/a';
-    }
-  });
-}
-
-// Helper function for web output formatting
-export function formatForWeb(analysis) {
-  const webFormatted = formatAnalysisOutput(analysis);
-
-  // Additional web-specific formatting
-  webFormatted.summary = ensureWebSummary(webFormatted.summary);
-  webFormatted.final_thought = ensureWebClosing(webFormatted.final_thought);
-
-  return webFormatted;
-}
-
-function ensureWebSummary(summary) {
-  if (!summary || summary.length < 50) {
-    return 'Professional CV analysis revealing key insights and strategic recommendations for career advancement.';
-  }
-
-  // Ensure summary is engaging and concise
-  if (summary.length > 300) {
-    return summary.substring(0, 297) + '...';
-  }
-
-  return summary;
-}
-
-function ensureWebClosing(finalThought) {
-  if (!finalThought || finalThought.length < 30) {
-    return 'Your career trajectory shows strong potential. Focus on the recommended improvements to maximize your market positioning.';
-  }
-
-  return finalThought;
-}
-
-// Quality assurance function
-export function validateOutput(analysis) {
-  const issues = [];
-
-  // Check for empty critical sections
-  if (!analysis.summary || analysis.summary.trim().length < 20) {
-    issues.push('Summary too short or missing');
-  }
-
-  if (!analysis.analysis?.overall_commentary || analysis.analysis.overall_commentary.trim().length < 50) {
-    issues.push('Overall commentary missing or insufficient');
-  }
-
-  if (!analysis.analysis?.action_items?.cv_changes?.critical?.length) {
-    issues.push('No critical CV changes identified');
-  }
-
-  // Check for placeholder values
-  const placeholders = ['n/a', 'tbd', 'todo', 'placeholder'];
-  const jsonStr = JSON.stringify(analysis).toLowerCase();
-  const hasPlaceholders = placeholders.some(p => jsonStr.includes(p));
-
-  if (hasPlaceholders) {
-    issues.push('Contains placeholder values that should be filled');
   }
 
   return {
-    isValid: issues.length === 0,
-    issues: issues
+    obj: { _error: "Unsupported input type", _raw_type: typeof raw },
+    error: new Error("Unsupported input type"),
   };
+}
+
+// Light structural validator tailored to the prompt schema
+function validateJSONStructure(analysis) {
+  const issues = [];
+
+  const expectString = (val, keyPath) => {
+    if (typeof val !== "string") issues.push(`${keyPath} should be a string`);
+    else if (!val.trim()) issues.push(`${keyPath} is empty`);
+  };
+  const expectArray = (val, keyPath) => {
+    if (!Array.isArray(val)) issues.push(`${keyPath} should be an array`);
+  };
+  const expectObject = (val, keyPath) => {
+    if (!isObject(val)) issues.push(`${keyPath} should be an object`);
+  };
+
+  // Root keys
+  if (!("summary" in analysis)) issues.push("summary is missing");
+  if (!("analysis" in analysis)) issues.push("analysis is missing");
+  if (!("action_items" in analysis)) issues.push("action_items is missing");
+  if (!("job_match" in analysis)) issues.push("job_match is missing");
+  if (!("generation_framework" in analysis)) issues.push("generation_framework is missing");
+  if (!("job_data" in analysis)) issues.push("job_data is missing");
+
+  if ("summary" in analysis) expectString(analysis.summary, "summary");
+
+  if ("analysis" in analysis) {
+    expectObject(analysis.analysis, "analysis");
+    if (isObject(analysis.analysis)) {
+      if (!("overall_commentary" in analysis.analysis))
+        issues.push("analysis.overall_commentary is missing");
+      else expectString(analysis.analysis.overall_commentary, "analysis.overall_commentary");
+
+      if (!("red_flags" in analysis.analysis)) issues.push("analysis.red_flags is missing");
+      else expectArray(analysis.analysis.red_flags, "analysis.red_flags");
+
+      if (!("suitable_positions" in analysis.analysis))
+        issues.push("analysis.suitable_positions is missing");
+      else expectArray(analysis.analysis.suitable_positions, "analysis.suitable_positions");
+    }
+  }
+
+  if ("action_items" in analysis) {
+    expectObject(analysis.action_items, "action_items");
+    if (isObject(analysis.action_items)) {
+      if (!("cv_changes" in analysis.action_items))
+        issues.push("action_items.cv_changes is missing");
+      else if (!isObject(analysis.action_items.cv_changes))
+        issues.push("action_items.cv_changes should be an object");
+      else {
+        const cc = analysis.action_items.cv_changes;
+        if (!("critical" in cc)) issues.push("action_items.cv_changes.critical is missing");
+        else expectArray(cc.critical, "action_items.cv_changes.critical");
+        if (!("recommended" in cc)) issues.push("action_items.cv_changes.recommended is missing");
+        else expectArray(cc.recommended, "action_items.cv_changes.recommended");
+      }
+    }
+  }
+
+  if ("job_match" in analysis) {
+    expectObject(analysis.job_match, "job_match");
+    if (isObject(analysis.job_match)) {
+      if (!("fit_summary" in analysis.job_match)) issues.push("job_match.fit_summary is missing");
+      else expectString(analysis.job_match.fit_summary, "job_match.fit_summary");
+      if (!("key_gaps" in analysis.job_match)) issues.push("job_match.key_gaps is missing");
+      else expectArray(analysis.job_match.key_gaps, "job_match.key_gaps");
+    }
+  }
+
+  if ("generation_framework" in analysis) {
+    expectObject(analysis.generation_framework, "generation_framework");
+    if (isObject(analysis.generation_framework)) {
+      if (!("language" in analysis.generation_framework))
+        issues.push("generation_framework.language is missing");
+      else expectString(analysis.generation_framework.language, "generation_framework.language");
+
+      if (!("version" in analysis.generation_framework))
+        issues.push("generation_framework.version is missing");
+      else if (analysis.generation_framework.version !== "v1")
+        issues.push("generation_framework.version should be \"v1\"");
+    }
+  }
+
+  if ("job_data" in analysis) {
+    expectObject(analysis.job_data, "job_data");
+    if (isObject(analysis.job_data)) {
+      ["title", "company", "location", "seniority"].forEach((k) => {
+        if (!(k in analysis.job_data)) issues.push(`job_data.${k} is missing`);
+        else expectString(analysis.job_data[k], `job_data.${k}`);
+      });
+    }
+  }
+
+  return { issues };
+}
+
+export function formatAnalysisOutput(raw) {
+  const { obj } = parseMaybe(raw);
+
+  // If we failed to parse, return the error object as-is (non-throwing behavior)
+  if (obj && obj._error) return obj;
+
+  // Single-pass clean
+  const { value: cleaned, issues: _ } = deepCleanAndValidate(obj);
+
+  // Attach structural issues for the caller to inspect (non-destructive)
+  const { issues } = validateJSONStructure(cleaned);
+  if (issues.length) {
+    return { ...cleaned, _issues: issues };
+  }
+  return cleaned;
+}
+
+export function validateOutput(analysis) {
+  const issues = [];
+
+  // Basic expectations beyond structure (kept minimal; no rewriting)
+  if (typeof analysis !== "object" || analysis === null) {
+    return { isValid: false, issues: ["Output is not an object"] };
+  }
+
+  // No markdown/bullets check on key strings (spot check to avoid O(n) scans)
+  const suspect = [];
+  const checkString = (val, key) => {
+    if (typeof val === "string" && /[*•`#>-]/.test(val)) suspect.push(key);
+  };
+  checkString(analysis.summary, "summary");
+  if (analysis.analysis && typeof analysis.analysis === "object") {
+    checkString(analysis.analysis.overall_commentary, "analysis.overall_commentary");
+  }
+  if (suspect.length) {
+    issues.push(`Possible markdown/bullets detected in: ${suspect.join(", ")}`);
+  }
+
+  // Structural validation
+  const structural = validateJSONStructure(analysis);
+  issues.push(...structural.issues);
+
+  return { isValid: issues.length === 0, issues };
 }
