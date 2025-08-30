@@ -48,7 +48,8 @@ export default async function exportDocxFormatted({
     if (raw.includes('</center>')) { inCenterBlock = false; continue; }
     if (inCenterBlock) {
       const cleaned = raw.replace(/\*\*|<\/?strong[^>]*>|\*/g, '');
-      if (raw.startsWith('#') || raw.startsWith('###') || /^[A-Za-z]/.test(raw)) {
+      const isName = i === 0 || (lines[i - 1] && lines[i - 1].trim() === '<center>');
+      if (isName) {
         docParagraphs.push(new Paragraph({
           children: [new TextRun({ text: cleaned.replace(/^#+\s*/, ''), ...styles.name })],
           alignment: AlignmentType.CENTER,
@@ -67,18 +68,6 @@ export default async function exportDocxFormatted({
 
     if (raw === '---') continue;
 
-    // JOB TITLE
-    if (raw.startsWith('#') && /experience/i.test(currentSectionTitle)) {
-      const cleaned = raw.replace(/^#+\s*/, '').replace(/\*+/g, '').trim();
-      docParagraphs.push(new Paragraph({
-        children: [new TextRun({ text: cleaned, ...styles.jobTitle })],
-        spacing: { before: 300, after: 100 },
-        keepNext: true,
-        keepLines: true,
-      }));
-      continue;
-    }
-
     // SECTION HEADER
     if (raw.startsWith('###')) {
       currentSectionTitle = raw.replace(/###\s*\**|\**/g, '').trim();
@@ -95,30 +84,18 @@ export default async function exportDocxFormatted({
         spacing: { after: 150 },
         keepNext: true,
       }));
+      continue;
+    }
 
-      // KEY SKILLS
-      if (/skills|competencies/i.test(currentSectionTitle)) {
-        const skillsBuffer = [];
-        let j = i + 1;
-        while (j < lines.length && !lines[j].startsWith('###')) {
-          const skillLine = lines[j].trim();
-          if (skillLine) skillsBuffer.push(skillLine.replace(/^- |^• /, '').trim());
-          j++;
-        }
-        i = j - 1;
-
-        skillsBuffer.forEach(skill => {
-          docParagraphs.push(new Paragraph({
-            children: [
-              new TextRun({ text: '• ', ...styles.skillText }),
-              new TextRun({ text: skill, ...styles.skillText }),
-            ],
-            spacing: { after: 150 },
-            keepLines: true,
-          }));
-        });
-        continue;
-      }
+    // JOB TITLE
+    if (raw.startsWith('#') && /experience/i.test(currentSectionTitle)) {
+      const cleaned = raw.replace(/^#+\s*/, '').replace(/\*+/g, '').trim();
+      docParagraphs.push(new Paragraph({
+        children: [new TextRun({ text: cleaned, ...styles.jobTitle })],
+        spacing: { before: 300, after: 100 },
+        keepNext: true,
+        keepLines: true,
+      }));
       continue;
     }
 
@@ -137,6 +114,20 @@ export default async function exportDocxFormatted({
         keepLines: true,
       }));
       continue;
+    }
+
+    // SKILLS
+    if (/skills|competencies/i.test(currentSectionTitle) && (raw.startsWith('- ') || raw.startsWith('• '))) {
+        docParagraphs.push(new Paragraph({
+            children: [
+                new TextRun({ text: '• ', ...styles.skillText }),
+                new TextRun({ text: cleaned, ...styles.skillText }),
+            ],
+            spacing: { after: 150 },
+            indent: { left: 360, hanging: 360 },
+            keepLines: true,
+        }));
+        continue;
     }
 
     // BULLETS
