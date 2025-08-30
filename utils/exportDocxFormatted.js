@@ -7,6 +7,7 @@ import {
   TextRun,
   AlignmentType,
   TabStopType,
+  TabStopPosition
 } from 'docx';
 
 export default async function exportDocxFormatted({
@@ -30,7 +31,6 @@ export default async function exportDocxFormatted({
     bodyText: { size: 22, color: '2d2d2d' },
     bulletText: { size: 22, color: '2d2d2d' },
     skillText: { size: 21, color: '2d2d2d' },
-    tabStop: { type: TabStopType.LEFT, position: 4500 },
     underline: { text: '________________________________', size: 16, color: 'e6e6e6' },
   };
 
@@ -43,15 +43,19 @@ export default async function exportDocxFormatted({
     const raw = lines[i].trim();
     if (!raw) continue;
 
+    // Handle HTML tags for removal, common in skills section
+    const cleanedWithoutHtml = raw.replace(/<[^>]*>/g, '').trim();
+    if (!cleanedWithoutHtml) continue;
+
     // HEADER
     if (raw.includes('<center>')) { inCenterBlock = true; continue; }
     if (raw.includes('</center>')) { inCenterBlock = false; continue; }
     if (inCenterBlock) {
-      const cleaned = raw.replace(/\*\*|<\/?strong[^>]*>|\*/g, '');
+      const cleaned = raw.replace(/\*\*|<\/?strong[^>]*>|\*/g, '').replace(/#/, '').trim();
       const isName = i === 0 || (lines[i - 1] && lines[i - 1].trim() === '<center>');
       if (isName) {
         docParagraphs.push(new Paragraph({
-          children: [new TextRun({ text: cleaned.replace(/^#+\s*/, ''), ...styles.name })],
+          children: [new TextRun({ text: cleaned, ...styles.name })],
           alignment: AlignmentType.CENTER,
           spacing: { after: 150 },
         }));
@@ -116,21 +120,22 @@ export default async function exportDocxFormatted({
       continue;
     }
 
-    // SKILLS
-    if (/skills|competencies/i.test(currentSectionTitle) && (raw.startsWith('- ') || raw.startsWith('• '))) {
-        docParagraphs.push(new Paragraph({
-            children: [
-                new TextRun({ text: '• ', ...styles.skillText }),
-                new TextRun({ text: cleaned, ...styles.skillText }),
-            ],
-            spacing: { after: 150 },
-            indent: { left: 360, hanging: 360 },
-            keepLines: true,
-        }));
+    // SKILLS & BULLETS
+    if (/skills|competencies/i.test(currentSectionTitle)) {
+        if (cleanedWithoutHtml) {
+          docParagraphs.push(new Paragraph({
+              children: [
+                  new TextRun({ text: '• ', ...styles.skillText }),
+                  new TextRun({ text: cleanedWithoutHtml, ...styles.skillText }),
+              ],
+              spacing: { after: 150 },
+              indent: { left: 360, hanging: 360 },
+              keepLines: true,
+          }));
+        }
         continue;
     }
 
-    // BULLETS
     if (raw.startsWith('- ') || raw.startsWith('• ')) {
       docParagraphs.push(new Paragraph({
         children: [
