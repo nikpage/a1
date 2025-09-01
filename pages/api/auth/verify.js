@@ -47,9 +47,10 @@ export default async function handler(req, res) {
       .delete()
       .eq('token', token);
 
-    res.setHeader('Set-Cookie', [
-      `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=Strict; Secure`
-    ]);
+      res.setHeader('Set-Cookie', [
+        `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; SameSite=None; Secure`
+      ]);
+
 
     console.log('✅ Cookie set, redirecting');
     res.redirect(302, `/${tokenData.user_id}`);
