@@ -19,8 +19,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
       process.env.DEEPSEEK_API_URL,
       {
         model: 'deepseek-chat',
-        messages: messages,
-        max_tokens: 8000
+        messages: messages
       },
       {
         headers: {

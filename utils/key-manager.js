@@ -51,7 +51,7 @@ export class KeyManager {
       const envKeyName = Object.entries(process.env).find(([name, value]) => value === key)?.[0];
 
       console.log(`[KeyManager] Using key: ${envKeyName} = ${key.slice(0, 12)}...`);
-console.log(`[KeyManager] Using key ${envKeyName} ending in ****${key.slice(-4)}`);
+
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.keys.length;
       return key;
     }

@@ -70,6 +70,52 @@ export async function decrementToken(user_id) {
   return data;
 }
 
+// Log token usage
+// Save detailed token usage
+export async function saveTokenUsage({
+  user_id,
+  type,
+  source_gen_id = null,
+  model,
+  amount_usd,
+  detail = {},
+  cache_hit_tokens = 0,
+  cache_miss_tokens = 0,
+  completion_tokens = 0,
+  key_index = null
+}) {
+  const { data, error } = await supabase
+    .from('token_logs')
+    .insert([{
+      user_id,
+      type,
+      source_gen_id,
+      model,
+      amount_usd,
+      detail,
+      cache_hit_tokens,
+      cache_miss_tokens,
+      completion_tokens,
+      key_index
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('saveTokenUsage error:', error.message, error.details);
+    throw new Error(`saveTokenUsage failed: ${error.message}`);
+  }
+  return data;
+}
+
+export async function logTokenUsage(user_id, token_type, amount) {
+  const { data, error } = await supabase
+    .from('token_logs')
+    .insert([{ user_id, token_type, amount }]);
+  if (error) throw error;
+  return data;
+}
+
 // Save generated doc
 export async function saveGeneratedDoc({
   user_id,

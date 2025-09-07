@@ -24,20 +24,21 @@ export function buildCvPrompt(cv, analysis, tone) {
   const userMessage = {
     role: 'user',
     content: `
-# MANDATORY STEPS - DO THESE FIRST
+# MANDATORY STEPS - DO THESE FIRST - THE ANALYSIS IS YOUR COMMAND
 
-STEP 0 (Read Blueprint): Extract and follow these blueprint specifications:
+STEP 0 (Read Blueprint AND Analysis): The provided analysis is the strategic foundation for this rewrite. Extract and follow these blueprint specifications:
   - Target length: generation_framework.cv_blueprint.target_length_pages
   - Section order: generation_framework.cv_blueprint.section_order
   - Job selection: generation_framework.cv_blueprint.job_selection (include_jobs, condense_jobs, rewrite_jobs)
   - Summary rewrite: generation_framework.cv_blueprint.summary_rewrite
   - Skills to highlight: generation_framework.cv_blueprint.skills_to_highlight
 
-STEP 1 (Apply Employment Intelligence):
-  - Use analysis.scenario_tags to adjust tone and approach
-  - Build summary from analysis.career_arc and blueprint summary_rewrite
-  - Address EVERY item in analysis.red_flags specifically
-  - Apply analysis.quick_wins directly to relevant sections
+STEP 1 (Apply Employment Intelligence - NON-NEGOTIABLE):
+  - **TONE & STRUCTURE:** Let the \`analysis.scenario_tags\` dictate the CV's entire narrative structure, tone, and which experiences to emphasize most.
+  - **SUMMARY:** The summary MUST be built by combining \`analysis.career_arc\` and the blueprint's \`summary_rewrite\`. Weave in \`analysis.parallel_experience\` and \`analysis.transferable_skills\` here.
+  - **RED FLAGS:** You MUST explicitly address and mitigate EVERY single item listed in \`analysis.red_flags\` within the relevant job descriptions or summary. This is critical.
+  - **CONTENT SOURCE:** The primary content for achievement bullets MUST come from \`analysis.transferable_skills\` and the original \`jobs_extracted\`. Use the exact phrasing from \`analysis.transferable_skills\` where possible.
+  - **KEYWORDS:** Naturally integrate every relevant keyword from \`analysis.ats_keywords\` and \`job_match.inferred_keywords\` into the bullet points. Do not just list them.
 
 STEP 2 (Strategic Positioning):
   - Weave in analysis.ats_keywords naturally throughout
@@ -87,6 +88,7 @@ Output in Markdown format with this exact structure:
 ---
 
 ### **Key Skills**
+<!-- BLOCK:START -->
 [Prioritize blueprint.skills_to_highlight, format as a 2-column bullet list]
 
 <div style="display: flex; flex-wrap: wrap;">
@@ -105,21 +107,34 @@ Output in Markdown format with this exact structure:
     </ul>
   </div>
 </div>
-
+<!-- BLOCK:END -->
 ---
 
 ### **Professional Experience**
 [Apply job_selection rules from blueprint. For each role, emphasize job title FIRST]
 
+<!-- BLOCK:START -->
 #### **[Job Title]**
 **[Company Name]** | [Start Date] - [End Date or Present] | [City, Country]
 - [Achievement/responsibility - weave in ats_keywords and transferable_skills]
 - [Achievement/responsibility - address red_flags if relevant to this role]
+<!-- BLOCK:END -->
 
 ---
 
 ### **Education**
 [Education content]
+<!-- BLOCK:START -->
+**[Degree/Diploma]** | [Institution] | [Year]
+<!-- BLOCK:END -->
+
+---
+
+### **Certifications**
+<!-- BLOCK:START -->
+- [Certification 1]
+- [Certification 2]
+<!-- BLOCK:END -->
 
 ---
 
@@ -133,7 +148,14 @@ ${cv}
 ## Analysis:
 ${JSON.stringify(analysis, null, 2)}
 
-# Output
+# Output & Validation
+Before finalizing, validate your output against this checklist:
+✅ The CV directly addresses the career scenario from \`analysis.scenario_tags\`.
+✅ ALL \`analysis.red_flags\` have been mitigated in the relevant sections.
+✅ The \`analysis.transferable_skills\` are prominently featured and woven into bullet points.
+✅ The \`analysis.ats_keywords\` are naturally integrated throughout.
+✅ The summary reflects the \`analysis.career_arc\` and \`analysis.parallel_experience\`.
+
 Return only the formatted CV in the exact Markdown structure shown above. Follow the generation_framework blueprint precisely. No additional commentary, notes, or explanations.
 `
   };
