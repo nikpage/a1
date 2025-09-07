@@ -21,8 +21,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Removed userRateLimiter call as it does not exist.
-
   let user;
   try {
     user = await getUserById(user_id);
@@ -32,9 +30,22 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Error fetching user data' });
   }
 
-  const cost = type === 'both' ? 2 : 1;
-  if (user.generations_left < cost) {
-    return res.status(403).json({ error: 'Not enough generations left' });
+  // Check generations before generating
+  if (user.generations_left <= 0) {
+    return res.status(403).json({ error: 'NO_GENERATIONS_LEFT' });
+  }
+
+  // Check tokens before generating
+  if (user.tokens <= 0) {
+    return res.status(403).json({ error: 'NO_TOKENS_LEFT' });
+  }
+
+  // Decrement immediately
+  try {
+    await decrementGenerations(user_id, 1);
+  } catch (decErr) {
+    console.error('Decrement error:', decErr);
+    return res.status(500).json({ error: 'Error decrementing generations' });
   }
 
   let cvRecord;
@@ -79,8 +90,6 @@ export default async function handler(req, res) {
         content: cover
       });
     }
-
-    setTimeout(() => decrementGenerations(user_id, cost), 500);
 
     const updatedUser = await getUserById(user_id);
     if (updatedUser.generations_left === 0) {

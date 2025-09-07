@@ -10,17 +10,16 @@ import AnalysisDisplay from './AnalysisDisplay';
 import Regenerate from './Regenerate';
 import StartFreshModal from './StartFreshModal';
 import LoadingModal from './LoadingModal';
-import { useState, useEffect, useLayoutEffect } from 'react';
+import TokenPurchasePanel from './TokenPurchasePanel';
 
+import { useState, useEffect, useLayoutEffect } from 'react';
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
 
-  // Clear analysis event listener
   useEffect(() => {
     const clear = () => {
       setAnalysisTextState(null);
-      // Also clear all document data when clearing analysis
       setCvVersions([]);
       setCoverVersions([]);
       setCvCurrentIndex(0);
@@ -32,21 +31,15 @@ export default function TabbedViewer({ user_id, analysisText }) {
     return () => window.removeEventListener('clear-analysis', clear);
   }, []);
 
-  // New analysis event listener - properly update state and clear old data
   useEffect(() => {
     const onNewAnalysis = (e) => {
       if (e.detail?.analysis) {
-        // Update analysis text state
         setAnalysisTextState(e.detail.analysis);
-
-        // Clear all old document data
         setCvVersions([]);
         setCoverVersions([]);
         setCvCurrentIndex(0);
         setCoverCurrentIndex(0);
         setDocs({ cv: null, cover: null });
-
-        // Reset UI state
         setShowBuilder(false);
         setActiveTab('analysis');
       }
@@ -55,7 +48,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
     return () => window.removeEventListener('new-analysis', onNewAnalysis);
   }, []);
 
-  // Update analysisTextState when prop changes
   useEffect(() => {
     setAnalysisTextState(analysisText);
   }, [analysisText]);
@@ -73,76 +65,83 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [loadingModalMessage, setLoadingModalMessage] = useState('');
   const [loadingModalTitle, setLoadingModalTitle] = useState('');
+  const [panelMode, setPanelMode] = useState("tokens");
 
   const handleSubmit = async ({ tone, selected, jobText }) => {
-      setShowLoadingModal(true);
-      setLoadingModalTitle('Generating Documents');
-      setLoadingModalMessage('Preparing your tailored documents...');
+    setShowLoadingModal(true);
+    setLoadingModalTitle('Generating Documents');
+    setLoadingModalMessage('Preparing your tailored documents...');
 
-      try {
-        if (!selected || !Array.isArray(selected) || selected.length === 0) {
-          alert('Please select at least one document type.');
-          setShowModal(false); // Close tone modal
-          setShowLoadingModal(false);
-          return;
-        }
-
-        const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
-        const tokensData = await tokensRes.json();
-        if (!tokensRes.ok || tokensData.tokens < selected.length) {
-          setShowModal(false); // Close tone modal
-          setShowBuyPanel(true);
-          setShowLoadingModal(false);
-          return;
-        }
-
-        // Create and immediately handle each request individually
-        const generationPromises = selected.map(docType => {
-          return fetch('/api/generate-cv-cover', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType }),
-          })
-          .then(async (res) => {
-            const data = await res.json();
-            if (!res.ok) {
-              throw new Error(data.error || `Generation failed for ${docType}`);
-            }
-            return data;
-          })
-          .then(data => {
-            // This is the key change: update the UI as soon as data arrives
-            if (data.cv) {
-              setCvVersions(prev => {
-                const newVersions = [...prev, data.cv];
-                setCvCurrentIndex(newVersions.length - 1);
-                return newVersions;
-              });
-              setActiveTab('cv');
-            }
-            if (data.cover) {
-              setCoverVersions(prev => {
-                const newCovers = [...prev, data.cover];
-                setCoverCurrentIndex(newCovers.length - 1);
-                return newCovers;
-              });
-              setActiveTab('cover');
-            }
-          });
-        });
-
-        // Wait for all requests to finish before closing the modals
-        await Promise.all(generationPromises);
+    try {
+      if (!selected || !Array.isArray(selected) || selected.length === 0) {
+        alert('Please select at least one document type.');
         setShowModal(false);
-        window.dispatchEvent(new Event('header-stats-updated'));
-
-      } catch (error) {
-        console.error("Generation error:", error);
-        alert(error.message || "An error occurred during document generation.");
-      } finally {
         setShowLoadingModal(false);
+        return;
       }
-    };
+
+      const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
+      const tokensData = await tokensRes.json();
+      if (!tokensRes.ok || tokensData.tokens < selected.length) {
+        setShowModal(false);
+        setShowBuyPanel(true);
+        setShowLoadingModal(false);
+        return;
+      }
+
+      const generationPromises = selected.map(docType => {
+        return fetch('/api/generate-cv-cover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType }),
+        })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            if (data.error === "NO_GENERATIONS_LEFT") {
+              setPanelMode("generations");
+              setShowBuyPanel(true);
+              throw new Error("Stopped: Out of generations");
+            }
+            if (data.error === "NO_TOKENS_LEFT") {
+              setPanelMode("tokens");
+              setShowBuyPanel(true);
+              throw new Error("Stopped: Out of tokens");
+            }
+            throw new Error(data.error || `Generation failed for ${docType}`);
+          }
+          return data;
+        })
+        .then(data => {
+          if (data.cv) {
+            setCvVersions(prev => {
+              const newVersions = [...prev, data.cv];
+              setCvCurrentIndex(newVersions.length - 1);
+              return newVersions;
+            });
+            setActiveTab('cv');
+          }
+          if (data.cover) {
+            setCoverVersions(prev => {
+              const newCovers = [...prev, data.cover];
+              setCoverCurrentIndex(newCovers.length - 1);
+              return newCovers;
+            });
+            setActiveTab('cover');
+          }
+        });
+      });
+
+      await Promise.all(generationPromises);
+      setShowModal(false);
+      window.dispatchEvent(new Event('header-stats-updated'));
+
+    } catch (error) {
+      console.error("Generation error:", error);
+    } finally {
+      setShowLoadingModal(false);
+    }
+  };
 
   const handleRegen = async (docType, tone) => {
     setShowLoadingModal(true);
@@ -157,6 +156,16 @@ export default function TabbedViewer({ user_id, analysisText }) {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.error === "NO_GENERATIONS_LEFT") {
+          setPanelMode("generations");
+          setShowBuyPanel(true);
+          return;
+        }
+        if (data.error === "NO_TOKENS_LEFT") {
+          setPanelMode("tokens");
+          setShowBuyPanel(true);
+          return;
+        }
         alert(data.error || 'Regeneration failed');
         return;
       }
@@ -172,7 +181,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
       }
     } catch (error) {
       console.error("Regeneration error:", error);
-      alert("An error occurred during document generation.");
     } finally {
       setShowLoadingModal(false);
     }
@@ -239,7 +247,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   useEffect(() => {
     if (window.location.search.includes('success=true')) {
-      setShowBuyPanel(true); // show the modal once after Stripe redirect
+      setShowBuyPanel(true);
     }
   }, []);
 
@@ -262,9 +270,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </button>
       </div>
 
-      {/* Responsive Tab Navigation */}
+      {/* Tabs */}
       <div className="flex flex-col sm:flex-row border-b border-accent bg-bg mb-6 sm:mb-8">
-        {/* Mobile: Dropdown-style tabs */}
         <div className="sm:hidden">
           <select
             value={activeTab}
@@ -289,11 +296,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                 (tab.id === 'cover' && coverVersions.length === 0);
 
               return (
-                <option
-                  key={tab.id}
-                  value={tab.id}
-                  disabled={isDisabled}
-                >
+                <option key={tab.id} value={tab.id} disabled={isDisabled}>
                   {tab.label} {isDisabled ? '(Not Available)' : ''}
                 </option>
               );
@@ -301,7 +304,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
           </select>
         </div>
 
-        {/* Desktop: Horizontal tabs */}
         <div className="hidden sm:flex sm:gap-6 lg:gap-12">
           {tabs.map(tab => {
             const isDisabled =
@@ -329,7 +331,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </div>
       </div>
 
-      {/* Tab Content */}
+      {/* Content */}
       <div className="tab-content">
         {activeTab === 'analysis' && (
           <div>
@@ -362,7 +364,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
           <div>
             {cvVersions.length > 0 ? (
               <>
-                {/* Version Controls */}
                 <div className="flex flex-col items-center mb-4 sm:mb-6">
                   <div className="mb-3 text-sm font-bold text-gray-800">
                     Version {cvCurrentIndex + 1} of {cvVersions.length}
@@ -415,7 +416,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
           <div>
             {coverVersions.length > 0 ? (
               <>
-                {/* Version Controls */}
                 <div className="flex flex-col items-center mb-4 sm:mb-6">
                   <div className="mb-3 text-sm font-bold text-gray-800">
                     Version {coverCurrentIndex + 1} of {coverVersions.length}
@@ -483,16 +483,15 @@ export default function TabbedViewer({ user_id, analysisText }) {
       )}
 
       {showBuyPanel && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl">
-            <DownloadTokenPanel
-              onClose={() => setShowBuyPanel(false)}
-              user_id={user_id}
-              forceShowBuy={!window.location.search.includes('success=true')}
-            />
-          </div>
-        </div>
+        <BaseModal onClose={() => setShowBuyPanel(false)}>
+          <TokenPurchasePanel
+            onClose={() => setShowBuyPanel(false)}
+            user_id={user_id}
+            mode={panelMode}
+          />
+        </BaseModal>
       )}
+
 
       {showThankYou && (
         <BaseModal onClose={() => setShowThankYou(false)}>
