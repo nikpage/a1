@@ -1,4 +1,4 @@
-// path: components/TabbedViewer.js
+// components/TabbedViewer.js
 import { supabase } from '../utils/database';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
@@ -16,6 +16,29 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 
 export default function TabbedViewer({ user_id, analysisText }) {
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
+  const [activeTab, setActiveTab] = useState('analysis');
+  const [docs, setDocs] = useState({ cv: null, cover: null });
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [showBuyPanel, setShowBuyPanel] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [cvVersions, setCvVersions] = useState([]);
+  const [coverVersions, setCoverVersions] = useState([]);
+  const [cvCurrentIndex, setCvCurrentIndex] = useState(0);
+  const [coverCurrentIndex, setCoverCurrentIndex] = useState(0);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [loadingModalMessage, setLoadingModalMessage] = useState('');
+  const [loadingModalTitle, setLoadingModalTitle] = useState('');
+  const [panelMode, setPanelMode] = useState("tokens");
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      setShowThankYou(true);
+    }
+  }, []);
+
+
 
   useEffect(() => {
     const clear = () => {
@@ -51,21 +74,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
   useEffect(() => {
     setAnalysisTextState(analysisText);
   }, [analysisText]);
-
-  const [activeTab, setActiveTab] = useState('analysis');
-  const [docs, setDocs] = useState({ cv: null, cover: null });
-  const [showBuilder, setShowBuilder] = useState(false);
-  const [showBuyPanel, setShowBuyPanel] = useState(false);
-  const [showThankYou, setShowThankYou] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [cvVersions, setCvVersions] = useState([]);
-  const [coverVersions, setCoverVersions] = useState([]);
-  const [cvCurrentIndex, setCvCurrentIndex] = useState(0);
-  const [coverCurrentIndex, setCoverCurrentIndex] = useState(0);
-  const [showLoadingModal, setShowLoadingModal] = useState(false);
-  const [loadingModalMessage, setLoadingModalMessage] = useState('');
-  const [loadingModalTitle, setLoadingModalTitle] = useState('');
-  const [panelMode, setPanelMode] = useState("tokens");
 
   const handleSubmit = async ({ tone, selected, jobText }) => {
     setShowLoadingModal(true);
@@ -245,12 +253,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
     else if (activeTab !== 'cover' && docs.cover && !docs.cv) setActiveTab('cover');
   }, [docs]);
 
-  useEffect(() => {
-    if (window.location.search.includes('success=true')) {
-      setShowBuyPanel(true);
-    }
-  }, []);
-
   useLayoutEffect(() => {
     const prevScroll = window.scrollY;
     setTimeout(() => {
@@ -260,7 +262,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   return (
     <div className="doc-viewer px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      {/* Start Fresh Button */}
       <div className="text-center mb-6">
         <button
           onClick={() => setShowModal('startFresh')}
@@ -270,7 +271,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="flex flex-col sm:flex-row border-b border-accent bg-bg mb-6 sm:mb-8">
         <div className="sm:hidden">
           <select
@@ -331,7 +331,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
         </div>
       </div>
 
-      {/* Content */}
       <div className="tab-content">
         {activeTab === 'analysis' && (
           <div>
@@ -465,7 +464,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
         )}
       </div>
 
-      {/* Modals */}
       {showModal === 'startFresh' && (
         <StartFreshModal
           user_id={user_id}
@@ -491,7 +489,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
           />
         </BaseModal>
       )}
-
 
       {showThankYou && (
         <BaseModal onClose={() => setShowThankYou(false)}>
