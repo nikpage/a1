@@ -1,4 +1,3 @@
-// path: components/ThankYouModal.js
 import { useEffect } from 'react';
 import BaseModal from './BaseModal';
 

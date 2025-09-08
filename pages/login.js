@@ -1,43 +1,101 @@
 import { useState } from 'react';
-import { supabase } from '../utils/supabase';
+import BaseModal from './BaseModal';
+import '../styles/modalStyles.css';
 
-export default function LoginPage() {
+export default function LoginModal({ onClose, userId }) {
   const [email, setEmail] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
-  const handleLogin = async (e) => {
+  const handleSendMagicLink = async (e) => {
     e.preventDefault();
-    setMessage('Sending magic link...');
+    setMessage('');
+    setError('');
+    setIsSending(true);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email,
-      options: {
-        emailRedirectTo: 'http://localhost:3000/auth/callback'
+    try {
+      const response = await fetch('/api/auth/send-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          user_id: userId,
+          rememberMe
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send login link');
       }
-    });
 
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage('Check your email for the magic link.');
+      setMessage(`Login link sent to ${email}! Check your inbox and click the link to continue.`);
+    } catch (err) {
+      console.error("Magic link error:", err);
+      setError(err.message || 'Failed to send login link. Please try again.');
+    } finally {
+      setIsSending(false);
     }
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen flex-col gap-4">
-      <h1 className="text-xl font-bold">Log in to save your CV analysis</h1>
-      <form onSubmit={handleLogin} className="flex flex-col gap-4 w-80">
+    <BaseModal onClose={onClose}>
+      <h2 className="modal-heading">Access Your CV Analysis</h2>
+
+      <form onSubmit={handleSendMagicLink} className="flex flex-col gap-4">
+        <p className="modal-text">
+          {userId
+            ? 'Enter your email to receive a secure login link.'
+            : 'Enter your email to log in or create an account.'}
+        </p>
+
         <input
           type="email"
-          placeholder="Your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder="your@email.com"
           required
-          className="border p-3 rounded"
+          className="input-field"
+          disabled={isSending}
         />
-        <button type="submit" className="bg-blue-600 text-white py-2 rounded">Send Magic Link</button>
+
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            disabled={isSending}
+          />
+          Keep me logged in for 30 days
+        </label>
+
+        <button
+          type="submit"
+          disabled={isSending || !email}
+          className="button-primary"
+        >
+          {isSending ? 'Sending Link...' : 'Send Login Link'}
+        </button>
       </form>
-      {message && <p className="text-center text-sm mt-4">{message}</p>}
-    </main>
+
+      {message && (
+        <div className="success-message">
+          {message}
+        </div>
+      )}
+
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500 mt-4 text-center">
+        The login link will expire in 15 minutes for security.
+      </p>
+    </BaseModal>
   );
 }

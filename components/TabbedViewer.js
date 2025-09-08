@@ -21,7 +21,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [showBuilder, setShowBuilder] = useState(false);
   const [showBuyPanel, setShowBuyPanel] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(true);
   const [cvVersions, setCvVersions] = useState([]);
   const [coverVersions, setCoverVersions] = useState([]);
   const [cvCurrentIndex, setCvCurrentIndex] = useState(0);

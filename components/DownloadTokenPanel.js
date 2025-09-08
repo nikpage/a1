@@ -1,5 +1,4 @@
 // path: components/DownloadTokenPanel.js
-
 import { useEffect, useState } from 'react';
 import BaseModal from './BaseModal';
 
@@ -51,28 +50,26 @@ export default function DownloadTokenPanel({ onClose, user_id, mode = 'tokens', 
 
   return (
     <BaseModal onClose={onClose}>
-      <div style={{ background: '#fff', padding: 30, borderRadius: 12, maxWidth: 480, textAlign: 'center' }}>
+      <div className="modal-container">
         {mode === 'generations' ? (
           <>
-            <h3>Out of Generations</h3>
-            <p>You’ve used all your free generations.</p>
-            <p>Download one of your documents to refresh your balance back to 10.</p>
-            <button onClick={onClose} style={{ marginTop: 20, padding: '8px 16px' }}>
-              Close
-            </button>
+            <h3 className="modal-heading">Out of Generations</h3>
+            <p className="modal-text">You’ve used all your free generations.</p>
+            <p className="modal-text">Download one of your documents to refresh your balance back to 10.</p>
+            <button onClick={onClose} className="button-primary">Close</button>
           </>
         ) : success ? (
           <>
-            <h2>🎉 Thank you!</h2>
-            <p>Your payment was successful.</p>
-            {tokensBought && <p>You bought {tokensBought} token{tokensBought > 1 ? 's' : ''}.</p>}
+            <h2 className="modal-heading">🎉 Thank you!</h2>
+            <p className="modal-text">Your payment was successful.</p>
+            {tokensBought && <p className="modal-text">You bought {tokensBought} token{tokensBought > 1 ? 's' : ''}.</p>}
             <button
               onClick={() => {
                 setSuccess(false);
                 setTokensBought(null);
                 onClose();
               }}
-              style={{ marginTop: 20, padding: '8px 16px' }}
+              className="button-primary"
             >
               Close
             </button>
@@ -80,17 +77,15 @@ export default function DownloadTokenPanel({ onClose, user_id, mode = 'tokens', 
         ) : (
           displayBuyOptions && (
             <>
-              <h3>Buy Tokens</h3>
-              <p>Select how many tokens you want:</p>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12 }}>
+              <h3 className="modal-heading">Buy Tokens</h3>
+              <p className="modal-text">Select how many tokens you want:</p>
+              <div className="button-primary" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button onClick={() => buyTokens(1)}>1 for €6</button>
                 <button onClick={() => buyTokens(2)}>2 for €8</button>
                 <button onClick={() => buyTokens(10)}>10 for €23</button>
                 <button onClick={() => buyTokens(30)}>30 for €42</button>
               </div>
-              <button onClick={onClose} style={{ marginTop: 20, padding: '8px 16px' }}>
-                Cancel
-              </button>
+              <button onClick={onClose} className="button-primary">Cancel</button>
             </>
           )
         )}

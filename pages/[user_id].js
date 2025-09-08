@@ -48,7 +48,10 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
       <main className="max-w-4xl mx-auto px-4 py-10">
         {analysis ? (
           <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
-            <TabbedViewer user_id={user_id} analysisText={analysis} />
+            <TabbedViewer
+              user_id={user_id}
+              analysisText={analysis}
+            />
           </div>
         ) : (
           <div className="text-center text-muted-foreground">No analysis found.</div>
