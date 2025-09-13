@@ -1,8 +1,11 @@
 // components/StartFreshHeader.js
 import React from 'react'
 import BaseModal from './BaseModal'
+import { useTranslation } from 'react-i18next'
 
 export default function StartFreshHeader({ mode, onClose, children }) {
+  const { t } = useTranslation('startFreshHeader')
+
   return (
     <BaseModal onClose={onClose}>
       {mode === 'start' && (
@@ -13,8 +16,8 @@ export default function StartFreshHeader({ mode, onClose, children }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Start Fresh</h2>
-            <p className="text-sm text-gray-600">This action cannot be undone</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('startFreshTitle')}</h2>
+            <p className="text-sm text-gray-600">{t('cannotUndo')}</p>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
             <div className="flex items-start">
@@ -24,28 +27,28 @@ export default function StartFreshHeader({ mode, onClose, children }) {
                 </svg>
               </div>
               <div className="ml-3 text-amber-700">
-                <p>Are you sure you want to start fresh? All current analyses will be deleted and your CV/cover letter removed.</p>
+                <p>{t('warning')}</p>
               </div>
             </div>
           </div>
           <div className="mb-6 text-left">
-            <p className="font-medium mb-2">What happens when you start fresh:</p>
+            <p className="font-medium mb-2">{t('whatHappens')}</p>
             <ul className="space-y-2">
               <li className="flex items-center">
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2"></span>
-                All current analyses will be deleted
+                {t('deletedAnalyses')}
               </li>
               <li className="flex items-center">
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2"></span>
-                Your CV and cover letter will be removed
+                {t('removedDocs')}
               </li>
               <li className="flex items-center">
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2"></span>
-                You'll start with a clean slate for your new job application
+                {t('cleanSlate')}
               </li>
               <li className="flex items-center">
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2"></span>
-                <strong>Your Uploaded CV will not be Affected</strong>
+                <strong>{t('cvUnaffected')}</strong>
               </li>
             </ul>
           </div>
@@ -54,8 +57,8 @@ export default function StartFreshHeader({ mode, onClose, children }) {
 
       {mode === 'select' && (
         <>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Your CV</h2>
-          <p className="text-sm text-gray-600 text-center">Choose a saved CV or upload a new one</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t('selectCvTitle')}</h2>
+          <p className="text-sm text-gray-600 text-center">{t('selectCvSubtitle')}</p>
         </>
       )}
 

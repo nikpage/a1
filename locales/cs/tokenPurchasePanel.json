@@ -1,0 +1,10 @@
+{
+  "outOfGenerationsTitle": "Vyčerpali jste bezplatná generování",
+  "outOfGenerationsMsg": "Stáhněte si dokument, abyste mohli pokračovat.",
+  "purchaseTitle": "Zakoupit stažení",
+  "purchaseSubtitle": "Potřebujete alespoň 1 stažení, abyste si mohli uložit dokumenty",
+  "mostPopular": "Nejoblíbenější",
+  "processing": "Zpracovávám…",
+  "purchaseNow": "Koupit nyní",
+  "securePayment": "Bezpečná platba zpracovaná přes Stripe. Není vyžadováno žádné předplatné."
+}

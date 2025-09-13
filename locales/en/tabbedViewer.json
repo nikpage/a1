@@ -1,0 +1,22 @@
+{
+  "generatingDocsTitle": "Generating Documents",
+  "generatingDocsMsg": "Preparing your tailored documents...",
+  "selectDocError": "Please select at least one document type.",
+  "regeneratingCvTitle": "Regenerating CV",
+  "regeneratingCoverTitle": "Regenerating Cover Letter",
+  "regenMsg": "Requesting a new version...",
+  "addingNewVersion": "Adding new version...",
+  "startFresh": "Start Fresh",
+  "analysis": "Analysis",
+  "cv": "CV",
+  "cover": "Cover Letter",
+  "tabNotAvailable": "Not Available",
+  "noAnalysis": "No analysis available",
+  "writeNow": "Write Now!",
+  "versionOf": "Version {{current}} of {{total}}",
+  "regenerate": "Regenerate",
+  "prevVersion": "Previous Version",
+  "nextVersion": "Next Version",
+  "noAvailableAlert": "No {{label}} available",
+  "regenFailed": "Regeneration failed"
+}

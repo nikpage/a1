@@ -1,0 +1,9 @@
+
+{
+  "continueUploaded": "Continue with Uploaded CV",
+  "continueNew": "Continue with NEW CV Upload",
+  "fetchError": "Failed to load CVs. Please try again.",
+  "uploadFailed": "CV upload failed or no new CV ID was returned.",
+  "analysisError": "Error generating analysis:",
+  "uploadError": "Error uploading CV:"
+}

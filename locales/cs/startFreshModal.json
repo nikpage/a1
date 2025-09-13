@@ -1,0 +1,8 @@
+{
+  "continueUploaded": "Pokračovat s nahraným životopisem",
+  "continueNew": "Pokračovat s novým nahráním životopisu",
+  "fetchError": "Nepodařilo se načíst životopisy. Zkuste to znovu.",
+  "uploadFailed": "Nahrání životopisu se nezdařilo nebo nebylo vráceno ID.",
+  "analysisError": "Chyba při vytváření analýzy:",
+  "uploadError": "Chyba při nahrávání životopisu:"
+}

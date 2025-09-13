@@ -1,4 +1,4 @@
-//  pages/index.js
+// pages/index.js
 import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -7,9 +7,10 @@ import Header from '../components/Header';
 import LoadingModal from '../components/LoadingModal';
 import AnalysisDisplay from '../components/AnalysisDisplay';
 import LoginModal from '../components/LoginModal';
+import { useTranslation } from 'react-i18next';
 
 export default function IndexPage() {
-  const router = useRouter();
+  const { t } = useTranslation();  const router = useRouter();
   const [file, setFile] = useState(null);
   const [jobText, setJobText] = useState('');
   const [analysis, setAnalysis] = useState(null);
@@ -39,42 +40,43 @@ export default function IndexPage() {
     setError(null);
     setLoading(true);
     setShowLoadingModal(true);
-    setLoadingModalTitle('Processing your CV and Job Ad');
-    setLoadingModalMessage('Uploading your CV and preparing for analysis...');
+    setLoadingModalTitle(t('modal.processingTitle'));
+    setLoadingModalMessage(t('modal.processingMessage'));
 
     try {
-          const formData = new FormData();
-          formData.append('file', file);
+      const formData = new FormData();
+      formData.append('file', file);
 
-          const uploadRes = await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/upload-cv`, formData);
-          const uploadData = uploadRes.data;
-          if (!uploadData?.user_id) throw new Error(uploadData.error || 'Upload failed to return a user ID.');
+      const uploadRes = await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/api/upload-cv`, formData);
+      const uploadData = uploadRes.data;
+      if (!uploadData?.user_id) throw new Error(uploadData.error || t('error.uploadFailed'));
 
-          setCurrentUserId(uploadData.user_id);
-          setLoadingModalMessage('Analysis in progress...');
+      setCurrentUserId(uploadData.user_id);
+      setLoadingModalMessage(t('modal.inProgress'));
 
-          const analyzeRes = await axios.post('/api/analyze-cv-job', {
-            user_id: uploadData.user_id,
-            jobText,
-          });
-          const analyzeData = analyzeRes.data;
-          if (analyzeData.error) throw new Error(analyzeData.error || 'Analysis failed.');
+      const analyzeRes = await axios.post('/api/analyze-cv-job', {
+        user_id: uploadData.user_id,
+        jobText,
+      });
+      const analyzeData = analyzeRes.data;
+      if (analyzeData.error) throw new Error(analyzeData.error || t('error.analysisFailed'));
 
-          const payload = { analysis: analyzeData.analysis, user_id: uploadData.user_id };
-          localStorage.setItem('parsed_cv', JSON.stringify(payload));
-          setAnalysis(analyzeData.analysis);
+      const payload = { analysis: analyzeData.analysis, user_id: uploadData.user_id };
+      localStorage.setItem('parsed_cv', JSON.stringify(payload));
+      setAnalysis(analyzeData.analysis);
 
-        } catch (err) {
-          const message = err.response?.data?.error || err.message;
-          setError('Error: ' + message);
-        } finally {
-              setLoading(false);
-              setShowLoadingModal(false);
-            }
-          };
+    } catch (err) {
+      const message = err.response?.data?.error || err.message;
+      setError(t('modal.errorPrefix') + message);
+    } finally {
+      setLoading(false);
+      setShowLoadingModal(false);
+    }
+  };
+
   const handleWriteNowClick = () => {
     if (!currentUserId) {
-      setError('User ID not found. Please analyze again.');
+      setError(t('error.noUserId'));
       return;
     }
     setShowLoginModal(true);
@@ -83,25 +85,25 @@ export default function IndexPage() {
   return (
     <>
       <Head>
-        <title>Job Targeted CV & Cover Letter</title>
-        <meta name="description" content="Target your applications to every job you apply to with keyword matched and ATS optimized CV and cover letters that make you not only get noticed but stand out and got onto the interview A-List." />
+        <title>{t('meta.title')}</title>
+        <meta name="description" content={t('meta.description')} />
         <link rel="icon" href="/favicon-32x32.png" />
       </Head>
       <Header />
       <main className="mx-auto px-4 py-4 text-center">
         <div className="flex flex-col lg:flex-row justify-center items-start mb-6 lg:gap-20 gap-8">
           <div className="w-full lg:w-[600px] text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 text-center leading-tight">
-            Regular CV<br /><em>plus</em> Job Add
+            {t('hero.section1')}
           </div>
           <div className="w-full lg:w-[600px] text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 text-center leading-tight">
-            Targeted<br />CV & Cover Letter
+            {t('hero.section2')}
           </div>
           <div className="w-full lg:w-[600px] text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 text-center leading-tight">
-            More Interviews<br />More Offers
+            {t('hero.section3')}
           </div>
         </div>
         <div className="mb-8 text-lg sm:text-xl text-slate-500 font-normal text-center px-4">
-          Because Average CVs Are for Average People.
+          {t('hero.tagline')}
         </div>
         {!analysis ? (
           <form onSubmit={handleUploadAndAnalyze} className="flex flex-col gap-6 items-center mb-16 px-4">
@@ -119,8 +121,8 @@ export default function IndexPage() {
                 <p className="text-black text-sm sm:text-base px-4 text-center break-words">{file.name}</p>
               ) : (
                 <>
-                  <p className="text-black text-sm sm:text-base">Drop CV or LinkedIn Profile</p>
-                  <p className="text-black text-sm sm:text-base mt-1">PDF or Word</p>
+                  <p className="text-black text-sm sm:text-base">{t('form.dropPrompt')}</p>
+                  <p className="text-black text-sm sm:text-base mt-1">{t('form.formatHint')}</p>
                 </>
               )}
               <input
@@ -132,7 +134,7 @@ export default function IndexPage() {
               />
             </div>
             <textarea
-              placeholder="Paste Job Ad (highly recommended)"
+              placeholder={t('form.placeholder')}
               value={jobText}
               onChange={(e) => setJobText(e.target.value)}
               rows={5}
@@ -143,19 +145,19 @@ export default function IndexPage() {
               disabled={loading || !file}
               className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 touch-manipulation"
             >
-              {loading ? 'Uploading & Analyzing…' : 'Upload & Analyze'}
+              {loading ? t('form.button.loading') : t('form.button.submit')}
             </button>
             {error && <div className="text-red-600 text-sm mt-2 px-4 text-center">{error}</div>}
           </form>
         ) : (
           <div className="border rounded-lg p-6 bg-white shadow-sm max-w-3xl mx-auto text-left">
-            <div className="mb-6 text-2xl font-bold text-center">Your CV Analysis</div>
+            <div className="mb-6 text-2xl font-bold text-center">{t('form.analysisTitle')}</div>
             <AnalysisDisplay analysis={analysis} />
             <button
               onClick={handleWriteNowClick}
               className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 mt-6 touch-manipulation mx-auto block"
             >
-              Write Now
+              {t('form.writeNow')}
             </button>
           </div>
         )}

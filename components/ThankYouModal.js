@@ -1,18 +1,22 @@
+// components/ThankYouModal.js
 import { useEffect } from 'react';
 import BaseModal from './BaseModal';
+import { useTranslation } from 'react-i18next';
 
 export default function ThankYouModal({ onClose }) {
+  const { t } = useTranslation('thankYouModal');
+
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 5000); // Close after 5 seconds
+    }, 5000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
     <BaseModal onClose={onClose}>
-      <h2>🎉 Thank you!</h2>
-      <p>Your payment was successful. Downloading now…</p>
+      <h2>{t('title')}</h2>
+      <p>{t('message')}</p>
     </BaseModal>
   );
 }

@@ -1,0 +1,62 @@
+{
+  "title": "Ceník Tajné zbraně životopisu",
+  "metaDescription": "Transparentní, jednorázové ceny pro cílené životopisy a motivační dopisy. Generujte zdarma, plaťte jen při stažení. Zlepšete své žádosti.",
+  "hero": {
+    "heading": "Jednoduchý ceník — plaťte jen, když potřebujete",
+    "subheading": "Žádné předplatné. Žádné skryté poplatky. Platíte pouze při stažení optimalizovaných dokumentů."
+  },
+  "freeSection": {
+    "heading": "Vyzkoušejte před nákupem",
+    "text": "Generujte životopisy a motivační dopisy ZDARMA. Žádná registrace ani karta. Experimentujte s různými styly. Platíte až tehdy, když jste připraveni stáhnout finální dokumenty.",
+    "items": {
+      "analysis": "Bezplatná analýza životopisu",
+      "docs": "Bezplatně generované dokumenty",
+      "free": "Pro začátek"
+    }
+  },
+  "downloadSection": {
+    "heading": "Ceny za stažení",
+    "text": "Až budete spokojeni se svými dokumenty, vyberte si, kolik stažení potřebujete"
+  },
+  "plans": {
+    "single": { "title": "Jeden dokument", "price": "€6", "desc": "1 stažení", "note": "Ideální pro vyzkoušení" },
+    "essential": { "title": "Základní", "price": "€8", "desc": "2 stažení", "note": "Životopis + Motivační dopis" },
+    "serious": { "title": "Vážně", "price": "€23", "desc": "10 stažení", "note": "Nejlepší pro hledání práce" },
+    "driven": { "title": "Ambiciózní", "price": "€42", "desc": "30 stažení", "note": "Seriózní balíček" }
+  },
+  "howItWorks": {
+    "heading": "Jak to funguje",
+    "steps": {
+      "oneTitle": "Profesionální analýza ZDARMA",
+      "oneText": "Nahrajte životopis a získejte profesionální analýzu zdarma.",
+      "twoTitle": "Zacílení na pracovní místa",
+      "twoText": "Zkopírujte popis práce přímo z webu a vložte jej pro analýzu a strategii úpravy životopisu a motivačního dopisu.",
+      "threeTitle": "Generujte cílený životopis a motivační dopis",
+      "threeText": "Vyberte tón, stáhněte okamžitě. Vždy optimalizováno pro ATS a přizpůsobeno pracovnímu inzerátu."
+    }
+  },
+  "why": {
+    "heading": "Proč platba za stažení?",
+    "benefits": {
+      "noFees": "Žádné opakované poplatky",
+      "noFeesText": "Platíte jen, když potřebujete dokumenty. Žádné měsíční předplatné ani skryté poplatky.",
+      "try": "Vyzkoušejte před nákupem",
+      "tryText": "Generujte a náhledujte neomezené verze před nákupem.",
+      "bulk": "Množstevní slevy",
+      "bulkText": "Ušetřete až 77 %, když koupíte stažení ve větším množství.",
+      "instant": "Okamžitý přístup",
+      "instantText": "Stáhněte okamžitě po zaplacení. Žádné čekání."
+    }
+  },
+  "faq": {
+    "heading": "Často kladené otázky",
+    "q1": "Kolikrát mohu generovat dokumenty zdarma?",
+    "a1": "Můžete generovat neomezené verze, ale po 10 musíte jednou stáhnout. Po každém stažení se čítač resetuje na 10.",
+    "q2": "V jakých formátech jsou dokumenty?",
+    "a2": "Všechny stažené soubory obsahují PDF i DOCX.",
+    "q3": "Vyprší mi kredity ke stažení?",
+    "a3": "Ne, kredity ke stažení nikdy nevyprší.",
+    "q4": "Mohu dostat peníze zpět?",
+    "a4": "Protože si můžete dokumenty zobrazit před koupí, vrácení peněz nenabízíme. Podpora je dostupná pro jakékoli problémy."
+  }
+}

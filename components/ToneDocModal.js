@@ -1,8 +1,10 @@
-// path: components/ToneDocModal.js
+// components/ToneDocModal.js
 import BaseModal from './BaseModal';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function ToneDocModal({ onClose, onSubmit }) {
+  const { t } = useTranslation('toneDocModal');
   const [tone, setTone] = useState('formal');
   const [types, setTypes] = useState({ cv: true, cover: true });
 
@@ -12,19 +14,23 @@ export default function ToneDocModal({ onClose, onSubmit }) {
       .map(([key]) => key);
 
     if (selected.length === 0) {
-      alert('Select at least one document type');
+      alert(t('alertNoSelection'));
       return;
     }
 
     onSubmit({ tone, selected });
   };
 
+  const toneOptions = ['formal', 'friendly', 'enthusiastic', 'cocky'];
+
   return (
     <BaseModal onClose={onClose}>
       <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>🎯 Choose Tone</h2>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+          {t('chooseTone')}
+        </h2>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {['formal', 'friendly', 'enthusiastic', 'cocky'].map(opt => (
+          {toneOptions.map(opt => (
             <button
               key={opt}
               type="button"
@@ -38,14 +44,16 @@ export default function ToneDocModal({ onClose, onSubmit }) {
               }}
               onClick={() => setTone(opt)}
             >
-              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+              {t(opt)}
             </button>
           ))}
         </div>
       </div>
 
       <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>📄 Select Document Type</h2>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+          {t('selectDocType')}
+        </h2>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           {['cv', 'cover'].map(doc => (
             <label key={doc} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -54,7 +62,7 @@ export default function ToneDocModal({ onClose, onSubmit }) {
                 checked={types[doc]}
                 onChange={() => setTypes(prev => ({ ...prev, [doc]: !prev[doc] }))}
               />
-              {doc === 'cv' ? 'CV' : 'Cover Letter'}
+              {doc === 'cv' ? t('cv') : t('coverLetter')}
             </label>
           ))}
         </div>
@@ -66,7 +74,7 @@ export default function ToneDocModal({ onClose, onSubmit }) {
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           onClick={handleGenerate}
         >
-          Generate
+          {t('generate')}
         </button>
       </div>
     </BaseModal>

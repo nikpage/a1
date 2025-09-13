@@ -11,10 +11,11 @@ import Regenerate from './Regenerate';
 import StartFreshModal from './StartFreshModal';
 import LoadingModal from './LoadingModal';
 import TokenPurchasePanel from './TokenPurchasePanel';
-
 import { useState, useEffect, useLayoutEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function TabbedViewer({ user_id, analysisText }) {
+  const { t } = useTranslation('tabbedViewer');
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
   const [activeTab, setActiveTab] = useState('analysis');
   const [docs, setDocs] = useState({ cv: null, cover: null });
@@ -37,8 +38,6 @@ export default function TabbedViewer({ user_id, analysisText }) {
       setShowThankYou(true);
     }
   }, []);
-
-
 
   useEffect(() => {
     const clear = () => {
@@ -77,12 +76,12 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   const handleSubmit = async ({ tone, selected, jobText }) => {
     setShowLoadingModal(true);
-    setLoadingModalTitle('Generating Documents');
-    setLoadingModalMessage('Preparing your tailored documents...');
+    setLoadingModalTitle(t('generatingDocsTitle'));
+    setLoadingModalMessage(t('generatingDocsMsg'));
 
     try {
       if (!selected || !Array.isArray(selected) || selected.length === 0) {
-        alert('Please select at least one document type.');
+        alert(t('selectDocError'));
         setShowModal(false);
         setShowLoadingModal(false);
         return;
@@ -153,8 +152,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   const handleRegen = async (docType, tone) => {
     setShowLoadingModal(true);
-    setLoadingModalTitle(`Regenerating ${docType === 'cv' ? 'CV' : 'Cover Letter'}`);
-    setLoadingModalMessage('Requesting a new version...');
+    setLoadingModalTitle(docType === 'cv' ? t('regeneratingCvTitle') : t('regeneratingCoverTitle'));
+    setLoadingModalMessage(t('regenMsg'));
 
     try {
       const res = await fetch('/api/generate-cv-cover', {
@@ -174,11 +173,11 @@ export default function TabbedViewer({ user_id, analysisText }) {
           setShowBuyPanel(true);
           return;
         }
-        alert(data.error || 'Regeneration failed');
+        alert(data.error || t('regenFailed'));
         return;
       }
 
-      setLoadingModalMessage('Adding new version...');
+      setLoadingModalMessage(t('addingNewVersion'));
       if (data.cv) {
         setCvVersions(prev => [...prev, data.cv]);
         setCvCurrentIndex(cvVersions.length);
@@ -194,71 +193,11 @@ export default function TabbedViewer({ user_id, analysisText }) {
     }
   };
 
-  const goToPrevVersion = (type) => {
-    if (type === 'cv') setCvCurrentIndex(Math.max(0, cvCurrentIndex - 1));
-    if (type === 'cover') setCoverCurrentIndex(Math.max(0, coverCurrentIndex - 1));
-  };
-
-  const goToNextVersion = (type) => {
-    if (type === 'cv') setCvCurrentIndex(Math.min(cvVersions.length - 1, cvCurrentIndex + 1));
-    if (type === 'cover') setCoverCurrentIndex(Math.min(coverVersions.length - 1, coverCurrentIndex + 1));
-  };
-
-  const startFresh = () => {
-    setCvVersions([]);
-    setCoverVersions([]);
-    setCvCurrentIndex(0);
-    setCoverCurrentIndex(0);
-    setDocs({ cv: null, cover: null });
-    setActiveTab('analysis');
-  };
-
-  useEffect(() => {
-    const fetchDocs = async () => {
-      if (!user_id) return;
-      const { data, error } = await supabase
-        .from('gen_data')
-        .select('type, content')
-        .eq('user_id', user_id)
-        .in('type', ['cv', 'cover'])
-        .order('created_at', { ascending: false });
-      if (!error && data) {
-        for (const row of data) {
-          if (row.type === 'cv' && cvVersions.length === 0) {
-            setCvVersions([row.content]);
-            setCvCurrentIndex(0);
-          }
-          if (row.type === 'cover' && coverVersions.length === 0) {
-            setCoverVersions([row.content]);
-            setCoverCurrentIndex(0);
-          }
-        }
-        if (cvVersions.length === 0 && coverVersions.length === 0) setActiveTab('analysis');
-        else if (cvVersions.length > 0) setActiveTab('cv');
-        else if (coverVersions.length > 0) setActiveTab('cover');
-      }
-    };
-    fetchDocs();
-  }, [user_id]);
-
   const tabs = [
-    { id: 'analysis', label: 'Analysis' },
-    { id: 'cv', label: 'CV' },
-    { id: 'cover', label: 'Cover Letter' },
+    { id: 'analysis', label: t('analysis') },
+    { id: 'cv', label: t('cv') },
+    { id: 'cover', label: t('cover') },
   ];
-
-  useEffect(() => {
-    if (!docs.cv && !docs.cover) return;
-    if (activeTab !== 'cv' && docs.cv) setActiveTab('cv');
-    else if (activeTab !== 'cover' && docs.cover && !docs.cv) setActiveTab('cover');
-  }, [docs]);
-
-  useLayoutEffect(() => {
-    const prevScroll = window.scrollY;
-    setTimeout(() => {
-      window.scrollTo(0, prevScroll);
-    }, 1);
-  }, [activeTab]);
 
   return (
     <div className="doc-viewer px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -267,7 +206,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
           onClick={() => setShowModal('startFresh')}
           className="action-btn px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base"
         >
-          Start Fresh
+          {t('startFresh')}
         </button>
       </div>
 
@@ -283,7 +222,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                 (tab.id === 'cover' && coverVersions.length === 0);
 
               if (isDisabled) {
-                alert(`No ${tab.label} available`);
+                alert(t('noAvailableAlert', { label: tab.label }));
               } else {
                 setActiveTab(tabId);
               }
@@ -297,7 +236,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
               return (
                 <option key={tab.id} value={tab.id} disabled={isDisabled}>
-                  {tab.label} {isDisabled ? '(Not Available)' : ''}
+                  {tab.label} {isDisabled ? `(${t('tabNotAvailable')})` : ''}
                 </option>
               );
             })}
@@ -315,7 +254,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                 key={tab.id}
                 onClick={() => {
                   if (isDisabled) {
-                    alert(`No ${tab.label} available`);
+                    alert(t('noAvailableAlert', { label: tab.label }));
                   } else {
                     setActiveTab(tab.id);
                   }
@@ -343,7 +282,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                       onClick={() => setShowModal(true)}
                       className="action-btn px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base"
                     >
-                      Write Now!
+                      {t('writeNow')}
                     </button>
                   </div>
                 )}
@@ -353,7 +292,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
               </>
             ) : (
               <div className="text-center py-8 sm:py-12">
-                <p className="text-gray-600 text-base sm:text-lg">No analysis available</p>
+                <p className="text-gray-600 text-base sm:text-lg">{t('noAnalysis')}</p>
               </div>
             )}
           </div>
@@ -365,14 +304,14 @@ export default function TabbedViewer({ user_id, analysisText }) {
               <>
                 <div className="flex flex-col items-center mb-4 sm:mb-6">
                   <div className="mb-3 text-sm font-bold text-gray-800">
-                    Version {cvCurrentIndex + 1} of {cvVersions.length}
+                    {t('versionOf', { current: cvCurrentIndex + 1, total: cvVersions.length })}
                   </div>
                   <div className="flex items-center gap-3 sm:gap-4">
                     <button
                       onClick={() => goToPrevVersion('cv')}
                       disabled={cvCurrentIndex === 0}
                       className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      aria-label="Previous Version"
+                      aria-label={t('prevVersion')}
                     >
                       &larr;
                     </button>
@@ -380,13 +319,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
                       onClick={() => setShowModal('regenerate')}
                       className="action-btn px-4 py-2 text-sm sm:text-base"
                     >
-                      Regenerate
+                      {t('regenerate')}
                     </button>
                     <button
                       onClick={() => goToNextVersion('cv')}
                       disabled={cvCurrentIndex === cvVersions.length - 1}
                       className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      aria-label="Next Version"
+                      aria-label={t('nextVersion')}
                     >
                       &rarr;
                     </button>
@@ -417,14 +356,14 @@ export default function TabbedViewer({ user_id, analysisText }) {
               <>
                 <div className="flex flex-col items-center mb-4 sm:mb-6">
                   <div className="mb-3 text-sm font-bold text-gray-800">
-                    Version {coverCurrentIndex + 1} of {coverVersions.length}
+                    {t('versionOf', { current: coverCurrentIndex + 1, total: coverVersions.length })}
                   </div>
                   <div className="flex items-center gap-3 sm:gap-4">
                     <button
                       onClick={() => goToPrevVersion('cover')}
                       disabled={coverCurrentIndex === 0}
                       className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      aria-label="Previous Version"
+                      aria-label={t('prevVersion')}
                     >
                       &larr;
                     </button>
@@ -432,13 +371,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
                       onClick={() => setShowModal('regenerate')}
                       className="action-btn px-4 py-2 text-sm sm:text-base"
                     >
-                      Regenerate
+                      {t('regenerate')}
                     </button>
                     <button
                       onClick={() => goToNextVersion('cover')}
                       disabled={coverCurrentIndex === coverVersions.length - 1}
                       className="px-3 py-2 text-xl font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
-                      aria-label="Next Version"
+                      aria-label={t('nextVersion')}
                     >
                       &rarr;
                     </button>

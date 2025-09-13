@@ -1,154 +1,99 @@
-// path: pages/simple-steps.js
-import Head from 'next/head'; // Import Head
+// pages/simple-steps.js
+import Head from 'next/head';
 import Header from '../components/Header';
+import { useTranslation } from 'react-i18next';
 
 export default function SimpleSteps() {
+  const { t } = useTranslation('simpleSteps');
+
   return (
     <>
       <Head>
-        <title>Simple Steps to CV Secret Weapon</title>
-        <meta name="description" content="Follow our simple, proven steps to transform your CV and job applications. Maximize your interview success with targeted, ATS-optimized documents." />
-        <link rel="icon" href="/favicon-32x32.png" /> {/* Favicon link */}
+        <title>{t('title')}</title>
+        <meta name="description" content={t('metaDescription')} />
+        <link rel="icon" href="/favicon-32x32.png" />
       </Head>
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-light text-slate-800 mb-6 leading-tight">
-            Simple Steps to Success
+            {t('hero.heading')}
           </h1>
           <p className="text-xl text-slate-500 font-normal max-w-2xl mx-auto">
-            Transform your job search with our proven process. Repeat these steps for every application to maximize your success rate.
+            {t('hero.subheading')}
           </p>
         </div>
 
         {/* Steps Section */}
         <div className="space-y-12 mb-16">
-          {/* Step 1 */}
           <div className="flex items-start space-x-6">
-            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">
-              1
-            </div>
+            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">1</div>
             <div>
-              <h3 className="text-2xl font-semibold text-slate-800 mb-3">Upload Your CV</h3>
-              <p className="text-slate-600 text-lg leading-relaxed">
-                Start by uploading your current CV or LinkedIn profile. Our system accepts PDF and Word documents, making it easy to get started with whatever format you have.
-              </p>
+              <h3 className="text-2xl font-semibold text-slate-800 mb-3">{t('steps.oneTitle')}</h3>
+              <p className="text-slate-600 text-lg leading-relaxed">{t('steps.oneText')}</p>
             </div>
           </div>
 
-          {/* Step 2 */}
           <div className="flex items-start space-x-6">
-            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">
-              2
-            </div>
+            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">2</div>
             <div>
-              <h3 className="text-2xl font-semibold text-slate-800 mb-3">Add the Job Description</h3>
-              <p className="text-slate-600 text-lg leading-relaxed">
-                Paste the job advertisement you're applying for. This step is crucial – it allows our AI to understand exactly what the employer is looking for and tailor your application accordingly.
-              </p>
+              <h3 className="text-2xl font-semibold text-slate-800 mb-3">{t('steps.twoTitle')}</h3>
+              <p className="text-slate-600 text-lg leading-relaxed">{t('steps.twoText')}</p>
             </div>
           </div>
 
-          {/* Step 3 */}
           <div className="flex items-start space-x-6">
-            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">
-              3
-            </div>
+            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">3</div>
             <div>
-              <h3 className="text-2xl font-semibold text-slate-800 mb-3">Get Instant Analysis</h3>
-              <p className="text-slate-600 text-lg leading-relaxed">
-                Within seconds, receive comprehensive feedback on your CV, a tailored cover letter, and actionable recommendations. Our AI identifies gaps, highlights strengths, and suggests improvements.
-              </p>
+              <h3 className="text-2xl font-semibold text-slate-800 mb-3">{t('steps.threeTitle')}</h3>
+              <p className="text-slate-600 text-lg leading-relaxed">{t('steps.threeText')}</p>
             </div>
           </div>
 
-          {/* Step 4 */}
           <div className="flex items-start space-x-6">
-            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">
-              4
-            </div>
+            <div className="flex-shrink-0 w-12 h-12 bg-[#41b4a2] text-white rounded-full flex items-center justify-center font-semibold text-lg">4</div>
             <div>
-              <h3 className="text-2xl font-semibold text-slate-800 mb-3">Apply Changes & Repeat</h3>
-              <p className="text-slate-600 text-lg leading-relaxed">
-                Implement the suggested changes to your CV and use the generated cover letter. For each new job application, repeat this process to ensure maximum relevance and impact.
-              </p>
+              <h3 className="text-2xl font-semibold text-slate-800 mb-3">{t('steps.fourTitle')}</h3>
+              <p className="text-slate-600 text-lg leading-relaxed">{t('steps.fourText')}</p>
             </div>
           </div>
         </div>
 
         {/* Key Benefits */}
         <div className="bg-gray-50 rounded-lg p-8 mb-16">
-          <h2 className="text-3xl font-light text-slate-800 mb-8 text-center">Why This Process Works</h2>
+          <h2 className="text-3xl font-light text-slate-800 mb-8 text-center">{t('benefits.heading')}</h2>
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-[#41b4a2] rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-semibold text-slate-800 mb-2">Tailored to Each Role</h4>
-                <p className="text-slate-600">Every job is different. Our process ensures your application speaks directly to what each employer wants.</p>
-              </div>
+            <div>
+              <h4 className="font-semibold text-slate-800 mb-2">{t('benefits.tailoredTitle')}</h4>
+              <p className="text-slate-600">{t('benefits.tailoredText')}</p>
             </div>
-
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-[#41b4a2] rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-semibold text-slate-800 mb-2">Fast & Efficient</h4>
-                <p className="text-slate-600">Get professional-quality results in minutes, not hours. Spend more time applying, less time formatting.</p>
-              </div>
+            <div>
+              <h4 className="font-semibold text-slate-800 mb-2">{t('benefits.fastTitle')}</h4>
+              <p className="text-slate-600">{t('benefits.fastText')}</p>
             </div>
-
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-[#41b4a2] rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-semibold text-slate-800 mb-2">Continuous Improvement</h4>
-                <p className="text-slate-600">Each analysis helps you understand what works, making your next application even stronger.</p>
-              </div>
+            <div>
+              <h4 className="font-semibold text-slate-800 mb-2">{t('benefits.improveTitle')}</h4>
+              <p className="text-slate-600">{t('benefits.improveText')}</p>
             </div>
-
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-[#41b4a2] rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-semibold text-slate-800 mb-2">Data-Driven Results</h4>
-                <p className="text-slate-600">Our recommendations are based on what actually works in today's job market, not outdated advice.</p>
-              </div>
+            <div>
+              <h4 className="font-semibold text-slate-800 mb-2">{t('benefits.dataTitle')}</h4>
+              <p className="text-slate-600">{t('benefits.dataText')}</p>
             </div>
           </div>
         </div>
 
         {/* CTA Section */}
         <div className="text-center">
-          <h2 className="text-3xl font-light text-slate-800 mb-6">Ready to Get Started?</h2>
-          <p className="text-xl text-slate-500 mb-8 max-w-2xl mx-auto">
-            Stop sending generic applications. Start getting interviews with targeted, professional CVs and cover letters.
-          </p>
-          <button className="action-btn">
-            Upload Your CV Now
-          </button>
+          <h2 className="text-3xl font-light text-slate-800 mb-6">{t('cta.heading')}</h2>
+          <p className="text-xl text-slate-500 mb-8 max-w-2xl mx-auto">{t('cta.text')}</p>
+          <button className="action-btn">{t('cta.button')}</button>
         </div>
       </main>
     </>
   );
 }
 
-// Add getStaticProps for static site generation
 export async function getStaticProps() {
-  return {
-    props: {}, // No specific props needed for this page as content is hardcoded in JSX
-  };
+  return { props: {} };
 }

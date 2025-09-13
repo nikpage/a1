@@ -1,0 +1,13 @@
+
+{
+  "startFreshTitle": "Start Fresh",
+  "cannotUndo": "This action cannot be undone",
+  "warning": "Are you sure you want to start fresh? All current analyses will be deleted and your CV/cover letter removed.",
+  "whatHappens": "What happens when you start fresh:",
+  "deletedAnalyses": "All current analyses will be deleted",
+  "removedDocs": "Your CV and cover letter will be removed",
+  "cleanSlate": "You'll start with a clean slate for your new job application",
+  "cvUnaffected": "Your Uploaded CV will not be Affected",
+  "selectCvTitle": "Select Your CV",
+  "selectCvSubtitle": "Choose a saved CV or upload a new one"
+}

@@ -1,8 +1,9 @@
-// path: components/StartFreshUploadModal.js
+// components/StartFreshUploadModal.js
 import React from 'react'
 import StartFreshHeader from './StartFreshHeader'
 import CVUploader from './CVUploader'
 import LoadingModal from './LoadingModal'
+import { useTranslation } from 'react-i18next'
 
 export default function StartFreshUploadModal({
   handleCvUploadFromModal,
@@ -13,6 +14,7 @@ export default function StartFreshUploadModal({
   onClose,
   onSubmit,
 }) {
+  const { t } = useTranslation('startFreshUploadModal')
 
   const handleUploadAndAnalyze = async () => {
     onSubmit(null, jobDescription);
@@ -21,7 +23,9 @@ export default function StartFreshUploadModal({
   return (
     <StartFreshHeader mode="select" onClose={onClose}>
       <div className="mb-4 text-left">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Upload a new CV</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('uploadLabel')}
+        </label>
         <CVUploader onUpload={handleCvUploadFromModal} />
       </div>
 
@@ -31,7 +35,7 @@ export default function StartFreshUploadModal({
           onClick={handleUploadAndAnalyze}
           disabled={loading}
         >
-          {loading ? 'Generating...' : 'Generate Analysis'}
+          {loading ? t('buttonGenerating') : t('buttonGenerate')}
         </button>
       </div>
 
@@ -41,14 +45,14 @@ export default function StartFreshUploadModal({
           onClick={onBack}
           disabled={loading}
         >
-          Back
+          {t('back')}
         </button>
         <button
           className="text-gray-600 hover:underline"
           onClick={onClose}
           disabled={loading}
         >
-          Close
+          {t('close')}
         </button>
       </div>
 

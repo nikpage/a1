@@ -1,0 +1,12 @@
+{
+  "alertNoSelection": "Select at least one document type",
+  "chooseTone": "🎯 Choose Tone",
+  "formal": "Formal",
+  "friendly": "Friendly",
+  "enthusiastic": "Enthusiastic",
+  "cocky": "Cocky",
+  "selectDocType": "📄 Select Document Type",
+  "cv": "CV",
+  "coverLetter": "Cover Letter",
+  "generate": "Generate"
+}

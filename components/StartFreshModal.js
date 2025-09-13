@@ -4,6 +4,7 @@ import StartFreshSelector from './StartFreshSelector'
 import StartFreshDbModal from './StartFreshDbModal'
 import StartFreshUploadModal from './StartFreshUploadModal'
 import StartFreshHeader from './StartFreshHeader'
+import { useTranslation } from 'react-i18next'
 
 export default function StartFreshModal({
   user_id,
@@ -12,6 +13,7 @@ export default function StartFreshModal({
   onStartFresh,
   onClose,
 }) {
+  const { t } = useTranslation('startFreshModal')
   const [step, setStep] = useState(0)
   const [cvOptions, setCvOptions] = useState([])
   const [loading, setLoading] = useState(false)
@@ -19,109 +21,86 @@ export default function StartFreshModal({
   const [jobDescription, setJobDescription] = useState('')
 
   const fetchCVs = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const res = await fetch(`/api/get-cvs?user_id=${user_id}`);
-      const data = await res.json();
+      const res = await fetch(`/api/get-cvs?user_id=${user_id}`)
+      const data = await res.json()
       if (Array.isArray(data)) {
-        const sortedData = data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
+        const sortedData = data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         const options = sortedData.map(cv => ({
           id: cv.id,
           name: cv.filename,
           uploadedAt: cv.created_at,
-          created_at: cv.created_at // Include created_at for API compatibility
-        }));
-        setCvOptions(options);
-        if (options.length > 0) {
-          setSelectedCvId(options[0].id);
-        } else {
-          setSelectedCvId('');
-        }
+          created_at: cv.created_at
+        }))
+        setCvOptions(options)
+        setSelectedCvId(options.length > 0 ? options[0].id : '')
       }
     } catch (error) {
-      console.error('Failed to fetch CVs:', error);
-      alert('Failed to load CVs. Please try again.');
+      console.error('Failed to fetch CVs:', error)
+      alert(t('fetchError'))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
     if (user_id) {
-      fetchCVs();
+      fetchCVs()
     }
-  }, [user_id]);
+  }, [user_id])
 
-
-  // Send payload that matches your existing API expectations
   const handleGenerateAnalysis = async (cvId, jobDesc) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      // Find the selected CV to get its created_at timestamp
-      const selectedCv = cvOptions.find(cv => cv.id === cvId);
-
+      const selectedCv = cvOptions.find(cv => cv.id === cvId)
       const payload = {
         user_id: user_id,
-        created_at: selectedCv?.created_at, // Your API uses this to find the specific CV
+        created_at: selectedCv?.created_at,
         file_name: selectedCv?.name || 'Unnamed file'
-      };
-
-      if (jobDesc && jobDesc.trim() !== '') {
-        payload.jobText = jobDesc.trim();
       }
-
+      if (jobDesc && jobDesc.trim() !== '') {
+        payload.jobText = jobDesc.trim()
+      }
       const res = await fetch('/api/analyze-cv-job', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+        const errorData = await res.json()
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`)
       }
-
-      const data = await res.json();
-      console.log('Analysis generated:', data);
-
+      const data = await res.json()
       window.dispatchEvent(new CustomEvent('new-analysis', {
-        detail: {
-          analysis: data.analysis,
-          startFresh: true
-        }
-      }));
-
-
-      onStartFresh();
-      onClose();
+        detail: { analysis: data.analysis, startFresh: true }
+      }))
+      onStartFresh()
+      onClose()
     } catch (error) {
-      console.error('Error generating analysis:', error);
-      alert(`Error: ${error.message}`);
+      console.error(t('analysisError'), error)
+      alert(`Error: ${error.message}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  // This function now correctly handles upload and then triggers analysis
   const handleUploadAndAnalyze = async (jobDesc) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const newCvId = await handleCvUploadFromModal();
+      const newCvId = await handleCvUploadFromModal()
       if (newCvId) {
-        await handleGenerateAnalysis(newCvId, jobDesc);
+        await handleGenerateAnalysis(newCvId, jobDesc)
       } else {
-        alert('CV upload failed or no new CV ID was returned.');
+        alert(t('uploadFailed'))
       }
     } catch (error) {
-      console.error('Error uploading CV and generating analysis:', error);
-      alert(`Error uploading CV: ${error.message}`);
+      console.error(t('uploadError'), error)
+      alert(`Error: ${error.message}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <>
@@ -132,13 +111,13 @@ export default function StartFreshModal({
               className="flex-1 bg-white border border-gray-200 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors"
               onClick={() => setStep(1)}
             >
-              Continue with Uploaded CV
+              {t('continueUploaded')}
             </button>
             <button
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
               onClick={() => setStep(2)}
             >
-              Continue with NEW CV Upload
+              {t('continueNew')}
             </button>
           </div>
         </StartFreshHeader>

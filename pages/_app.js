@@ -1,7 +1,8 @@
 import '../styles/globals.css';
 import '../styles/cv-cover.css';
-import '../styles/modalStyles.css'; // Correct place for global CSS
+import '../styles/modalStyles.css';
 import Script from 'next/script';
+import '../i18n';
 
 export default function MyApp({ Component, pageProps }) {
   return (

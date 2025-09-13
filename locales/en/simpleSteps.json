@@ -1,0 +1,34 @@
+{
+  "title": "Simple Steps to CV Secret Weapon",
+  "metaDescription": "Follow our simple, proven steps to transform your CV and job applications. Maximize your interview success with targeted, ATS-optimized documents.",
+  "hero": {
+    "heading": "Simple Steps to Success",
+    "subheading": "Transform your job search with our proven process. Repeat these steps for every application to maximize your success rate."
+  },
+  "steps": {
+    "oneTitle": "Upload Your CV",
+    "oneText": "Start by uploading your current CV or LinkedIn profile. Our system accepts PDF and Word documents.",
+    "twoTitle": "Add the Job Description",
+    "twoText": "Paste the job ad so our AI can tailor your CV and cover letter.",
+    "threeTitle": "Get Instant Analysis",
+    "threeText": "Receive feedback, a tailored cover letter, and improvement suggestions in seconds.",
+    "fourTitle": "Apply Changes & Repeat",
+    "fourText": "Update your CV, use the generated letter, and repeat for each job."
+  },
+  "benefits": {
+    "heading": "Why This Process Works",
+    "tailoredTitle": "Tailored to Each Role",
+    "tailoredText": "Every job is different. Our process ensures your application speaks directly to employers.",
+    "fastTitle": "Fast & Efficient",
+    "fastText": "Get professional-quality results in minutes, not hours.",
+    "improveTitle": "Continuous Improvement",
+    "improveText": "Each analysis teaches you what works, improving future applications.",
+    "dataTitle": "Data-Driven Results",
+    "dataText": "Based on real job market success, not outdated advice."
+  },
+  "cta": {
+    "heading": "Ready to Get Started?",
+    "text": "Stop sending generic applications. Start getting interviews with targeted, professional CVs and cover letters.",
+    "button": "Upload Your CV Now"
+  }
+}

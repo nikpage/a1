@@ -1,0 +1,40 @@
+
+{
+  "modal": {
+    "processingTitle": "Processing your CV and Job Ad",
+    "processingMessage": "Uploading your CV and preparing for analysis...",
+    "inProgress": "Analysis in progress...",
+    "errorPrefix": "Error: "
+  },
+  "error": {
+    "noUserId": "User ID not found. Please analyze again.",
+    "uploadFailed": "Upload failed to return a user ID.",
+    "analysisFailed": "Analysis failed."
+  },
+  "meta": {
+    "title": "Job Targeted CV & Cover Letter",
+    "description": "Target your applications to every job you apply to with keyword matched and ATS optimized CV and cover letters that make you not only get noticed but stand out and got onto the interview A-List."
+  },
+  "hero": {
+    "section1": "Regular CV\nplus Job Add",
+    "section2": "Targeted\nCV & Cover Letter",
+    "section3": "More Interviews\nMore Offers",
+    "tagline": "Because Average CVs Are for Average People."
+  },
+  "form": {
+    "dropPrompt": "Drop CV or LinkedIn Profile",
+    "formatHint": "PDF or Word",
+    "placeholder": "Paste Job Ad (highly recommended)",
+    "button": {
+      "submit": "Upload & Analyze",
+      "loading": "Uploading & Analyzing…"
+    },
+    "writeNow": "Write Now",
+    "analysisTitle": "Your CV Analysis"
+  },
+  "user": {
+    "analysis": {
+      "none": "No analysis found."
+    }
+  }
+}

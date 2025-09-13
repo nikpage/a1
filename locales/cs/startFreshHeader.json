@@ -1,0 +1,12 @@
+{
+  "startFreshTitle": "Začít znovu",
+  "cannotUndo": "Tuto akci nelze vrátit zpět",
+  "warning": "Opravdu chcete začít znovu? Všechny aktuální analýzy budou smazány a váš životopis/motivační dopis odstraněn.",
+  "whatHappens": "Co se stane, když začnete znovu:",
+  "deletedAnalyses": "Všechny aktuální analýzy budou smazány",
+  "removedDocs": "Váš životopis a motivační dopis budou odstraněny",
+  "cleanSlate": "Začnete s čistým listem pro novou žádost o práci",
+  "cvUnaffected": "Váš nahraný životopis nebude ovlivněn",
+  "selectCvTitle": "Vyberte svůj životopis",
+  "selectCvSubtitle": "Vyberte uložený životopis nebo nahrajte nový"
+}

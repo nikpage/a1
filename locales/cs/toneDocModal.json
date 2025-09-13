@@ -1,0 +1,12 @@
+{
+  "alertNoSelection": "Vyberte alespoň jeden typ dokumentu",
+  "chooseTone": "🎯 Vyberte tón",
+  "formal": "Formální",
+  "friendly": "Přátelský",
+  "enthusiastic": "Nadšený",
+  "cocky": "Sebejistý",
+  "selectDocType": "📄 Vyberte typ dokumentu",
+  "cv": "Životopis",
+  "coverLetter": "Motivační dopis",
+  "generate": "Vygenerovat"
+}

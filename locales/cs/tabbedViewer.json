@@ -1,0 +1,22 @@
+{
+  "generatingDocsTitle": "Generování dokumentů",
+  "generatingDocsMsg": "Připravuji vaše přizpůsobené dokumenty...",
+  "selectDocError": "Vyberte alespoň jeden typ dokumentu.",
+  "regeneratingCvTitle": "Obnovuji životopis",
+  "regeneratingCoverTitle": "Obnovuji motivační dopis",
+  "regenMsg": "Žádám o novou verzi...",
+  "addingNewVersion": "Přidávám novou verzi...",
+  "startFresh": "Začít znovu",
+  "analysis": "Analýza",
+  "cv": "Životopis",
+  "cover": "Motivační dopis",
+  "tabNotAvailable": "Není k dispozici",
+  "noAnalysis": "Žádná analýza není k dispozici",
+  "writeNow": "Napište hned!",
+  "versionOf": "Verze {{current}} z {{total}}",
+  "regenerate": "Znovu vygenerovat",
+  "prevVersion": "Předchozí verze",
+  "nextVersion": "Další verze",
+  "noAvailableAlert": "Žádný {{label}} není k dispozici",
+  "regenFailed": "Obnovení se nezdařilo"
+}

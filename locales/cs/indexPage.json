@@ -1,0 +1,34 @@
+{
+  "modal": {
+    "processingTitle": "Zpracovávám váš životopis a pracovní inzerát",
+    "processingMessage": "Nahrávám váš životopis a připravuji se na analýzu...",
+    "inProgress": "Probíhá analýza...",
+    "errorPrefix": "Chyba: "
+  },
+  "error": {
+    "noUserId": "ID uživatele nebylo nalezeno. Proveďte analýzu znovu.",
+    "uploadFailed": "Nahrání nevrátilo ID uživatele.",
+    "analysisFailed": "Analýza selhala."
+  },
+  "meta": {
+    "title": "Cílený životopis a motivační dopis",
+    "description": "Zacílete své žádosti na každou práci, o kterou se ucházíte, s klíčovými slovy a ATS optimalizovanými životopisy a motivačními dopisy, díky nimž nejen získáte pozornost, ale i vyniknete a dostanete se na pohovor."
+  },
+  "hero": {
+    "section1": "Běžný životopis\n+ pracovní inzerát",
+    "section2": "Cílený\nživotopis a motivační dopis",
+    "section3": "Více pohovorů\nVíce nabídek",
+    "tagline": "Protože průměrné životopisy jsou pro průměrné lidi."
+  },
+  "form": {
+    "dropPrompt": "Přetáhněte životopis nebo profil LinkedIn",
+    "formatHint": "PDF nebo Word",
+    "placeholder": "Vložte pracovní inzerát (silně doporučeno)",
+    "button": {
+      "submit": "Nahrát a analyzovat",
+      "loading": "Nahrávám a analyzuji…"
+    },
+    "writeNow": "Napište hned",
+    "analysisTitle": "Analýza vašeho životopisu"
+  }
+}

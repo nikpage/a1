@@ -1,0 +1,34 @@
+{
+  "title": "Jednoduché kroky k tajné zbrani životopisu",
+  "metaDescription": "Postupujte podle našich jednoduchých a osvědčených kroků, jak proměnit svůj životopis a žádosti o práci. Maximalizujte úspěch u pohovorů s cílenými, ATS optimalizovanými dokumenty.",
+  "hero": {
+    "heading": "Jednoduché kroky k úspěchu",
+    "subheading": "Proměňte své hledání práce pomocí našeho osvědčeného procesu. Opakujte tyto kroky pro každou žádost, abyste maximalizovali úspěšnost."
+  },
+  "steps": {
+    "oneTitle": "Nahrajte svůj životopis",
+    "oneText": "Začněte nahráním svého aktuálního životopisu nebo profilu na LinkedIn. Náš systém přijímá PDF a Word dokumenty.",
+    "twoTitle": "Přidejte popis práce",
+    "twoText": "Vložte pracovní inzerát, aby naše AI mohla přizpůsobit váš životopis a motivační dopis.",
+    "threeTitle": "Získejte okamžitou analýzu",
+    "threeText": "Obdržíte zpětnou vazbu, přizpůsobený motivační dopis a návrhy na zlepšení během několika sekund.",
+    "fourTitle": "Aplikujte změny a opakujte",
+    "fourText": "Aktualizujte životopis, použijte vygenerovaný dopis a opakujte pro každou práci."
+  },
+  "benefits": {
+    "heading": "Proč tento proces funguje",
+    "tailoredTitle": "Přizpůsobeno každé roli",
+    "tailoredText": "Každá práce je jiná. Náš proces zajistí, že vaše žádost promlouvá přímo k zaměstnavatelům.",
+    "fastTitle": "Rychlé a efektivní",
+    "fastText": "Profesionální výsledky za minuty, ne hodiny.",
+    "improveTitle": "Nepřetržité zlepšování",
+    "improveText": "Každá analýza vás učí, co funguje, a zlepšuje budoucí žádosti.",
+    "dataTitle": "Výsledky založené na datech",
+    "dataText": "Založeno na reálných úspěších na trhu práce, ne na zastaralých radách."
+  },
+  "cta": {
+    "heading": "Připraveni začít?",
+    "text": "Přestaňte posílat obecné žádosti. Začněte získávat pohovory s cílenými, profesionálními životopisy a motivačními dopisy.",
+    "button": "Nahrajte svůj životopis hned"
+  }
+}

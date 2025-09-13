@@ -1,0 +1,62 @@
+{
+  "title": "CV Secret Weapon Pricing",
+  "metaDescription": "Transparent, pay-as-you-go pricing for targeted CVs & cover letters. Generate for free, pay only when you download. Boost your job applications.",
+  "hero": {
+    "heading": "Simple, Pay-As-You-Go Pricing",
+    "subheading": "No subscriptions. No hidden fees. Only pay when you download your optimized documents."
+  },
+  "freeSection": {
+    "heading": "Try Before You Buy",
+    "text": "Generate CVs and cover letters for FREE. No registration or cards required. Experiment with different tones. You only pay when you're ready to download your final documents.",
+    "items": {
+      "analysis": "Free CV Analysis",
+      "docs": "Free Generated Docs",
+      "free": "To Get Started"
+    }
+  },
+  "downloadSection": {
+    "heading": "Download Pricing",
+    "text": "When you're happy with your documents, choose how many downloads you need"
+  },
+  "plans": {
+    "single": { "title": "Single Doc", "price": "€6", "desc": "1 Download", "note": "Perfect for trying out" },
+    "essential": { "title": "Essential", "price": "€8", "desc": "2 Downloads", "note": "CV + Cover Letter" },
+    "serious": { "title": "Serious", "price": "€23", "desc": "10 Downloads", "note": "Best for job hunting" },
+    "driven": { "title": "Driven", "price": "€42", "desc": "30 Downloads", "note": "Serious package" }
+  },
+  "howItWorks": {
+    "heading": "How It Works",
+    "steps": {
+      "oneTitle": "Professional Analysis FREE",
+      "oneText": "Upload your CV and get your professional analysis FREE.",
+      "twoTitle": "Target those Jobs",
+      "twoText": "Copy the job description right off the web and paste it in for an analysis and strategy to tune your CV and cover letter.",
+      "threeTitle": "Generate Targeted CV and Cover Letter",
+      "threeText": "Select a tone, download instantly. Always optimized for ATS and tailored to the job ad."
+    }
+  },
+  "why": {
+    "heading": "Why Choose Pay-Per-Download?",
+    "benefits": {
+      "noFees": "No Recurring Fees",
+      "noFeesText": "Pay only when you need documents. No monthly subscriptions or hidden charges.",
+      "try": "Try Before You Buy",
+      "tryText": "Generate and preview unlimited versions before purchasing.",
+      "bulk": "Bulk Discounts",
+      "bulkText": "Save up to 77% when you buy downloads in bulk.",
+      "instant": "Instant Access",
+      "instantText": "Download immediately after purchase. No waiting."
+    }
+  },
+  "faq": {
+    "heading": "Frequently Asked Questions",
+    "q1": "How many times can I generate documents for free?",
+    "a1": "You can generate unlimited versions but after 10, you must download once. After each download, the counter resets to 10.",
+    "q2": "What file formats do you provide?",
+    "a2": "All downloads include both PDF and DOCX formats.",
+    "q3": "Do my download credits expire?",
+    "a3": "No, your download credits never expire.",
+    "q4": "Can I get a refund?",
+    "a4": "Since you can preview before purchase, refunds aren’t offered. Support is available for any issues."
+  }
+}

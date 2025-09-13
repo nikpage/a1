@@ -1,7 +1,9 @@
 // components/TokenPurchasePanel.js
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, tokensRemaining }) {
+  const { t } = useTranslation('tokenPurchasePanel');
   const [loading, setLoading] = useState(false);
 
   const handlePurchase = async (quantity) => {
@@ -43,8 +45,8 @@ export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, 
 
         {showGenerationsMsg && (
           <div className="p-6 relative text-center">
-            <h2 className="text-2xl font-light text-slate-800 mb-2">You are out of free generations</h2>
-            <p className="text-slate-500 text-sm">Please download your document to continue.</p>
+            <h2 className="text-2xl font-light text-slate-800 mb-2">{t('outOfGenerationsTitle')}</h2>
+            <p className="text-slate-500 text-sm">{t('outOfGenerationsMsg')}</p>
             <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -57,8 +59,8 @@ export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, 
           <>
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
               <div className="flex-1 text-center">
-                <h2 className="text-2xl font-light text-slate-800">Purchase Downloads</h2>
-                <p className="text-slate-500 mt-1">You need at least 1 download to save your documents</p>
+                <h2 className="text-2xl font-light text-slate-800">{t('purchaseTitle')}</h2>
+                <p className="text-slate-500 mt-1">{t('purchaseSubtitle')}</p>
               </div>
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600" disabled={loading}>
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,7 +80,7 @@ export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, 
                   {option.popular && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                       <span className="bg-[#41b4a2] text-white text-xs font-semibold px-3 py-1 rounded-full">
-                        Most Popular
+                        {t('mostPopular')}
                       </span>
                     </div>
                   )}
@@ -102,7 +104,7 @@ export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, 
                           : 'bg-gray-100 text-slate-700 hover:bg-gray-200'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {loading ? 'Processing…' : 'Purchase Now'}
+                      {loading ? t('processing') : t('purchaseNow')}
                     </button>
                   </div>
                 </div>
@@ -110,9 +112,7 @@ export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, 
             </div>
 
             <div className="px-6 pb-6 text-center">
-              <p className="text-sm text-slate-500">
-                Secure payment processed by Stripe. No subscription required.
-              </p>
+              <p className="text-sm text-slate-500">{t('securePayment')}</p>
             </div>
           </>
         )}

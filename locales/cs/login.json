@@ -1,0 +1,10 @@
+{
+  "login": "Přihlásit se",
+  "logout": "Odhlásit se",
+  "email": "E-mail",
+  "password": "Heslo",
+  "submit": "Odeslat",
+  "forgotPassword": "Zapomněli jste heslo?",
+  "noAccount": "Nemáte účet?",
+  "createAccount": "Vytvořit účet"
+}

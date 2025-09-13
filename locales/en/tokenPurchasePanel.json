@@ -1,0 +1,10 @@
+{
+  "outOfGenerationsTitle": "You are out of free generations",
+  "outOfGenerationsMsg": "Please download your document to continue.",
+  "purchaseTitle": "Purchase Downloads",
+  "purchaseSubtitle": "You need at least 1 download to save your documents",
+  "mostPopular": "Most Popular",
+  "processing": "Processing…",
+  "purchaseNow": "Purchase Now",
+  "securePayment": "Secure payment processed by Stripe. No subscription required."
+}
