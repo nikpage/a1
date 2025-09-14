@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import BaseModal from '../components/BaseModal';
 
-import '../styles/modalStyles.css';
+
 import { useTranslation } from 'react-i18next';
 
 export default function LoginModal({ onClose, userId }) {
