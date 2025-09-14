@@ -1,6 +1,7 @@
 // login.js
 import { useState } from 'react';
-import BaseModal from './BaseModal';
+import BaseModal from '../components/BaseModal';
+
 import '../styles/modalStyles.css';
 import { useTranslation } from 'react-i18next';
 
