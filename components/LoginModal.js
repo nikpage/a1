@@ -1,13 +1,20 @@
 // components/LoginModal.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BaseModal from './BaseModal';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginModal({ onClose, userId }) {
+  const { t } = useTranslation('login'); // use the "login" namespace
   const [email, setEmail] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleSendMagicLink = async (e) => {
     e.preventDefault();
@@ -20,42 +27,45 @@ export default function LoginModal({ onClose, userId }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-    userId ? { email, user_id: userId, rememberMe } : { email, rememberMe }
-  ),
-
+          userId ? { email, user_id: userId, rememberMe } : { email, rememberMe }
+        ),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send login link');
+        throw new Error(data.error || t('error.analysisFailed'));
       }
 
-      setMessage(`Login link sent to ${email}! Check your inbox and click the link to continue.`);
+      setMessage(`${t('successPrefix')} ${email}${t('successSuffix')}`);
     } catch (err) {
       console.error("Magic link error:", err);
-      setError(err.message || 'Failed to send login link. Please try again.');
+      setError(err.message || t('error.uploadFailed'));
     } finally {
       setIsSending(false);
     }
   };
 
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <BaseModal onClose={onClose} showCloseButton={true}>
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Access Your CV Analysis</h2>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">
+        {t('heading')}
+      </h2>
 
       <form onSubmit={handleSendMagicLink} className="flex flex-col gap-4">
         <p className="text-gray-600 mb-2">
-          {userId
-            ? 'Enter your email to receive a secure login link.'
-            : 'Enter your email to log in or create an account.'}
+          {userId ? t('textWithUserId') : t('textWithoutUserId')}
         </p>
 
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="your@email.com"
+          placeholder={t('placeholderEmail')}
           required
           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-lg"
           disabled={isSending}
@@ -68,7 +78,7 @@ export default function LoginModal({ onClose, userId }) {
             onChange={(e) => setRememberMe(e.target.checked)}
             disabled={isSending}
           />
-          Keep me logged in for 30 days
+          {t('rememberMe')}
         </label>
 
         <button
@@ -76,7 +86,7 @@ export default function LoginModal({ onClose, userId }) {
           disabled={isSending || !email}
           className="action-btn px-6 py-3 rounded-lg text-white font-semibold transition-colors duration-200"
         >
-          {isSending ? 'Sending Link...' : 'Send Login Link'}
+          {isSending ? t('buttonSending') : t('buttonDefault')}
         </button>
       </form>
 
@@ -93,7 +103,7 @@ export default function LoginModal({ onClose, userId }) {
       )}
 
       <p className="text-xs text-gray-500 mt-4 text-center">
-        The login link will expire in 15 minutes for security.
+        {t('expiryNotice')}
       </p>
     </BaseModal>
   );

@@ -22,9 +22,7 @@ const supabase = createClient(
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
-    return res
-      .status(405)
-      .json({ error: `Method ${req.method} not allowed` });
+    return res.status(405).json({ error: `Method ${req.method} not allowed` });
   }
 
   const origin = req.headers.origin;
@@ -32,36 +30,48 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Invalid origin" });
   }
 
-  let { email, user_id } = req.body;
+  let { email, user_id, rememberMe } = req.body;
   if (!email || !email.includes("@")) {
     return res.status(400).json({ error: "Valid email required" });
   }
+  const emailNorm = email.toLowerCase().trim();
 
-  // Look up existing user_id by email if no user_id provided
-  if (!user_id) {
-    const { data: existingToken } = await supabase
-      .from("magic_tokens")
+  // Always resolve to a valid user_id with email stored
+  let effectiveUserId = null;
+
+  // Look up user by email
+  const { data: existingUser } = await supabase
+    .from("users")
+    .select("user_id, email")
+    .eq("email", emailNorm)
+    .maybeSingle();
+
+  if (existingUser?.user_id) {
+    effectiveUserId = existingUser.user_id;
+  } else if (user_id) {
+    effectiveUserId = user_id;
+    // Ensure this user row has email set
+    await supabase.from("users").update({ email: emailNorm }).eq("user_id", user_id);
+  } else {
+    // Create new user with email
+    const { data: created, error: createErr } = await supabase
+      .from("users")
+      .insert([{
+        email: emailNorm,
+        user_id: crypto.randomUUID()
+      }])
       .select("user_id")
-      .eq("email", email.toLowerCase())
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+      .maybeSingle();
 
-
-    if (existingToken) {
-      user_id = existingToken.user_id;
+    if (createErr || !created?.user_id) {
+      console.error("Supabase create error:", createErr);
+      return res.status(500).json({ error: "Could not create user." });
     }
-  }
+    effectiveUserId = created.user_id;
+  } // 🔴 properly closed else block here
 
-  if (!user_id) {
-    return res.status(200).json({
-      success: true,
-      message:
-        "If that email is registered, a login link has been sent.",
-    });
-  }
-
-  const identifier = user_id || req.ip;
+  // Rate limit
+  const identifier = effectiveUserId || req.ip;
   const { success } = await ratelimit.limit(identifier);
   if (!success) {
     return res
@@ -71,51 +81,45 @@ export default async function handler(req, res) {
 
   try {
     const token = crypto.randomBytes(32).toString("hex");
-    const expires = new Date(Date.now() + 900000); // 15 min expiry
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
     const baseUrl = getBaseUrl();
     const magicLink = `${baseUrl}/api/auth/verify?token=${token}`;
 
-    // 🧹 Clean up old tokens for this email before inserting
-    await supabase
-      .from("magic_tokens")
-      .delete()
-      .eq("email", email.toLowerCase());
+    // Clean old tokens
+    await supabase.from("magic_tokens").delete().eq("email", emailNorm);
 
-    // Insert fresh token
-    const { error: insertError } = await supabase
-      .from("magic_tokens")
-      .insert([
-        {
-          email: email.toLowerCase(),
-          token,
-          user_id,
-          expires_at: expires.toISOString(),
-          remember_me: req.body.rememberMe || false,
-          used: false,
-        },
-      ]);
-    if (insertError) throw new Error("Failed to store magic token.");
+    // Insert new token
+    const { error: insertError } = await supabase.from("magic_tokens").insert([
+      {
+        email: emailNorm,
+        token,
+        user_id: effectiveUserId,
+        expires_at: expires.toISOString(),
+        remember_me: !!rememberMe,
+        used: false,
+      },
+    ]);
+    if (insertError) {
+      return res.status(500).json({ error: "Token insert failed." });
+    }
 
-    // Send email
-    const { error: emailError } = await resend.emails.send({
-      from: "login@thecv.pro",
-      to: email,
-      subject: "Your TheCV.Pro Login Link",
-      html: `<p>Click this link to log in: <a href="${magicLink}">Login</a>. It expires in 15 minutes.</p>`,
+    // Always trigger email send
+    const { error: mailError } = await resend.emails.send({
+      from: "noreply@thecv.pro",
+      to: emailNorm,
+      subject: "Your login link",
+      html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
     });
-    if (emailError) throw new Error("Failed to send magic link email.");
+    if (mailError) {
+      return res.status(500).json({ error: "Email send failed." });
+    }
 
     return res.status(200).json({
       success: true,
-      message:
-        "If that email is registered, a login link has been sent.",
+      message: "Login link sent successfully.",
     });
-  } catch (error) {
-    console.error("Magic link process failed:", error.message);
-    return res.status(200).json({
-      success: true,
-      message:
-        "If that email is registered, a login link has been sent.",
-    });
+  } catch (e) {
+    console.error("Magic link error:", e);
+    return res.status(500).json({ error: "Internal error." });
   }
 }

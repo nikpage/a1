@@ -1,10 +1,13 @@
 {
-  "login": "Přihlásit se",
-  "logout": "Odhlásit se",
-  "email": "E-mail",
-  "password": "Heslo",
-  "submit": "Odeslat",
-  "forgotPassword": "Zapomněli jste heslo?",
-  "noAccount": "Nemáte účet?",
-  "createAccount": "Vytvořit účet"
+  "heading": "Přístup k analýze životopisu",
+  "textWithUserId": "Zadejte svůj e-mail a obdržíte bezpečný přihlašovací odkaz.",
+  "textWithoutUserId": "Zadejte svůj e-mail pro přihlášení nebo vytvoření účtu.",
+  "placeholderEmail": "vas@email.com",
+  "rememberMe": "Zůstat přihlášený po dobu 30 dní",
+  "buttonSending": "Odesílám odkaz...",
+  "buttonDefault": "Odeslat přihlašovací odkaz",
+  "expiryNotice": "Odkaz vyprší za 15 minut z bezpečnostních důvodů.",
+  "errorDefault": "Něco se pokazilo. Zkuste to prosím znovu.",
+  "successPrefix": "Odkaz byl odeslán na",
+  "successSuffix": "! Zkontrolujte doručenou poštu a pokračujte."
 }

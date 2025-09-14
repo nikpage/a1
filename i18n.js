@@ -1,6 +1,7 @@
 // i18n.js
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
+import LanguageDetector from 'i18next-browser-languagedetector'
 
 import indexPageEn from './locales/en/indexPage.json'
 import pricingEn from './locales/en/pricing.json'
@@ -36,69 +37,75 @@ import tokenPurchasePanelCs from './locales/cs/tokenPurchasePanel.json'
 import toneDocModalCs from './locales/cs/toneDocModal.json'
 import headerCs from './locales/cs/header.json'
 
-i18n.use(initReactI18next).init({
-  resources: {
-    en: {
-      indexPage: indexPageEn,
-      pricing: pricingEn,
-      simpleSteps: simpleStepsEn,
-      secretWeapon: secretWeaponEn,
-      login: loginEn,
-      analysisDisplay: analysisDisplayEn,
-      startFreshHeader: startFreshHeaderEn,
-      startFreshModal: startFreshModalEn,
-      startFreshSelector: startFreshSelectorEn,
-      startFreshUploadModal: startFreshUploadModalEn,
-      tabbedViewer: tabbedViewerEn,
-      thankYouModal: thankYouModalEn,
-      tokenCounter: tokenCounterEn,
-      tokenPurchasePanel: tokenPurchasePanelEn,
-      toneDocModal: toneDocModalEn,
-      header: headerEn,
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources: {
+      en: {
+        indexPage: indexPageEn,
+        pricing: pricingEn,
+        simpleSteps: simpleStepsEn,
+        secretWeapon: secretWeaponEn,
+        login: loginEn,
+        analysisDisplay: analysisDisplayEn,
+        startFreshHeader: startFreshHeaderEn,
+        startFreshModal: startFreshModalEn,
+        startFreshSelector: startFreshSelectorEn,
+        startFreshUploadModal: startFreshUploadModalEn,
+        tabbedViewer: tabbedViewerEn,
+        thankYouModal: thankYouModalEn,
+        tokenCounter: tokenCounterEn,
+        tokenPurchasePanel: tokenPurchasePanelEn,
+        toneDocModal: toneDocModalEn,
+        header: headerEn,
+      },
+      cs: {
+        indexPage: indexPageCs,
+        pricing: pricingCs,
+        simpleSteps: simpleStepsCs,
+        secretWeapon: secretWeaponCs,
+        login: loginCs,
+        analysisDisplay: analysisDisplayCs,
+        startFreshHeader: startFreshHeaderCs,
+        startFreshModal: startFreshModalCs,
+        startFreshSelector: startFreshSelectorCs,
+        startFreshUploadModal: startFreshUploadModalCs,
+        tabbedViewer: tabbedViewerCs,
+        thankYouModal: thankYouModalCs,
+        tokenCounter: tokenCounterCs,
+        tokenPurchasePanel: tokenPurchasePanelCs,
+        toneDocModal: toneDocModalCs,
+        header: headerCs,
+      },
     },
-    cs: {
-      indexPage: indexPageCs,
-      pricing: pricingCs,
-      simpleSteps: simpleStepsCs,
-      secretWeapon: secretWeaponCs,
-      login: loginCs,
-      analysisDisplay: analysisDisplayCs,
-      startFreshHeader: startFreshHeaderCs,
-      startFreshModal: startFreshModalCs,
-      startFreshSelector: startFreshSelectorCs,
-      startFreshUploadModal: startFreshUploadModalCs,
-      tabbedViewer: tabbedViewerCs,
-      thankYouModal: thankYouModalCs,
-      tokenCounter: tokenCounterCs,
-      tokenPurchasePanel: tokenPurchasePanelCs,
-      toneDocModal: toneDocModalCs,
-      header: headerCs,
+    fallbackLng: 'en',
+    supportedLngs: ['en', 'cs'],
+    ns: [
+      'indexPage',
+      'pricing',
+      'simpleSteps',
+      'secretWeapon',
+      'login',
+      'analysisDisplay',
+      'startFreshHeader',
+      'startFreshModal',
+      'startFreshSelector',
+      'startFreshUploadModal',
+      'tabbedViewer',
+      'thankYouModal',
+      'tokenCounter',
+      'tokenPurchasePanel',
+      'toneDocModal',
+      'header',
+    ],
+    defaultNS: 'indexPage',
+    detection: {
+      order: ['navigator', 'htmlTag', 'cookie'],
+      caches: ['cookie'],
     },
-  },
-
-  lng: undefined,
-  fallbackLng: 'en',
-  supportedLngs: ['en', 'cs'],
-  ns: [
-    'indexPage',
-    'pricing',
-    'simpleSteps',
-    'secretWeapon',
-    'login',
-    'analysisDisplay',
-    'startFreshHeader',
-    'startFreshModal',
-    'startFreshSelector',
-    'startFreshUploadModal',
-    'tabbedViewer',
-    'thankYouModal',
-    'tokenCounter',
-    'tokenPurchasePanel',
-    'toneDocModal',
-    'header',
-  ],
-  defaultNS: 'indexPage',
-  interpolation: { escapeValue: false },
-})
+    interpolation: { escapeValue: false },
+    react: { useSuspense: false },
+  })
 
 export default i18n

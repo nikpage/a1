@@ -14,6 +14,9 @@ export default function Header({ user_id }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
 
+  // FIX: ADDED STATE TO TRACK IF COMPONENT IS MOUNTED IN THE BROWSER
+  const [isMounted, setIsMounted] = useState(false);
+
   const { locale } = useRouter()
   const { t } = useTranslation('header')
 
@@ -30,6 +33,11 @@ export default function Header({ user_id }) {
   useEffect(() => {
     fetchHeaderStats()
   }, [user_id])
+
+  // FIX: ADDED EFFECT TO SET MOUNTED STATE TO TRUE ONLY IN THE BROWSER
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const updateStats = () => fetchHeaderStats()
@@ -90,6 +98,11 @@ export default function Header({ user_id }) {
       </div>
     </>
   )
+
+  // FIX: ADDED CHECK TO PREVENT SERVER-SIDE RENDERING, REMOVING THE HYDRATION ERROR
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 py-4 px-4 sm:px-6">
