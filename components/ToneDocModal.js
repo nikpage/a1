@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 export default function ToneDocModal({ onClose, onSubmit }) {
   const { t } = useTranslation('toneDocModal');
   const [tone, setTone] = useState('formal');
-  const [types, setTypes] = useState({ cv: true, cover: true });
+  const [types, setTypes] = useState({ cv: true, coverLetter: true });
 
   const handleGenerate = () => {
     const selected = Object.entries(types)
@@ -55,14 +55,14 @@ export default function ToneDocModal({ onClose, onSubmit }) {
           {t('selectDocType')}
         </h2>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {['cv', 'cover'].map(doc => (
+          {['cv', 'coverLetter'].map(doc => (
             <label key={doc} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <input
                 type="checkbox"
                 checked={types[doc]}
                 onChange={() => setTypes(prev => ({ ...prev, [doc]: !prev[doc] }))}
               />
-              {doc === 'cv' ? t('cv') : t('coverLetter')}
+              {t(doc)}
             </label>
           ))}
         </div>

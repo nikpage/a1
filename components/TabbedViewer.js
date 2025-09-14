@@ -198,6 +198,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
     { id: 'cv', label: t('cv') },
     { id: 'cover', label: t('cover') },
   ];
+  const startFresh = () => {};
 
   return (
     <div className="doc-viewer px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
