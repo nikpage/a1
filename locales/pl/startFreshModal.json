@@ -1,0 +1,8 @@
+{
+  "continueUploaded": "Kontynuuj z przesłanym CV",
+  "continueNew": "Kontynuuj z NOWYM CV",
+  "fetchError": "Nie udało się załadować CV. Spróbuj ponownie.",
+  "uploadFailed": "Przesyłanie CV nie powiodło się lub nie zwrócono nowego ID CV.",
+  "analysisError": "Błąd podczas generowania analizy:",
+  "uploadError": "Błąd przesyłania CV:"
+}

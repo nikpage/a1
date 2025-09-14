@@ -1,0 +1,12 @@
+{
+  "startFreshTitle": "Zacznij od nowa",
+  "cannotUndo": "Tej operacji nie można cofnąć",
+  "warning": "Czy na pewno chcesz zacząć od nowa? Wszystkie bieżące analizy zostaną usunięte, a Twoje CV/list motywacyjny – usunięte.",
+  "whatHappens": "Co się stanie po rozpoczęciu od nowa:",
+  "deletedAnalyses": "Wszystkie bieżące analizy zostaną usunięte",
+  "removedDocs": "Twoje CV i list motywacyjny zostaną usunięte",
+  "cleanSlate": "Zaczniesz od zera z nową aplikacją o pracę",
+  "cvUnaffected": "Twoje przesłane CV nie zostanie naruszone",
+  "selectCvTitle": "Wybierz swoje CV",
+  "selectCvSubtitle": "Wybierz zapisane CV lub prześlij nowe"
+}

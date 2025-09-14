@@ -37,6 +37,23 @@ import tokenPurchasePanelCs from './locales/cs/tokenPurchasePanel.json'
 import toneDocModalCs from './locales/cs/toneDocModal.json'
 import headerCs from './locales/cs/header.json'
 
+import indexPagePl from './locales/pl/indexPage.json'
+import pricingPl from './locales/pl/pricing.json'
+import simpleStepsPl from './locales/pl/simpleSteps.json'
+import secretWeaponPl from './locales/pl/secretWeapon.json'
+import loginPl from './locales/pl/login.json'
+import analysisDisplayPl from './locales/pl/analysisDisplay.json'
+import startFreshHeaderPl from './locales/pl/startFreshHeader.json'
+import startFreshModalPl from './locales/pl/startFreshModal.json'
+import startFreshSelectorPl from './locales/pl/startFreshSelector.json'
+import startFreshUploadModalPl from './locales/pl/startFreshUploadModal.json'
+import tabbedViewerPl from './locales/pl/tabbedViewer.json'
+import thankYouModalPl from './locales/pl/thankYouModal.json'
+import tokenCounterPl from './locales/pl/tokenCounter.json'
+import tokenPurchasePanelPl from './locales/pl/tokenPurchasePanel.json'
+import toneDocModalPl from './locales/pl/toneDocModal.json'
+import headerPl from './locales/pl/header.json'
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -78,9 +95,27 @@ i18n
         toneDocModal: toneDocModalCs,
         header: headerCs,
       },
+      pl: {
+        indexPage: indexPagePl,
+        pricing: pricingPl,
+        simpleSteps: simpleStepsPl,
+        secretWeapon: secretWeaponPl,
+        login: loginPl,
+        analysisDisplay: analysisDisplayPl,
+        startFreshHeader: startFreshHeaderPl,
+        startFreshModal: startFreshModalPl,
+        startFreshSelector: startFreshSelectorPl,
+        startFreshUploadModal: startFreshUploadModalPl,
+        tabbedViewer: tabbedViewerPl,
+        thankYouModal: thankYouModalPl,
+        tokenCounter: tokenCounterPl,
+        tokenPurchasePanel: tokenPurchasePanelPl,
+        toneDocModal: toneDocModalPl,
+        header: headerPl,
+      }
     },
     fallbackLng: 'en',
-    supportedLngs: ['en', 'cs'],
+    supportedLngs: ['en', 'cs', 'pl'],
     ns: [
       'indexPage',
       'pricing',

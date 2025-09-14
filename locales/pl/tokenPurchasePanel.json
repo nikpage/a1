@@ -1,0 +1,10 @@
+{
+  "outOfGenerationsTitle": "Wykorzystałeś wszystkie darmowe wersje",
+  "outOfGenerationsMsg": "Pobierz swój dokument, aby kontynuować.",
+  "purchaseTitle": "Zakup pobrania",
+  "purchaseSubtitle": "Potrzebujesz co najmniej 1 pobrania, aby zapisać dokumenty",
+  "mostPopular": "Najpopularniejsze",
+  "processing": "Przetwarzanie…",
+  "purchaseNow": "Kup teraz",
+  "securePayment": "Bezpieczna płatność obsługiwana przez Stripe. Bez subskrypcji."
+}

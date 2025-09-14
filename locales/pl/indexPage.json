@@ -1,0 +1,39 @@
+{
+  "modal": {
+    "processingTitle": "Przetwarzanie CV i ogłoszenia o pracę",
+    "processingMessage": "Przesyłanie CV i przygotowanie analizy...",
+    "inProgress": "Analiza w toku...",
+    "errorPrefix": "Błąd: "
+  },
+  "error": {
+    "noUserId": "Nie znaleziono ID użytkownika. Spróbuj ponownie.",
+    "uploadFailed": "Przesyłanie nie zwróciło ID użytkownika.",
+    "analysisFailed": "Analiza nie powiodła się."
+  },
+  "meta": {
+    "title": "CV i list motywacyjny dopasowane do oferty",
+    "description": "Dostosuj swoje aplikacje do każdej oferty pracy dzięki CV i listom motywacyjnym dopasowanym słowami kluczowymi i zoptymalizowanym pod kątem ATS – wyróżnij się i dostań się na listę rozmów kwalifikacyjnych."
+  },
+  "hero": {
+    "section1": "Zwykłe CV\nplus ogłoszenie",
+    "section2": "Dopasowane\nCV i list motywacyjny",
+    "section3": "Więcej rozmów\nWięcej ofert",
+    "tagline": "Bo przeciętne CV są dla przeciętnych ludzi."
+  },
+  "form": {
+    "dropPrompt": "Upuść CV lub profil LinkedIn",
+    "formatHint": "PDF lub Word",
+    "placeholder": "Wklej ogłoszenie o pracę (bardzo zalecane)",
+    "button": {
+      "submit": "Prześlij i analizuj",
+      "loading": "Przesyłanie i analiza…"
+    },
+    "writeNow": "Napisz teraz",
+    "analysisTitle": "Twoja analiza CV"
+  },
+  "user": {
+    "analysis": {
+      "none": "Nie znaleziono analizy."
+    }
+  }
+}

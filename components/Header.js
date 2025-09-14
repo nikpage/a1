@@ -95,6 +95,13 @@ export default function Header({ user_id }) {
         >
           🇨🇿
         </button>
+        <button
+  onClick={() => changeLang('pl')}
+  className={`px-2 py-1 rounded transition ${i18n.language === 'pl' ? 'bg-[#41b4a2] text-white' : 'bg-gray-100 text-slate-700'}`}
+>
+  🇵🇱
+</button>
+
       </div>
     </>
   )

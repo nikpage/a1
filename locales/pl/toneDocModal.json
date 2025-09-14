@@ -1,0 +1,12 @@
+{
+  "alertNoSelection": "Wybierz co najmniej jeden typ dokumentu",
+  "chooseTone": "🎯 Wybierz ton",
+  "formal": "Formalny",
+  "friendly": "Przyjazny",
+  "enthusiastic": "Entuzjastyczny",
+  "cocky": "Zarozumiały",
+  "selectDocType": "📄 Wybierz typ dokumentu",
+  "cv": "CV",
+  "coverLetter": "List motywacyjny",
+  "generate": "Generuj"
+}

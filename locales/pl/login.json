@@ -1,0 +1,13 @@
+{
+  "heading": "Uzyskaj dostęp do analizy CV",
+  "textWithUserId": "Wprowadź swój e-mail, aby otrzymać bezpieczny link logowania.",
+  "textWithoutUserId": "Wprowadź swój e-mail, aby się zalogować lub utworzyć konto.",
+  "placeholderEmail": "twoj@email.com",
+  "rememberMe": "Pozostań zalogowany przez 30 dni",
+  "buttonSending": "Wysyłanie linku...",
+  "buttonDefault": "Wyślij link logowania",
+  "expiryNotice": "Link logowania wygaśnie po 15 minutach ze względów bezpieczeństwa.",
+  "errorDefault": "Coś poszło nie tak. Spróbuj ponownie.",
+  "successPrefix": "Link logowania wysłany na",
+  "successSuffix": "! Sprawdź swoją skrzynkę odbiorczą, aby kontynuować."
+}

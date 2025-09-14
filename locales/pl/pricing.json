@@ -1,0 +1,62 @@
+{
+  "title": "Cennik Sekretnej Broni CV",
+  "metaDescription": "Przejrzysty model opłat za CV i listy motywacyjne. Generuj za darmo, płać tylko przy pobraniu. Wzmocnij swoje aplikacje o pracę.",
+  "hero": {
+    "heading": "Prosty model opłat — płać, kiedy potrzebujesz",
+    "subheading": "Bez subskrypcji. Bez ukrytych opłat. Płać tylko za pobrane dokumenty."
+  },
+  "freeSection": {
+    "heading": "Wypróbuj za darmo",
+    "text": "Generuj CV i listy motywacyjne ZA DARMO. Bez rejestracji i bez karty. Eksperymentuj z różnymi stylami. Płacisz dopiero, gdy chcesz pobrać finalny dokument.",
+    "items": {
+      "analysis": "Darmowa analiza CV",
+      "docs": "Darmowe wygenerowane dokumenty",
+      "free": "Na początek"
+    }
+  },
+  "downloadSection": {
+    "heading": "Cennik pobrań",
+    "text": "Gdy jesteś zadowolony z dokumentów, wybierz ile pobrań potrzebujesz"
+  },
+  "plans": {
+    "single": { "title": "Pojedynczy dokument", "price": "€6", "desc": "1 pobranie", "note": "Idealne na próbę" },
+    "essential": { "title": "Podstawowy", "price": "€8", "desc": "2 pobrania", "note": "CV + list motywacyjny" },
+    "serious": { "title": "Na poważnie", "price": "€23", "desc": "10 pobrań", "note": "Najlepszy wybór dla aktywnych" },
+    "driven": { "title": "Zdeterminowany", "price": "€42", "desc": "30 pobrań", "note": "Pakiet dla ambitnych" }
+  },
+  "howItWorks": {
+    "heading": "Jak to działa",
+    "steps": {
+      "oneTitle": "Profesjonalna analiza ZA DARMO",
+      "oneText": "Prześlij CV i otrzymaj profesjonalną analizę całkowicie za darmo.",
+      "twoTitle": "Dopasuj do ogłoszenia",
+      "twoText": "Wklej treść ogłoszenia, a AI dopasuje do niego CV i list motywacyjny.",
+      "threeTitle": "Wygeneruj dopasowane CV i list",
+      "threeText": "Wybierz ton i pobierz od razu. Zawsze zoptymalizowane pod ATS i dostosowane do ogłoszenia."
+    }
+  },
+  "why": {
+    "heading": "Dlaczego model opłat za pobranie?",
+    "benefits": {
+      "noFees": "Brak opłat cyklicznych",
+      "noFeesText": "Płacisz tylko, gdy potrzebujesz. Bez subskrypcji, bez ukrytych kosztów.",
+      "try": "Wypróbuj zanim zapłacisz",
+      "tryText": "Generuj i podglądaj tyle wersji, ile chcesz, przed zakupem.",
+      "bulk": "Zniżki przy większej liczbie",
+      "bulkText": "Zaoszczędź do 77% kupując pakiety pobrań.",
+      "instant": "Natychmiastowy dostęp",
+      "instantText": "Pobierz dokumenty od razu po zakupie. Bez czekania."
+    }
+  },
+  "faq": {
+    "heading": "Najczęstsze pytania",
+    "q1": "Ile razy mogę generować dokumenty za darmo?",
+    "a1": "Możesz generować dowolną liczbę wersji, ale po 10 musisz pobrać jeden dokument. Po pobraniu licznik resetuje się.",
+    "q2": "W jakich formatach dostępne są dokumenty?",
+    "a2": "Wszystkie dokumenty dostępne są w formacie PDF i DOCX.",
+    "q3": "Czy kredyty na pobrania wygasają?",
+    "a3": "Nie, kredyty na pobrania nigdy nie wygasają.",
+    "q4": "Czy mogę otrzymać zwrot?",
+    "a4": "Ponieważ możesz podglądać przed zakupem, nie oferujemy zwrotów. W razie problemów – napisz do nas."
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "title": "Proste kroki do Sekretnej Broni CV",
+  "metaDescription": "Wykonaj proste, sprawdzone kroki, aby odmienić swoje CV i aplikacje. Maksymalizuj sukces w rozmowach dzięki dopasowanym, zoptymalizowanym dokumentom.",
+  "hero": {
+    "heading": "Proste kroki do sukcesu",
+    "subheading": "Zmień swoje poszukiwania pracy dzięki sprawdzonemu procesowi. Powtarzaj te kroki dla każdej aplikacji, by zwiększyć swoje szanse."
+  },
+  "steps": {
+    "oneTitle": "Prześlij swoje CV",
+    "oneText": "Zacznij od przesłania aktualnego CV lub profilu LinkedIn. Akceptujemy pliki PDF i Word.",
+    "twoTitle": "Dodaj opis stanowiska",
+    "twoText": "Wklej ogłoszenie, aby nasza AI mogła dopasować CV i list motywacyjny.",
+    "threeTitle": "Otrzymaj natychmiastową analizę",
+    "threeText": "Otrzymaj feedback, dopasowany list i sugestie w kilka sekund.",
+    "fourTitle": "Zastosuj zmiany i powtórz",
+    "fourText": "Zaktualizuj CV, użyj wygenerowanego listu i powtarzaj przy kolejnych ofertach."
+  },
+  "benefits": {
+    "heading": "Dlaczego to działa",
+    "tailoredTitle": "Dopasowane do roli",
+    "tailoredText": "Każde stanowisko jest inne. Ten proces sprawia, że Twoja aplikacja trafia w sedno.",
+    "fastTitle": "Szybko i sprawnie",
+    "fastText": "Profesjonalne wyniki w kilka minut, nie godzin.",
+    "improveTitle": "Ciągła poprawa",
+    "improveText": "Każda analiza uczy Cię, co działa — zwiększając skuteczność kolejnych aplikacji.",
+    "dataTitle": "Oparte na danych",
+    "dataText": "Nie porady z forów — realne wyniki z rynku pracy."
+  },
+  "cta": {
+    "heading": "Gotowy, by zacząć?",
+    "text": "Przestań wysyłać ogólne CV. Zacznij zdobywać rozmowy z profesjonalnymi aplikacjami.",
+    "button": "Prześlij swoje CV"
+  }
+}

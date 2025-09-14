@@ -1,0 +1,22 @@
+{
+  "generatingDocsTitle": "Generowanie dokumentów",
+  "generatingDocsMsg": "Przygotowywanie dopasowanych dokumentów...",
+  "selectDocError": "Wybierz co najmniej jeden typ dokumentu.",
+  "regeneratingCvTitle": "Regenerowanie CV",
+  "regeneratingCoverTitle": "Regenerowanie listu motywacyjnego",
+  "regenMsg": "Żądanie nowej wersji...",
+  "addingNewVersion": "Dodawanie nowej wersji...",
+  "startFresh": "Zacznij od nowa",
+  "analysis": "Analiza",
+  "cv": "CV",
+  "cover": "List motywacyjny",
+  "tabNotAvailable": "Niedostępne",
+  "noAnalysis": "Brak dostępnej analizy",
+  "writeNow": "Napisz teraz!",
+  "versionOf": "Wersja {{current}} z {{total}}",
+  "regenerate": "Wygeneruj ponownie",
+  "prevVersion": "Poprzednia wersja",
+  "nextVersion": "Następna wersja",
+  "noAvailableAlert": "Brak {{label}}",
+  "regenFailed": "Nie udało się wygenerować ponownie"
+}
