@@ -107,7 +107,6 @@ export async function generateCV({ cv, analysis, tone }) {
     usage: data.usage
   };
 }
-
 export async function generateCoverLetter({ cv, analysis, tone }) {
   const messages = buildCoverPrompt(cv, analysis, tone);
 
@@ -135,20 +134,32 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
 
   const rawContent = data.choices?.[0]?.message?.content || '';
 
-  // This regex is used to find and remove any line that looks like a date.
-  const dateFilterRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/i;
+  // Regex to detect lines that are *just* a date (e.g. "August 12, 2023" or "12/08/2023")
+  const leadingDateRegex = /^\s*(January|February|March|April|May|June|July|August|September|October|November|December|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},\s*\d{4})\s*$/i;
 
-  // Clean up any stray placeholders and hallucinated dates from the AI.
-  let processedContent = rawContent
-    .split('\n')
-    .filter(line => !line.trim().includes('[Company Address]'))
-    .filter(line => !line.trim().includes('[Date]'))
-    .filter(line => !dateFilterRegex.test(line.trim())) // Aggressively remove any line that contains a date
-    .join('\n');
+  // Split into lines and remove only leading date lines (not any line anywhere)
+  let lines = rawContent.split('\n');
 
-  // Add just the date value to the very top.
+  // drop starting empty lines
+  while (lines.length && lines[0].trim() === '') lines.shift();
+
+  // remove only consecutive leading lines that are pure dates
+  while (lines.length && leadingDateRegex.test(lines[0].trim())) lines.shift();
+
+  // remove placeholders anywhere
+  lines = lines.filter(line => !line.includes('[Company Address]') && !line.includes('[Date]'));
+
+  // Rejoin
+  let processedContent = lines.join('\n').trim();
+
+  // If cleaning removed everything, fall back to rawContent (trimmed)
+  if (!processedContent) {
+    processedContent = rawContent.trim();
+  }
+
+  // Ensure we always prepend today's real date (de-DE format like before)
   const todayString = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  processedContent = `${todayString}\n\n${processedContent.trim()}`;
+  processedContent = `${todayString}\n\n${processedContent}`;
 
   return {
     content: processedContent.trim(),

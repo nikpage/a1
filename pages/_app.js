@@ -3,7 +3,6 @@ import '../styles/cv-cover.css';
 import '../styles/modalStyles.css';
 import Script from 'next/script';
 import '../i18n';
-import '../styles/modalStyles.css'
 
 export default function MyApp({ Component, pageProps }) {
   return (
