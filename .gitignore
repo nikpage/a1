@@ -4,6 +4,9 @@ node_modules/
 # Next.js build output
 .next/
 
+# OpenNext / Cloudflare build output
+.open-next/
+
 # Production build output
 out/
 
