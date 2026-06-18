@@ -1,19 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    appDir: false,
-  },
   env: {
-    NEXT_PUBLIC_BASE_URL: process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000',
+    NEXT_PUBLIC_BASE_URL: process.env.URL || 'http://localhost:3000',
   },
-  turbopack: {},
-  serverExternalPackages: ['uncrypto', '@upstash/redis', 'pdf-parse', 'mammoth', 'docx', 'ioredis'],
-
   i18n: {
-    locales: ['en', 'cs'],   // ✅ correct ISO code
+    locales: ['en', 'cs'],
     defaultLocale: 'en',
   },
 }

@@ -51,6 +51,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.12",
     "@opennextjs/cloudflare": "^1.19.11",
     "@types/formidable": "^3.4.5",
     "@types/uuid": "^10.0.0",
