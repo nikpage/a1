@@ -1,12 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "the-cv-pro",
-  "pages_build_output_dir": ".open-next",
   "compatibility_date": "2026-05-01",
   "compatibility_flags": [
     "nodejs_compat"
-  ],
-  "build": {
-    "command": "npm run build:cf"
-  }
+  ]
 }
