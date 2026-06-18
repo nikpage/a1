@@ -1,7 +1,7 @@
 // pages/api/generate-cv-cover.js
 
 import { getCvData, getCV, saveGeneratedDoc } from '../../utils/database';
-import { getUserById, decrementGenerations, resetGenerations } from '../../utils/generation-utils';
+import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
@@ -89,11 +89,6 @@ export default async function handler(req, res) {
         file_name: 'Generated_Cover_Letter.txt',
         content: cover
       });
-    }
-
-    const updatedUser = await getUserById(user_id);
-    if (updatedUser.generations_left === 0) {
-      await resetGenerations(user_id);
     }
 
     const logTx = async (docType, usage = {}) => {

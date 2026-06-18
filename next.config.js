@@ -9,15 +9,8 @@ const nextConfig = {
       ? `https://${process.env.VERCEL_URL}`
       : 'http://localhost:3000',
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push({
-        ws: 'commonjs ws',
-        websocket: 'commonjs websocket',
-      })
-    }
-    return config
-  },
+  turbopack: {},
+  serverExternalPackages: ['uncrypto', '@upstash/redis'],
 
   i18n: {
     locales: ['en', 'cs'],   // ✅ correct ISO code
