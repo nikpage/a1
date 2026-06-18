@@ -34,3 +34,5 @@ coverage/
 # Optional: next.js cache
 .next/cache/
 .vercel
+.dev.vars
+REBUILD.md
