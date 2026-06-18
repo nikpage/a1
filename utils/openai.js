@@ -1,5 +1,6 @@
 // utils/openai.js
 
+import axios from 'axios'
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
@@ -7,64 +8,93 @@ import { buildCoverPrompt } from '../prompts/cover-letter.js';
 
 const keyManager = new KeyManager();
 
-async function deepseekPost(messages) {
-  const res = await fetch(process.env.DEEPSEEK_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${keyManager.getNextKey()}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ model: 'deepseek-chat', messages }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`DeepSeek ${res.status}: ${text}`);
-  }
-  return res.json();
-}
-
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
+  // DO NOT REMOVE THIS LINE OR MOVE IT
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
+
   const messages = buildAnalysisPrompt(cvText, jobText, hasJobText);
 
-  const data = await deepseekPost(messages);
-
-  console.log('DeepSeek token usage:')
-  if (data.usage.prompt_cache_hit_tokens !== undefined)
-    console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
-  if (data.usage.prompt_cache_miss_tokens !== undefined)
-    console.log('  cache miss tokens:', data.usage.prompt_cache_miss_tokens)
-  if (data.usage.completion_tokens !== undefined)
-    console.log('  completion tokens:', data.usage.completion_tokens)
-  console.log('  total tokens:', data.usage.total_tokens)
-
-  const fullPromptString = JSON.stringify(messages, null, 2);
-  console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
-  const rawOutputString = data.choices?.[0]?.message?.content || '';
-  console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
-
-  let jsonOutput = rawOutputString;
-  if (jsonOutput.includes('```json')) {
-    jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '')
-  } else if (jsonOutput.includes('```')) {
-    jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '')
-  }
-  jsonOutput = jsonOutput.trim();
-
   try {
-    JSON.parse(jsonOutput);
-    return { choices: data.choices, output: jsonOutput, usage: data.usage };
-  } catch (jsonError) {
-    console.error('Invalid JSON returned from API:', jsonError);
-    console.error('Cleaned JSON output:', jsonOutput);
-    throw new Error('API returned invalid JSON');
+    const response = await axios.post(
+      process.env.DEEPSEEK_API_URL,
+      {
+        model: 'deepseek-chat',
+        messages: messages
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${keyManager.getNextKey()}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    const data = response.data
+
+    console.log('DeepSeek token usage:')
+    if (data.usage.prompt_cache_hit_tokens !== undefined)
+      console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
+    if (data.usage.prompt_cache_miss_tokens !== undefined)
+      console.log('  cache miss tokens:', data.usage.prompt_cache_miss_tokens)
+    if (data.usage.completion_tokens !== undefined)
+      console.log('  completion tokens:', data.usage.completion_tokens)
+    console.log('  total tokens:', data.usage.total_tokens)
+
+    const fullPromptString = JSON.stringify(messages, null, 2);
+    console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
+    const rawOutputString = data.choices?.[0]?.message?.content || '';
+    console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
+
+    // Extract JSON from potential markdown code blocks
+    let jsonOutput = data.choices?.[0]?.message?.content || ''
+
+    // Remove markdown code blocks if present
+    if (jsonOutput.includes('```json')) {
+      jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '')
+    } else if (jsonOutput.includes('```')) {
+      jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '')
+    }
+
+    // Trim whitespace
+    jsonOutput = jsonOutput.trim()
+
+    // Validate JSON before returning
+    try {
+      JSON.parse(jsonOutput)
+      return {
+        choices: data.choices,
+        output: jsonOutput,
+        usage: data.usage
+      }
+    } catch (jsonError) {
+      console.error('Invalid JSON returned from API:', jsonError)
+      console.error('Cleaned JSON output:', jsonOutput)
+      throw new Error('API returned invalid JSON')
+    }
+  } catch (error) {
+    console.error('DeepSeek API Error:', error.response?.data || error.message)
+    throw error
   }
 }
 
 export async function generateCV({ cv, analysis, tone }) {
   const messages = buildCvPrompt(cv, analysis, tone);
-  const data = await deepseekPost(messages);
 
+  const response = await axios.post(
+    process.env.DEEPSEEK_API_URL,
+    {
+      model: 'deepseek-chat',
+      messages: messages
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${keyManager.getNextKey()}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const data = response.data;
   console.log('DeepSeek token usage (Generate CV):')
   if (data.usage.prompt_cache_hit_tokens !== undefined)
     console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
@@ -72,13 +102,29 @@ export async function generateCV({ cv, analysis, tone }) {
     console.log('  completion tokens:', data.usage.completion_tokens)
   console.log('  total tokens:', data.usage.total_tokens)
 
-  return { content: data.choices?.[0]?.message?.content || '', usage: data.usage };
+  return {
+    content: data.choices?.[0]?.message?.content || '',
+    usage: data.usage
+  };
 }
-
 export async function generateCoverLetter({ cv, analysis, tone }) {
   const messages = buildCoverPrompt(cv, analysis, tone);
-  const data = await deepseekPost(messages);
 
+  const response = await axios.post(
+    process.env.DEEPSEEK_API_URL,
+    {
+      model: 'deepseek-chat',
+      messages: messages
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${keyManager.getNextKey()}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const data = response.data;
   console.log('DeepSeek token usage (Generate Cover Letter):')
   if (data.usage.prompt_cache_hit_tokens !== undefined)
     console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
@@ -88,18 +134,35 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
 
   const rawContent = data.choices?.[0]?.message?.content || '';
 
+  // Regex to detect lines that are *just* a date (e.g. "August 12, 2023" or "12/08/2023")
   const leadingDateRegex = /^\s*(January|February|March|April|May|June|July|August|September|October|November|December|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},\s*\d{4})\s*$/i;
 
+  // Split into lines and remove only leading date lines (not any line anywhere)
   let lines = rawContent.split('\n');
+
+  // drop starting empty lines
   while (lines.length && lines[0].trim() === '') lines.shift();
+
+  // remove only consecutive leading lines that are pure dates
   while (lines.length && leadingDateRegex.test(lines[0].trim())) lines.shift();
+
+  // remove placeholders anywhere
   lines = lines.filter(line => !line.includes('[Company Address]') && !line.includes('[Date]'));
 
+  // Rejoin
   let processedContent = lines.join('\n').trim();
-  if (!processedContent) processedContent = rawContent.trim();
 
+  // If cleaning removed everything, fall back to rawContent (trimmed)
+  if (!processedContent) {
+    processedContent = rawContent.trim();
+  }
+
+  // Ensure we always prepend today's real date (de-DE format like before)
   const todayString = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   processedContent = `${todayString}\n\n${processedContent}`;
 
-  return { content: processedContent.trim(), usage: data.usage };
+  return {
+    content: processedContent.trim(),
+    usage: data.usage
+  };
 }
