@@ -70,13 +70,15 @@ export default async function handler(req, res) {
     effectiveUserId = created.user_id;
   } // 🔴 properly closed else block here
 
-  // Rate limit
-  const identifier = effectiveUserId || req.ip;
-  const { success } = await ratelimit.limit(identifier);
-  if (!success) {
-    return res
-      .status(429)
-      .json({ error: "Too many requests. Try again in a minute." });
+  // Rate limit (fail-open if Redis is unreachable)
+  try {
+    const identifier = effectiveUserId || req.ip;
+    const { success } = await ratelimit.limit(identifier);
+    if (!success) {
+      return res.status(429).json({ error: "Too many requests. Try again in a minute." });
+    }
+  } catch {
+    // Redis unavailable — allow the request through
   }
 
   try {
@@ -103,7 +105,15 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Token insert failed." });
     }
 
-    // Always trigger email send
+    // In dev, skip email and return link directly so the flow is testable
+    if (process.env.NODE_ENV !== "production") {
+      return res.status(200).json({
+        success: true,
+        message: "Dev mode: use the link below to log in (no email sent).",
+        devLink: magicLink,
+      });
+    }
+
     const { error: mailError } = await resend.emails.send({
       from: "noreply@thecv.pro",
       to: emailNorm,

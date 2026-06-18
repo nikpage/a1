@@ -10,7 +10,7 @@ const nextConfig = {
       : 'http://localhost:3000',
   },
   turbopack: {},
-  serverExternalPackages: ['uncrypto', '@upstash/redis'],
+  serverExternalPackages: ['uncrypto', '@upstash/redis', 'pdf-parse', 'mammoth', 'docx', 'ioredis'],
 
   i18n: {
     locales: ['en', 'cs'],   // ✅ correct ISO code

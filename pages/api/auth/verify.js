@@ -1,7 +1,6 @@
 // pages/api/auth/verify.js
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-import redis from '../../../lib/redis';
+import { mintSessionToken } from '../../../lib/auth';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -11,7 +10,6 @@ export default async function handler(req, res) {
   }
 
   const { token } = req.query;
-  console.log('✅ Verify API hit:', token);
 
   if (!token) {
     return res.status(400).json({ error: 'missing-token' });
@@ -27,43 +25,23 @@ export default async function handler(req, res) {
       .single();
 
     if (error || !tokenData) {
-      console.log('❌ Invalid token or error:', error);
-      console.log('❌ REDIRECTING TO LOGIN-FAILED FROM TOKEN CHECK');
       res.redirect(302, '/?error=login-failed');
       return;
     }
 
-    console.log('✅ Token verified:', tokenData);
-    const sessionToken = crypto.randomBytes(32).toString('hex');
-    await redis.set(`session:${sessionToken}`, JSON.stringify({
-      email: tokenData.email,
-      user_id: tokenData.user_id
-    }), 'EX', 30 * 24 * 60 * 60);
+    await supabase.from('magic_tokens').delete().eq('token', token);
 
-    console.log('✅ Session token created:', sessionToken);
+    const sessionToken = mintSessionToken({ user_id: tokenData.user_id, email: tokenData.email });
+    const isProd = process.env.NODE_ENV === 'production';
+    res.setHeader('Set-Cookie', [
+      `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; ${
+        isProd ? 'SameSite=None; Secure' : 'SameSite=Lax'
+      }`
+    ]);
 
-    await supabase
-      .from('magic_tokens')
-      .delete()
-      .eq('token', token);
-
-      const isProd = process.env.NODE_ENV === "production";
-      res.setHeader("Set-Cookie", [
-        `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; ${
-          isProd ? "SameSite=None; Secure" : "SameSite=Lax"
-        }`
-      ]);
-
-
-
-    console.log('✅ Cookie set, redirecting');
     res.redirect(302, `/${tokenData.user_id}`);
-    return;
-
-  } catch (error) {
-    console.error('Verify error:', error);
-    console.log('❌ REDIRECTING TO LOGIN-FAILED FROM CATCH BLOCK');
+  } catch (err) {
+    console.error('Verify error:', err);
     res.redirect(302, '/?error=login-failed');
-    return;
   }
 }
