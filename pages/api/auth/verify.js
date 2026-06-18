@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     await redis.set(`session:${sessionToken}`, JSON.stringify({
       email: tokenData.email,
       user_id: tokenData.user_id
-    }), 'EX', 30 * 24 * 60 * 60);
+    }), { ex: 30 * 24 * 60 * 60 });
 
     console.log('✅ Session token created:', sessionToken);
 

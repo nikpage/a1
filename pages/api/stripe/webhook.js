@@ -1,10 +1,15 @@
 //  pages/api/stripe/webhook.js
 
 import Stripe from 'stripe';
-import { buffer } from 'micro';
 import { supabase } from '../../../utils/database';
 
 export const config = { api: { bodyParser: false } };
+
+async function buffer(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 

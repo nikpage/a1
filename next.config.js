@@ -4,7 +4,7 @@ const nextConfig = {
     unoptimized: true,
   },
   reactStrictMode: true,
-  serverExternalPackages: ['uncrypto', '@upstash/redis'],
+  serverExternalPackages: ['uncrypto', '@upstash/redis', 'pdf-parse', 'mammoth'],
 }
 
 module.exports = nextConfig

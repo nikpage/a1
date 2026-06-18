@@ -1,7 +1,6 @@
 // i18n.js
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
-import LanguageDetector from 'i18next-browser-languagedetector'
 
 import indexPageEn from './locales/en/indexPage.json'
 import pricingEn from './locales/en/pricing.json'
@@ -55,7 +54,6 @@ import toneDocModalPl from './locales/pl/toneDocModal.json'
 import headerPl from './locales/pl/header.json'
 
 i18n
-  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources: {
@@ -135,11 +133,7 @@ i18n
       'header',
     ],
     defaultNS: 'indexPage',
-    detection: {
-      order: ['navigator', 'htmlTag', 'cookie'],
-      caches: ['cookie'],
-    },
-    interpolation: { escapeValue: false },
+interpolation: { escapeValue: false },
     react: { useSuspense: false },
   })
 
