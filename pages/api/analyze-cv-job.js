@@ -156,6 +156,6 @@ export default async function handler(req, res) {
    if (e.response?.status === 402) {
      return res.status(503).json({ error: 'AI service temporarily unavailable. Please try again shortly.' });
    }
-   return res.status(500).json({ error: e.message });
+   return res.status(500).json({ error: e.message, detail: e.response?.data || null });
  }
 }
