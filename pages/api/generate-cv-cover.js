@@ -112,7 +112,7 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             user_id,
             source_gen_id: crypto.randomUUID(),
-            model: 'DS-v3',
+            model: 'gemini-3.5-flash',
             cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
             cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
             completion_tokens: usage.completion_tokens || 0,
