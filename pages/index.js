@@ -9,6 +9,12 @@ import AnalysisDisplay from '../components/AnalysisDisplay';
 import LoginModal from '../components/LoginModal';
 import { useTranslation } from 'react-i18next';
 
+function logGemini(u) {
+  if (!u) return;
+  if (Array.isArray(u)) { u.forEach(logGemini); return; }
+  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+}
+
 export default function IndexPage() {
   const { t } = useTranslation();  const router = useRouter();
   const [file, setFile] = useState(null);
@@ -59,6 +65,7 @@ export default function IndexPage() {
         jobText,
       });
       const analyzeData = analyzeRes.data;
+      if (analyzeData.gemini_usage) logGemini(analyzeData.gemini_usage);
       if (analyzeData.error) throw new Error(analyzeData.error || t('error.analysisFailed'));
 
       const payload = { analysis: analyzeData.analysis, user_id: uploadData.user_id };

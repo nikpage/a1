@@ -123,7 +123,7 @@ export default async function handler(req, res) {
    });
 
    // Send response immediately - don't wait for logging
-   res.status(200).json({ analysis: content, analysis_id });
+   res.status(200).json({ analysis: content, analysis_id, gemini_usage: result.gemini_usage });
 
    // Log transaction without waiting
    const usage = result?.usage || {};

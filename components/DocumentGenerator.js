@@ -1,4 +1,9 @@
 // path: components/DocumentGenerator.js
+function logGemini(u) {
+  if (!u) return;
+  if (Array.isArray(u)) { u.forEach(logGemini); return; }
+  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+}
 import { useState } from 'react';
 import ToneDocModal from './ToneDocModal';
 import TokenPurchasePanel from './TokenPurchasePanel';
@@ -39,6 +44,7 @@ export default function DocumentGenerator({ user_id, analysis }) {
       });
 
       const data = await res.json();
+      if (data.gemini_usage) logGemini(data.gemini_usage);
 
       if (!res.ok || data.error) {
         setError(data.error || 'Generation failed');

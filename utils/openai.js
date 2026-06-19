@@ -15,22 +15,15 @@ const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 const GEMINI_INPUT_COST_PER_M  = 0.10;   // USD per 1M input tokens
 const GEMINI_OUTPUT_COST_PER_M = 0.40;   // USD per 1M output tokens
 
-function logGeminiUsage(label, data) {
-  const usage       = data.usage || {};
-  const servedModel = data.model || GEMINI_MODEL;
+function geminiUsage(label, data) {
+  const usage        = data.usage || {};
+  const servedModel  = data.model || GEMINI_MODEL;
   const inputTokens  = usage.prompt_tokens     || 0;
   const outputTokens = usage.completion_tokens || 0;
   const totalTokens  = usage.total_tokens      || (inputTokens + outputTokens);
-  const costUsd = (inputTokens / 1_000_000) * GEMINI_INPUT_COST_PER_M
-                + (outputTokens / 1_000_000) * GEMINI_OUTPUT_COST_PER_M;
-
-  console.log(`[Gemini] ${label}`);
-  console.log(`  requested: ${GEMINI_MODEL}`);
-  if (servedModel !== GEMINI_MODEL) console.log(`  served by: ${servedModel}`);
-  console.log(`  input tokens:  ${inputTokens.toLocaleString()}`);
-  console.log(`  output tokens: ${outputTokens.toLocaleString()}`);
-  console.log(`  total tokens:  ${totalTokens.toLocaleString()}`);
-  console.log(`  est. cost:     $${costUsd.toFixed(6)}`);
+  const costUsd      = (inputTokens  / 1_000_000) * GEMINI_INPUT_COST_PER_M
+                     + (outputTokens / 1_000_000) * GEMINI_OUTPUT_COST_PER_M;
+  return { label, model: servedModel, inputTokens, outputTokens, totalTokens, costUsd };
 }
 
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
@@ -56,7 +49,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 
     const data = response.data
 
-    logGeminiUsage('analyze CV+job', data);
+    const gemini_usage = geminiUsage('analyze CV+job', data);
 
     const fullPromptString = JSON.stringify(messages, null, 2);
     console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
@@ -82,7 +75,8 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
       return {
         choices: data.choices,
         output: jsonOutput,
-        usage: data.usage
+        usage: data.usage,
+        gemini_usage
       }
     } catch (jsonError) {
       console.error('Invalid JSON returned from API:', jsonError)
@@ -113,11 +107,10 @@ export async function generateCV({ cv, analysis, tone }) {
   );
 
   const data = response.data;
-  logGeminiUsage('generate CV', data);
-
   return {
     content: data.choices?.[0]?.message?.content || '',
-    usage: data.usage
+    usage: data.usage,
+    gemini_usage: geminiUsage('generate CV', data)
   };
 }
 export async function generateCoverLetter({ cv, analysis, tone }) {
@@ -138,7 +131,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
   );
 
   const data = response.data;
-  logGeminiUsage('generate cover letter', data);
+  const gemini_usage = geminiUsage('generate cover letter', data);
 
   const rawContent = data.choices?.[0]?.message?.content || '';
 
@@ -171,6 +164,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
 
   return {
     content: processedContent.trim(),
-    usage: data.usage
+    usage: data.usage,
+    gemini_usage
   };
 }

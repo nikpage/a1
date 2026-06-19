@@ -122,9 +122,14 @@ export default async function handler(req, res) {
     if (type === 'cv' || type === 'both') await logTx('cv', cvRes?.usage || {});
     if (type === 'cover' || type === 'both') await logTx('cover', coverRes?.usage || {});
 
+    const gemini_usage = [
+      ...(cvRes?.gemini_usage ? [cvRes.gemini_usage] : []),
+      ...(coverRes?.gemini_usage ? [coverRes.gemini_usage] : []),
+    ];
     return res.status(200).json({
       ...(cv && { cv }),
-      ...(cover && { cover })
+      ...(cover && { cover }),
+      gemini_usage
     });
   } catch (err) {
     console.error('Generation error:', err);

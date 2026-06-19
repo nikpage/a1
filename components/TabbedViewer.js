@@ -1,4 +1,9 @@
 // components/TabbedViewer.js
+function logGemini(u) {
+  if (!u) return;
+  if (Array.isArray(u)) { u.forEach(logGemini); return; }
+  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+}
 import { supabase } from '../utils/database';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
@@ -104,6 +109,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         })
         .then(async (res) => {
           const data = await res.json();
+          if (data.gemini_usage) logGemini(data.gemini_usage);
           if (!res.ok) {
             if (data.error === "NO_GENERATIONS_LEFT") {
               setPanelMode("generations");
@@ -162,6 +168,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         body: JSON.stringify({ user_id, analysis: analysisTextState, tone, type: docType }),
       });
       const data = await res.json();
+      if (data.gemini_usage) logGemini(data.gemini_usage);
       if (!res.ok) {
         if (data.error === "NO_GENERATIONS_LEFT") {
           setPanelMode("generations");

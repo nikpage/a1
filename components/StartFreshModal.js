@@ -6,6 +6,12 @@ import StartFreshUploadModal from './StartFreshUploadModal'
 import StartFreshHeader from './StartFreshHeader'
 import { useTranslation } from 'react-i18next'
 
+function logGemini(u) {
+  if (!u) return;
+  if (Array.isArray(u)) { u.forEach(logGemini); return; }
+  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+}
+
 export default function StartFreshModal({
   user_id,
   onSubmit,
@@ -72,6 +78,7 @@ export default function StartFreshModal({
         throw new Error(errorData.error || `HTTP error! status: ${res.status}`)
       }
       const data = await res.json()
+      if (data.gemini_usage) logGemini(data.gemini_usage);
       window.dispatchEvent(new CustomEvent('new-analysis', {
         detail: { analysis: data.analysis, startFresh: true }
       }))
