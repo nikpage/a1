@@ -73,7 +73,7 @@ JSON OUTPUT SCHEMA:
         "condense_jobs": [], // job titles+company to summarise in 1-2 lines
         "rewrite_jobs": [] // job titles+company to reframe/reposition entirely
       },
-      "summary_rewrite": "", // WRITE THE ACTUAL SUMMARY HERE — 3-4 sentences, ready to paste, positioning the candidate for the target role using career_arc and scenario_tags
+      "summary_rewrite": "", // WRITE THE ACTUAL SUMMARY HERE — max 3 sentences, impact-first, no "Seeking to" / "Looking to" openers, no repeated phrases. Ready to paste verbatim.
       "skills_to_highlight": [] // 8-12 specific skills drawn from transferable_skills and ats_keywords, ordered by relevance
     }
   },

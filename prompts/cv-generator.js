@@ -83,7 +83,7 @@ Output in Markdown format with this exact structure:
 ## LEFT-ALIGNED SECTIONS (follow blueprint.section_order):
 
 ### **Professional Summary**
-[Use blueprint.summary_rewrite as base, enhanced with career_arc insights]
+[Copy generation_framework.cv_blueprint.summary_rewrite verbatim — do not expand, shorten, or paraphrase it]
 
 ---
 
