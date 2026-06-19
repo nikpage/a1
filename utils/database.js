@@ -28,7 +28,7 @@ export async function upsertCV(user_id, cv_data) {
   const { data, error } = await supabase
     .from('cv_data')
     .upsert([{ user_id, cv_data }], { onConflict: ['user_id'] });
-  if (error) throw error;
+  if (error) throw new Error(`UpsertCV failed: ${error.message || JSON.stringify(error)}`);
   return data;
 }
 
