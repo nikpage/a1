@@ -1,21 +1,19 @@
-const ALLOWED_PRODUCTION_ORIGINS = [
+const ALLOWED_ORIGINS = [
   'https://thecv.pro',
   'https://www.thecv.pro',
+  'https://cv-pro.netlify.app',
 ];
 
 export function isValidOrigin(origin) {
-  if (process.env.NEXT_PUBLIC_VERCEL_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production') {
     return true;
   }
-  return origin && ALLOWED_PRODUCTION_ORIGINS.includes(origin);
+  return origin && ALLOWED_ORIGINS.includes(origin);
 }
 
 export function getBaseUrl() {
-  if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') {
-    return 'https://www.thecv.pro';
-  }
-  if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-    return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
   }
   return 'http://localhost:3000';
 }
