@@ -14,7 +14,7 @@ function logBlueprint(analysisJson) {
       console.log('target_length_pages:', blueprint.target_length_pages);
       console.log('section_order:', blueprint.section_order);
       console.log('job_selection:', blueprint.job_selection);
-      console.log('summary_rewrite:', blueprint.summary_rewrite);
+      console.log('summary_draft:', blueprint.summary_draft);
       console.log('skills_to_highlight:', blueprint.skills_to_highlight);
       console.groupEnd();
     } else {
