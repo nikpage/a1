@@ -1,46 +1,40 @@
 // prompts/cover-letter.js
 
-function toneInstructions(tone) {
-  switch ((tone || '').toLowerCase()) {
-    case 'formal':
-      return "Use a professional, reserved style. Avoid slang. Clear and businesslike.";
-    case 'friendly':
-      return "Warm, approachable, positive. Slightly informal but still professional.";
-    case 'confident':
-      return "Assertive, self-promoting, positive, but not arrogant. Highlight strengths clearly.";
-    case 'cocky':
-      return "Borderline arrogant, punchy, use colloquialisms if relevant: 'shit-hot', 'kick-ass', 'rock star', 'BOOM!'. Walk the line between boldness and professionalism.";
-    default:
-      return "Professional default style.";
-  }
-}
+import { toneInstructions } from './tone.js';
 
 export function buildCoverPrompt(cv, analysis, tone) {
   const systemMessage = {
     role: 'system',
-    content: 'You are an expert in writing professional cover letters for CEE tech roles who follows formatting rules precisely.'
+    content: 'You are an expert cover-letter writer for CEE tech roles. You write tight, specific, persuasive letters — every sentence earns its place — and you follow formatting rules precisely.'
   };
 
   const userMessage = {
     role: 'user',
     content: `
     # Task
-    Write a cover letter in the "${tone}" tone, using only real facts from the CV and analysis. Do NOT invent information. Output must match the CV's detected language (fallback to English if unclear). If the job ad is in another language, CV language takes precedence.
+    Write a cover letter in the "${tone}" tone, using only real facts from the CV and analysis. Do NOT invent information. Output must match the CV's detected language (fall back to English if unclear). If the job ad is in another language, the CV language takes precedence.
+
+    # What makes it land
+    - Open with a specific hook tied to this candidate and this role — never a generic "I am writing to apply for...".
+    - Build a short narrative: why this candidate, why this role, what they bring. Use concrete proof from the CV (real achievements, numbers, scope), not adjectives.
+    - The cover letter is the right place to address concerns: where relevant, briefly and confidently turn the items in \`analysis.red_flags\` into a strength or a non-issue. Do this with a light touch — explain, don't apologise.
+    - Work through the guidance in \`analysis.action_items["Cover Letter"]\` (Points to Address, Narrative Flow, Tone and Style).
 
     # Rules
-    - Start with only the date at the top. Do NOT add applicant's name or contact details.
-    - Salutation must be "Dear [First Name] [Last Name]" or "Dear Hiring Manager" if no name is available. Do not use titles like Mr., Ms.
-    - Address all action items from analysis.action_items.cover_letter (critical, advised, optional).
-    - End with a signature block in this format, using CV data:
+    - Start with only the date at the top. Do NOT add the applicant's name or contact details above the salutation.
+    - Salutation: "Dear [First Name] [Last Name]" if a name is available, otherwise "Dear Hiring Manager". No titles like Mr./Ms.
+    - No generic filler, invented claims, or placeholders like [Company Address].
+    - Adhere to target-country norms (CZ, PL, UE, HU, RO) from the analysis. Do not print country-specific suggestion comments in the output.
+    - End with a signature block in this exact format, using CV data:
     Sincerely,
 
     **[Applicant's Full Name]**
     [Applicant's Telephone]
     [Applicant's Email]
     [Applicant's LinkedIn URL]
-    - No generic filler, invented claims, or placeholders like [Company Address].
-    - Adhere to target country norms (CZ, PL, UE, HU, RO) from analysis. Do not include country-specific suggestion comments in output.
-    - Write in "${tone}" tone: (${toneInstructions(tone)}).
+
+    # Tone — "${tone}"
+    ${toneInstructions(tone)}
 
     # Inputs
     ## CV:

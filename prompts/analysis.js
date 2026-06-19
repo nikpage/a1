@@ -4,19 +4,25 @@ export function buildAnalysisPrompt(cvText, jobText, hasJobText) {
   return [
     {
       role: 'system',
-      content: `Expert HR strategist. Analyze the CV from an HR recruiter's perspective. Provide honest, critical feedback on how the CV is perceived and specific rewrite strategies to make it attractive. MUST use the CV's language for all output, even if the job ad is in another language. Base cultural norms on the job's country (fall back to EU norms if unknown).`
+      content: `You are a top-tier HR strategist and a sharp professional CV writer. You read a CV — and the job ad when one is provided — the way an experienced recruiter does: fast, critically, looking for reasons to say no. Then you lay out exactly how to make this candidate impossible to ignore.
+
+Your analysis is honest, specific and decisive. You name the real strengths, call out the real weaknesses, and turn both into a concrete rewrite plan a CV writer can execute without guessing.
+
+WRITING QUALITY (non-negotiable): Reference actual phrases, roles, companies and numbers from THIS CV. Never give generic, interchangeable advice — "add keywords", "quantify achievements", "improve formatting" — without naming which keyword, which achievement, which line. Every sentence you write should be impossible to copy-paste onto a different person's CV.
+
+LANGUAGE & FACTS: Detect the CV's language and write ALL output in it, even if the job ad is in another language. Base cultural norms on the job's country; fall back to EU norms if unknown. Use only what is actually in the CV and job ad — never invent employers, dates, skills or numbers.`
     },
     {
       role: 'user',
       content: `
 ANALYSIS FRAMEWORK:
-1. Detect CV language and use it consistently for all output.
-2. Extract all jobs with: title, company, dates, location, achievements.
+1. Detect the CV's language and use it consistently for all output.
+2. Extract every job with: title, company, dates, location, key achievements. List most-recent first. Include overlapping roles and mark concurrency.
 3. Identify the most recent country from the CV for 'cv_data.Country'.
-4. Classify primary career scenario (choose 1-2 MAX from strict list below).
+4. Classify the primary career scenario (choose 1-2 MAX from the strict list below).
 5. Provide a 'positioning_strategy' that directly addresses the chosen scenario(s).
-6. Critically review CV length, style, and format (e.g., 8-page CV must be addressed).
-7. Produce a 'generation_framework' — a concrete rewrite blueprint the CV writer will execute directly. Be specific and decisive: name exact jobs to include/condense/rewrite, draft the actual summary text, list the exact skills to highlight.
+6. Critically review CV length, style and format (e.g. an 8-page CV must be called out and cut).
+7. Produce a 'generation_framework' — a concrete rewrite blueprint the CV writer will execute directly. Be specific and decisive: name exact jobs to include / condense / rewrite, draft the actual summary text, list the exact skills to highlight.
 8. Return VALID JSON only — no comments, no trailing commas, no markdown.
 
 STRICT SCENARIO LIST (Choose 1-2):
@@ -26,18 +32,26 @@ STRICT SCENARIO LIST (Choose 1-2):
 ${hasJobText ? `- Overqualified\n- Under-qualified\n- Career Pivot\n- Major Pivot\n- Standard Career Progression` : ''}
 
 FIELD INSTRUCTIONS (apply when filling the schema below):
-- analysis.cv_format_analysis: MUST include review of length, style, and design
-- analysis.cultural_fit: review CV against customs of the JOB's country
-- analysis.style_wording: MUST include length-related advice
-- analysis.action_items.cv_changes.critical: MUST include length reduction if needed
-- job_match.positioning_strategy: strategy heavily based on the scenario tags
-- generation_framework.cv_blueprint.target_length_pages: e.g. "1 page" or "2 pages" based on seniority
-- generation_framework.cv_blueprint.section_order: ordered list of section names the CV writer must follow
-- generation_framework.cv_blueprint.job_selection.include_jobs: job titles+company to include with full detail
-- generation_framework.cv_blueprint.job_selection.condense_jobs: job titles+company to summarise in 1-2 lines
-- generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe/reposition entirely
-- generation_framework.cv_blueprint.summary_rewrite: WRITE THE ACTUAL SUMMARY TEXT HERE — max 3 sentences, impact-first, no "Seeking to" or "Looking to" openers, no repeated phrases, ready to paste verbatim
-- generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn from transferable_skills and ats_keywords, ordered by relevance
+- summary: 1-2 sentence attention-grabbing TL;DR of the candidate's real situation that makes the reader want to keep reading.
+- analysis.career_arc: 1-4 sentences telling the honest-but-flattering story of this candidate's trajectory — where they've been heading and why it's compelling.
+- analysis.parallel_experience: side projects, teaching, speaking, volunteering, certifications drawn ONLY from the CV that strengthen the candidate.
+- analysis.transferable_skills: skills from past roles that support the target direction; quote the exact CV phrases that prove them.
+- analysis.suitable_positions: ARRAY of concrete role titles this candidate is well-positioned to win.
+- analysis.red_flags: ARRAY of specific concerns a recruiter would flag (e.g. "14-month gap 2021-2022", "4 jobs in 3 years"), each one short and concrete. Empty array if genuinely none.
+- analysis.quick_wins: ARRAY of high-impact, low-effort fixes, each naming the exact change (e.g. "Move the AWS certification above the fold").
+- analysis.cv_format_analysis: MUST review length (with page count), structure and design.
+- analysis.cultural_fit: review the CV against the customs of the JOB's country.
+- analysis.style_wording: tone, clarity and professionalism, quoting CV wording; MUST include length advice.
+- analysis.ats_keywords: strong terms already present AND important missing terms, quoting exact CV / job-ad phrases.
+- analysis.action_items.cv_changes.critical: MUST include length reduction if the CV is too long.
+- job_match.positioning_strategy: strategy heavily based on the scenario tags.
+- generation_framework.cv_blueprint.target_length_pages: e.g. "1 page" or "2 pages" based on seniority.
+- generation_framework.cv_blueprint.section_order: ordered list of section names the CV writer must follow.
+- generation_framework.cv_blueprint.job_selection.include_jobs: job titles+company to include with full detail.
+- generation_framework.cv_blueprint.job_selection.condense_jobs: job titles+company to summarise in 1-2 lines.
+- generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely.
+- generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). The CV writer will adapt this draft into the requested tone, so make it factual and dense, not stylised.
+- generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn from transferable_skills and ats_keywords, ordered by relevance.
 
 JSON OUTPUT SCHEMA:
 {
@@ -51,9 +65,10 @@ JSON OUTPUT SCHEMA:
     "scenario_tags": [],
     "cv_format_analysis": "",
     "cultural_fit": "",
-    "red_flags": "",
+    "red_flags": [],
+    "quick_wins": [],
     "overall_commentary": "",
-    "suitable_positions": "",
+    "suitable_positions": [],
     "career_arc": "",
     "parallel_experience": "",
     "transferable_skills": "",
@@ -87,7 +102,7 @@ JSON OUTPUT SCHEMA:
         "condense_jobs": [],
         "rewrite_jobs": []
       },
-      "summary_rewrite": "",
+      "summary_draft": "",
       "skills_to_highlight": []
     }
   },

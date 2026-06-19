@@ -9,13 +9,16 @@ import { buildCoverPrompt } from '../prompts/cover-letter.js';
 const keyManager = new KeyManager();
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash-lite';
+// Analysis is the strategic brain that drives every downstream document — it runs on
+// the strongest model. Generation executes the blueprint and stays on flash for speed.
+const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-pro';
 const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash';
 
-// Pricing — verify at ai.google.dev/gemini-api/docs/pricing
+// Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
 const PRICING = {
   'gemini-2.5-flash-lite': { input: 0.10,  output: 0.40  },
   'gemini-2.5-flash':      { input: 0.30,  output: 2.50  },
+  'gemini-2.5-pro':        { input: 1.25,  output: 10.00 },
 };
 
 function geminiUsage(label, data, modelHint) {

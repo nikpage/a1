@@ -1,73 +1,54 @@
 // prompts/cv-generator.js
 
-function toneInstructions(tone) {
-  switch ((tone || '').toLowerCase()) {
-    case 'formal':
-      return "Use a professional, reserved style. Avoid slang. Clear and businesslike.";
-    case 'friendly':
-      return "Warm, approachable, positive. Slightly informal but still professional.";
-    case 'confident':
-      return "Assertive, self-promoting, positive, but not arrogant. Highlight strengths clearly.";
-    case 'cocky':
-      return "Borderline arrogant, punchy, use colloquialisms if relevant: 'shit-hot', 'kick-ass', 'rock star', 'BOOM!'. Walk the line between boldness and professionalism.";
-    default:
-      return "Professional default style.";
-  }
-}
+import { toneInstructions } from './tone.js';
 
 export function buildCvPrompt(cv, analysis, tone) {
   const systemMessage = {
     role: 'system',
-    content: 'You are an expert in writing professional CVs. Follow the generation framework blueprint exactly and never add commentary or notes.'
+    content: `You are an elite professional CV writer — the kind candidates pay hundreds for. You take a person's real experience and a strategist's blueprint and turn them into a CV that a senior recruiter cannot put down. You write with impact, precision and zero filler, and you output a finished CV only — never notes, never commentary.`
   };
 
   const userMessage = {
     role: 'user',
     content: `
-# MANDATORY STEPS - DO THESE FIRST - THE ANALYSIS IS YOUR COMMAND
+# How to work
+The provided analysis is your strategic brief — treat its generation_framework blueprint as the plan and execute it. Read these before writing:
+- Target length: generation_framework.cv_blueprint.target_length_pages
+- Section order: generation_framework.cv_blueprint.section_order
+- Job selection: generation_framework.cv_blueprint.job_selection (include_jobs / condense_jobs / rewrite_jobs)
+- Summary draft: generation_framework.cv_blueprint.summary_draft
+- Skills to highlight: generation_framework.cv_blueprint.skills_to_highlight
+- Scenario: analysis.scenario_tags (this drives which experience to emphasise)
 
-STEP 0 (Read Blueprint AND Analysis): The provided analysis is the strategic foundation for this rewrite. Extract and follow these blueprint specifications:
-  - Target length: generation_framework.cv_blueprint.target_length_pages
-  - Section order: generation_framework.cv_blueprint.section_order
-  - Job selection: generation_framework.cv_blueprint.job_selection (include_jobs, condense_jobs, rewrite_jobs)
-  - Summary rewrite: generation_framework.cv_blueprint.summary_rewrite
-  - Skills to highlight: generation_framework.cv_blueprint.skills_to_highlight
+# What makes this CV impressive
+- **Achievements, not duties.** Every bullet should show impact, not list responsibilities. Source bullets from the real roles in \`jobs_extracted\`, reframed as accomplishments. Lead with the result, then the action.
+- **Quantify with what's there.** Where the CV gives numbers, scope or scale (team size, budget, %, volume, timeframe), put them up front. NEVER invent a number or a fact that isn't in the source CV.
+- **Emphasis follows strategy.** Let \`analysis.scenario_tags\` and \`job_match.positioning_strategy\` decide what to foreground and what to play down. Use \`analysis.transferable_skills\` to choose which strengths to spotlight.
+- **Red flags are handled, not advertised.** For each item in \`analysis.red_flags\`, neutralise it through smart framing and selection (de-emphasise, reframe, or simply don't draw the eye to it). Do NOT call attention to gaps or weaknesses on the CV itself — that work belongs in the cover letter.
+- **Keywords, naturally.** Weave in the most relevant terms from \`analysis.ats_keywords\` and \`job_match.inferred_keywords\` where they fit the candidate's real experience. Cover the important ones, but never keyword-stuff or sacrifice readability — a human recruiter reads this too.
 
-STEP 1 (Apply Employment Intelligence - NON-NEGOTIABLE):
-  - **TONE & STRUCTURE:** Let the \`analysis.scenario_tags\` dictate the CV's entire narrative structure, tone, and which experiences to emphasize most.
-  - **SUMMARY:** The summary MUST be built by combining \`analysis.career_arc\` and the blueprint's \`summary_rewrite\`. Weave in \`analysis.parallel_experience\` and \`analysis.transferable_skills\` here.
-  - **RED FLAGS:** You MUST explicitly address and mitigate EVERY single item listed in \`analysis.red_flags\` within the relevant job descriptions or summary. This is critical.
-  - **CONTENT SOURCE:** The primary content for achievement bullets MUST come from \`analysis.transferable_skills\` and the original \`jobs_extracted\`. Use the exact phrasing from \`analysis.transferable_skills\` where possible.
-  - **KEYWORDS:** Naturally integrate every relevant keyword from \`analysis.ats_keywords\` and \`job_match.inferred_keywords\` into the bullet points. Do not just list them.
+# The summary
+Write the Professional Summary by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register to match the tone. 2-4 sentences, impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
 
-STEP 2 (Strategic Positioning):
-  - Weave in analysis.ats_keywords naturally throughout
-  - Emphasize analysis.transferable_skills using exact quoted phrases
-  - Apply job_match.positioning_strategy to job descriptions
-  - Use analysis.suitable_positions context for role framing
+# Job history rules
+- Use \`jobs_extracted\` as the definitive source for all employment; follow the blueprint's job_selection exactly.
+- Show overlapping roles with concurrency clear; show ongoing roles as "[start_date] - Present".
+- Never fabricate dates or create artificial gaps.
 
-STEP 3 (Job History Management):
-  - Use jobs_extracted as definitive source for all employment
-  - Follow blueprint job_selection rules exactly
-  - For overlapping jobs: include all and indicate concurrency clearly
-  - For ongoing jobs: show as "[start_date] - Present"
-  - Never create artificial gaps between roles
+# Task & constraints
+Generate a new CV in the "${tone}" tone, based ONLY on the provided CV and analysis. Do NOT invent facts, roles, skills or numbers. Output must match the CV's detected language (fall back to English if unclear); if the job ad is in another language, the CV language wins.
 
-# Task
-Generate a new CV in the "${tone}" tone, based ONLY on the provided CV and analysis. Do NOT invent facts, roles, or skills. All claims must be fact-based. Output must match the CV's detected language (fallback to English if unclear). If the job ad is in another language, CV language takes precedence.
+Tone — "${tone}": ${toneInstructions(tone)}
 
-# Rules
-- Follow generation_framework.cv_blueprint specifications exactly
-- Write in "${tone}" tone: ${toneInstructions(tone)}
-- Output ONLY the candidate's CV—no notes, explanations, or commentary
-- Never include phrases like "Full career history available upon request"
-- **Replace every [placeholder] shown in the template below with real content — the final CV must contain no unfilled [brackets].**
-- For LinkedIn URLs, display them without the "www." prefix (e.g., show "linkedin.com/in/username").
-- Standardize all locations to a "City, Country" format (e.g., "Prague, Czech Republic"). Use the CV's primary language for all location names.
-- Format ALL lists (job achievements, responsibilities) as bullet points, each item on a new line prefixed with a dash (-).
+- Output ONLY the candidate's CV — no notes, explanations or commentary.
+- Never write "Full career history available upon request" or similar filler.
+- Replace every [placeholder] in the template below with real content — the final CV must contain no unfilled [brackets].
+- Show LinkedIn URLs without the "www." prefix (e.g. "linkedin.com/in/username").
+- Standardise locations to "City, Country" (e.g. "Prague, Czech Republic"), in the CV's primary language.
+- Format every list as bullet points, one item per line, prefixed with a dash (-).
 
 # Formatting Requirements
-Output in Markdown format with this exact structure:
+Output in Markdown with this exact structure:
 
 ## CENTERED INTRO SECTION (use HTML center tags):
 <center>
@@ -83,7 +64,7 @@ Output in Markdown format with this exact structure:
 ## LEFT-ALIGNED SECTIONS (follow blueprint.section_order):
 
 ### **Professional Summary**
-[Copy generation_framework.cv_blueprint.summary_rewrite verbatim — do not expand, shorten, or paraphrase it]
+[The summary you wrote — adapted from summary_draft into the "${tone}" tone, 2-4 sentences, impact-first]
 
 ---
 
@@ -116,8 +97,8 @@ Output in Markdown format with this exact structure:
 <!-- BLOCK:START -->
 #### **[Job Title]**
 **[Company Name]** | [Start Date] - [End Date or Present] | [City, Country]
-- [Achievement/responsibility - weave in ats_keywords and transferable_skills]
-- [Achievement/responsibility - address red_flags if relevant to this role]
+- [Achievement, result-first — weave in relevant keywords and the strengths from transferable_skills]
+- [Achievement, result-first — quantify with real numbers from the source CV where available]
 <!-- BLOCK:END -->
 
 ---
@@ -148,15 +129,15 @@ ${cv}
 ## Analysis:
 ${JSON.stringify(analysis, null, 2)}
 
-# Output & Validation
-Before finalizing, validate your output against this checklist:
-✅ The CV directly addresses the career scenario from \`analysis.scenario_tags\`.
-✅ ALL \`analysis.red_flags\` have been mitigated in the relevant sections.
-✅ The \`analysis.transferable_skills\` are prominently featured and woven into bullet points.
-✅ The \`analysis.ats_keywords\` are naturally integrated throughout.
-✅ The summary reflects the \`analysis.career_arc\` and \`analysis.parallel_experience\`.
+# Before you finish — check:
+- Summary reads in the "${tone}" voice and reflects analysis.career_arc.
+- Bullets show impact and results, not duties; numbers from the CV are up front.
+- The scenario from analysis.scenario_tags is reflected in what's emphasised.
+- Red flags are quietly neutralised, never spotlighted.
+- Relevant ats_keywords are woven in naturally, with no keyword-stuffing.
+- No unfilled [placeholders] remain.
 
-Return only the formatted CV in the exact Markdown structure shown above. Follow the generation_framework blueprint precisely. No additional commentary, notes, or explanations.
+Return only the formatted CV in the exact Markdown structure above. No commentary.
 `
   };
 

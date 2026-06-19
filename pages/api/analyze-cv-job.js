@@ -137,7 +137,7 @@ export default async function handler(req, res) {
      body: JSON.stringify({
        user_id,
        source_gen_id: analysis_id,
-       model: 'gemini-2.5-flash-lite',
+       model: 'gemini-2.5-pro',
        completion_tokens: usage.completion_tokens || 0,
        cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
        cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
