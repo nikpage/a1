@@ -20,13 +20,11 @@ export class KeyManager {
         }
 
         if (typeof process !== 'undefined' && process.env) {
-            this.keys = Object.keys(process.env)
-                .filter(key => key.startsWith('GEMINI_API_KEY'))
-                .map(key => process.env[key])
-                .filter(key => key && key.trim() !== '')
+            const raw = process.env.GEMINI_API_KEYS || '';
+            this.keys = raw.split(',').map(k => k.trim()).filter(k => k !== '');
 
             if (this.keys.length === 0) {
-                console.warn('[KeyManager] No Gemini keys found')
+                console.warn('[KeyManager] No Gemini keys found in GEMINI_API_KEYS')
                 this.keys = [null]
             } else {
                 console.log(`[KeyManager] Loaded ${this.keys.length} Gemini keys`)
