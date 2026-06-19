@@ -61,7 +61,7 @@ Generate a new CV in the "${tone}" tone, based ONLY on the provided CV and analy
 - Write in "${tone}" tone: ${toneInstructions(tone)}
 - Output ONLY the candidate's CV—no notes, explanations, or commentary
 - Never include phrases like "Full career history available upon request"
-- **Do not output square brackets [] anywhere in the entire CV.**
+- **Replace every [placeholder] shown in the template below with real content — the final CV must contain no unfilled [brackets].**
 - For LinkedIn URLs, display them without the "www." prefix (e.g., show "linkedin.com/in/username").
 - Standardize all locations to a "City, Country" format (e.g., "Prague, Czech Republic"). Use the CV's primary language for all location names.
 - Format ALL lists (job achievements, responsibilities) as bullet points, each item on a new line prefixed with a dash (-).

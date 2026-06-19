@@ -5,9 +5,9 @@ export class KeyManager {
         this.currentKeyIndex = 0;
         this.usageLog = [];
         this.pricingRates = {
-            // Gemini 2.5 Flash Lite — verify at ai.google.dev/gemini-api/docs/pricing
-            // rates are USD per 1 000 tokens
-            'gemini-2.5-flash-lite': { prompt: 0.0001, completion: 0.0004 },
+            // rates are USD per 1 000 tokens — verify at ai.google.dev/gemini-api/docs/pricing
+            'gemini-2.5-flash-lite': { prompt: 0.0001,  completion: 0.0004 },
+            'gemini-2.5-flash':      { prompt: 0.0003,  completion: 0.0025 },
             // legacy label kept so old log entries don't crash
             'deepseek-chat': { prompt: 0.00001, completion: 0.00003 }
         };

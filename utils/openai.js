@@ -9,20 +9,24 @@ import { buildCoverPrompt } from '../prompts/cover-letter.js';
 const keyManager = new KeyManager();
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash-lite';
+const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash';
 
-// Gemini 2.5 Flash Lite pricing — verify at ai.google.dev/gemini-api/docs/pricing
-const GEMINI_INPUT_COST_PER_M  = 0.10;   // USD per 1M input tokens
-const GEMINI_OUTPUT_COST_PER_M = 0.40;   // USD per 1M output tokens
+// Pricing — verify at ai.google.dev/gemini-api/docs/pricing
+const PRICING = {
+  'gemini-2.5-flash-lite': { input: 0.10,  output: 0.40  },
+  'gemini-2.5-flash':      { input: 0.30,  output: 2.50  },
+};
 
-function geminiUsage(label, data) {
+function geminiUsage(label, data, modelHint) {
   const usage        = data.usage || {};
-  const servedModel  = data.model || GEMINI_MODEL;
+  const servedModel  = data.model || modelHint;
+  const rates        = PRICING[servedModel] || PRICING['gemini-2.5-flash-lite'];
   const inputTokens  = usage.prompt_tokens     || 0;
   const outputTokens = usage.completion_tokens || 0;
   const totalTokens  = usage.total_tokens      || (inputTokens + outputTokens);
-  const costUsd      = (inputTokens  / 1_000_000) * GEMINI_INPUT_COST_PER_M
-                     + (outputTokens / 1_000_000) * GEMINI_OUTPUT_COST_PER_M;
+  const costUsd      = (inputTokens  / 1_000_000) * rates.input
+                     + (outputTokens / 1_000_000) * rates.output;
   return { label, model: servedModel, inputTokens, outputTokens, totalTokens, costUsd };
 }
 
@@ -36,7 +40,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     const response = await axios.post(
       GEMINI_URL,
       {
-        model: GEMINI_MODEL,
+        model: GEMINI_ANALYSIS_MODEL,
         messages: messages
       },
       {
@@ -49,7 +53,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 
     const data = response.data
 
-    const gemini_usage = geminiUsage('analyze CV+job', data);
+    const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
 
     const fullPromptString = JSON.stringify(messages, null, 2);
     console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
@@ -95,7 +99,7 @@ export async function generateCV({ cv, analysis, tone }) {
   const response = await axios.post(
     GEMINI_URL,
     {
-      model: GEMINI_MODEL,
+      model: GEMINI_GENERATION_MODEL,
       messages: messages
     },
     {
@@ -110,7 +114,7 @@ export async function generateCV({ cv, analysis, tone }) {
   return {
     content: data.choices?.[0]?.message?.content || '',
     usage: data.usage,
-    gemini_usage: geminiUsage('generate CV', data)
+    gemini_usage: geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL)
   };
 }
 export async function generateCoverLetter({ cv, analysis, tone }) {
@@ -119,7 +123,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
   const response = await axios.post(
     GEMINI_URL,
     {
-      model: GEMINI_MODEL,
+      model: GEMINI_GENERATION_MODEL,
       messages: messages
     },
     {
@@ -131,7 +135,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
   );
 
   const data = response.data;
-  const gemini_usage = geminiUsage('generate cover letter', data);
+  const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
 
   const rawContent = data.choices?.[0]?.message?.content || '';
 
