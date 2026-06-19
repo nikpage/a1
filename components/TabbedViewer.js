@@ -4,6 +4,26 @@ function logGemini(u) {
   if (Array.isArray(u)) { u.forEach(logGemini); return; }
   console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
 }
+
+function logBlueprint(analysisJson) {
+  try {
+    const parsed = typeof analysisJson === 'string' ? JSON.parse(analysisJson) : analysisJson;
+    const blueprint = parsed?.generation_framework?.cv_blueprint;
+    if (blueprint) {
+      console.group('[Blueprint] generation_framework.cv_blueprint');
+      console.log('target_length_pages:', blueprint.target_length_pages);
+      console.log('section_order:', blueprint.section_order);
+      console.log('job_selection:', blueprint.job_selection);
+      console.log('summary_rewrite:', blueprint.summary_rewrite);
+      console.log('skills_to_highlight:', blueprint.skills_to_highlight);
+      console.groupEnd();
+    } else {
+      console.warn('[Blueprint] generation_framework.cv_blueprint is MISSING from analysis');
+    }
+  } catch {
+    console.warn('[Blueprint] Could not parse analysis JSON');
+  }
+}
 import { supabase } from '../utils/database';
 import CV_Cover_Display from './CV-Cover-Display';
 import DocumentDownloadButtons from './DocumentDownloadButtons';
@@ -61,6 +81,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
   useEffect(() => {
     const onNewAnalysis = (e) => {
       if (e.detail?.analysis) {
+        logBlueprint(e.detail.analysis);
         setAnalysisTextState(e.detail.analysis);
         setCvVersions([]);
         setCoverVersions([]);
@@ -76,6 +97,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
   }, []);
 
   useEffect(() => {
+    if (analysisText) logBlueprint(analysisText);
     setAnalysisTextState(analysisText);
   }, [analysisText]);
 
