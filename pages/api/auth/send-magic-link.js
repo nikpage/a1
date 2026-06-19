@@ -115,7 +115,7 @@ export default async function handler(req, res) {
     }
 
     const { error: mailError } = await resend.emails.send({
-      from: "noreply@thecv.pro",
+      from: "onboarding@resend.dev",
       to: emailNorm,
       subject: "Your login link",
       html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
