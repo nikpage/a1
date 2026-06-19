@@ -1,4 +1,5 @@
 // pages/index.js
+import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -7,7 +8,12 @@ import LoadingModal from '../components/LoadingModal';
 import AnalysisDisplay from '../components/AnalysisDisplay';
 import LoginModal from '../components/LoginModal';
 import { useTranslation } from 'react-i18next';
-import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
+
+function logGemini(u) {
+  if (!u) return;
+  if (Array.isArray(u)) { u.forEach(logGemini); return; }
+  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+}
 
 export default function IndexPage() {
   const { t } = useTranslation();  const router = useRouter();
@@ -44,17 +50,63 @@ export default function IndexPage() {
     setLoadingModalMessage(t('modal.processingMessage'));
 
     try {
-      const { user_id, analysis } = await uploadAndAnalyze({
-        file,
-        jobText,
-        user_id: currentUserId || (typeof window !== 'undefined' ? localStorage.getItem('user_id') : null),
-        onPing: () => setLoadingModalMessage(t('modal.inProgress')),
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadRes = await axios.post(`/api/upload-cv`, formData);
+      const uploadData = uploadRes.data;
+      if (!uploadData?.user_id) throw new Error(uploadData.error || t('error.uploadFailed'));
+
+      setCurrentUserId(uploadData.user_id);
+      setLoadingModalMessage(t('modal.inProgress'));
+
+      // SSE stream — server sends ping events while Gemini thinks, then a result event
+      const analyzeRes = await fetch('/api/analyze-cv-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: uploadData.user_id, jobText }),
       });
 
-      setCurrentUserId(user_id);
-      const cvPayload = { analysis, user_id };
+      if (!analyzeRes.ok) {
+        const errData = await analyzeRes.json().catch(() => ({}));
+        throw new Error(errData.error || t('error.analysisFailed'));
+      }
+
+      const reader = analyzeRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let analyzeData = null;
+
+      outer: while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split('\n\n');
+        buf = parts.pop();
+        for (const part of parts) {
+          const eventMatch = part.match(/^event:\s*(.+)$/m);
+          const dataMatch  = part.match(/^data:\s*(.+)$/m);
+          if (!eventMatch || !dataMatch) continue;
+          const event = eventMatch[1].trim();
+          let payload;
+          try { payload = JSON.parse(dataMatch[1]); } catch { continue; }
+          if (event === 'ping') {
+            setLoadingModalMessage(t('modal.inProgress'));
+          } else if (event === 'result') {
+            analyzeData = payload;
+            break outer;
+          } else if (event === 'error') {
+            throw new Error(payload.error || t('error.analysisFailed'));
+          }
+        }
+      }
+
+      if (!analyzeData) throw new Error(t('error.analysisFailed'));
+      if (analyzeData.gemini_usage) logGemini(analyzeData.gemini_usage);
+
+      const cvPayload = { analysis: analyzeData.analysis, user_id: uploadData.user_id };
       localStorage.setItem('parsed_cv', JSON.stringify(cvPayload));
-      setAnalysis(analysis);
+      setAnalysis(analyzeData.analysis);
 
     } catch (err) {
       const message = err.response?.data?.error || err.message;
