@@ -39,61 +39,63 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 
   const messages = buildAnalysisPrompt(cvText, jobText, hasJobText);
 
-  try {
-    const response = await axios.post(
-      GEMINI_URL,
-      {
-        model: GEMINI_ANALYSIS_MODEL,
-        messages: messages
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${keyManager.getNextKey()}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
+  const totalKeys = keyManager.keys.filter(k => k !== null).length;
+  let lastError;
 
-    const data = response.data
-
-    const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
-
-    const fullPromptString = JSON.stringify(messages, null, 2);
-    console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
-    const rawOutputString = data.choices?.[0]?.message?.content || '';
-    console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
-
-    // Extract JSON from potential markdown code blocks
-    let jsonOutput = data.choices?.[0]?.message?.content || ''
-
-    // Remove markdown code blocks if present
-    if (jsonOutput.includes('```json')) {
-      jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '')
-    } else if (jsonOutput.includes('```')) {
-      jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '')
-    }
-
-    // Trim whitespace
-    jsonOutput = jsonOutput.trim()
-
-    // Validate JSON before returning
+  for (let attempt = 0; attempt < Math.max(totalKeys, 1); attempt++) {
     try {
-      JSON.parse(jsonOutput)
-      return {
-        choices: data.choices,
-        output: jsonOutput,
-        usage: data.usage,
-        gemini_usage
+      const response = await axios.post(
+        GEMINI_URL,
+        { model: GEMINI_ANALYSIS_MODEL, messages },
+        {
+          headers: {
+            Authorization: `Bearer ${keyManager.getNextKey()}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const data = response.data;
+      const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
+
+      const fullPromptString = JSON.stringify(messages, null, 2);
+      console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
+      const rawOutputString = data.choices?.[0]?.message?.content || '';
+      console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
+
+      let jsonOutput = rawOutputString;
+
+      if (jsonOutput.includes('```json')) {
+        jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonOutput.includes('```')) {
+        jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '');
       }
-    } catch (jsonError) {
-      console.error('Invalid JSON returned from API:', jsonError)
-      console.error('Cleaned JSON output:', jsonOutput)
-      throw new Error('API returned invalid JSON')
+
+      jsonOutput = jsonOutput.trim();
+
+      try {
+        JSON.parse(jsonOutput);
+        return { choices: data.choices, output: jsonOutput, usage: data.usage, gemini_usage };
+      } catch (jsonError) {
+        console.error('Invalid JSON returned from API:', jsonError);
+        console.error('Cleaned JSON output:', jsonOutput);
+        throw new Error('API returned invalid JSON');
+      }
+    } catch (error) {
+      lastError = error;
+      if (error.response?.status === 429) {
+        console.warn(`[analyzeCvJob] Key ${attempt + 1}/${totalKeys} rate-limited (429), trying next key`);
+        continue;
+      }
+      console.error('Gemini API Error:', error.response?.data || error.message);
+      throw error;
     }
-  } catch (error) {
-    console.error('Gemini API Error:', error.response?.data || error.message)
-    throw error
   }
+
+  // All keys exhausted on 429s
+  const rateLimitErr = new Error('All Gemini API keys are rate-limited. Try again later.');
+  rateLimitErr.isRateLimit = true;
+  throw rateLimitErr;
 }
 
 export async function generateCV({ cv, analysis, tone }) {

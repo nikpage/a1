@@ -151,7 +151,10 @@ export default async function handler(req, res) {
  } catch (e) {
    console.error('API Error:', e.message);
    if (e.response?.data) {
-     console.error('DeepSeek API Response Error:', e.response.data);
+     console.error('Gemini API Response Error:', e.response.data);
+   }
+   if (e.isRateLimit || e.response?.status === 429) {
+     return res.status(429).json({ error: 'AI service is busy. Please try again in a moment.' });
    }
    if (e.response?.status === 402) {
      return res.status(503).json({ error: 'AI service temporarily unavailable. Please try again shortly.' });
