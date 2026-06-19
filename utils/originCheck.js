@@ -1,6 +1,4 @@
 const ALLOWED_ORIGINS = [
-  'https://thecv.pro',
-  'https://www.thecv.pro',
   'https://cv-pro.netlify.app',
 ];
 
@@ -12,8 +10,5 @@ export function isValidOrigin(origin) {
 }
 
 export function getBaseUrl() {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL;
-  }
-  return 'http://localhost:3000';
+  return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 }
