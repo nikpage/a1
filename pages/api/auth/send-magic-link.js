@@ -2,7 +2,7 @@
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { getBaseUrl, isValidOrigin } from "../../../utils/originCheck";
@@ -13,7 +13,14 @@ const ratelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(10, "60 s"),
   prefix: "auth-api",
 });
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  auth: {
+    user: "pod.one@gmail.com",
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -114,14 +121,16 @@ export default async function handler(req, res) {
       });
     }
 
-    const { error: mailError } = await resend.emails.send({
-      from: "onboarding@resend.dev",
-      to: emailNorm,
-      subject: "Your login link",
-      html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
-    });
-    if (mailError) {
-      return res.status(500).json({ error: "Email send failed.", detail: mailError });
+    try {
+      await transporter.sendMail({
+        from: "pod.one@gmail.com",
+        to: emailNorm,
+        subject: "Your login link",
+        html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
+      });
+    } catch (mailError) {
+      console.error("Mail error:", mailError);
+      return res.status(500).json({ error: "Email send failed.", detail: mailError.message });
     }
 
     return res.status(200).json({
