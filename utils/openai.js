@@ -11,7 +11,7 @@ const keyManager = new KeyManager();
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 // Analysis is the strategic brain that drives every downstream document — it runs on
 // the strongest model. Generation executes the blueprint and stays on flash for speed.
-const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-pro';
+const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash';
 const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash';
 
 // Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
