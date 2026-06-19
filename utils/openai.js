@@ -11,6 +11,28 @@ const keyManager = new KeyManager();
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
+// Gemini 2.5 Flash Lite pricing — verify at ai.google.dev/gemini-api/docs/pricing
+const GEMINI_INPUT_COST_PER_M  = 0.10;   // USD per 1M input tokens
+const GEMINI_OUTPUT_COST_PER_M = 0.40;   // USD per 1M output tokens
+
+function logGeminiUsage(label, data) {
+  const usage       = data.usage || {};
+  const servedModel = data.model || GEMINI_MODEL;
+  const inputTokens  = usage.prompt_tokens     || 0;
+  const outputTokens = usage.completion_tokens || 0;
+  const totalTokens  = usage.total_tokens      || (inputTokens + outputTokens);
+  const costUsd = (inputTokens / 1_000_000) * GEMINI_INPUT_COST_PER_M
+                + (outputTokens / 1_000_000) * GEMINI_OUTPUT_COST_PER_M;
+
+  console.log(`[Gemini] ${label}`);
+  console.log(`  requested: ${GEMINI_MODEL}`);
+  if (servedModel !== GEMINI_MODEL) console.log(`  served by: ${servedModel}`);
+  console.log(`  input tokens:  ${inputTokens.toLocaleString()}`);
+  console.log(`  output tokens: ${outputTokens.toLocaleString()}`);
+  console.log(`  total tokens:  ${totalTokens.toLocaleString()}`);
+  console.log(`  est. cost:     $${costUsd.toFixed(6)}`);
+}
+
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   // DO NOT REMOVE THIS LINE OR MOVE IT
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
@@ -34,14 +56,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 
     const data = response.data
 
-    console.log('DeepSeek token usage:')
-    if (data.usage.prompt_cache_hit_tokens !== undefined)
-      console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
-    if (data.usage.prompt_cache_miss_tokens !== undefined)
-      console.log('  cache miss tokens:', data.usage.prompt_cache_miss_tokens)
-    if (data.usage.completion_tokens !== undefined)
-      console.log('  completion tokens:', data.usage.completion_tokens)
-    console.log('  total tokens:', data.usage.total_tokens)
+    logGeminiUsage('analyze CV+job', data);
 
     const fullPromptString = JSON.stringify(messages, null, 2);
     console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
@@ -75,7 +90,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
       throw new Error('API returned invalid JSON')
     }
   } catch (error) {
-    console.error('DeepSeek API Error:', error.response?.data || error.message)
+    console.error('Gemini API Error:', error.response?.data || error.message)
     throw error
   }
 }
@@ -98,12 +113,7 @@ export async function generateCV({ cv, analysis, tone }) {
   );
 
   const data = response.data;
-  console.log('DeepSeek token usage (Generate CV):')
-  if (data.usage.prompt_cache_hit_tokens !== undefined)
-    console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
-  if (data.usage.completion_tokens !== undefined)
-    console.log('  completion tokens:', data.usage.completion_tokens)
-  console.log('  total tokens:', data.usage.total_tokens)
+  logGeminiUsage('generate CV', data);
 
   return {
     content: data.choices?.[0]?.message?.content || '',
@@ -128,12 +138,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
   );
 
   const data = response.data;
-  console.log('DeepSeek token usage (Generate Cover Letter):')
-  if (data.usage.prompt_cache_hit_tokens !== undefined)
-    console.log('  cache hit tokens:', data.usage.prompt_cache_hit_tokens)
-  if (data.usage.completion_tokens !== undefined)
-    console.log('  completion tokens:', data.usage.completion_tokens)
-  console.log('  total tokens:', data.usage.total_tokens)
+  logGeminiUsage('generate cover letter', data);
 
   const rawContent = data.choices?.[0]?.message?.content || '';
 
