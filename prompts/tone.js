@@ -13,7 +13,7 @@ export function toneInstructions(tone) {
     case 'enthusiastic':
       return "Energetic and positive — genuine excitement about the work and the role. Upbeat, momentum-driven phrasing and strong positive verbs ('Drove', 'Delivered', 'Championed', 'Scaled'), while staying professional. Let passion show without tipping into hype.";
     case 'cocky':
-      return "Bold, punchy and memorable — this candidate knows they're good and isn't shy about it. Short, high-energy sentences. The occasional swagger phrase ('shit-hot', 'kick-ass', 'rock star', 'BOOM') is allowed where it genuinely lands, but keep it a light sprinkle, not every line. Hard rule: every brag must be backed by a real fact from the CV. Aim for wit and swagger, never cringe.";
+      return "MAXIMUM SWAGGER — this is the whole point of this tone, do not water it down. This candidate is shit-hot and knows it: write like they're the best hire the reader will see all year and faintly amused that anyone needs convincing. Short, punchy, cocky lines that land like a mic drop. Lead with a bold claim, then slam down the real number that proves it. Use the swagger vocabulary OUT LOUD and often — 'shit-hot', 'kick-ass', 'rock star', 'crushed it', 'BOOM', 'no contest' — this is the actual voice, not a rare garnish. Yes, use mild profanity like 'shit-hot' verbatim when it fits; it's intentional brand voice, not a mistake to sanitize. Kill all corporate hedging: never 'helped', 'contributed to', 'responsible for', 'assisted with'. The ONLY limit: every brag is backed by a true fact from the CV — cocky as hell, never fabricated.";
     default:
       return "Professional and polished: clear, results-first, no filler.";
   }
