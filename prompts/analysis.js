@@ -16,7 +16,8 @@ ANALYSIS FRAMEWORK:
 4. Classify primary career scenario (choose 1-2 MAX from strict list below).
 5. Provide a 'positioning_strategy' that directly addresses the chosen scenario(s).
 6. Critically review CV length, style, and format (e.g., 8-page CV must be addressed).
-7. Return exact JSON schema.
+7. Produce a 'generation_framework' — a concrete rewrite blueprint the CV writer will execute directly. Be specific and decisive: name exact jobs to include/condense/rewrite, draft the actual summary text, list the exact skills to highlight.
+8. Return exact JSON schema.
 
 STRICT SCENARIO LIST (Choose 1-2):
 - Recent Grad
@@ -62,6 +63,19 @@ JSON OUTPUT SCHEMA:
     "inferred_keywords": "n/a",
     "career_scenario": "n/a",
     "positioning_strategy": "" // Strategy heavily based on the scenario tags
+  },
+  "generation_framework": {
+    "cv_blueprint": {
+      "target_length_pages": "", // e.g. "1 page" or "2 pages" — based on seniority and cv_format_analysis
+      "section_order": [], // ordered list of section names the CV writer must follow
+      "job_selection": {
+        "include_jobs": [], // job titles+company to include with full detail
+        "condense_jobs": [], // job titles+company to summarise in 1-2 lines
+        "rewrite_jobs": [] // job titles+company to reframe/reposition entirely
+      },
+      "summary_rewrite": "", // WRITE THE ACTUAL SUMMARY HERE — 3-4 sentences, ready to paste, positioning the candidate for the target role using career_arc and scenario_tags
+      "skills_to_highlight": [] // 8-12 specific skills drawn from transferable_skills and ats_keywords, ordered by relevance
+    }
   },
   "final_thought": ""
 }
