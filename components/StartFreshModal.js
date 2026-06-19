@@ -15,7 +15,6 @@ function logGemini(u) {
 export default function StartFreshModal({
   user_id,
   onSubmit,
-  handleCvUploadFromModal,
   onStartFresh,
   onClose,
 }) {
@@ -117,23 +116,6 @@ export default function StartFreshModal({
     }
   }
 
-  const handleUploadAndAnalyze = async (jobDesc) => {
-    setLoading(true)
-    try {
-      const newCvId = await handleCvUploadFromModal()
-      if (newCvId) {
-        await handleGenerateAnalysis(newCvId, jobDesc)
-      } else {
-        alert(t('uploadFailed'))
-      }
-    } catch (error) {
-      console.error(t('uploadError'), error)
-      alert(`Error: ${error.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <>
       {step === 0 && (
@@ -173,11 +155,7 @@ export default function StartFreshModal({
 
       {step === 2 && (
         <StartFreshUploadModal
-          handleCvUploadFromModal={handleCvUploadFromModal}
-          jobDescription={jobDescription}
-          setJobDescription={setJobDescription}
-          loading={loading}
-          onSubmit={handleUploadAndAnalyze}
+          user_id={user_id}
           onBack={() => setStep(0)}
           onClose={() => { setStep(0); onClose() }}
         />
