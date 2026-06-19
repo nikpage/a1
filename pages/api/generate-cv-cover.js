@@ -132,7 +132,8 @@ export default async function handler(req, res) {
       gemini_usage
     });
   } catch (err) {
-    console.error('Generation error:', err);
-    return res.status(500).json({ error: 'Generation failed' });
+    const detail = err?.response?.data || err?.message || 'unknown';
+    console.error('Generation error:', detail);
+    return res.status(500).json({ error: 'Generation failed', detail });
   }
 }

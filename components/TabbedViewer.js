@@ -133,6 +133,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
           const data = await res.json();
           if (data.gemini_usage) logGemini(data.gemini_usage);
           if (!res.ok) {
+            if (data.detail) console.error('[Generation detail]', data.detail);
             if (data.error === "NO_GENERATIONS_LEFT") {
               setPanelMode("generations");
               setShowBuyPanel(true);
