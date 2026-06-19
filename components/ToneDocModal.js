@@ -8,10 +8,13 @@ export default function ToneDocModal({ onClose, onSubmit }) {
   const [tone, setTone] = useState('formal');
   const [types, setTypes] = useState({ cv: true, coverLetter: true });
 
+  // The server expects 'cv' / 'cover'; the UI state uses 'coverLetter' as its key.
+  const keyToType = { cv: 'cv', coverLetter: 'cover' };
+
   const handleGenerate = () => {
     const selected = Object.entries(types)
       .filter(([_, checked]) => checked)
-      .map(([key]) => key);
+      .map(([key]) => keyToType[key] || key);
 
     if (selected.length === 0) {
       alert(t('alertNoSelection'));
