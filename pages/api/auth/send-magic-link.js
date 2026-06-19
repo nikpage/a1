@@ -121,7 +121,7 @@ export default async function handler(req, res) {
       html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
     });
     if (mailError) {
-      return res.status(500).json({ error: "Email send failed." });
+      return res.status(500).json({ error: "Email send failed.", detail: mailError });
     }
 
     return res.status(200).json({
