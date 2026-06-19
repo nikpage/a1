@@ -74,10 +74,35 @@ export default function StartFreshModal({
         body: JSON.stringify(payload)
       })
       if (!res.ok) {
-        const errorData = await res.json()
+        const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.error || `HTTP error! status: ${res.status}`)
       }
-      const data = await res.json()
+
+      // Read SSE stream
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      let data = null
+
+      outer: while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const parts = buf.split('\n\n')
+        buf = parts.pop()
+        for (const part of parts) {
+          const eventMatch = part.match(/^event:\s*(.+)$/m)
+          const dataMatch  = part.match(/^data:\s*(.+)$/m)
+          if (!eventMatch || !dataMatch) continue
+          const event = eventMatch[1].trim()
+          let payload
+          try { payload = JSON.parse(dataMatch[1]) } catch { continue }
+          if (event === 'result') { data = payload; break outer }
+          if (event === 'error') throw new Error(payload.error || 'Analysis failed')
+        }
+      }
+
+      if (!data) throw new Error('Analysis stream ended without a result')
       if (data.gemini_usage) logGemini(data.gemini_usage);
       window.dispatchEvent(new CustomEvent('new-analysis', {
         detail: { analysis: data.analysis, startFresh: true }
