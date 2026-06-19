@@ -21,15 +21,15 @@ export class KeyManager {
 
         if (typeof process !== 'undefined' && process.env) {
             this.keys = Object.keys(process.env)
-                .filter(key => key.startsWith('DEEPSEEK_API_KEY'))
+                .filter(key => key.startsWith('GEMINI_API_KEY'))
                 .map(key => process.env[key])
                 .filter(key => key && key.trim() !== '')
 
             if (this.keys.length === 0) {
-                console.warn('[KeyManager] No DeepSeek keys found')
+                console.warn('[KeyManager] No Gemini keys found')
                 this.keys = [null]
             } else {
-                console.log(`[KeyManager] Loaded ${this.keys.length} DeepSeek keys`)
+                console.log(`[KeyManager] Loaded ${this.keys.length} Gemini keys`)
             }
         } else {
             console.error('[KeyManager] Not in server environment')
@@ -41,7 +41,7 @@ export class KeyManager {
 
     getNextKey() {
       if (this.keys.length === 0 || this.keys.every(k => k === null)) {
-        console.warn('[KeyManager] No valid DeepSeek keys available');
+        console.warn('[KeyManager] No valid Gemini keys available');
         return null;
       }
 

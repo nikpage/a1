@@ -8,6 +8,9 @@ import { buildCoverPrompt } from '../prompts/cover-letter.js';
 
 const keyManager = new KeyManager();
 
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   // DO NOT REMOVE THIS LINE OR MOVE IT
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
@@ -16,9 +19,9 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 
   try {
     const response = await axios.post(
-      process.env.DEEPSEEK_API_URL,
+      GEMINI_URL,
       {
-        model: 'deepseek-chat',
+        model: GEMINI_MODEL,
         messages: messages
       },
       {
@@ -81,9 +84,9 @@ export async function generateCV({ cv, analysis, tone }) {
   const messages = buildCvPrompt(cv, analysis, tone);
 
   const response = await axios.post(
-    process.env.DEEPSEEK_API_URL,
+    GEMINI_URL,
     {
-      model: 'deepseek-chat',
+      model: GEMINI_MODEL,
       messages: messages
     },
     {
@@ -111,9 +114,9 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
   const messages = buildCoverPrompt(cv, analysis, tone);
 
   const response = await axios.post(
-    process.env.DEEPSEEK_API_URL,
+    GEMINI_URL,
     {
-      model: 'deepseek-chat',
+      model: GEMINI_MODEL,
       messages: messages
     },
     {

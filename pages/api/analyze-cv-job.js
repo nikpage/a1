@@ -129,7 +129,7 @@ export default async function handler(req, res) {
    const usage = result?.usage || {};
    const baseURL = process.env.NODE_ENV === 'development'
      ? 'http://localhost:3000'
-     : `https://${process.env.VERCEL_URL}`;
+     : process.env.NEXT_PUBLIC_SITE_URL;
 
    fetch(`${baseURL}/api/log-transaction`, {
      method: 'POST',
@@ -137,7 +137,7 @@ export default async function handler(req, res) {
      body: JSON.stringify({
        user_id,
        source_gen_id: analysis_id,
-       model: 'DS-v3',
+       model: 'gemini-2.5-flash-lite',
        completion_tokens: usage.completion_tokens || 0,
        cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
        cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
@@ -150,9 +150,11 @@ export default async function handler(req, res) {
 
  } catch (e) {
    console.error('API Error:', e.message);
-   // Log more details for debugging if available
    if (e.response?.data) {
      console.error('DeepSeek API Response Error:', e.response.data);
+   }
+   if (e.response?.status === 402) {
+     return res.status(503).json({ error: 'AI service temporarily unavailable. Please try again shortly.' });
    }
    return res.status(500).json({ error: e.message });
  }
