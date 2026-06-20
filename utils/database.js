@@ -119,8 +119,9 @@ export async function logAiTransaction({
     cache_hit_tokens,
     cache_miss_tokens,
     completion_tokens,
+    thinking_tokens,
     amount_usd,
-    detail: { ...detail, thinking_tokens },
+    detail,
     key_index,
   }]);
 
