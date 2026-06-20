@@ -58,6 +58,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
       );
 
       const data = response.data;
+      console.log('[Gemini] raw usage:', JSON.stringify(data.usage));
       const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
 
       const fullPromptString = JSON.stringify(messages, null, 2);
