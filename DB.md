@@ -122,4 +122,5 @@ END $$;
 ## Known schema issues
 
 - `transactions.user_id` is `uuid` but `users.user_id` is `text` — requires `::text` cast on joins/deletes.
-- `utils/database.js` references a `token_logs` table that does not exist — those functions (`saveTokenUsage`, `logTokenUsage`) are dead code; the live logging path is `pages/api/log-transaction.js` → `transactions`.
+- `transactions.user_id` is `uuid` but `users.user_id` is `text` — requires `::text` cast on joins/deletes.
+- `pages/api/log-transaction.js` and `pages/api/analyze-cv-job.js` are dead code — nothing calls them. The live logging path is `logAiTransaction()` in `utils/database.js`, called directly from `netlify/functions/analyse-background.mjs` (analysis) and `pages/api/generate-cv-cover.js` (generation).
