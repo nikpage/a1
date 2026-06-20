@@ -45,6 +45,7 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
         fallbackCreatedAt: null,
       })
 
+      window.dispatchEvent(new CustomEvent('new-analysis', { detail: { analysis: result.analysis } }));
 
       if (typeof onUpload === 'function') {
         onUpload()
