@@ -52,7 +52,8 @@ One row per user (upserted on upload).
 | `model` | text | — | e.g. `'gemini-3.5-flash'` |
 | `cache_hit_tokens` | integer | — | |
 | `cache_miss_tokens` | integer | — | |
-| `completion_tokens` | integer | — | |
+| `completion_tokens` | integer | — | Output tokens + thinking tokens (both billed at output rate) |
+| `thinking_tokens` | integer | 0 | Thinking tokens only (subset of completion_tokens) |
 | `amount_usd` | numeric | — | Calculated from model_pricing |
 | `detail` | jsonb | — | `{ job_title, company, tone }` |
 | `key_index` | integer | — | Which API key was used |
