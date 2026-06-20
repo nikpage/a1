@@ -36,7 +36,61 @@ tabStop: { type: TabStopType.LEFT, position: 4500 },
 underline: { text: '________________________________', size: 16, color: 'e6e6e6' },
 };
 
-const lines = markdownText.split('\n');
+// Normalise AI output to clean markdown before line-by-line parsing.
+// The AI (Gemini) can vary its output format — this ensures the parser only
+// ever sees markdown + the three known special tags: <center>, </center>, <!--.
+function normaliseToMarkdown(text) {
+  return text
+    // headings: <h1>…</h6> → markdown #
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1')
+    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1')
+    .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1')
+    // bold/italic
+    .replace(/<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi, '**$2**')
+    .replace(/<(em|i)[^>]*>(.*?)<\/(em|i)>/gi, '*$2*')
+    // list items → markdown bullets (before stripping <ul>/<ol>)
+    .replace(/<li[^>]*>(.*?)<\/li>/gi, (_, inner) => `- ${inner.replace(/<[^>]+>/g, '').trim()}`)
+    // block-level wrappers → newlines so content isn't run together
+    .replace(/<\/?(ul|ol|div|section|article|header|footer|nav|aside|main)[^>]*>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n')
+    // strip all remaining HTML tags (preserves <center>, </center>, <!-- which don't match these)
+    .replace(/<(?!\/?(center)\b)(?!--)[^>]+>/gi, '')
+    // decode common HTML entities
+    .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    // collapse runs of blank lines to at most two
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+// Split a line into TextRuns, rendering inline **bold** / *italic* as real
+// formatting instead of stripping the markers. Falls back to a single run.
+function makeRuns(text, baseStyle) {
+  const runs = [];
+  const inline = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  let last = 0;
+  let m;
+  while ((m = inline.exec(text)) !== null) {
+    if (m.index > last) {
+      runs.push(new TextRun({ text: text.slice(last, m.index), ...baseStyle }));
+    }
+    const tok = m[0];
+    if (tok.startsWith('**')) {
+      runs.push(new TextRun({ text: tok.slice(2, -2), ...baseStyle, bold: true }));
+    } else {
+      runs.push(new TextRun({ text: tok.slice(1, -1), ...baseStyle, italics: true }));
+    }
+    last = inline.lastIndex;
+  }
+  if (last < text.length) {
+    runs.push(new TextRun({ text: text.slice(last), ...baseStyle }));
+  }
+  return runs.length ? runs : [new TextRun({ text, ...baseStyle })];
+}
+
+const lines = normaliseToMarkdown(markdownText).split('\n');
 const docParagraphs = [];
 let currentSectionTitle = '';
 let inCenterBlock = false;
@@ -46,10 +100,11 @@ for (let i = 0; i < lines.length; i++) {
 const raw = lines[i].trim();
 if (!raw) continue;
 
-// Strip layout-only markup so it can never leak into the .docx as literal text:
-// HTML comments (e.g. <!-- BLOCK:START -->) and the skills-grid <div> wrappers.
+// Strip layout-only markup so it can never leak into the .docx as literal text.
 if (raw.startsWith('<!--')) continue;
-if (/^<\/?div\b/i.test(raw)) continue;
+if (/^<\/?(div|ul|ol)\b/i.test(raw)) continue;
+// Skip any line that is purely an HTML tag (e.g. stray <p>, <br/>, <span ...>)
+if (/^<[^>]+>$/.test(raw)) continue;
 
 if (raw.includes('<center>')) { inCenterBlock = true; continue; }
 if (raw.includes('</center>')) {
@@ -59,7 +114,7 @@ if (raw.includes('</center>')) {
 }
 
 if (inCenterBlock) {
-  const cleaned = raw.replace(/\*\*|<\/?strong[^>]*>|\*/g, '').replace(/^#+\s*/, '');
+  const cleaned = raw.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\*\*/g, '').replace(/\*/g, '').replace(/^#+\s*/, '').trim();
   if (raw.startsWith('#')) {
     docParagraphs.push(new Paragraph({
       children: [new TextRun({ text: cleaned, ...styles.name })],
@@ -84,7 +139,7 @@ if (inCenterBlock) {
 if (raw === '---') continue;
 
 if (raw.startsWith('#### ') && /experience/i.test(currentSectionTitle)) {
-  const cleaned = raw.replace(/^####\s*\**|\**/g, '').trim();
+  const cleaned = raw.replace(/<[^>]+>/g, '').replace(/^####\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '').trim();
   inJobBlock = true;
   docParagraphs.push(new Paragraph({
     children: [new TextRun({ text: cleaned, ...styles.jobTitle })],
@@ -110,7 +165,7 @@ if (raw.startsWith('###')) {
     children: [new TextRun({ text: currentSectionTitle, ...styles.sectionHeader })],
     spacing: { after: 150 },
     keepLines: true,
-
+    keepNext: true,
   }));
   if (/skills|competencies/i.test(currentSectionTitle)) {
     const skillsBuffer = [];
@@ -158,7 +213,15 @@ if (raw.startsWith('###')) {
   continue;
 }
 
-const cleaned = raw.replace(/\*\*|<\/?strong[^>]*>|\*/g, '').replace(/^- |^• /, '').replace(/<\/?li>/gi, '');
+// markdown-preserving: HTML stripped + entities decoded, but **bold**/*italic*
+// markers kept so makeRuns() can turn them into real formatting.
+const cleanedMd = raw
+  .replace(/<[^>]+>/g, '')        // strip all HTML tags
+  .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/^- |^• /, '')
+  .trim();
+// plain: emphasis markers removed too, for the pipe-delimited company line.
+const cleaned = cleanedMd.replace(/\*\*/g, '').replace(/\*/g, '');
 
 if (raw.includes('|') && /experience/i.test(currentSectionTitle) && inJobBlock) {
   const parts = cleaned.split('|').map(p => p.trim());
@@ -179,7 +242,7 @@ if (raw.startsWith('- ') || raw.startsWith('• ') || /^<li>.*<\/li>$/i.test(raw
   docParagraphs.push(new Paragraph({
     children: [
       new TextRun({ text: '• ', ...styles.bulletText }),
-      new TextRun({ text: cleaned, ...styles.bulletText }),
+      ...makeRuns(cleanedMd, styles.bulletText),
     ],
     spacing: { after: 150 },
     indent: { left: 360, hanging: 360 },
@@ -191,7 +254,7 @@ if (raw.startsWith('- ') || raw.startsWith('• ') || /^<li>.*<\/li>$/i.test(raw
 
 if (cleaned) {
   docParagraphs.push(new Paragraph({
-    children: [new TextRun({ text: cleaned, ...styles.bodyText })],
+    children: makeRuns(cleanedMd, styles.bodyText),
     spacing: { after: 200 },
     keepLines: true,
     keepNext: inJobBlock,
@@ -217,7 +280,7 @@ paragraph: { spacing: { line: 276 }, widowControl: true },
 sections: [
 {
 properties: {
-page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+page: { margin: { top: 1008, right: 1080, bottom: 1008, left: 1080 } },
 },
 children: docParagraphs,
 },
