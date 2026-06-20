@@ -11,6 +11,7 @@ import i18n from '../i18n'
 export default function Header({ user_id }) {
   const [downloads, setDownloads] = useState(0)
   const [generations, setGenerations] = useState(0)
+  const [email, setEmail] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
 
@@ -24,9 +25,10 @@ export default function Header({ user_id }) {
     if (!user_id) return
     const res = await fetch(`/api/header-stats?user_id=${user_id}`)
     if (res.ok) {
-      const { generations, downloads } = await res.json()
+      const { generations, downloads, email } = await res.json()
       setGenerations(generations)
       setDownloads(downloads)
+      setEmail(email)
     }
   }
 
@@ -133,15 +135,22 @@ export default function Header({ user_id }) {
           </div>
           <div className="flex flex-col items-end">
             {user_id ? (
-              <div className="flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-lg mb-2">
-                <div className="text-center">
-                  <div className="text-sm font-semibold text-slate-800">{generations}</div>
-                  <div className="text-xs text-slate-600">{t('generations')}</div>
-                </div>
-                <div className="h-8 w-px bg-gray-300"></div>
-                <div className="text-center">
-                  <div className="text-sm font-semibold text-slate-800">{downloads}</div>
-                  <div className="text-xs text-slate-600">{t('downloads')}</div>
+              <div className="flex flex-col items-end mb-2">
+                {email && (
+                  <div className="text-xs text-slate-500 mb-1 max-w-[220px] truncate" title={email}>
+                    {email}
+                  </div>
+                )}
+                <div className="flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-sm font-semibold text-slate-800">{generations}</div>
+                    <div className="text-xs text-slate-600">{t('generations')}</div>
+                  </div>
+                  <div className="h-8 w-px bg-gray-300"></div>
+                  <div className="text-center">
+                    <div className="text-sm font-semibold text-slate-800">{downloads}</div>
+                    <div className="text-xs text-slate-600">{t('downloads')}</div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -193,7 +202,12 @@ export default function Header({ user_id }) {
             </div>
           )}
           {user_id && (
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex flex-col items-end">
+              {email && (
+                <div className="text-xs text-slate-500 mb-1 max-w-[220px] truncate" title={email}>
+                  {email}
+                </div>
+              )}
               <div className="flex items-center space-x-6 bg-gray-50 px-4 py-2 rounded-lg">
                 <div className="text-center">
                   <div className="text-sm font-semibold text-slate-800">{generations}</div>

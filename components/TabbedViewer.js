@@ -101,6 +101,29 @@ export default function TabbedViewer({ user_id, analysisText }) {
     setAnalysisTextState(analysisText);
   }, [analysisText]);
 
+  // Restore the last generated CV/cover from the DB on (re)load, so a refresh
+  // doesn't wipe the documents the user already paid to generate. Only seeds
+  // when nothing has been generated yet this session, to avoid clobbering
+  // freshly-generated versions.
+  useEffect(() => {
+    if (!user_id) return;
+    fetch('/api/get-docs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id }),
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data) => {
+        if (data.cv) {
+          setCvVersions((prev) => (prev.length === 0 ? [data.cv] : prev));
+        }
+        if (data.cover) {
+          setCoverVersions((prev) => (prev.length === 0 ? [data.cover] : prev));
+        }
+      })
+      .catch(() => {});
+  }, [user_id]);
+
   const handleSubmit = async ({ tone, selected, jobText }) => {
     setShowLoadingModal(true);
     setLoadingModalTitle(t('generatingDocsTitle'));

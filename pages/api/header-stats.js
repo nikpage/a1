@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('generations_left, tokens')
+    .select('generations_left, tokens, email')
     .eq('user_id', user_id)
     .single();
 
@@ -18,5 +18,6 @@ export default async function handler(req, res) {
   return res.status(200).json({
     generations: user.generations_left ?? 0,
     downloads: user.tokens ?? 0,
+    email: user.email ?? null,
   });
 }
