@@ -86,6 +86,7 @@ export async function logAiTransaction({
   cache_hit_tokens = 0,
   cache_miss_tokens = 0,
   completion_tokens = 0,
+  thinking_tokens = 0,
   detail = {},
   key_index = null,
 }) {
@@ -119,7 +120,7 @@ export async function logAiTransaction({
     cache_miss_tokens,
     completion_tokens,
     amount_usd,
-    detail,
+    detail: { ...detail, thinking_tokens },
     key_index,
   }]);
 

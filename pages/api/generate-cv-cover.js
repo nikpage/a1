@@ -108,6 +108,7 @@ export default async function handler(req, res) {
         cache_hit_tokens: 0,
         cache_miss_tokens: u.prompt_tokens || 0,
         completion_tokens: (u.completion_tokens || 0) + thinking,
+        thinking_tokens: thinking,
         detail: { tone, type: 'cv' },
       });
     }
@@ -121,6 +122,7 @@ export default async function handler(req, res) {
         cache_hit_tokens: 0,
         cache_miss_tokens: u.prompt_tokens || 0,
         completion_tokens: (u.completion_tokens || 0) + thinking,
+        thinking_tokens: thinking,
         detail: { tone, type: 'cover' },
       });
     }

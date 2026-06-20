@@ -96,6 +96,7 @@ export const handler = async (event) => {
       cache_miss_tokens: usage.prompt_tokens || 0,
       cache_hit_tokens: 0,
       completion_tokens: (usage.completion_tokens || 0) + thinkingTokens,
+      thinking_tokens: thinkingTokens,
       detail: { job_title, company },
     });
 
