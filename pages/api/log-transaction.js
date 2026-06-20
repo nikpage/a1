@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   const {
     user_id,
     source_gen_id = null,
-    model = 'DS-v3',
+    model = 'gemini-3.5-flash',
     event_type = 'completion',
     cache_hit_tokens = 0,
     cache_miss_tokens = 0,
