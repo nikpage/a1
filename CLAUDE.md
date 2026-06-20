@@ -20,17 +20,28 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, known issue
 | Sessions / rate-limit | Upstash Redis (`@upstash/redis` + `@upstash/ratelimit`) |
 | Payments | Stripe |
 | Email | Resend |
-| AI | **DeepSeek** (`deepseek-chat` via `utils/openai.js`) — **migrating to Gemini** |
+| AI | **Gemini** (`gemini-3.5-flash` via `utils/openai.js`) |
 | Styling | Tailwind CSS |
 | i18n | next-translate (en, cs) |
 | Deployment | **Netlify** (`@netlify/plugin-nextjs`) |
 | Secrets | **Doppler** (injects env vars at build/runtime; do not commit secrets) |
 
-## AI layer — current and upcoming
+## AI layer
 
-- Current: `utils/openai.js` (misleading name — calls DeepSeek, not OpenAI). Key rotation via `utils/key-manager.js` across `DEEPSEEK_API_KEY_1…N`.
-- **Switching to Gemini** — when the migration happens, replace `utils/openai.js` and update `key-manager.js` accordingly. The three prompt builders in `prompts/` stay unchanged; they are provider-agnostic.
-- Pricing model was built around DeepSeek's cache-hit / cache-miss token split. Revisit cost logging after the Gemini switch.
+- `utils/openai.js` (misleading name — calls **Gemini**, not OpenAI) via the Gemini OpenAI-compatible endpoint. Both analysis and generation use `gemini-3.5-flash`. Key rotation via `utils/key-manager.js` over `GEMINI_API_KEYS` (comma-separated).
+- The OpenAI-compatible endpoint cannot set `safetySettings`. Mild profanity (e.g. the "cocky" tone's "shit-hot") comes through fine; if Gemini ever sanitizes output, the only lever is switching that call to the native `generateContent` endpoint with `BLOCK_NONE`.
+- Pricing per `PRICING` in `utils/openai.js` — verify rates at ai.google.dev/gemini-api/docs/pricing. Per-call cost is logged to the browser console as `[Gemini] …`.
+- The three prompt builders in `prompts/` are provider-agnostic; tone definitions live in `prompts/tone.js` (shared by cv-generator and cover-letter).
+
+## Analysis flow (async — do not make it synchronous)
+
+Gemini analysis runs longer than Netlify's 10s synchronous function limit (which **cannot** be raised on this plan), so analysis is a **background function**:
+
+- Browser → `POST /.netlify/functions/analyse-background.mjs` (15-min budget). Call it with a **relative URL** — never via `NEXT_PUBLIC_SITE_URL` server-to-server (that hop is what made a prior attempt save nothing).
+- The worker always writes either the analysis **or** an `{ "__analysis_error": "…" }` sentinel to `gen_data` under a client-minted `analysis_id` — never silent.
+- Browser polls `POST /api/get-analysis-status` (`{ user_id, analysis_id }`) until `done` / `error`. It also returns `_gemini_usage` for the console cost log.
+- All three entry points (landing page, CV uploader, Start-Fresh modal) go through `utils/uploadAndAnalyze.js` — keep them on that single helper.
+- `/.netlify/functions/*` are **not** served by `next dev`; test locally with `doppler run -- netlify dev`.
 
 ## Sacred files — do not rewrite or inline
 
@@ -65,8 +76,7 @@ The current `pages/api/` tree has critical vulnerabilities (documented in `REBUI
 
 | Variable | Purpose |
 |---|---|
-| `DEEPSEEK_API_URL` | DeepSeek endpoint |
-| `DEEPSEEK_API_KEY_1…N` | Rotated by KeyManager |
+| `GEMINI_API_KEYS` | Comma-separated Gemini keys, rotated by KeyManager |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (read-only public) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin (server-only) |
