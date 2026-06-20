@@ -12,6 +12,12 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function logGemini(u) {
+  if (!u) return;
+  if (Array.isArray(u)) { u.forEach(logGemini); return; }
+  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+}
+
 export async function uploadAndAnalyze({
   file,
   jobText,
@@ -79,7 +85,8 @@ export async function uploadAndAnalyze({
 
     const payload = await statusRes.json().catch(() => ({}));
     if (payload.status === 'done') {
-      return { user_id: finalUserId, analysis_id, analysis: payload.analysis };
+      logGemini(payload.gemini_usage);
+      return { user_id: finalUserId, analysis_id, analysis: payload.analysis, gemini_usage: payload.gemini_usage };
     }
     if (payload.status === 'error') {
       throw new Error(payload.error || 'Analysis failed');

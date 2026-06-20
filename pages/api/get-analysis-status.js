@@ -41,14 +41,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: 'pending' });
   }
 
+  let gemini_usage = null;
   try {
     const parsed = JSON.parse(content);
     if (parsed && parsed.__analysis_error) {
       return res.status(200).json({ status: 'error', error: parsed.__analysis_error });
     }
+    gemini_usage = parsed?._gemini_usage || null;
   } catch {
     // not the sentinel — it's the real analysis JSON; fall through
   }
 
-  return res.status(200).json({ status: 'done', analysis: content });
+  return res.status(200).json({ status: 'done', analysis: content, gemini_usage });
 }

@@ -63,6 +63,15 @@ export const handler = async (event) => {
       return m ? m[1].trim() : null;
     };
 
+    // Embed the usage/cost so the client can log it (the background function
+    // returns no body to the browser). Harmless extra key for all consumers.
+    let toSave = content;
+    try {
+      const obj = JSON.parse(content);
+      obj._gemini_usage = result.gemini_usage;
+      toSave = JSON.stringify(obj);
+    } catch { /* keep raw content if it isn't parseable */ }
+
     await saveGeneratedDoc({
       user_id,
       source_cv_id: user_id,
@@ -71,7 +80,7 @@ export const handler = async (event) => {
       company: extractMeta('Company Name'),
       job_title: extractMeta('Position/Title'),
       file_name: null,
-      content,
+      content: toSave,
       analysis_id,
     });
 
