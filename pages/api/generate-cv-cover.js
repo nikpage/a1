@@ -1,6 +1,6 @@
 // pages/api/generate-cv-cover.js
 
-import { getCvData, getCV, saveGeneratedDoc } from '../../utils/database';
+import { getCvData, getCV, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
 import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { createClient } from '@supabase/supabase-js';
@@ -98,36 +98,28 @@ export default async function handler(req, res) {
       });
     }
 
-    const logTx = async (docType, usage = {}) => {
-      const baseURL =
-        process.env.NODE_ENV === 'development'
-          ? 'http://localhost:3000'
-          : process.env.NEXT_PUBLIC_SITE_URL;
-      const urlToFetch = `${baseURL}/api/log-transaction`;
-
-      try {
-        await fetch(urlToFetch, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id,
-            source_gen_id: crypto.randomUUID(),
-            model: 'gemini-3.5-flash',
-            cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
-            cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
-            completion_tokens: usage.completion_tokens || 0,
-            job_title: null,
-            company: null,
-            tone
-          })
-        });
-      } catch (logErr) {
-        console.error('Logging transaction failed:', logErr);
-      }
-    };
-
-    if (type === 'cv' || type === 'both') await logTx('cv', cvRes?.usage || {});
-    if (type === 'cover' || type === 'both') await logTx('cover', coverRes?.usage || {});
+    if (type === 'cv' || type === 'both') {
+      await logAiTransaction({
+        user_id,
+        source_gen_id: crypto.randomUUID(),
+        model: 'gemini-3.5-flash',
+        cache_hit_tokens: cvRes?.usage?.prompt_cache_hit_tokens || 0,
+        cache_miss_tokens: cvRes?.usage?.prompt_cache_miss_tokens || 0,
+        completion_tokens: cvRes?.usage?.completion_tokens || 0,
+        detail: { tone, type: 'cv' },
+      });
+    }
+    if (type === 'cover' || type === 'both') {
+      await logAiTransaction({
+        user_id,
+        source_gen_id: crypto.randomUUID(),
+        model: 'gemini-3.5-flash',
+        cache_hit_tokens: coverRes?.usage?.prompt_cache_hit_tokens || 0,
+        cache_miss_tokens: coverRes?.usage?.prompt_cache_miss_tokens || 0,
+        completion_tokens: coverRes?.usage?.completion_tokens || 0,
+        detail: { tone, type: 'cover' },
+      });
+    }
 
     const gemini_usage = [
       ...(cvRes?.gemini_usage ? [cvRes.gemini_usage] : []),

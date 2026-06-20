@@ -1,5 +1,5 @@
 // pages/api/analyze-cv-job.js
-import { saveGeneratedDoc } from '../../utils/database';
+import { saveGeneratedDoc, logAiTransaction } from '../../utils/database';
 import { analyzeCvJob } from '../../utils/openai';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -120,29 +120,19 @@ export default async function handler(req, res) {
       hr_contact,
     });
 
-    done('result', { analysis: content, analysis_id, gemini_usage: result.gemini_usage });
-
-    // Fire-and-forget transaction log
     const usage = result?.usage || {};
-    const baseURL = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : process.env.NEXT_PUBLIC_SITE_URL;
+    await logAiTransaction({
+      user_id,
+      source_gen_id: analysis_id,
+      model: 'gemini-3.5-flash',
+      completion_tokens: usage.completion_tokens || 0,
+      cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
+      cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
+      detail: { job_title, company },
+      key_index: keyManager.currentKeyIndex,
+    });
 
-    fetch(`${baseURL}/api/log-transaction`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id,
-        source_gen_id: analysis_id,
-        model: 'gemini-3.5-flash',
-        completion_tokens: usage.completion_tokens || 0,
-        cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
-        cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
-        job_title,
-        company,
-        key_index: keyManager.currentKeyIndex,
-      }),
-    }).catch(err => console.error('Logging failed:', err));
+    done('result', { analysis: content, analysis_id, gemini_usage: result.gemini_usage });
 
   } catch (e) {
     console.error('API Error:', e.message);

@@ -9,6 +9,12 @@ function getSupabase() {
 }
 export const supabase = new Proxy({}, { get: (_, prop) => getSupabase()[prop] });
 
+let _adminSupabase;
+function getAdminSupabase() {
+  if (!_adminSupabase) _adminSupabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return _adminSupabase;
+}
+
 // Upsert user
 export async function upsertUser(user_id, phone_hash = null, email = null) {
     const { data, error } = await supabase
@@ -72,50 +78,52 @@ export async function decrementToken(user_id) {
   return data;
 }
 
-// Log token usage
-// Save detailed token usage
-export async function saveTokenUsage({
+// Log AI cost directly to transactions (bypasses HTTP self-call, safe on serverless)
+export async function logAiTransaction({
   user_id,
-  type,
   source_gen_id = null,
   model,
-  amount_usd,
-  detail = {},
   cache_hit_tokens = 0,
   cache_miss_tokens = 0,
   completion_tokens = 0,
-  key_index = null
+  detail = {},
+  key_index = null,
 }) {
-  const { data, error } = await supabase
-    .from('token_logs')
-    .insert([{
-      user_id,
-      type,
-      source_gen_id,
-      model,
-      amount_usd,
-      detail,
-      cache_hit_tokens,
-      cache_miss_tokens,
-      completion_tokens,
-      key_index
-    }])
-    .select()
-    .single();
+  const db = getAdminSupabase();
 
-  if (error) {
-    console.error('saveTokenUsage error:', error.message, error.details);
-    throw new Error(`saveTokenUsage failed: ${error.message}`);
+  const { data: pricing, error: pricingError } = await db
+    .from('model_pricing')
+    .select('event_type, cost_per_call')
+    .eq('model', model);
+
+  if (pricingError || !pricing?.length) {
+    console.error('logAiTransaction: pricing lookup failed for model', model, pricingError);
+    return;
   }
-  return data;
-}
 
-export async function logTokenUsage(user_id, token_type, amount) {
-  const { data, error } = await supabase
-    .from('token_logs')
-    .insert([{ user_id, token_type, amount }]);
-  if (error) throw error;
-  return data;
+  const priceMap = {};
+  for (const row of pricing) priceMap[row.event_type] = parseFloat(row.cost_per_call);
+
+  const amount_usd = (
+    cache_hit_tokens  * (priceMap['cache_hit']  || 0) +
+    cache_miss_tokens * (priceMap['cache_miss'] || 0) +
+    completion_tokens * (priceMap['completion'] || 0)
+  ).toFixed(12);
+
+  const { error } = await db.from('transactions').insert([{
+    user_id,
+    type: 'ai_cost',
+    source_gen_id,
+    model,
+    cache_hit_tokens,
+    cache_miss_tokens,
+    completion_tokens,
+    amount_usd,
+    detail,
+    key_index,
+  }]);
+
+  if (error) console.error('logAiTransaction: insert failed', error.message);
 }
 
 // Save generated doc
