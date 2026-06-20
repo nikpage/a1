@@ -49,7 +49,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     try {
       const response = await axios.post(
         GEMINI_URL,
-        { model: GEMINI_ANALYSIS_MODEL, messages, google: { thinking_config: { thinking_level: 'low' } } },
+        { model: GEMINI_ANALYSIS_MODEL, messages },
         {
           headers: {
             Authorization: `Bearer ${keyManager.getNextKey()}`,
@@ -59,7 +59,6 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
       );
 
       const data = response.data;
-      console.log('[Gemini] raw usage:', JSON.stringify(data.usage));
       const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
 
       const fullPromptString = JSON.stringify(messages, null, 2);
@@ -107,7 +106,7 @@ export async function generateCV({ cv, analysis, tone }) {
 
   const response = await axios.post(
     GEMINI_URL,
-    { model: GEMINI_GENERATION_MODEL, messages, google: { thinking_config: { thinking_level: 'low' } } },
+    { model: GEMINI_GENERATION_MODEL, messages },
     {
       headers: {
         Authorization: `Bearer ${keyManager.getNextKey()}`,
@@ -128,7 +127,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
 
   const response = await axios.post(
     GEMINI_URL,
-    { model: GEMINI_GENERATION_MODEL, messages, google: { thinking_config: { thinking_level: 'low' } } },
+    { model: GEMINI_GENERATION_MODEL, messages },
     {
       headers: {
         Authorization: `Bearer ${keyManager.getNextKey()}`,
