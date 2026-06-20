@@ -138,6 +138,25 @@ if (inCenterBlock) {
 
 if (raw === '---') continue;
 
+// Top-level name heading. Normally the AI wraps the intro in <center>, but
+// when it omits that wrapper a bare "# Name" must still render centered as the
+// name — never leak the literal "#" into the document.
+if (/^#\s+/.test(raw)) {
+  const nm = raw
+    .replace(/<[^>]+>/g, '')
+    .replace(/^#+\s*/, '')
+    .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ')
+    .replace(/\*\*/g, '').replace(/\*/g, '')
+    .trim();
+  docParagraphs.push(new Paragraph({
+    children: [new TextRun({ text: nm, ...styles.name })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 150 },
+    keepLines: true,
+  }));
+  continue;
+}
+
 if (raw.startsWith('#### ') && /experience/i.test(currentSectionTitle)) {
   const cleaned = raw.replace(/<[^>]+>/g, '').replace(/^####\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '').trim();
   inJobBlock = true;
@@ -218,6 +237,7 @@ if (raw.startsWith('###')) {
 const cleanedMd = raw
   .replace(/<[^>]+>/g, '')        // strip all HTML tags
   .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/^#+\s*/, '')          // strip any stray leading heading marker
   .replace(/^- |^• /, '')
   .trim();
 // plain: emphasis markers removed too, for the pipe-delimited company line.
