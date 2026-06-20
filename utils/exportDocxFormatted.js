@@ -8,7 +8,7 @@ Packer,
 Paragraph,
 TextRun,
 AlignmentType,
-TabStopType,
+BorderStyle,
 } from 'docx';
 
 export default async function exportDocxFormatted({
@@ -32,8 +32,9 @@ dates: { size: 20, color: '7f7f7f', italics: true },
 bodyText: { size: 22, color: '2d2d2d' },
 bulletText: { size: 22, color: '2d2d2d' },
 skillText: { size: 21, color: '2d2d2d' },
-tabStop: { type: TabStopType.LEFT, position: 4500 },
-underline: { text: '________________________________', size: 16, color: 'e6e6e6' },
+// ATS-safe section divider: a real bottom border, never literal underscore text
+// (a row of "____" is ingested by ATS parsers as a meaningless token).
+rule: { style: BorderStyle.SINGLE, size: 4, space: 1, color: 'CCCCCC' },
 };
 
 // Normalise AI output to clean markdown before line-by-line parsing.
@@ -154,6 +155,33 @@ if (/^#\s+/.test(raw)) {
     spacing: { after: 150 },
     keepLines: true,
   }));
+  // The AI omitted the <center> wrapper, so the tagline + contact lines that
+  // follow the bare name would otherwise fall through to left-aligned body
+  // text — a centered name over a left-aligned header looks broken. Center the
+  // header lines up to the first section (###) / divider (---), capped so a
+  // missing section header can't swallow the whole document.
+  let h = i + 1;
+  while (h < lines.length && h - i <= 3) {
+    const hl = lines[h].trim();
+    if (!hl) { h++; continue; }
+    if (/^#{1,3}\s/.test(hl) || hl === '---' || /<\/?center>/i.test(hl)) break;
+    const hlClean = hl
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ')
+      .replace(/\*\*/g, '').replace(/\*/g, '')
+      .replace(/^#+\s*/, '').replace(/^- |^• /, '')
+      .trim();
+    if (!hlClean) { h++; continue; }
+    const isContact = hlClean.includes('@') || hlClean.includes('|') || /linkedin|www\./.test(hlClean);
+    docParagraphs.push(new Paragraph({
+      children: [new TextRun({ text: hlClean, ...(isContact ? styles.contact : styles.tagline) })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 100 },
+      keepLines: true,
+    }));
+    h++;
+  }
+  i = h - 1;
   continue;
 }
 
@@ -174,10 +202,9 @@ if (raw.startsWith('###')) {
   inJobBlock = false;
 
   docParagraphs.push(new Paragraph({
-    children: [new TextRun(styles.underline)],
+    border: { bottom: styles.rule },
     spacing: { before: 100, after: 200 },
     keepLines: true,
-
   }));
 
   docParagraphs.push(new Paragraph({
@@ -206,25 +233,17 @@ if (raw.startsWith('###')) {
     }
     i = j - 1;
 
-    for (let k = 0; k < skillsBuffer.length; k += 2) {
-      const leftSkill = skillsBuffer[k] || '';
-      const rightSkill = skillsBuffer[k + 1] || '';
-      const children = [];
-      if (leftSkill) {
-        children.push(new TextRun({ text: '• ', ...styles.skillText }));
-        children.push(new TextRun({ text: leftSkill, ...styles.skillText }));
-      }
-      if (rightSkill) {
-        children.push(new TextRun({ text: '\t' }));
-        children.push(new TextRun({ text: '• ', ...styles.skillText }));
-        children.push(new TextRun({ text: rightSkill, ...styles.skillText }));
-      }
+    // One skill per line. A tab-separated two-column layout is read out of
+    // order (or merged) by ATS parsers, so keep skills single-column.
+    for (let k = 0; k < skillsBuffer.length; k++) {
       docParagraphs.push(new Paragraph({
-        children,
-        tabStops: [styles.tabStop],
-        spacing: { after: 150 },
+        children: [
+          new TextRun({ text: '• ', ...styles.skillText }),
+          new TextRun({ text: skillsBuffer[k], ...styles.skillText }),
+        ],
+        spacing: { after: 80 },
+        indent: { left: 360, hanging: 360 },
         keepLines: true,
-
       }));
     }
     continue;
