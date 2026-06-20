@@ -30,8 +30,16 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, known issue
 
 - `utils/openai.js` (misleading name — calls **Gemini**, not OpenAI) via the Gemini OpenAI-compatible endpoint. Both analysis and generation use `gemini-3.5-flash`. Key rotation via `utils/key-manager.js` over `GEMINI_API_KEYS` (comma-separated).
 - The OpenAI-compatible endpoint cannot set `safetySettings`. Mild profanity (e.g. the "cocky" tone's "shit-hot") comes through fine; if Gemini ever sanitizes output, the only lever is switching that call to the native `generateContent` endpoint with `BLOCK_NONE`.
-- Pricing per `PRICING` in `utils/openai.js` — verify rates at ai.google.dev/gemini-api/docs/pricing. Per-call cost is logged to the browser console as `[Gemini] …`.
+- Pricing per `PRICING` in `utils/openai.js` — verify rates at ai.google.dev/gemini-api/docs/pricing. Per-call cost is logged to the browser console as `[Gemini] …` and written to the `transactions` table via `logAiTransaction()` in `utils/database.js`.
 - The three prompt builders in `prompts/` are provider-agnostic; tone definitions live in `prompts/tone.js` (shared by cv-generator and cover-letter).
+
+## AI cost logging
+
+Every AI call writes a row to `transactions` (`type = 'ai_cost'`) via `logAiTransaction()` in `utils/database.js`. It looks up per-token rates from the `model_pricing` table and inserts directly using the service-role client — no HTTP self-call.
+
+- **Analysis**: logged in `netlify/functions/analyse-background.mjs` after `saveGeneratedDoc` succeeds.
+- **Generation**: logged in `pages/api/generate-cv-cover.js` after each document is saved.
+- `pages/api/log-transaction.js` and `pages/api/analyze-cv-job.js` are **dead code** — nothing calls them.
 
 ## Analysis flow (async — do not make it synchronous)
 
