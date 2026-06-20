@@ -49,7 +49,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
     try {
       const response = await axios.post(
         GEMINI_URL,
-        { model: GEMINI_ANALYSIS_MODEL, messages },
+        { model: GEMINI_ANALYSIS_MODEL, messages, reasoning_effort: 'low' },
         {
           headers: {
             Authorization: `Bearer ${keyManager.getNextKey()}`,
@@ -106,7 +106,7 @@ export async function generateCV({ cv, analysis, tone }) {
 
   const response = await axios.post(
     GEMINI_URL,
-    { model: GEMINI_GENERATION_MODEL, messages },
+    { model: GEMINI_GENERATION_MODEL, messages, reasoning_effort: 'low' },
     {
       headers: {
         Authorization: `Bearer ${keyManager.getNextKey()}`,
@@ -127,7 +127,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
 
   const response = await axios.post(
     GEMINI_URL,
-    { model: GEMINI_GENERATION_MODEL, messages },
+    { model: GEMINI_GENERATION_MODEL, messages, reasoning_effort: 'low' },
     {
       headers: {
         Authorization: `Bearer ${keyManager.getNextKey()}`,
