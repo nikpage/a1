@@ -5,12 +5,7 @@ import StartFreshDbModal from './StartFreshDbModal'
 import StartFreshUploadModal from './StartFreshUploadModal'
 import StartFreshHeader from './StartFreshHeader'
 import { useTranslation } from 'react-i18next'
-
-function logGemini(u) {
-  if (!u) return;
-  if (Array.isArray(u)) { u.forEach(logGemini); return; }
-  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
-}
+import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
 
 export default function StartFreshModal({
   user_id,
@@ -59,52 +54,15 @@ export default function StartFreshModal({
     setLoading(true)
     try {
       const selectedCv = cvOptions.find(cv => cv.id === cvId)
-      const payload = {
-        user_id: user_id,
+      const { analysis } = await uploadAndAnalyze({
+        user_id,
         created_at: selectedCv?.created_at,
-        file_name: selectedCv?.name || 'Unnamed file'
-      }
-      if (jobDesc && jobDesc.trim() !== '') {
-        payload.jobText = jobDesc.trim()
-      }
-      const res = await fetch('/api/analyze-cv-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        file_name: selectedCv?.name || 'Unnamed file',
+        jobText: jobDesc && jobDesc.trim() !== '' ? jobDesc.trim() : undefined,
       })
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${res.status}`)
-      }
 
-      // Read SSE stream
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buf = ''
-      let data = null
-
-      outer: while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buf += decoder.decode(value, { stream: true })
-        const parts = buf.split('\n\n')
-        buf = parts.pop()
-        for (const part of parts) {
-          const eventMatch = part.match(/^event:\s*(.+)$/m)
-          const dataMatch  = part.match(/^data:\s*(.+)$/m)
-          if (!eventMatch || !dataMatch) continue
-          const event = eventMatch[1].trim()
-          let payload
-          try { payload = JSON.parse(dataMatch[1]) } catch { continue }
-          if (event === 'result') { data = payload; break outer }
-          if (event === 'error') throw new Error(payload.error || 'Analysis failed')
-        }
-      }
-
-      if (!data) throw new Error('Analysis stream ended without a result')
-      if (data.gemini_usage) logGemini(data.gemini_usage);
       window.dispatchEvent(new CustomEvent('new-analysis', {
-        detail: { analysis: data.analysis, startFresh: true }
+        detail: { analysis, startFresh: true }
       }))
       onStartFresh()
       onClose()
