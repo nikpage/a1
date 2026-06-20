@@ -1,6 +1,7 @@
 // prompts/cover-letter.js
 
 import { toneInstructions } from './tone.js';
+import { humanVoiceRules } from './voice.js';
 
 export function buildCoverPrompt(cv, analysis, tone) {
   const systemMessage = {
@@ -15,10 +16,12 @@ export function buildCoverPrompt(cv, analysis, tone) {
     Write a cover letter in the "${tone}" tone, using only real facts from the CV and analysis. Do NOT invent information. Output must match the CV's detected language (fall back to English if unclear). If the job ad is in another language, the CV language takes precedence.
 
     # What makes it land
-    - Open with a specific hook tied to this candidate and this role — never a generic "I am writing to apply for...".
+    - Open with a specific hook tied to this candidate and this role — never a generic "I am writing to apply for...". Keep the opening to one or two short, punchy sentences; do NOT cram the whole pitch into a single dense, multi-clause first sentence.
     - Build a short narrative: why this candidate, why this role, what they bring. Use concrete proof from the CV (real achievements, numbers, scope), not adjectives.
-    - The cover letter is the right place to address concerns: where relevant, briefly and confidently turn the items in \`analysis.red_flags\` into a strength or a non-issue. Do this with a light touch — explain, don't apologise.
+    - The cover letter is the right place to address concerns: where relevant, briefly and confidently turn the items in \`analysis.red_flags\` into a strength or a non-issue. Do this with a light touch — explain, don't apologise. Let any such pivot grow naturally out of the surrounding story rather than appearing as an abrupt, bolted-on sentence.
     - Work through the guidance in \`analysis.action_items["Cover Letter"]\` (Points to Address, Narrative Flow, Tone and Style).
+
+    ${humanVoiceRules()}
 
     # Rules
     - Start with only the date at the top. Do NOT add the applicant's name or contact details above the salutation.

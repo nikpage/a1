@@ -46,6 +46,11 @@ for (let i = 0; i < lines.length; i++) {
 const raw = lines[i].trim();
 if (!raw) continue;
 
+// Strip layout-only markup so it can never leak into the .docx as literal text:
+// HTML comments (e.g. <!-- BLOCK:START -->) and the skills-grid <div> wrappers.
+if (raw.startsWith('<!--')) continue;
+if (/^<\/?div\b/i.test(raw)) continue;
+
 if (raw.includes('<center>')) { inCenterBlock = true; continue; }
 if (raw.includes('</center>')) {
   inCenterBlock = false;
