@@ -9,7 +9,7 @@
 // client poll never hangs on silence.
 
 import { analyzeCvJob } from '../../utils/openai.js';
-import { saveGeneratedDoc, supabase } from '../../utils/database.js';
+import { saveGeneratedDoc, logAiTransaction, supabase } from '../../utils/database.js';
 
 async function saveError(user_id, analysis_id, message) {
   try {
@@ -72,16 +72,30 @@ export const handler = async (event) => {
       toSave = JSON.stringify(obj);
     } catch { /* keep raw content if it isn't parseable */ }
 
+    const company = extractMeta('Company Name');
+    const job_title = extractMeta('Position/Title');
+
     await saveGeneratedDoc({
       user_id,
       source_cv_id: user_id,
       type: 'analysis',
       tone: null,
-      company: extractMeta('Company Name'),
-      job_title: extractMeta('Position/Title'),
+      company,
+      job_title,
       file_name: null,
       content: toSave,
       analysis_id,
+    });
+
+    const usage = result?.usage || {};
+    await logAiTransaction({
+      user_id,
+      source_gen_id: analysis_id,
+      model: 'gemini-3.5-flash',
+      completion_tokens: usage.completion_tokens || 0,
+      cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
+      cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
+      detail: { job_title, company },
     });
 
     return { statusCode: 202 };
