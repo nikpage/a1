@@ -9,6 +9,8 @@ CV and cover-letter generator with token-based billing. Deployed at **thecv.pro*
 
 Read `REBUILD.md` before touching any API route. It is the contract for the ongoing rewrite.
 
+Read `DB.md` for the full Supabase schema — tables, columns, RPCs, known issues, and the SQL to wipe a test user.
+
 ## Stack
 
 | Layer | Tech |
