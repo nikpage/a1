@@ -15,7 +15,7 @@ function sleep(ms) {
 function logGemini(u) {
   if (!u) return;
   if (Array.isArray(u)) { u.forEach(logGemini); return; }
-  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} think: ${(u.thinkingTokens||0).toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
 }
 
 export async function uploadAndAnalyze({

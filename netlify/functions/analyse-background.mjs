@@ -88,13 +88,14 @@ export const handler = async (event) => {
     });
 
     const usage = result?.usage || {};
+    const thinkingTokens = Math.max(0, (usage.total_tokens || 0) - (usage.prompt_tokens || 0) - (usage.completion_tokens || 0));
     await logAiTransaction({
       user_id,
       source_gen_id: analysis_id,
       model: 'gemini-3.5-flash',
-      completion_tokens: usage.completion_tokens || 0,
-      cache_hit_tokens: usage.prompt_cache_hit_tokens || 0,
-      cache_miss_tokens: usage.prompt_cache_miss_tokens || 0,
+      cache_miss_tokens: usage.prompt_tokens || 0,
+      cache_hit_tokens: 0,
+      completion_tokens: (usage.completion_tokens || 0) + thinkingTokens,
       detail: { job_title, company },
     });
 

@@ -24,15 +24,16 @@ const PRICING = {
 };
 
 function geminiUsage(label, data, modelHint) {
-  const usage        = data.usage || {};
-  const servedModel  = data.model || modelHint;
-  const rates        = PRICING[servedModel] || PRICING['gemini-2.5-flash-lite'];
-  const inputTokens  = usage.prompt_tokens     || 0;
-  const outputTokens = usage.completion_tokens || 0;
-  const totalTokens  = usage.total_tokens      || (inputTokens + outputTokens);
-  const costUsd      = (inputTokens  / 1_000_000) * rates.input
-                     + (outputTokens / 1_000_000) * rates.output;
-  return { label, model: servedModel, inputTokens, outputTokens, totalTokens, costUsd };
+  const usage          = data.usage || {};
+  const servedModel    = data.model || modelHint;
+  const rates          = PRICING[servedModel] || PRICING['gemini-2.5-flash-lite'];
+  const inputTokens    = usage.prompt_tokens     || 0;
+  const outputTokens   = usage.completion_tokens || 0;
+  const totalTokens    = usage.total_tokens      || (inputTokens + outputTokens);
+  const thinkingTokens = Math.max(0, totalTokens - inputTokens - outputTokens);
+  const costUsd        = (inputTokens                     / 1_000_000) * rates.input
+                       + ((outputTokens + thinkingTokens) / 1_000_000) * rates.output;
+  return { label, model: servedModel, inputTokens, outputTokens, thinkingTokens, totalTokens, costUsd };
 }
 
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
