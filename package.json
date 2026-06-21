@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --ext .js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@supabase/supabase-js": "^1.35.7",
@@ -55,6 +58,8 @@
     "@types/formidable": "^3.4.5",
     "@types/uuid": "^10.0.0",
     "eslint": "8.44.0",
-    "eslint-config-next": "13.4.5"
+    "eslint-config-next": "13.4.5",
+    "node-mocks-http": "^1.17.2",
+    "vitest": "^4.1.9"
   }
 }
