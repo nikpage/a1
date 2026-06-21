@@ -47,10 +47,10 @@ works on stable, already-correct code.
 
 ## Milestone 2 — Correctness & resilience
 
-- [ ] **2.1** `generate-cv-cover`: don't lose a generation on AI failure — decrement after success, or refund in the catch. Test: simulated Gemini failure leaves `generations_left` unchanged.
-- [ ] **2.2** Double-submit guard (short per-user Redis lock or idempotency key) on generate & download. Test: two concurrent calls spend once.
-- [ ] **2.3** Extract one shared Gemini call helper with 429 key-rotation + retry; use it in `analyzeCvJob`, `generateCV`, `generateCoverLetter`. Test: first key 429s → second key succeeds.
-- [ ] **2.4** Real rate limiting (`@upstash/redis` + `@upstash/ratelimit`) on the routes users actually hit (upload, generate, send-magic-link). Remove the middleware that guards the dead `analyze-cv-job`. Use Netlify's real client IP header.
+- [x] **2.1** `generate-cv-cover`: decrement only after both AI calls succeed; AI failure leaves `generations_left` untouched. *(e5fd0db — architect-verified: moving decrement back before the AI call goes red)*
+- [x] **2.2** Double-submit guard: per-user Redis `NX` lock (30s), released in `finally`; second concurrent call → 429. *(e5fd0db)*
+- [x] **2.3** Shared `callGemini` helper with 429 key-rotation; used by all three AI functions. *(e5fd0db — architect-verified: breaking the 429 retry goes red)*
+- [x] **2.4** Middleware rewritten to rate-limit `upload-cv`, `generate-cv-cover`, `send-magic-link` (real Netlify client IP); dead 100KB check removed. *(e5fd0db — config-level test, runtime edge test documented as infeasible)*
 
 ## Milestone 3 — Observability
 
@@ -80,5 +80,5 @@ works on stable, already-correct code.
 | 1 | 0.1, 0.2, 0.3 | ✅ verified | 03f4a75 |
 | 2 | 0.4, 1.1, 1.2, 1.3, 1.5 | ✅ verified | c7ddf17 |
 | 3 | 1.4, 1.6, 1.7, 1.8 | ✅ verified | 3fedbe1 |
-| 4 | 2.1, 2.2, 2.3, 2.4 | issued | — |
+| 4 | 2.1, 2.2, 2.3, 2.4 | ✅ verified | e5fd0db |
 </content>
