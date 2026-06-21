@@ -29,10 +29,10 @@ Each task is small, independently verifiable, and **ships with real tests** (see
 Without a real test harness we cannot verify any later change. Build it first and prove it
 works on stable, already-correct code.
 
-- [ ] **0.1** Add test runner (Vitest) + `node-mocks-http` for API-route tests. Add scripts: `test`, `test:watch`, `test:coverage`. *(instruction set #1)*
-- [ ] **0.2** Write real tests for stable pure logic to validate the harness: the AI-cost math in `logAiTransaction` (mock only Supabase + `model_pricing`) and the JWT mint→verify roundtrip in `lib/auth.js` (incl. rejecting a tampered token). *(instruction set #1)*
-- [ ] **0.3** GitHub Actions CI: run `lint`, `build`, `test` on every push/PR to the branch. *(instruction set #1)*
-- [ ] **0.4** Add a shared test helpers module (mock Supabase client, mock Stripe, fake req/res) so later tests reuse it.
+- [x] **0.1** Add test runner (Vitest) + `node-mocks-http` for API-route tests. Add scripts: `test`, `test:watch`, `test:coverage`. *(03f4a75)*
+- [x] **0.2** Write real tests for stable pure logic to validate the harness: the AI-cost math in `logAiTransaction` and the JWT mint→verify roundtrip in `lib/auth.js`. *(03f4a75 — architect-verified via source mutation: both suites go red when the real code is broken, incl. the signature-bypass attack)*
+- [x] **0.3** GitHub Actions CI: run `lint`, `build`, `test` on every push/PR. *(03f4a75)*
+- [ ] **0.4** Add a shared test helpers module (mock Supabase client, mock Stripe, fake req/res) so later tests reuse it. *(folded into instruction set #2)*
 
 ## Milestone 1 — Security P0  *(must land before public launch)*
 
@@ -76,5 +76,6 @@ works on stable, already-correct code.
 
 | # | Milestone tasks | Status | Commit |
 |---|---|---|---|
-| 1 | 0.1, 0.2, 0.3 | issued | — |
+| 1 | 0.1, 0.2, 0.3 | ✅ verified | 03f4a75 |
+| 2 | 0.4, 1.1, 1.2, 1.3 | drafting | — |
 </content>
