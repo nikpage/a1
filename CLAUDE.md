@@ -7,9 +7,7 @@ CV and cover-letter generator with token-based billing. Deployed at **thecv.pro*
 - User uploads CV (PDF/DOCX) → optionally pastes job description → app analyses CV ↔ job → user picks tone → generates tailored CV, cover letter, or both.
 - Each generation costs 1 token. Tokens bought via Stripe (€6/€8/€23/€42 for 1/2/10/30).
 
-Read `REBUILD.md` before touching any API route. It is the master plan for the security/quality rewrite — all six milestones are now complete and verified.
-
-Read `DB.md` for the full Supabase schema — tables, columns, RPCs, known issues, and the SQL to wipe a test user.
+Read `DB.md` for the full Supabase schema — tables, columns, RPCs, and the SQL to wipe a test user.
 
 ## Stack
 
@@ -32,8 +30,8 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, known issue
 
 - `utils/openai.js` (misleading name — calls **Gemini**, not OpenAI) via the Gemini OpenAI-compatible endpoint. Both analysis and generation use `gemini-3.5-flash`. Key rotation via `utils/key-manager.js` over `GEMINI_API_KEYS` (comma-separated).
 - The OpenAI-compatible endpoint cannot set `safetySettings`. Mild profanity (e.g. the "cocky" tone's "shit-hot") comes through fine; if Gemini ever sanitizes output, the only lever is switching that call to the native `generateContent` endpoint with `BLOCK_NONE`.
-- Pricing per `PRICING` in `utils/openai.js` (the single hardcoded pricing source — the old duplicate in `key-manager.js` was removed). Verify rates at ai.google.dev/gemini-api/docs/pricing. Per-call cost is logged to the browser console as `[Gemini] …` and written to the `transactions` table via `logAiTransaction()` in `utils/database.js`.
-- Every successful AI call fires `trackDailySpend()` (fire-and-forget) in `utils/openai.js`, which accumulates the day's USD spend in Redis and logs an error alert once `GEMINI_DAILY_BUDGET_USD` (default 10) is reached — a cost-bomb early warning.
+- Pricing is in `PRICING` in `utils/openai.js` — the single source of truth. Verify rates at ai.google.dev/gemini-api/docs/pricing. Per-call cost is logged to the browser console as `[Gemini] …` and written to the `transactions` table via `logAiTransaction()` in `utils/database.js`.
+- Every successful AI call fires `trackDailySpend()` (fire-and-forget) in `utils/openai.js`, which accumulates the day's USD spend in Redis and emits a `logger.error` alert once `GEMINI_DAILY_BUDGET_USD` (default $10) is reached.
 - The three prompt builders in `prompts/` are provider-agnostic; tone definitions live in `prompts/tone.js` (shared by cv-generator and cover-letter).
 
 ## AI cost logging
@@ -41,7 +39,7 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, known issue
 Every AI call writes a row to `transactions` (`type = 'ai_cost'`) via `logAiTransaction()` in `utils/database.js`. It looks up per-token rates from the `model_pricing` table and inserts directly using the service-role client — no HTTP self-call.
 
 - **Analysis**: logged in `netlify/functions/analyse-background.mjs` after `saveGeneratedDoc` succeeds.
-- **Generation**: logged in `pages/api/generate-cv-cover.js` after each document is saved (decrement happens only after both AI calls succeed, so a failed generation never costs the user).
+- **Generation**: logged in `pages/api/generate-cv-cover.js` after each document is saved. The generation counter is decremented only after both AI calls succeed — a failed call leaves the user's balance untouched.
 
 ## Analysis flow (async — do not make it synchronous)
 
@@ -73,17 +71,17 @@ npm run build          # next build
 
 Secrets come from **Doppler** — do not add `.env` files or hardcode values. If a secret is missing locally, fetch it via `doppler run -- npm run dev`.
 
-## Security invariants (the rewrite fixed the P0s — keep them fixed)
+## Security rules
 
-The `pages/api/` tree was hardened across milestones 1–2 (see `REBUILD.md`). These rules are now enforced; do not regress them:
+Every API route that touches state or PII is wrapped in `requireAuth` (`lib/requireAuth.js`), which verifies the `auth-token` cookie and populates `req.user`. Never bypass this:
 
-1. Never add a new API route that trusts `user_id` from the request body — wrap the handler in `requireAuth` (`lib/requireAuth.js`) and read `req.user.user_id`.
-2. Never add unauthenticated routes that touch tokens, DB writes, or AI calls.
-3. Never add a second Redis client — use `@upstash/redis` only.
-4. Never do read-modify-write on `tokens` — use the `add_tokens` / `decrement_token` Supabase RPCs.
-5. Money/auth paths use idempotency + locks: the Stripe webhook dedupes on `event.id` (Redis `NX`), and generation holds a per-user `gen_lock` (Redis `NX`, released in `finally`).
-6. All DB access goes through `utils/database.js` — no ad-hoc `createClient` calls in routes. Writes use the service-role client; the anon client is read-only.
-7. Magic-link email goes through Resend only (no nodemailer/SMTP). Users can erase themselves via `DELETE /api/delete-account` → `deleteUserData()` (full cascade).
+1. `user_id` for any state change or PII read comes from `req.user.user_id` — never from the request body.
+2. No unauthenticated routes touch tokens, DB writes, or AI calls.
+3. One Redis client: `@upstash/redis` only.
+4. Token mutations go through Supabase RPCs (`add_tokens`, `decrement_token`, `decrement_generations`) — never read-modify-write.
+5. The Stripe webhook dedupes on `event.id` via Redis `NX`; `generate-cv-cover` holds a per-user `gen_lock` (Redis `NX`, 30s, released in `finally`) to block double-submissions.
+6. All DB access goes through `utils/database.js`. Writes use the service-role client (`getAdminSupabase()`); the anon client is for reads only. No `createClient` calls in route files.
+7. Magic-link email uses Resend (`RESEND_FROM_EMAIL`). Users delete their own account and all data via `DELETE /api/delete-account` → `deleteUserData()`.
 
 ## Key environment variables
 
@@ -97,10 +95,11 @@ The `pages/api/` tree was hardened across milestones 1–2 (see `REBUILD.md`). T
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash auth |
 | `STRIPE_SECRET_KEY` | Stripe server key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook validation |
-| `RESEND_API_KEY` | Email |
-| `RESEND_FROM_EMAIL` | Verified sender address for magic-link email, e.g. noreply@thecv.pro |
+| `RESEND_API_KEY` | Email sending |
+| `RESEND_FROM_EMAIL` | Verified sender address, e.g. noreply@thecv.pro |
 | `NEXT_PUBLIC_SITE_URL` | `https://thecv.pro` |
-| `GEMINI_DAILY_BUDGET_USD` | Daily Gemini spend alert threshold (default 10) |
+| `GEMINI_DAILY_BUDGET_USD` | Daily Gemini spend alert threshold (default $10) |
+| `JWT_SECRET` | Signs session cookies — required at startup, no fallback |
 | `SENTRY_DSN` | Error monitoring (server + edge) |
 | `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring (browser) |
 | `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` | Sentry source-map upload at build time |
@@ -132,15 +131,3 @@ non-negotiable for every test ever added to this repo:
 
 If a change cannot be verified by a real test, say so explicitly and explain how it was
 verified instead — do not write a hollow test to fill the gap.
-
-## Work plan
-
-`REBUILD.md` is the tracked master plan that brought this codebase to professional SaaS
-quality (security, scalability, maintainability). All six milestones (M0–M5) are complete
-and architect-verified — see its instruction-set log for the commit per milestone. Read it
-before touching any API route so you don't regress a hardened path, and if you extend the
-plan, keep its task checkboxes current.
-
-**One outstanding manual step:** apply `scripts/migrations/001_fix_transactions_user_id.sql`
-in the Supabase SQL editor to change `transactions.user_id` from `uuid` to `text`. Until
-that runs in production, the column type still mismatches `users.user_id`.
