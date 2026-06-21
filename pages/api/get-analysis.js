@@ -1,25 +1,15 @@
 // pages/api/get-analysis.js
 import { createClient } from '@supabase/supabase-js';
-import { getTokenFromReq, verifyToken } from '../../lib/auth';
+import requireAuth from '../../lib/requireAuth';
 
-export default async function handler(req, res) {
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id } = req.body;
-  const token = getTokenFromReq(req);
-
-  try {
-    const decoded = await verifyToken(token);
-    if (!decoded || decoded.user_id !== user_id) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const { user_id } = req.user;
 
   const { data, error } = await supabase
     .from('gen_data')
@@ -41,3 +31,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ analysis: data.content });
 }
+
+export default requireAuth(handler);

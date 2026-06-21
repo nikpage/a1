@@ -5,19 +5,21 @@ import { getUserById, decrementGenerations } from '../../utils/generation-utils'
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import requireAuth from '../../lib/requireAuth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id, analysis: analysisRaw, tone = 'Formal', type = 'both' } = req.body;
-  if (!user_id || !analysisRaw || !type) {
+  const user_id = req.user.user_id;
+  const { analysis: analysisRaw, tone = 'Formal', type = 'both' } = req.body;
+  if (!analysisRaw || !type) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -142,3 +144,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Generation failed', detail });
   }
 }
+
+export default requireAuth(handler);

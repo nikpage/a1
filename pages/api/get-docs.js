@@ -1,16 +1,13 @@
 // path: pages/api/get-docs.js
 import { supabase } from '../../utils/database';
+import requireAuth from '../../lib/requireAuth';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id } = req.body;
-
-  if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id' });
-  }
+  const { user_id } = req.user;
 
   try {
     const { data, error } = await supabase
@@ -35,3 +32,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server error: ' + err.message });
   }
 }
+
+export default requireAuth(handler);

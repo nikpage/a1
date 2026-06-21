@@ -1,6 +1,6 @@
 // pages/api/auth/verify.js
 import { createClient } from '@supabase/supabase-js';
-import { mintSessionToken } from '../../../lib/auth';
+import { setSessionCookie } from '../../../lib/session';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -31,13 +31,7 @@ export default async function handler(req, res) {
 
     await supabase.from('magic_tokens').delete().eq('token', token);
 
-    const sessionToken = mintSessionToken({ user_id: tokenData.user_id, email: tokenData.email });
-    const isProd = process.env.NODE_ENV === 'production';
-    res.setHeader('Set-Cookie', [
-      `auth-token=${sessionToken}; HttpOnly; Path=/; Max-Age=${30 * 24 * 60 * 60}; ${
-        isProd ? 'SameSite=None; Secure' : 'SameSite=Lax'
-      }`
-    ]);
+    setSessionCookie(res, { user_id: tokenData.user_id, email: tokenData.email });
 
     res.redirect(302, `/${tokenData.user_id}`);
   } catch (err) {

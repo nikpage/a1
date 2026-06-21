@@ -1,25 +1,27 @@
 // pages/api/get-analysis-status.js
 //
-// Read-only poll endpoint for the background analysis flow. Scoped by user_id +
-// analysis_id (an unguessable UUID minted per request), so it works for the
-// guest landing flow without auth. Reads gen_data only — no tokens, writes, or AI.
+// Poll endpoint for the background analysis flow. user_id comes from the verified
+// session cookie; analysis_id (an unguessable UUID minted per request) is still
+// required from the body to scope the lookup.
 
 import { createClient } from '@supabase/supabase-js';
+import requireAuth from '../../lib/requireAuth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id, analysis_id } = req.body || {};
-  if (!user_id || !analysis_id) {
-    return res.status(400).json({ error: 'Missing user_id or analysis_id' });
+  const { user_id } = req.user;
+  const { analysis_id } = req.body || {};
+  if (!analysis_id) {
+    return res.status(400).json({ error: 'Missing analysis_id' });
   }
 
   const { data, error } = await supabase
@@ -54,3 +56,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ status: 'done', analysis: content, gemini_usage });
 }
+
+export default requireAuth(handler);

@@ -14,7 +14,7 @@ const ratelimit = new Ratelimit({
 });
 
 export const config = {
-  matcher: '/api/analyze-cv-job',
+  matcher: '/api/_rate-limited-placeholder',
 };
 
 export async function middleware(request) {
