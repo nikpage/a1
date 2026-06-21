@@ -1,8 +1,9 @@
 // pages/api/generate-cv-cover.js
 
-import { getCvData, getCV, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
+import { getCV, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
 import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
+import { Redis } from '@upstash/redis';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import requireAuth from '../../lib/requireAuth';
@@ -11,6 +12,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+const redis = Redis.fromEnv();
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -30,118 +33,125 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid analysis JSON' });
   }
 
-  let user;
-  try {
-    user = await getUserById(user_id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-  } catch (userErr) {
-    console.error('User fetch error:', userErr);
-    return res.status(500).json({ error: 'Error fetching user data' });
-  }
-
-  // Check generations before generating
-  if (user.generations_left <= 0) {
-    return res.status(403).json({ error: 'NO_GENERATIONS_LEFT' });
-  }
-
-  // Check tokens before generating
-  if (user.tokens <= 0) {
-    return res.status(403).json({ error: 'NO_TOKENS_LEFT' });
-  }
-
-  // Decrement immediately
-  try {
-    await decrementGenerations(user_id, 1);
-  } catch (decErr) {
-    console.error('Decrement error:', decErr);
-    return res.status(500).json({ error: 'Error decrementing generations' });
-  }
-
-  let cvRecord;
-  try {
-    cvRecord = await getCV(user_id);
-    if (!cvRecord || !cvRecord.cv_data) {
-      return res.status(404).json({ error: 'CV not found for user' });
-    }
-  } catch (dbErr) {
-    console.error('CV fetch error:', dbErr);
-    return res.status(500).json({ error: 'Error fetching CV data' });
-  }
-
-  let cvRes = null;
-  let coverRes = null;
-  let cv = null;
-  let cover = null;
+  const lockKey = `gen_lock:${user_id}`;
+  const acquired = await redis.set(lockKey, '1', { nx: true, ex: 30 });
+  if (acquired !== 'OK') return res.status(429).json({ error: 'Generation already in progress' });
 
   try {
-    if (type === 'cv' || type === 'both') {
-      cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone });
-      cv = cvRes.content;
-      await saveGeneratedDoc({
-        user_id,
-        source_cv_id: user_id,
-        type: 'cv',
-        tone,
-        file_name: 'Generated_CV.txt',
-        content: cv
-      });
+    let user;
+    try {
+      user = await getUserById(user_id);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+    } catch (userErr) {
+      console.error('User fetch error:', userErr);
+      return res.status(500).json({ error: 'Error fetching user data' });
     }
 
-    if (type === 'cover' || type === 'both') {
-      coverRes = await generateCoverLetter({ cv: cvRecord.cv_data, analysis, tone });
-      cover = coverRes.content;
-      await saveGeneratedDoc({
-        user_id,
-        source_cv_id: user_id,
-        type: 'cover',
-        tone,
-        file_name: 'Generated_Cover_Letter.txt',
-        content: cover
-      });
+    if (user.generations_left <= 0) {
+      return res.status(403).json({ error: 'NO_GENERATIONS_LEFT' });
     }
 
-    if (type === 'cv' || type === 'both') {
-      const u = cvRes?.usage || {};
-      const thinking = Math.max(0, (u.total_tokens || 0) - (u.prompt_tokens || 0) - (u.completion_tokens || 0));
-      await logAiTransaction({
-        user_id,
-        source_gen_id: crypto.randomUUID(),
-        model: 'gemini-3.5-flash',
-        cache_hit_tokens: 0,
-        cache_miss_tokens: u.prompt_tokens || 0,
-        completion_tokens: (u.completion_tokens || 0) + thinking,
-        thinking_tokens: thinking,
-        detail: { tone, type: 'cv' },
-      });
-    }
-    if (type === 'cover' || type === 'both') {
-      const u = coverRes?.usage || {};
-      const thinking = Math.max(0, (u.total_tokens || 0) - (u.prompt_tokens || 0) - (u.completion_tokens || 0));
-      await logAiTransaction({
-        user_id,
-        source_gen_id: crypto.randomUUID(),
-        model: 'gemini-3.5-flash',
-        cache_hit_tokens: 0,
-        cache_miss_tokens: u.prompt_tokens || 0,
-        completion_tokens: (u.completion_tokens || 0) + thinking,
-        thinking_tokens: thinking,
-        detail: { tone, type: 'cover' },
-      });
+    if (user.tokens <= 0) {
+      return res.status(403).json({ error: 'NO_TOKENS_LEFT' });
     }
 
-    const gemini_usage = [
-      ...(cvRes?.gemini_usage ? [cvRes.gemini_usage] : []),
-      ...(coverRes?.gemini_usage ? [coverRes.gemini_usage] : []),
-    ];
-    return res.status(200).json({
-      ...(cv && { cv }),
-      ...(cover && { cover }),
-      gemini_usage
-    });
-  } catch (err) {
-    const detail = err?.response?.data || err?.message || 'unknown';
-    console.error('Generation error:', detail);
-    return res.status(500).json({ error: 'Generation failed', detail });
+    let cvRecord;
+    try {
+      cvRecord = await getCV(user_id);
+      if (!cvRecord || !cvRecord.cv_data) {
+        return res.status(404).json({ error: 'CV not found for user' });
+      }
+    } catch (dbErr) {
+      console.error('CV fetch error:', dbErr);
+      return res.status(500).json({ error: 'Error fetching CV data' });
+    }
+
+    let cvRes = null;
+    let coverRes = null;
+    let cv = null;
+    let cover = null;
+
+    try {
+      if (type === 'cv' || type === 'both') {
+        cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone });
+        cv = cvRes.content;
+      }
+
+      if (type === 'cover' || type === 'both') {
+        coverRes = await generateCoverLetter({ cv: cvRecord.cv_data, analysis, tone });
+        cover = coverRes.content;
+      }
+
+      // Both AI calls succeeded — decrement only now
+      await decrementGenerations(user_id, 1);
+
+      if (cv) {
+        await saveGeneratedDoc({
+          user_id,
+          source_cv_id: user_id,
+          type: 'cv',
+          tone,
+          file_name: 'Generated_CV.txt',
+          content: cv
+        });
+      }
+
+      if (cover) {
+        await saveGeneratedDoc({
+          user_id,
+          source_cv_id: user_id,
+          type: 'cover',
+          tone,
+          file_name: 'Generated_Cover_Letter.txt',
+          content: cover
+        });
+      }
+
+      if (type === 'cv' || type === 'both') {
+        const u = cvRes?.usage || {};
+        const thinking = Math.max(0, (u.total_tokens || 0) - (u.prompt_tokens || 0) - (u.completion_tokens || 0));
+        await logAiTransaction({
+          user_id,
+          source_gen_id: crypto.randomUUID(),
+          model: 'gemini-3.5-flash',
+          cache_hit_tokens: 0,
+          cache_miss_tokens: u.prompt_tokens || 0,
+          completion_tokens: (u.completion_tokens || 0) + thinking,
+          thinking_tokens: thinking,
+          detail: { tone, type: 'cv' },
+        });
+      }
+      if (type === 'cover' || type === 'both') {
+        const u = coverRes?.usage || {};
+        const thinking = Math.max(0, (u.total_tokens || 0) - (u.prompt_tokens || 0) - (u.completion_tokens || 0));
+        await logAiTransaction({
+          user_id,
+          source_gen_id: crypto.randomUUID(),
+          model: 'gemini-3.5-flash',
+          cache_hit_tokens: 0,
+          cache_miss_tokens: u.prompt_tokens || 0,
+          completion_tokens: (u.completion_tokens || 0) + thinking,
+          thinking_tokens: thinking,
+          detail: { tone, type: 'cover' },
+        });
+      }
+
+      const gemini_usage = [
+        ...(cvRes?.gemini_usage ? [cvRes.gemini_usage] : []),
+        ...(coverRes?.gemini_usage ? [coverRes.gemini_usage] : []),
+      ];
+      return res.status(200).json({
+        ...(cv && { cv }),
+        ...(cover && { cover }),
+        gemini_usage
+      });
+    } catch (err) {
+      const detail = err?.response?.data || err?.message || 'unknown';
+      console.error('Generation error:', detail);
+      return res.status(500).json({ error: 'Generation failed', detail });
+    }
+  } finally {
+    await redis.del(lockKey);
   }
 }
 

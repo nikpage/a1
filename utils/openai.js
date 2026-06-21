@@ -36,20 +36,14 @@ function geminiUsage(label, data, modelHint) {
   return { label, model: servedModel, inputTokens, outputTokens, thinkingTokens, totalTokens, costUsd };
 }
 
-export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
-  // DO NOT REMOVE THIS LINE OR MOVE IT
-  const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
-
-  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText);
-
+async function callGemini(model, messages, options = {}) {
   const totalKeys = keyManager.keys.filter(k => k !== null).length;
-  let lastError;
 
   for (let attempt = 0; attempt < Math.max(totalKeys, 1); attempt++) {
     try {
       const response = await axios.post(
         GEMINI_URL,
-        { model: GEMINI_ANALYSIS_MODEL, messages, reasoning_effort: 'low' },
+        { model, messages, ...options },
         {
           headers: {
             Authorization: `Bearer ${keyManager.getNextKey()}`,
@@ -57,86 +51,70 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
           }
         }
       );
-
-      const data = response.data;
-      const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
-
-      const fullPromptString = JSON.stringify(messages, null, 2);
-      console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
-      const rawOutputString = data.choices?.[0]?.message?.content || '';
-      console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
-
-      let jsonOutput = rawOutputString;
-
-      if (jsonOutput.includes('```json')) {
-        jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '');
-      } else if (jsonOutput.includes('```')) {
-        jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '');
-      }
-
-      jsonOutput = jsonOutput.trim();
-
-      try {
-        JSON.parse(jsonOutput);
-        return { choices: data.choices, output: jsonOutput, usage: data.usage, gemini_usage };
-      } catch (jsonError) {
-        console.error('Invalid JSON returned from API:', jsonError);
-        console.error('Cleaned JSON output:', jsonOutput);
-        throw new Error('API returned invalid JSON');
-      }
+      return response.data;
     } catch (error) {
-      lastError = error;
       if (error.response?.status === 429) {
-        console.warn(`[analyzeCvJob] Key ${attempt + 1}/${totalKeys} rate-limited (429), trying next key`);
+        console.warn(`[callGemini] Key ${attempt + 1}/${totalKeys} rate-limited (429), trying next key`);
         continue;
       }
-      console.error('Gemini API Error:', error.response?.data || error.message);
       throw error;
     }
   }
 
-  // All keys exhausted on 429s
   const rateLimitErr = new Error('All Gemini API keys are rate-limited. Try again later.');
   rateLimitErr.isRateLimit = true;
   throw rateLimitErr;
 }
 
+export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
+  // DO NOT REMOVE THIS LINE OR MOVE IT
+  const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
+
+  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText);
+
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low' });
+
+  const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
+
+  const fullPromptString = JSON.stringify(messages, null, 2);
+  console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
+  const rawOutputString = data.choices?.[0]?.message?.content || '';
+  console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
+
+  let jsonOutput = rawOutputString;
+
+  if (jsonOutput.includes('```json')) {
+    jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '');
+  } else if (jsonOutput.includes('```')) {
+    jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '');
+  }
+
+  jsonOutput = jsonOutput.trim();
+
+  try {
+    JSON.parse(jsonOutput);
+    return { choices: data.choices, output: jsonOutput, usage: data.usage, gemini_usage };
+  } catch (jsonError) {
+    console.error('Invalid JSON returned from API:', jsonError);
+    console.error('Cleaned JSON output:', jsonOutput);
+    throw new Error('API returned invalid JSON');
+  }
+}
+
 export async function generateCV({ cv, analysis, tone }) {
   const messages = buildCvPrompt(cv, analysis, tone);
-
-  const response = await axios.post(
-    GEMINI_URL,
-    { model: GEMINI_GENERATION_MODEL, messages, reasoning_effort: 'low' },
-    {
-      headers: {
-        Authorization: `Bearer ${keyManager.getNextKey()}`,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
-
-  const data = response.data;
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low' });
   return {
     content: data.choices?.[0]?.message?.content || '',
     usage: data.usage,
     gemini_usage: geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL)
   };
 }
+
 export async function generateCoverLetter({ cv, analysis, tone }) {
   const messages = buildCoverPrompt(cv, analysis, tone);
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low' });
 
-  const response = await axios.post(
-    GEMINI_URL,
-    { model: GEMINI_GENERATION_MODEL, messages, reasoning_effort: 'low' },
-    {
-      headers: {
-        Authorization: `Bearer ${keyManager.getNextKey()}`,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
-
-  const data = response.data;
   const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
 
   const rawContent = data.choices?.[0]?.message?.content || '';

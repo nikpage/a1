@@ -7,33 +7,45 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-const ratelimit = new Ratelimit({
-  redis: redis,
-  limiter: Ratelimit.slidingWindow(2, '30 s'),
-  prefix: 'ratelimit_middleware',
+const uploadLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, '1 m'),
+  prefix: 'rl_upload',
 });
 
+const generateLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, '1 m'),
+  prefix: 'rl_generate',
+});
+
+const magicLinkLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '1 m'),
+  prefix: 'rl_magic_link',
+});
+
+const LIMITERS = {
+  '/api/upload-cv': uploadLimiter,
+  '/api/generate-cv-cover': generateLimiter,
+  '/api/auth/send-magic-link': magicLinkLimiter,
+};
+
 export const config = {
-  matcher: '/api/_rate-limited-placeholder',
+  matcher: ['/api/upload-cv', '/api/generate-cv-cover', '/api/auth/send-magic-link'],
 };
 
 export async function middleware(request) {
-  const maxSizeKB = Number(process.env.MAX_FILE_SIZE_KB) || 100;
-  const limitInBytes = maxSizeKB * 1024;
-  const contentLength = Number(request.headers.get('content-length'));
+  const path = request.nextUrl.pathname;
+  const limiter = LIMITERS[path];
+  if (!limiter) return NextResponse.next();
 
-  if (isNaN(contentLength) || contentLength > limitInBytes) {
-    return new NextResponse(
-      JSON.stringify({ error: 'Payload too large' }),
-      {
-        status: 413,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-  }
+  const ip =
+    request.headers.get('x-nf-client-connection-ip') ||
+    (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
+    '127.0.0.1';
 
-  const ip = request.ip ?? '127.0.0.1';
-  const { success } = await ratelimit.limit(ip);
+  const { success } = await limiter.limit(ip);
 
   if (!success) {
     return new NextResponse(
