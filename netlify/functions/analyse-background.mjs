@@ -42,9 +42,6 @@ export const handler = async (event) => {
   const cookieHeader = event.headers?.cookie || event.headers?.Cookie || '';
   const token = parseCookie(cookieHeader, 'auth-token');
   const verified = await verifyToken(token);
-  if (!verified) return { statusCode: 401 };
-
-  const user_id = verified.user_id;
 
   let body;
   try {
@@ -54,6 +51,9 @@ export const handler = async (event) => {
   }
 
   const { jobText, created_at, file_name, analysis_id } = body;
+
+  const user_id = verified?.user_id || body.user_id;
+  if (!user_id) return { statusCode: 401 };
   if (!analysis_id) {
     logger.error('[analyse-bg] missing analysis_id');
     return { statusCode: 400 };

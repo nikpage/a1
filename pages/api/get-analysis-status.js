@@ -6,7 +6,7 @@
 
 import { logger } from '../../lib/logger';
 import { getGenDataByAnalysisId } from '../../utils/database';
-import requireAuth from '../../lib/requireAuth';
+import { getTokenFromReq, verifyToken } from '../../lib/auth';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,8 +14,11 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id } = req.user;
-  const { analysis_id } = req.body || {};
+  const token = getTokenFromReq(req);
+  const session = token ? await verifyToken(token) : null;
+  const { analysis_id, user_id: bodyUserId } = req.body || {};
+  const user_id = session?.user_id || bodyUserId;
+  if (!user_id) return res.status(401).json({ error: 'Missing user_id' });
   if (!analysis_id) {
     return res.status(400).json({ error: 'Missing analysis_id' });
   }
@@ -47,4 +50,4 @@ async function handler(req, res) {
   return res.status(200).json({ status: 'done', analysis: content, gemini_usage });
 }
 
-export default requireAuth(handler);
+export default handler;
