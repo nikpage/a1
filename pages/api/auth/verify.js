@@ -1,4 +1,5 @@
 // pages/api/auth/verify.js
+import { logger } from '../../../lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { setSessionCookie } from '../../../lib/session';
 
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
 
     res.redirect(302, `/${tokenData.user_id}`);
   } catch (err) {
-    console.error('Verify error:', err);
+    logger.error('Verify error:', err.message);
     res.redirect(302, '/?error=login-failed');
   }
 }

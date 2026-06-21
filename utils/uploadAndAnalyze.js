@@ -5,6 +5,8 @@
 // function directly, then poll until the result is saved. Calling the background
 // function with a relative URL avoids any server-to-server hop / base-URL env.
 
+import { logger } from '../lib/logger.js';
+
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 600000; // 10 min — under the 15-min background budget
 
@@ -15,7 +17,7 @@ function sleep(ms) {
 function logGemini(u) {
   if (!u) return;
   if (Array.isArray(u)) { u.forEach(logGemini); return; }
-  console.log(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} think: ${(u.thinkingTokens||0).toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
+  logger.info(`[Gemini] ${u.label} | model: ${u.model} | in: ${u.inputTokens.toLocaleString()} out: ${u.outputTokens.toLocaleString()} think: ${(u.thinkingTokens||0).toLocaleString()} total: ${u.totalTokens.toLocaleString()} | cost: $${u.costUsd.toFixed(6)}`);
 }
 
 export async function uploadAndAnalyze({

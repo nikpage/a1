@@ -1,6 +1,7 @@
 // utils/database.js
 
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../lib/logger.js';
 
 let _supabase;
 function getSupabase() {
@@ -22,10 +23,10 @@ export async function upsertUser(user_id, phone_hash = null, email = null) {
         .upsert([{ user_id, phone_hash, email }], { onConflict: ['user_id'] })
         .select();
     if (error) {
-        console.error('UpsertUser error:', error.message, error.details);
+        logger.error('UpsertUser error:', error.message, error.details);
         throw new Error(`UpsertUser failed: ${error.message}`);
     }
-    console.log('User upserted:', user_id, data);
+    logger.info('User upserted:', user_id);
     return data;
 }
 
@@ -105,7 +106,7 @@ export async function logAiTransaction({
     .eq('model', model);
 
   if (pricingError || !pricing?.length) {
-    console.error('logAiTransaction: pricing lookup failed for model', model, pricingError);
+    logger.error('logAiTransaction: pricing lookup failed for model', model, pricingError);
     return;
   }
 
@@ -132,7 +133,7 @@ export async function logAiTransaction({
     key_index,
   }]);
 
-  if (error) console.error('logAiTransaction: insert failed', error.message);
+  if (error) logger.error('logAiTransaction: insert failed', error.message);
 }
 
 // Save generated doc

@@ -8,9 +8,11 @@
 // ALWAYS writes either the analysis or an error sentinel to gen_data, so the
 // client poll never hangs on silence.
 
+import * as Sentry from '@sentry/node';
 import { analyzeCvJob } from '../../utils/openai.js';
 import { saveGeneratedDoc, logAiTransaction, supabase } from '../../utils/database.js';
 import { verifyToken } from '../../lib/auth.js';
+import { logger } from '../../lib/logger.js';
 
 function parseCookie(cookieHeader, name) {
   if (!cookieHeader) return null;
@@ -32,7 +34,7 @@ async function saveError(user_id, analysis_id, message) {
       analysis_id,
     });
   } catch (e) {
-    console.error('[analyse-bg] could not save error sentinel:', e.message);
+    logger.error('[analyse-bg] could not save error sentinel:', e.message);
   }
 }
 
@@ -53,7 +55,7 @@ export const handler = async (event) => {
 
   const { jobText, created_at, file_name, analysis_id } = body;
   if (!analysis_id) {
-    console.error('[analyse-bg] missing analysis_id');
+    logger.error('[analyse-bg] missing analysis_id');
     return { statusCode: 400 };
   }
 
@@ -119,7 +121,8 @@ export const handler = async (event) => {
 
     return { statusCode: 202 };
   } catch (e) {
-    console.error('[analyse-bg] analysis error:', e.response?.data || e.message);
+    Sentry.captureException(e);
+    logger.error('[analyse-bg] analysis error:', e.response?.data || e.message);
     const msg = e.isRateLimit
       ? 'AI service is busy. Please try again in a moment.'
       : (e.message || 'Analysis failed');

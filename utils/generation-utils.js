@@ -1,5 +1,6 @@
 // path: utils/generation-utils.js
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../lib/logger.js';
 
 let _supabase;
 function getSupabase() {
@@ -16,7 +17,7 @@ export async function getUserById(user_id) {
     .single();
 
   if (error) {
-    console.error('Error fetching user:', error);
+    logger.error('Error fetching user:', error.message);
     return null;
   }
   return data;
@@ -26,6 +27,6 @@ export async function decrementGenerations(user_id, amount = 1) {
   const { error } = await supabase.rpc('decrement_generations', { user_id, amount });
 
   if (error) {
-    console.error('Error decrementing generations:', error);
+    logger.error('Error decrementing generations:', error.message);
   }
 }

@@ -1,4 +1,5 @@
 // pages/api/get-analysis.js
+import { logger } from '../../lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import requireAuth from '../../lib/requireAuth';
 
@@ -21,7 +22,7 @@ async function handler(req, res) {
     .single();
 
   if (error) {
-    console.error('Supabase query error:', error.message);
+    logger.error('Supabase query error:', error.message);
     return res.status(500).json({ analysis: '', error: 'Error fetching data from database.' });
   }
 

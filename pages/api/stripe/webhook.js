@@ -1,5 +1,6 @@
 //  pages/api/stripe/webhook.js
 
+import { logger } from '../../../lib/logger';
 import Stripe from 'stripe';
 import { buffer } from 'micro';
 import { Redis } from '@upstash/redis';
@@ -20,7 +21,7 @@ export default async function handler(req, res) {
   try {
     event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.error('WEBHOOK SIGNATURE ERROR', err.message);
+    logger.error('WEBHOOK SIGNATURE ERROR', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -36,14 +37,14 @@ export default async function handler(req, res) {
 
       try {
         await addTokens(user_id, quantity);
-        console.log(`stripe ${event.id}: credited ${quantity} tokens to ${user_id}`);
+        logger.info(`stripe ${event.id}: credited ${quantity} tokens`);
       } catch (err) {
         await redis.del(key);
-        console.error('TOKEN CREDIT ERROR', err.message);
+        logger.error('TOKEN CREDIT ERROR', err.message);
         return res.status(500).json({ error: 'Token credit failed' });
       }
     } else {
-      console.warn('WEBHOOK MISSING METADATA', { event_id: event.id });
+      logger.warn('WEBHOOK MISSING METADATA', { event_id: event.id });
     }
   }
 

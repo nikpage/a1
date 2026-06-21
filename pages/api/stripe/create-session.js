@@ -1,5 +1,6 @@
 // pages/api/stripe/create-session.js
 
+import { logger } from '../../../lib/logger';
 import Stripe from 'stripe';
 
 
@@ -49,7 +50,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error('Stripe session error:', err);
+    logger.error('Stripe session error:', err.message);
     res.status(500).json({ error: 'Stripe session creation failed' });
   }
 }

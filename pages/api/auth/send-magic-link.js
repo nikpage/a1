@@ -1,5 +1,6 @@
 // pages/api/auth/send-magic-link.js
 
+import { logger } from '../../../lib/logger';
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import nodemailer from "nodemailer";
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (createErr || !created?.user_id) {
-      console.error("Supabase create error:", createErr);
+      logger.error("Supabase create error:", createErr?.message);
       return res.status(500).json({ error: "Could not create user." });
     }
     effectiveUserId = created.user_id;
@@ -129,7 +130,7 @@ export default async function handler(req, res) {
         html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
       });
     } catch (mailError) {
-      console.error("Mail error:", mailError);
+      logger.error("Mail error:", mailError.message);
       return res.status(500).json({ error: "Email send failed.", detail: mailError.message });
     }
 
@@ -138,7 +139,7 @@ export default async function handler(req, res) {
       message: "Login link sent successfully.",
     });
   } catch (e) {
-    console.error("Magic link error:", e);
+    logger.error("Magic link error:", e.message);
     return res.status(500).json({ error: "Internal error." });
   }
 }

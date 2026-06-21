@@ -1,5 +1,6 @@
 // pages/api/upload-cv.js
 
+import { logger } from '../../lib/logger'
 import formidable from 'formidable'
 import { upsertUser, upsertCV } from '../../utils/database'
 import extractTextFromPDF from '../../utils/pdf-extract'
@@ -42,7 +43,7 @@ async function extractTextFromDOCX(buffer) {
     const result = await mammoth.extractRawText({ buffer })
     return result.value
   } catch (error) {
-    console.error('DOCX extraction error:', error)
+    logger.error('DOCX extraction error:', error.message)
     throw new Error('Failed to extract text from DOCX file')
   }
 }
@@ -120,11 +121,11 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ user_id })
       } catch (dbErr) {
-        console.error('DB error:', dbErr)
+        logger.error('DB error:', dbErr.message)
         return res.status(500).json({ error: 'DB error', details: String(dbErr) })
       }
     } catch (e) {
-      console.error("Server error:", e)
+      logger.error("Server error:", e.message)
       return res.status(500).json({ error: 'Server error', details: String(e) })
     }
   })

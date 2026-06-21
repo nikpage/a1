@@ -4,6 +4,7 @@
 // session cookie; analysis_id (an unguessable UUID minted per request) is still
 // required from the body to scope the lookup.
 
+import { logger } from '../../lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import requireAuth from '../../lib/requireAuth';
 
@@ -34,7 +35,7 @@ async function handler(req, res) {
     .limit(1);
 
   if (error) {
-    console.error('[get-analysis-status] query error:', error.message);
+    logger.error('[get-analysis-status] query error:', error.message);
     return res.status(500).json({ error: 'Error fetching analysis status' });
   }
 

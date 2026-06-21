@@ -1,12 +1,36 @@
 // utils/openai.js
 
 import axios from 'axios'
+import { Redis } from '@upstash/redis';
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
+
+let _redis;
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv();
+  return _redis;
+}
+
+const DAILY_BUDGET = parseFloat(process.env.GEMINI_DAILY_BUDGET_USD || '10');
+
+export async function trackDailySpend(costUsd) {
+  const key = `gemini_spend:${new Date().toISOString().slice(0, 10)}`; // YYYY-MM-DD
+  try {
+    const redis = getRedis();
+    const newTotal = await redis.incrbyfloat(key, costUsd);
+    await redis.expire(key, 60 * 60 * 26); // 26h TTL — survives midnight briefly
+    if (newTotal >= DAILY_BUDGET) {
+      logger.error(`[spend-guard] Daily Gemini spend $${newTotal.toFixed(4)} has reached/exceeded budget $${DAILY_BUDGET}`);
+    }
+  } catch (e) {
+    logger.warn('[spend-guard] Could not record spend:', e.message);
+  }
+}
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 // Analysis is the strategic brain that drives every downstream document. Generation
@@ -54,7 +78,7 @@ async function callGemini(model, messages, options = {}) {
       return response.data;
     } catch (error) {
       if (error.response?.status === 429) {
-        console.warn(`[callGemini] Key ${attempt + 1}/${totalKeys} rate-limited (429), trying next key`);
+        logger.warn(`[callGemini] Key ${attempt + 1}/${totalKeys} rate-limited (429), trying next key`);
         continue;
       }
       throw error;
@@ -77,9 +101,9 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
 
   const fullPromptString = JSON.stringify(messages, null, 2);
-  console.log('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
+  logger.debug('PROMPT (first 500 chars):', fullPromptString.substring(0, 500) + (fullPromptString.length > 500 ? '...' : ''));
   const rawOutputString = data.choices?.[0]?.message?.content || '';
-  console.log('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
+  logger.debug('RAW JSON OUTPUT (first 500 chars):', rawOutputString.substring(0, 500) + (rawOutputString.length > 500 ? '...' : ''));
 
   let jsonOutput = rawOutputString;
 
@@ -93,10 +117,11 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 
   try {
     JSON.parse(jsonOutput);
+    trackDailySpend(gemini_usage.costUsd);
     return { choices: data.choices, output: jsonOutput, usage: data.usage, gemini_usage };
   } catch (jsonError) {
-    console.error('Invalid JSON returned from API:', jsonError);
-    console.error('Cleaned JSON output:', jsonOutput);
+    logger.error('Invalid JSON returned from API:', jsonError.message);
+    logger.error('Cleaned JSON output:', jsonOutput);
     throw new Error('API returned invalid JSON');
   }
 }
@@ -104,10 +129,12 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
 export async function generateCV({ cv, analysis, tone }) {
   const messages = buildCvPrompt(cv, analysis, tone);
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low' });
+  const gemini_usage = geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL);
+  trackDailySpend(gemini_usage.costUsd);
   return {
     content: data.choices?.[0]?.message?.content || '',
     usage: data.usage,
-    gemini_usage: geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL)
+    gemini_usage,
   };
 }
 
@@ -146,6 +173,7 @@ export async function generateCoverLetter({ cv, analysis, tone }) {
   const todayString = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   processedContent = `${todayString}\n\n${processedContent}`;
 
+  trackDailySpend(gemini_usage.costUsd);
   return {
     content: processedContent.trim(),
     usage: data.usage,

@@ -94,6 +94,7 @@ The current `pages/api/` tree has critical vulnerabilities (documented in `REBUI
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook validation |
 | `RESEND_API_KEY` | Email |
 | `NEXT_PUBLIC_SITE_URL` | `https://thecv.pro` |
+| `SENTRY_DSN` | Error monitoring |
 
 ## Testing law (binding — applies to ALL tests, now and forever)
 

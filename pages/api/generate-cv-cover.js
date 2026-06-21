@@ -1,5 +1,6 @@
 // pages/api/generate-cv-cover.js
 
+import { logger } from '../../lib/logger';
 import { getCV, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
 import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
@@ -43,7 +44,7 @@ async function handler(req, res) {
       user = await getUserById(user_id);
       if (!user) return res.status(404).json({ error: 'User not found' });
     } catch (userErr) {
-      console.error('User fetch error:', userErr);
+      logger.error('User fetch error:', userErr.message);
       return res.status(500).json({ error: 'Error fetching user data' });
     }
 
@@ -62,7 +63,7 @@ async function handler(req, res) {
         return res.status(404).json({ error: 'CV not found for user' });
       }
     } catch (dbErr) {
-      console.error('CV fetch error:', dbErr);
+      logger.error('CV fetch error:', dbErr.message);
       return res.status(500).json({ error: 'Error fetching CV data' });
     }
 
@@ -147,7 +148,7 @@ async function handler(req, res) {
       });
     } catch (err) {
       const detail = err?.response?.data || err?.message || 'unknown';
-      console.error('Generation error:', detail);
+      logger.error('Generation error:', detail);
       return res.status(500).json({ error: 'Generation failed', detail });
     }
   } finally {

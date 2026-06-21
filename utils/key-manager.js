@@ -1,4 +1,6 @@
 // js/key-manager.js
+import { logger } from '../lib/logger.js';
+
 export class KeyManager {
     constructor() {
         this.keys = [];
@@ -17,7 +19,7 @@ export class KeyManager {
 
     loadKeys() {
         if (typeof window !== 'undefined') {
-            console.warn('[KeyManager] running in browser – not loading any keys')
+            logger.warn('[KeyManager] running in browser – not loading any keys')
             this.keys = [null]
             return
         }
@@ -27,13 +29,13 @@ export class KeyManager {
             this.keys = raw.split(',').map(k => k.trim()).filter(k => k !== '');
 
             if (this.keys.length === 0) {
-                console.warn('[KeyManager] No Gemini keys found in GEMINI_API_KEYS')
+                logger.warn('[KeyManager] No Gemini keys found in GEMINI_API_KEYS')
                 this.keys = [null]
             } else {
-                console.log(`[KeyManager] Loaded ${this.keys.length} Gemini keys`)
+                logger.info(`[KeyManager] Loaded ${this.keys.length} Gemini keys`)
             }
         } else {
-            console.error('[KeyManager] Not in server environment')
+            logger.error('[KeyManager] Not in server environment')
             this.keys = [null]
         }
     }
@@ -42,7 +44,7 @@ export class KeyManager {
 
     getNextKey() {
       if (this.keys.length === 0 || this.keys.every(k => k === null)) {
-        console.warn('[KeyManager] No valid Gemini keys available');
+        logger.warn('[KeyManager] No valid Gemini keys available');
         return null;
       }
 
@@ -51,7 +53,7 @@ export class KeyManager {
       // Find the matching env var name
       const envKeyName = Object.entries(process.env).find(([name, value]) => value === key)?.[0];
 
-      console.log(`[KeyManager] Using key: ${envKeyName} = ${key.slice(0, 12)}...`);
+      logger.debug(`[KeyManager] Using key: ${envKeyName} = ${key.slice(0, 12)}...`);
 
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.keys.length;
       return key;
@@ -77,7 +79,7 @@ export class KeyManager {
                 const existingLog = existingData ? JSON.parse(existingData) : [];
                 localStorage.setItem('gemini_usage', JSON.stringify([...existingLog, entry]));
             } catch (error) {
-                console.error('Failed to store usage data in localStorage:', error);
+                logger.error('Failed to store usage data in localStorage:', error);
             }
         }
 
