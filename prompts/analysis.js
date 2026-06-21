@@ -32,6 +32,8 @@ STRICT SCENARIO LIST (Choose 1-2):
 ${hasJobText ? `- Overqualified\n- Under-qualified\n- Career Pivot\n- Major Pivot\n- Standard Career Progression` : ''}
 
 FIELD INSTRUCTIONS (apply when filling the schema below):
+${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extract ONLY what is literally stated in the ad — quote exact phrasing where possible. Use empty arrays where the ad is silent. NEVER invent, infer, or embellish.
+` : ''}
 - summary: 1-2 sentence attention-grabbing TL;DR of the candidate's real situation that makes the reader want to keep reading.
 - analysis.career_arc: 1-4 sentences telling the honest-but-flattering story of this candidate's trajectory — where they've been heading and why it's compelling.
 - analysis.parallel_experience: side projects, teaching, speaking, volunteering, certifications drawn ONLY from the CV that strengthen the candidate.
@@ -107,7 +109,22 @@ JSON OUTPUT SCHEMA:
       "skills_to_highlight": []
     }
   },
-  "final_thought": ""
+  "final_thought": ""${hasJobText ? `,
+  "job_extraction": {
+    "position_title": "",
+    "company": "",
+    "location": "",
+    "seniority": "",
+    "employment_type": "",
+    "salary": "",
+    "hard_skills": [],
+    "soft_skills": [],
+    "must_have_requirements": [],
+    "nice_to_have": [],
+    "responsibilities": [],
+    "keywords_for_ats": [],
+    "language_requirements": []
+  }` : ''}
 }
 
 CV CONTENT:

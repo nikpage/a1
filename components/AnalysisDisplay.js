@@ -2,6 +2,17 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
+function TagList({ items }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
+      {items.map((item, i) => (
+        <span key={i} className="inline-block bg-blue-50 border border-blue-200 text-blue-800 text-sm px-2 py-0.5 rounded-full">{item}</span>
+      ))}
+    </div>
+  );
+}
+
 export default function AnalysisDisplay({ analysis }) {
   const { t } = useTranslation('analysisDisplay');
   if (!analysis) return null;
@@ -175,6 +186,55 @@ export default function AnalysisDisplay({ analysis }) {
             </div>
           }
         />
+        {data.job_extraction && (() => {
+          const ex = data.job_extraction;
+          const hasContent = ex.position_title || ex.company || ex.location ||
+            ex.seniority || ex.employment_type || ex.salary ||
+            (Array.isArray(ex.hard_skills) && ex.hard_skills.length > 0) ||
+            (Array.isArray(ex.soft_skills) && ex.soft_skills.length > 0) ||
+            (Array.isArray(ex.must_have_requirements) && ex.must_have_requirements.length > 0) ||
+            (Array.isArray(ex.nice_to_have) && ex.nice_to_have.length > 0) ||
+            (Array.isArray(ex.keywords_for_ats) && ex.keywords_for_ats.length > 0) ||
+            (Array.isArray(ex.responsibilities) && ex.responsibilities.length > 0) ||
+            (Array.isArray(ex.language_requirements) && ex.language_requirements.length > 0);
+          if (!hasContent) return null;
+          return (
+            <Section
+              title={t('extractedFromJob')}
+              content={
+                <div>
+                  {ex.position_title && <div><strong>{t('extPositionTitle')}</strong> {ex.position_title}</div>}
+                  {ex.company && <div><strong>{t('extCompany')}</strong> {ex.company}</div>}
+                  {ex.location && <div><strong>{t('extLocation')}</strong> {ex.location}</div>}
+                  {ex.seniority && <div><strong>{t('extSeniority')}</strong> {ex.seniority}</div>}
+                  {ex.employment_type && <div><strong>{t('extEmploymentType')}</strong> {ex.employment_type}</div>}
+                  {ex.salary && ex.salary !== 'n/a' && <div><strong>{t('extSalary')}</strong> {ex.salary}</div>}
+                  {Array.isArray(ex.hard_skills) && ex.hard_skills.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}><strong>{t('extHardSkills')}</strong><TagList items={ex.hard_skills} /></div>
+                  )}
+                  {Array.isArray(ex.soft_skills) && ex.soft_skills.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}><strong>{t('extSoftSkills')}</strong><TagList items={ex.soft_skills} /></div>
+                  )}
+                  {Array.isArray(ex.must_have_requirements) && ex.must_have_requirements.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}><strong>{t('extMustHave')}</strong><TagList items={ex.must_have_requirements} /></div>
+                  )}
+                  {Array.isArray(ex.nice_to_have) && ex.nice_to_have.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}><strong>{t('extNiceToHave')}</strong><TagList items={ex.nice_to_have} /></div>
+                  )}
+                  {Array.isArray(ex.keywords_for_ats) && ex.keywords_for_ats.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}><strong>{t('extATSKeywords')}</strong><TagList items={ex.keywords_for_ats} /></div>
+                  )}
+                  {Array.isArray(ex.responsibilities) && ex.responsibilities.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}><strong>{t('extResponsibilities')}</strong><TagList items={ex.responsibilities} /></div>
+                  )}
+                  {Array.isArray(ex.language_requirements) && ex.language_requirements.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}><strong>{t('extLanguages')}</strong><TagList items={ex.language_requirements} /></div>
+                  )}
+                </div>
+              }
+            />
+          );
+        })()}
         {data.final_thought && (
           <Section
             title={t('finalThought')}

@@ -37,5 +37,19 @@
   "actionItems": "Action Items:",
   "cv": "CV",
   "coverLetter": "Cover Letter",
-  "finalThought": "Final Thought"
+  "finalThought": "Final Thought",
+  "extractedFromJob": "Here's what we pulled from the job ad",
+  "extPositionTitle": "Position Title:",
+  "extCompany": "Company:",
+  "extLocation": "Location:",
+  "extSeniority": "Seniority:",
+  "extEmploymentType": "Employment Type:",
+  "extSalary": "Salary:",
+  "extHardSkills": "Hard Skills:",
+  "extSoftSkills": "Soft Skills:",
+  "extMustHave": "Must-Have Requirements:",
+  "extNiceToHave": "Nice to Have:",
+  "extATSKeywords": "ATS Keywords:",
+  "extResponsibilities": "Responsibilities:",
+  "extLanguages": "Language Requirements:"
 }

@@ -19,6 +19,7 @@ import tokenCounterEn from './locales/en/tokenCounter.json'
 import tokenPurchasePanelEn from './locales/en/tokenPurchasePanel.json'
 import toneDocModalEn from './locales/en/toneDocModal.json'
 import headerEn from './locales/en/header.json'
+import jobAdInputEn from './locales/en/jobAdInput.json'
 
 import indexPageCs from './locales/cs/indexPage.json'
 import pricingCs from './locales/cs/pricing.json'
@@ -36,6 +37,7 @@ import tokenCounterCs from './locales/cs/tokenCounter.json'
 import tokenPurchasePanelCs from './locales/cs/tokenPurchasePanel.json'
 import toneDocModalCs from './locales/cs/toneDocModal.json'
 import headerCs from './locales/cs/header.json'
+import jobAdInputCs from './locales/cs/jobAdInput.json'
 
 import indexPagePl from './locales/pl/indexPage.json'
 import pricingPl from './locales/pl/pricing.json'
@@ -53,6 +55,7 @@ import tokenCounterPl from './locales/pl/tokenCounter.json'
 import tokenPurchasePanelPl from './locales/pl/tokenPurchasePanel.json'
 import toneDocModalPl from './locales/pl/toneDocModal.json'
 import headerPl from './locales/pl/header.json'
+import jobAdInputPl from './locales/pl/jobAdInput.json'
 
 i18n
   .use(LanguageDetector)
@@ -76,6 +79,7 @@ i18n
         tokenPurchasePanel: tokenPurchasePanelEn,
         toneDocModal: toneDocModalEn,
         header: headerEn,
+        jobAdInput: jobAdInputEn,
       },
       cs: {
         indexPage: indexPageCs,
@@ -94,6 +98,7 @@ i18n
         tokenPurchasePanel: tokenPurchasePanelCs,
         toneDocModal: toneDocModalCs,
         header: headerCs,
+        jobAdInput: jobAdInputCs,
       },
       pl: {
         indexPage: indexPagePl,
@@ -112,6 +117,7 @@ i18n
         tokenPurchasePanel: tokenPurchasePanelPl,
         toneDocModal: toneDocModalPl,
         header: headerPl,
+        jobAdInput: jobAdInputPl,
       }
     },
     fallbackLng: 'en',
@@ -133,6 +139,7 @@ i18n
       'tokenPurchasePanel',
       'toneDocModal',
       'header',
+      'jobAdInput',
     ],
     defaultNS: 'indexPage',
     detection: {

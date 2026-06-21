@@ -8,6 +8,7 @@ import AnalysisDisplay from '../components/AnalysisDisplay';
 import LoginModal from '../components/LoginModal';
 import { useTranslation } from 'react-i18next';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
+import { resolveJobText } from '../utils/resolveJobText';
 
 export default function IndexPage() {
   const { t } = useTranslation();  const router = useRouter();
@@ -46,9 +47,10 @@ export default function IndexPage() {
     try {
       setLoadingModalMessage(t('modal.inProgress'));
 
+      const resolvedJobText = await resolveJobText(jobText);
       const { user_id, analysis } = await uploadAndAnalyze({
         file,
-        jobText,
+        jobText: resolvedJobText,
         user_id: currentUserId || (typeof window !== 'undefined' ? localStorage.getItem('user_id') : null),
         onPing: () => setLoadingModalMessage(t('modal.inProgress')),
       });

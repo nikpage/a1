@@ -37,5 +37,19 @@
   "actionItems": "Akční kroky:",
   "cv": "Životopis",
   "coverLetter": "Motivační dopis",
-  "finalThought": "Závěrečná myšlenka"
+  "finalThought": "Závěrečná myšlenka",
+  "extractedFromJob": "Co jsme vytáhli z inzerátu",
+  "extPositionTitle": "Název pozice:",
+  "extCompany": "Společnost:",
+  "extLocation": "Místo:",
+  "extSeniority": "Seniorita:",
+  "extEmploymentType": "Typ zaměstnání:",
+  "extSalary": "Plat:",
+  "extHardSkills": "Technické dovednosti:",
+  "extSoftSkills": "Měkké dovednosti:",
+  "extMustHave": "Povinné požadavky:",
+  "extNiceToHave": "Vítané požadavky:",
+  "extATSKeywords": "Klíčová slova pro ATS:",
+  "extResponsibilities": "Odpovědnosti:",
+  "extLanguages": "Jazykové požadavky:"
 }

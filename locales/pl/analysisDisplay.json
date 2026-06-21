@@ -37,5 +37,19 @@
   "actionItems": "Działania do wykonania:",
   "cv": "CV",
   "coverLetter": "List motywacyjny",
-  "finalThought": "Ostatnia myśl"
+  "finalThought": "Ostatnia myśl",
+  "extractedFromJob": "Oto co wyciągnęliśmy z ogłoszenia",
+  "extPositionTitle": "Nazwa stanowiska:",
+  "extCompany": "Firma:",
+  "extLocation": "Lokalizacja:",
+  "extSeniority": "Staż:",
+  "extEmploymentType": "Typ zatrudnienia:",
+  "extSalary": "Wynagrodzenie:",
+  "extHardSkills": "Umiejętności twarde:",
+  "extSoftSkills": "Umiejętności miękkie:",
+  "extMustHave": "Wymagania obowiązkowe:",
+  "extNiceToHave": "Pożądane wymagania:",
+  "extATSKeywords": "Słowa kluczowe ATS:",
+  "extResponsibilities": "Obowiązki:",
+  "extLanguages": "Wymagania językowe:"
 }

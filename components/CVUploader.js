@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
+import { resolveJobText } from '../utils/resolveJobText'
 
 
 export default function CVUploader({ user_id, onUpload, selectedCv }) {
@@ -37,9 +38,10 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
     setError('')
 
     try {
+      const resolvedJobText = await resolveJobText(jobText);
       const result = await uploadAndAnalyze({
         file,
-        jobText,
+        jobText: resolvedJobText,
         user_id: user_id || localStorage.getItem('user_id'),
         fallbackCvText: null,
         fallbackCreatedAt: null,

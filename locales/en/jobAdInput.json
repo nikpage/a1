@@ -1,0 +1,5 @@
+{
+  "label": "Paste Job Description (optional):",
+  "placeholder": "Paste the job ad — text or a link",
+  "linkDetected": "Link detected — we'll fetch the job ad"
+}

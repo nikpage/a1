@@ -6,6 +6,7 @@ import StartFreshUploadModal from './StartFreshUploadModal'
 import StartFreshHeader from './StartFreshHeader'
 import { useTranslation } from 'react-i18next'
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
+import { resolveJobText } from '../utils/resolveJobText'
 
 export default function StartFreshModal({
   user_id,
@@ -54,11 +55,13 @@ export default function StartFreshModal({
     setLoading(true)
     try {
       const selectedCv = cvOptions.find(cv => cv.id === cvId)
+      const rawJobText = jobDesc && jobDesc.trim() !== '' ? jobDesc.trim() : undefined
+      const resolvedJobText = rawJobText ? await resolveJobText(rawJobText) : undefined
       const { analysis } = await uploadAndAnalyze({
         user_id,
         created_at: selectedCv?.created_at,
         file_name: selectedCv?.name || 'Unnamed file',
-        jobText: jobDesc && jobDesc.trim() !== '' ? jobDesc.trim() : undefined,
+        jobText: resolvedJobText,
       })
 
       window.dispatchEvent(new CustomEvent('new-analysis', {
