@@ -77,5 +77,5 @@ works on stable, already-correct code.
 | # | Milestone tasks | Status | Commit |
 |---|---|---|---|
 | 1 | 0.1, 0.2, 0.3 | ✅ verified | 03f4a75 |
-| 2 | 0.4, 1.1, 1.2, 1.3 | drafting | — |
+| 2 | 0.4, 1.1, 1.2, 1.3, 1.5 | issued | — |
 </content>
