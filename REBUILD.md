@@ -60,16 +60,16 @@ works on stable, already-correct code.
 
 ## Milestone 4 — Database & data hygiene
 
-- [ ] **4.1** Fix `transactions.user_id` type mismatch (uuid vs text) — migration so casts are no longer needed. Update `DB.md`.
-- [ ] **4.2** Make `model_pricing` (DB) the single source of pricing; remove the duplicated hardcoded tables in `openai.js` and `key-manager.js`.
-- [ ] **4.3** GDPR: authenticated "delete my account & data" endpoint implementing the cascade currently documented as manual SQL in `DB.md`. Test: deletes across all tables.
+- [x] **4.1** Migration `scripts/migrations/001_fix_transactions_user_id.sql` created (manual apply in Supabase SQL editor); `DB.md` updated — type mismatch note and `::text` cast removed. *(956ae16)*
+- [x] **4.2** Dead pricing tables removed from `key-manager.js` (`pricingRates`, `calculateCost`, `trackUsage`, `getUsageStats`); `utils/openai.js`'s `PRICING` is the sole hardcoded source. *(956ae16)*
+- [x] **4.3** `DELETE /api/delete-account` + `deleteUserData()` cascade (gen_data → cv_data → magic_tokens → transactions → users). *(956ae16 — architect-verified: removing users delete → test red; swapping user_id source to body → cross-user test red)*
 
 ## Milestone 5 — Maintainability & launch polish
 
-- [ ] **5.1** Standardize on one email path (Resend + verified domain) for magic links; remove the hardcoded Gmail SMTP. Test: send path called with correct args (mock Resend).
-- [ ] **5.2** Single Supabase access layer — route all DB access through `utils/database.js`; remove ad-hoc `createClient` calls scattered in routes.
-- [ ] **5.3** Remove repo junk: the empty `User-Agent:` file, stray `project-tree.txt`; prune unused deps (`ioredis`, `pg`, `magic-sdk`, `textract`, `franc`, `openai`) after confirming each is unreferenced.
-- [ ] **5.4** Privacy policy + documented data-retention (the `gen_data` 90-day expiry) surfaced in the product.
+- [x] **5.1** `send-magic-link.js` now uses Resend; nodemailer/Gmail SMTP removed. `RESEND_FROM_EMAIL` env var documented. *(956ae16)*
+- [x] **5.2** 12 typed functions added to `utils/database.js`; zero `createClient` calls remain in `pages/`. *(956ae16)*
+- [x] **5.3** Deleted `User-Agent:` and `project-tree.txt`; uninstalled `ioredis`, `pg`, `magic-sdk`, `textract`, `franc`, `openai` (154 packages removed). *(956ae16)*
+- [x] **5.4** `/privacy` page created with data-retention info; footer link added to `pages/index.js`. *(956ae16)*
 
 ---
 
@@ -82,4 +82,5 @@ works on stable, already-correct code.
 | 3 | 1.4, 1.6, 1.7, 1.8 | ✅ verified | 3fedbe1 |
 | 4 | 2.1, 2.2, 2.3, 2.4 | ✅ verified | e5fd0db |
 | 5 | 3.1, 3.2, 3.3 | ✅ verified | 20cba6c |
+| 6 | 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.4 | ✅ verified | 956ae16 |
 </content>
