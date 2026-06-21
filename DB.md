@@ -46,7 +46,7 @@ One row per user (upserted on upload).
 | Column | Type | Default | Notes |
 |---|---|---|---|
 | `id` | uuid | gen_random_uuid() | PK |
-| `user_id` | text | — | FK → users |
+| `user_id` | uuid | — | FK → users; **type is `uuid` here while `users.user_id` is `text`** — cast with `user_id::text` on joins/deletes. `scripts/migrations/001_fix_transactions_user_id.sql` converts it to `text`; apply that and the cast is no longer needed. |
 | `type` | text | — | Always `'ai_cost'` currently |
 | `source_gen_id` | uuid | — | FK → gen_data.id |
 | `model` | text | — | e.g. `'gemini-3.5-flash'` |
@@ -59,7 +59,7 @@ One row per user (upserted on upload).
 | `key_index` | integer | — | Which API key was used |
 | `created_at` | timestamp | now() | |
 
-Inserted by `logAiTransaction()` in `utils/database.js` (service-role client, direct insert — no HTTP self-call), called from `netlify/functions/analyse-background.mjs` (analysis) and `pages/api/generate-cv-cover.js` (generation).
+Inserted by `logAiTransaction()` in `utils/database.js` (service-role client), called from `netlify/functions/analyse-background.mjs` (analysis) and `pages/api/generate-cv-cover.js` (generation).
 
 ### `model_pricing`
 | Column | Type | Notes |
@@ -68,7 +68,7 @@ Inserted by `logAiTransaction()` in `utils/database.js` (service-role client, di
 | `event_type` | text | `'cache_hit'`, `'cache_miss'`, `'completion'` |
 | `cost_per_call` | numeric | USD per token |
 
-Current rows (as of 2026-06-20):
+Rows:
 
 | model | cache_miss | cache_hit | completion |
 |---|---|---|---|
@@ -115,11 +115,13 @@ BEGIN
   DELETE FROM gen_data     WHERE user_id = uid;
   DELETE FROM cv_data      WHERE user_id = uid;
   DELETE FROM magic_tokens WHERE user_id = uid;
-  DELETE FROM transactions WHERE user_id = uid;
+  DELETE FROM transactions WHERE user_id::text = uid;  -- transactions.user_id is uuid
   DELETE FROM users        WHERE user_id = uid;
 END $$;
 ```
 
-## Pending migrations
+The authenticated `DELETE /api/delete-account` route runs this same cascade via `deleteUserData()` in `utils/database.js`.
 
-- `scripts/migrations/001_fix_transactions_user_id.sql` — changes `transactions.user_id` from `uuid` to `text` to match `users.user_id`. **Must be applied manually** in the Supabase SQL editor. The schema table above and the delete-user snippet already assume it has been applied (no `::text` cast). Until it runs in production, the column is still `uuid` and joins/deletes there need the cast.
+## Migrations
+
+`scripts/migrations/` holds SQL applied manually in the Supabase SQL editor. `001_fix_transactions_user_id.sql` converts `transactions.user_id` from `uuid` to `text`; after it runs, drop the `::text` casts above.
