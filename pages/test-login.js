@@ -1,13 +1,6 @@
 // pages/test-login.js
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-let _supabase;
-function getSupabase() {
-  if (!_supabase) _supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  return _supabase;
-}
-const supabase = new Proxy({}, { get: (_, prop) => getSupabase()[prop] });
+import { supabase } from '../utils/database';
 
 export default function TestLoginPage() {
   const [email, setEmail] = useState('');

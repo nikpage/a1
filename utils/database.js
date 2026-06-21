@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
+import crypto from 'crypto';
 
 let _supabase;
 function getSupabase() {
@@ -134,6 +135,108 @@ export async function logAiTransaction({
   }]);
 
   if (error) logger.error('logAiTransaction: insert failed', error.message);
+}
+
+// Delete all data for a user (GDPR self-delete)
+export async function deleteUserData(user_id) {
+  const db = getAdminSupabase();
+  for (const table of ['gen_data', 'cv_data', 'magic_tokens']) {
+    const { error } = await db.from(table).delete().eq('user_id', user_id);
+    if (error) throw new Error(`deleteUserData: ${table} delete failed: ${error.message}`);
+  }
+  const { error: txErr } = await db.from('transactions').delete().eq('user_id', user_id);
+  if (txErr) throw new Error(`deleteUserData: transactions delete failed: ${txErr.message}`);
+  const { error: userErr } = await db.from('users').delete().eq('user_id', user_id);
+  if (userErr) throw new Error(`deleteUserData: users delete failed: ${userErr.message}`);
+}
+
+// Get latest analysis for user
+export async function getLatestAnalysis(user_id) {
+  const { data, error } = await getAdminSupabase()
+    .from('gen_data').select('content')
+    .eq('user_id', user_id).eq('type', 'analysis')
+    .order('created_at', { ascending: false }).limit(1).single();
+  if (error) throw error;
+  return data;
+}
+
+// Get all CVs for user
+export async function getCvList(user_id) {
+  const { data, error } = await getAdminSupabase()
+    .from('cv_data').select('*')
+    .eq('user_id', user_id).order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// Get user stats (generations_left, tokens, email)
+export async function getUserStats(user_id) {
+  const { data, error } = await getAdminSupabase()
+    .from('users').select('generations_left, tokens, email')
+    .eq('user_id', user_id).single();
+  if (error) throw error;
+  return data;
+}
+
+// Get gen_data row by analysis_id (for polling)
+export async function getGenDataByAnalysisId(user_id, analysis_id) {
+  const { data, error } = await getAdminSupabase()
+    .from('gen_data').select('content')
+    .eq('user_id', user_id).eq('analysis_id', analysis_id).eq('type', 'analysis')
+    .order('created_at', { ascending: false }).limit(1);
+  if (error) throw error;
+  return data;
+}
+
+// Get user by email
+export async function getUserByEmail(email) {
+  const { data } = await getAdminSupabase()
+    .from('users').select('user_id, email').eq('email', email).maybeSingle();
+  return data;
+}
+
+// Update user email
+export async function updateUserEmail(user_id, email) {
+  const { error } = await getAdminSupabase()
+    .from('users').update({ email }).eq('user_id', user_id);
+  if (error) throw error;
+}
+
+// Create a new user with email
+export async function createUserWithEmail(email) {
+  const { data, error } = await getAdminSupabase()
+    .from('users').insert([{ email, user_id: crypto.randomUUID() }])
+    .select('user_id').maybeSingle();
+  if (error) throw new Error(`createUserWithEmail failed: ${error.message}`);
+  return data;
+}
+
+// Get a valid magic token
+export async function getMagicToken(token) {
+  const { data, error } = await getAdminSupabase()
+    .from('magic_tokens').select('*')
+    .eq('token', token).eq('used', false)
+    .gt('expires_at', new Date().toISOString()).single();
+  if (error) return null;
+  return data;
+}
+
+// Delete a magic token
+export async function deleteMagicToken(token) {
+  await getAdminSupabase().from('magic_tokens').delete().eq('token', token);
+}
+
+// Insert a new magic token
+export async function insertMagicToken({ email, token, user_id, expires_at, remember_me }) {
+  const { error } = await getAdminSupabase().from('magic_tokens').insert([{
+    email, token, user_id, expires_at, remember_me, used: false,
+  }]);
+  if (error) throw new Error(`insertMagicToken failed: ${error.message}`);
+}
+
+// Delete all magic tokens for an email
+export async function deleteMagicTokensByEmail(email) {
+  await getAdminSupabase().from('magic_tokens').delete().eq('email', email);
 }
 
 // Save generated doc

@@ -6,14 +6,7 @@ import { upsertUser, upsertCV } from '../../utils/database'
 import extractTextFromPDF from '../../utils/pdf-extract'
 import mammoth from 'mammoth'
 import crypto from 'crypto'
-import { createClient } from '@supabase/supabase-js'
 import { setSessionCookie } from '../../lib/session'
-
-// Task 1.5: use service-role key for writes
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
 
 function genSessionId() {
   return crypto.randomUUID()

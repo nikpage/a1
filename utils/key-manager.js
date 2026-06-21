@@ -5,16 +5,8 @@ export class KeyManager {
     constructor() {
         this.keys = [];
         this.currentKeyIndex = 0;
-        this.usageLog = [];
-        this.pricingRates = {
-            // rates are USD per 1 000 tokens — verify at ai.google.dev/gemini-api/docs/pricing
-            'gemini-2.5-flash-lite': { prompt: 0.0001,  completion: 0.0004 },
-            'gemini-2.5-flash':      { prompt: 0.0003,  completion: 0.0025 },
-            'gemini-3.5-flash':      { prompt: 0.0015,  completion: 0.009  }
-        };
         this.loadKeys();
         this.currentKeyIndex = Math.floor(Math.random() * this.keys.length);
-
     }
 
     loadKeys() {
@@ -59,50 +51,6 @@ export class KeyManager {
       return key;
     }
 
-
-    trackUsage(usageData, model = 'gemini-3.5-flash') {
-        const cost = this.calculateCost(usageData, model);
-        const entry = {
-            timestamp: new Date().toISOString(),
-            model,
-            ...usageData,
-            estimated_cost: cost,
-            key_index: this.currentKeyIndex
-        };
-
-        this.usageLog.push(entry);
-
-        // In browser environments, store in localStorage
-        if (typeof window !== 'undefined' && window.localStorage) {
-            try {
-                const existingData = localStorage.getItem('gemini_usage');
-                const existingLog = existingData ? JSON.parse(existingData) : [];
-                localStorage.setItem('gemini_usage', JSON.stringify([...existingLog, entry]));
-            } catch (error) {
-                logger.error('Failed to store usage data in localStorage:', error);
-            }
-        }
-
-              return entry;
-    }
-
-    calculateCost(usage, model) {
-        const rates = this.pricingRates[model] || this.pricingRates['gemini-3.5-flash'];
-        return (usage.prompt_tokens/1000 * rates.prompt) + (usage.completion_tokens/1000 * rates.completion);
-    }
-
-    getUsageStats() {
-        const totalTokens = this.usageLog.reduce((sum, e) => sum + (e.total_tokens || 0), 0);
-        const totalCost = this.usageLog.reduce((sum, e) => sum + (e.estimated_cost || 0), 0);
-
-        return {
-            total_requests: this.usageLog.length,
-            total_tokens: totalTokens,
-            estimated_cost: totalCost,
-            detailed_usage: [...this.usageLog],
-            active_keys: this.keys.filter(k => k !== null).length
-        };
-    }
 
     // Method to check if valid keys are available
     hasValidKeys() {

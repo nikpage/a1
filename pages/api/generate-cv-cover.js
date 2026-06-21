@@ -5,14 +5,8 @@ import { getCV, saveGeneratedDoc, logAiTransaction } from '../../utils/database'
 import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { Redis } from '@upstash/redis';
-import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import requireAuth from '../../lib/requireAuth';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 const redis = Redis.fromEnv();
 

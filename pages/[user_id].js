@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
-import { createClient } from '@supabase/supabase-js';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
+import { getUserStats } from '../utils/database';
 import { useTranslation } from 'react-i18next';
 
 export default function UserPage({ user_id, generationsRemaining, docDownloadsRemaining }) {
@@ -70,18 +70,10 @@ export async function getServerSideProps(context) {
       return { redirect: { destination: '/?error=unauthorized', permanent: false } };
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('generations_left, tokens')
-      .eq('user_id', user_id)
-      .maybeSingle();
-
-    if (error || !user) {
+    let user;
+    try {
+      user = await getUserStats(user_id);
+    } catch {
       return { redirect: { destination: '/?error=user-not-found', permanent: false } };
     }
 

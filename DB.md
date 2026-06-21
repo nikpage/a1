@@ -46,7 +46,7 @@ One row per user (upserted on upload).
 | Column | Type | Default | Notes |
 |---|---|---|---|
 | `id` | uuid | gen_random_uuid() | PK |
-| `user_id` | **uuid** | — | ⚠️ Type mismatch — users.user_id is text; cast needed: `user_id::text` |
+| `user_id` | text | — | FK → users |
 | `type` | text | — | Always `'ai_cost'` currently |
 | `source_gen_id` | uuid | — | FK → gen_data.id |
 | `model` | text | — | e.g. `'gemini-3.5-flash'` |
@@ -115,13 +115,11 @@ BEGIN
   DELETE FROM gen_data     WHERE user_id = uid;
   DELETE FROM cv_data      WHERE user_id = uid;
   DELETE FROM magic_tokens WHERE user_id = uid;
-  DELETE FROM transactions WHERE user_id::text = uid;  -- cast: transactions.user_id is uuid
+  DELETE FROM transactions WHERE user_id = uid;
   DELETE FROM users        WHERE user_id = uid;
 END $$;
 ```
 
 ## Known schema issues
 
-- `transactions.user_id` is `uuid` but `users.user_id` is `text` — requires `::text` cast on joins/deletes.
-- `transactions.user_id` is `uuid` but `users.user_id` is `text` — requires `::text` cast on joins/deletes.
 - `pages/api/log-transaction.js` and `pages/api/analyze-cv-job.js` are dead code — nothing calls them. The live logging path is `logAiTransaction()` in `utils/database.js`, called directly from `netlify/functions/analyse-background.mjs` (analysis) and `pages/api/generate-cv-cover.js` (generation).

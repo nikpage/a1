@@ -3,10 +3,16 @@
 import { logger } from '../../../lib/logger';
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import nodemailer from "nodemailer";
-import { createClient } from "@supabase/supabase-js";
+import { Resend } from 'resend';
 import crypto from "crypto";
 import { getBaseUrl, isValidOrigin } from "../../../utils/originCheck";
+import {
+  getUserByEmail,
+  updateUserEmail,
+  createUserWithEmail,
+  deleteMagicTokensByEmail,
+  insertMagicToken,
+} from '../../../utils/database';
 
 const redis = Redis.fromEnv();
 const ratelimit = new Ratelimit({
@@ -14,18 +20,7 @@ const ratelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(10, "60 s"),
   prefix: "auth-api",
 });
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  auth: {
-    user: "pod.one@gmail.com",
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -48,35 +43,23 @@ export default async function handler(req, res) {
   let effectiveUserId = null;
 
   // Look up user by email
-  const { data: existingUser } = await supabase
-    .from("users")
-    .select("user_id, email")
-    .eq("email", emailNorm)
-    .maybeSingle();
+  const existingUser = await getUserByEmail(emailNorm);
 
   if (existingUser?.user_id) {
     effectiveUserId = existingUser.user_id;
   } else if (user_id) {
     effectiveUserId = user_id;
-    // Ensure this user row has email set
-    await supabase.from("users").update({ email: emailNorm }).eq("user_id", user_id);
+    await updateUserEmail(user_id, emailNorm);
   } else {
-    // Create new user with email
-    const { data: created, error: createErr } = await supabase
-      .from("users")
-      .insert([{
-        email: emailNorm,
-        user_id: crypto.randomUUID()
-      }])
-      .select("user_id")
-      .maybeSingle();
-
-    if (createErr || !created?.user_id) {
-      logger.error("Supabase create error:", createErr?.message);
+    try {
+      const created = await createUserWithEmail(emailNorm);
+      if (!created?.user_id) throw new Error('no user_id returned');
+      effectiveUserId = created.user_id;
+    } catch (createErr) {
+      logger.error("Create user error:", createErr.message);
       return res.status(500).json({ error: "Could not create user." });
     }
-    effectiveUserId = created.user_id;
-  } // 🔴 properly closed else block here
+  }
 
   // Rate limit (fail-open if Redis is unreachable)
   try {
@@ -96,20 +79,18 @@ export default async function handler(req, res) {
     const magicLink = `${baseUrl}/api/auth/verify?token=${token}`;
 
     // Clean old tokens
-    await supabase.from("magic_tokens").delete().eq("email", emailNorm);
+    await deleteMagicTokensByEmail(emailNorm);
 
     // Insert new token
-    const { error: insertError } = await supabase.from("magic_tokens").insert([
-      {
+    try {
+      await insertMagicToken({
         email: emailNorm,
         token,
         user_id: effectiveUserId,
         expires_at: expires.toISOString(),
         remember_me: !!rememberMe,
-        used: false,
-      },
-    ]);
-    if (insertError) {
+      });
+    } catch {
       return res.status(500).json({ error: "Token insert failed." });
     }
 
@@ -122,16 +103,15 @@ export default async function handler(req, res) {
       });
     }
 
-    try {
-      await transporter.sendMail({
-        from: "pod.one@gmail.com",
-        to: emailNorm,
-        subject: "Your login link",
-        html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
-      });
-    } catch (mailError) {
-      logger.error("Mail error:", mailError.message);
-      return res.status(500).json({ error: "Email send failed.", detail: mailError.message });
+    const { error: mailErr } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || 'noreply@thecv.pro',
+      to: emailNorm,
+      subject: 'Your login link for thecv.pro',
+      html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
+    });
+    if (mailErr) {
+      logger.error('Mail error:', mailErr.message);
+      return res.status(500).json({ error: 'Email send failed.' });
     }
 
     return res.status(200).json({

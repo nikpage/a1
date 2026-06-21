@@ -93,6 +93,7 @@ The current `pages/api/` tree has critical vulnerabilities (documented in `REBUI
 | `STRIPE_SECRET_KEY` | Stripe server key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook validation |
 | `RESEND_API_KEY` | Email |
+| `RESEND_FROM_EMAIL` | Verified sender address for magic-link email, e.g. noreply@thecv.pro |
 | `NEXT_PUBLIC_SITE_URL` | `https://thecv.pro` |
 | `SENTRY_DSN` | Error monitoring |
 

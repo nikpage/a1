@@ -1,9 +1,7 @@
 // pages/api/auth/verify.js
 import { logger } from '../../../lib/logger';
-import { createClient } from '@supabase/supabase-js';
+import { getMagicToken, deleteMagicToken } from '../../../utils/database';
 import { setSessionCookie } from '../../../lib/session';
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -17,20 +15,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { data: tokenData, error } = await supabase
-      .from('magic_tokens')
-      .select('*')
-      .eq('token', token)
-      .eq('used', false)
-      .gt('expires_at', new Date().toISOString())
-      .single();
+    const tokenData = await getMagicToken(token);
 
-    if (error || !tokenData) {
+    if (!tokenData) {
       res.redirect(302, '/?error=login-failed');
       return;
     }
 
-    await supabase.from('magic_tokens').delete().eq('token', token);
+    await deleteMagicToken(token);
 
     setSessionCookie(res, { user_id: tokenData.user_id, email: tokenData.email });
 
