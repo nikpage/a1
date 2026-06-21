@@ -39,11 +39,11 @@ works on stable, already-correct code.
 - [x] **1.1** `lib/auth.js`: remove the hardcoded JWT fallback secret; throw at startup if `JWT_SECRET` is missing. Test: missing secret throws; valid secret signs/verifies. *(c7ddf17 — throws lazily at call time so build is safe)*
 - [x] **1.2** Put **every** state-changing / PII route behind `requireAuth` and derive `user_id` from `req.user` only. Routes: `generate-cv-cover`, `decrement-token`, `tokens`, `get-docs`, `get-cvs`, `get-analysis`, `get-analysis-status`, `upload-cv`, `header-stats`. Negative tests: missing/forged session → 401; user A cannot read/act on user B. *(c7ddf17 — architect-verified: cross-user attack test goes red when the route is reverted to trust the request)*
 - [x] **1.3** Delete verified-dead routes. *(c7ddf17 — 8 routes removed; build still green)*
-- [ ] **1.4** Stripe webhook: credit via `add_tokens` RPC (no read-modify-write) **and** add idempotency (record processed `event.id`, no-op on replay). Stop logging full event/session. Tests: valid event credits once; replayed event credits zero; bad signature → 400. *(instruction set #3)*
+- [x] **1.4** Stripe webhook: credit via `add_tokens` RPC; idempotency via Redis `NX`; PII logs removed. Tests: credits once; replay zero; bad sig 400; credit failure del+500. *(3fedbe1 — architect-verified: removing idempotency guard or credit call both go red)*
 - [x] **1.5** `upload-cv.js`: use the service-role client (not anon) for writes; fix the misspelled `data_gen` → `gen_data`; remove the env-var console dump. *(c7ddf17 — stray data_gen write removed as a dup of upsertCV)*
-- [ ] **1.6** Consolidate origin checking into one helper keyed on `NEXT_PUBLIC_SITE_URL` (must allow `thecv.pro`). Delete the duplicate. Test: allowed origin passes, foreign origin 403. *(instruction set #3)*
-- [ ] **1.7** Confirm there is exactly one place tokens are credited (webhook). Ensure `payment-success` does NOT credit. Test: no client-reachable credit path. *(instruction set #3)*
-- [ ] **1.8** Lock the Netlify background function (`analyse-background.mjs`): derive `user_id` from the request's auth cookie, not the body; reject if absent/invalid. Test: missing/invalid cookie → no AI call, no write. *(instruction set #3)*
+- [x] **1.6** Consolidated origin checking into one helper keyed on `NEXT_PUBLIC_SITE_URL`; `lib/originCheck.js` deleted. *(3fedbe1)*
+- [x] **1.7** Single credit path confirmed: only `webhook.js` calls `addTokens`; `payment-success.js` is a pure redirect. *(3fedbe1 — grep-verified)*
+- [x] **1.8** Background function locked to auth cookie; body `user_id` ignored; 401 if no valid token. *(3fedbe1)*
 
 ## Milestone 2 — Correctness & resilience
 
@@ -79,5 +79,6 @@ works on stable, already-correct code.
 |---|---|---|---|
 | 1 | 0.1, 0.2, 0.3 | ✅ verified | 03f4a75 |
 | 2 | 0.4, 1.1, 1.2, 1.3, 1.5 | ✅ verified | c7ddf17 |
-| 3 | 1.4, 1.6, 1.7, 1.8 | issued | — |
+| 3 | 1.4, 1.6, 1.7, 1.8 | ✅ verified | 3fedbe1 |
+| 4 | 2.1, 2.2, 2.3, 2.4 | issued | — |
 </content>
