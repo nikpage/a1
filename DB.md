@@ -59,7 +59,7 @@ One row per user (upserted on upload).
 | `key_index` | integer | — | Which API key was used |
 | `created_at` | timestamp | now() | |
 
-Inserted by `pages/api/log-transaction.js` after every AI call.
+Inserted by `logAiTransaction()` in `utils/database.js` (service-role client, direct insert — no HTTP self-call), called from `netlify/functions/analyse-background.mjs` (analysis) and `pages/api/generate-cv-cover.js` (generation).
 
 ### `model_pricing`
 | Column | Type | Notes |
@@ -120,6 +120,6 @@ BEGIN
 END $$;
 ```
 
-## Known schema issues
+## Pending migrations
 
-- `pages/api/log-transaction.js` and `pages/api/analyze-cv-job.js` are dead code — nothing calls them. The live logging path is `logAiTransaction()` in `utils/database.js`, called directly from `netlify/functions/analyse-background.mjs` (analysis) and `pages/api/generate-cv-cover.js` (generation).
+- `scripts/migrations/001_fix_transactions_user_id.sql` — changes `transactions.user_id` from `uuid` to `text` to match `users.user_id`. **Must be applied manually** in the Supabase SQL editor. The schema table above and the delete-user snippet already assume it has been applied (no `::text` cast). Until it runs in production, the column is still `uuid` and joins/deletes there need the cast.
