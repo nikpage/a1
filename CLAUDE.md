@@ -95,6 +95,36 @@ The current `pages/api/` tree has critical vulnerabilities (documented in `REBUI
 | `RESEND_API_KEY` | Email |
 | `NEXT_PUBLIC_SITE_URL` | `https://thecv.pro` |
 
-## No tests
+## Testing law (binding — applies to ALL tests, now and forever)
 
-There is no test suite. Verify changes manually end-to-end (upload → analyse → generate → buy → generate again).
+Tests exist to prove the code is **actually correct**, not to produce a green checkmark.
+A test that cannot fail is worse than no test, because it lies. The following rules are
+non-negotiable for every test ever added to this repo:
+
+1. **Test real behaviour.** A test MUST call the actual function/route/module under test
+   and assert on its real output or real side effects. Never re-implement the logic inside
+   the test and assert against your own copy.
+2. **Only mock the outside world.** You may stub *external boundaries* only — network calls,
+   Supabase, Stripe, Gemini, email, the clock (`Date`), and randomness (`crypto`/`uuid`).
+   You may NEVER mock, stub, or replace the unit under test or the internal logic you are
+   trying to verify. If a test asserts on the return value of a mock, it proves nothing.
+3. **Every test must be capable of failing.** Assert on specific expected values and
+   behaviours. Banned: tests whose only assertion is "did not throw", `expect(true)`,
+   `expect(mock).toHaveBeenCalled()` as the *sole* assertion, or snapshots of nothing.
+4. **Every bug fix ships with a regression test that fails on the old code.** Before
+   changing the code, the new test must demonstrably FAIL against the current (broken)
+   behaviour, then PASS after the fix. State this in the PR/commit ("red on old, green on new").
+5. **Security and money paths require negative tests.** For anything touching auth, tokens,
+   or payments, you must test the *attack*: forged/missing session is rejected, a user
+   cannot act on another `user_id`, a replayed Stripe event does not double-credit, etc.
+6. **Coverage is not the goal; meaningful assertions are.** Do not pad with trivial tests
+   to raise a number. One test that pins real behaviour beats ten that pin nothing.
+
+If a change cannot be verified by a real test, say so explicitly and explain how it was
+verified instead — do not write a hollow test to fill the gap.
+
+## Work plan
+
+`REBUILD.md` is the tracked master plan for bringing this codebase to professional SaaS
+quality (security, scalability, maintainability). It is the contract for the ongoing
+rewrite — read it before touching any API route, and keep its task checkboxes current.

@@ -35,7 +35,6 @@ coverage/
 .next/cache/
 .vercel
 .dev.vars
-REBUILD.md
 
 # Local prompt-test harness outputs
 scripts/out/
