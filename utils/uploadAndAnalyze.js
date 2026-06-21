@@ -56,6 +56,7 @@ export async function uploadAndAnalyze({
 
   const kickRes = await fetch('/.netlify/functions/analyse-background', {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       user_id: finalUserId,

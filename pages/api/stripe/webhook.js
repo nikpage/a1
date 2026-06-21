@@ -2,11 +2,13 @@
 
 import Stripe from 'stripe';
 import { buffer } from 'micro';
-import { supabase } from '../../../utils/database';
+import { Redis } from '@upstash/redis';
+import { addTokens } from '../../../utils/database';
 
 export const config = { api: { bodyParser: false } };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
@@ -16,51 +18,32 @@ export default async function handler(req, res) {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      buf,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('WEBHOOK SIGNATURE ERROR', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   if (event.type === 'checkout.session.completed') {
-    console.log('📦 RAW EVENT:', event);
-
     const session = event.data.object;
-    console.log('🧾 WEBHOOK SESSION:', session);
-
     const user_id = session.metadata?.user_id;
     const quantity = parseInt(session.metadata?.quantity || '0', 10);
 
     if (user_id && quantity > 0) {
-      const { data: userData, error: fetchError } = await supabase
-        .from('users')
-        .select('tokens')
-        .eq('user_id', user_id)
-        .single();
+      const key = `stripe_evt:${event.id}`;
+      const first = await redis.set(key, '1', { nx: true, ex: 60 * 60 * 24 * 7 });
+      if (first !== 'OK') return res.json({ received: true, duplicate: true });
 
-      if (fetchError || !userData) {
-        console.error('USER FETCH ERROR:', fetchError || 'User not found');
-        return res.status(500).json({ error: 'User fetch failed' });
-      }
-
-      const newTokenCount = (userData.tokens || 0) + quantity;
-
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ tokens: newTokenCount })
-        .eq('user_id', user_id);
-
-      if (updateError) {
-        console.error('TOKEN UPDATE ERROR:', updateError);
-      } else {
-        console.log(`✅ Added ${quantity} tokens to user ${user_id}`);
+      try {
+        await addTokens(user_id, quantity);
+        console.log(`stripe ${event.id}: credited ${quantity} tokens to ${user_id}`);
+      } catch (err) {
+        await redis.del(key);
+        console.error('TOKEN CREDIT ERROR', err.message);
+        return res.status(500).json({ error: 'Token credit failed' });
       }
     } else {
-      console.warn('MISSING METADATA', { user_id, quantity });
+      console.warn('WEBHOOK MISSING METADATA', { event_id: event.id });
     }
   }
 

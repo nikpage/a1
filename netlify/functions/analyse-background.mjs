@@ -10,6 +10,16 @@
 
 import { analyzeCvJob } from '../../utils/openai.js';
 import { saveGeneratedDoc, logAiTransaction, supabase } from '../../utils/database.js';
+import { verifyToken } from '../../lib/auth.js';
+
+function parseCookie(cookieHeader, name) {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(';')) {
+    const [key, ...rest] = part.trim().split('=');
+    if (key.trim() === name) return rest.join('=').trim();
+  }
+  return null;
+}
 
 async function saveError(user_id, analysis_id, message) {
   try {
@@ -27,6 +37,13 @@ async function saveError(user_id, analysis_id, message) {
 }
 
 export const handler = async (event) => {
+  const cookieHeader = event.headers?.cookie || event.headers?.Cookie || '';
+  const token = parseCookie(cookieHeader, 'auth-token');
+  const verified = await verifyToken(token);
+  if (!verified) return { statusCode: 401 };
+
+  const user_id = verified.user_id;
+
   let body;
   try {
     body = JSON.parse(event.body || '{}');
@@ -34,9 +51,9 @@ export const handler = async (event) => {
     return { statusCode: 400 };
   }
 
-  const { user_id, jobText, created_at, file_name, analysis_id } = body;
-  if (!user_id || !analysis_id) {
-    console.error('[analyse-bg] missing user_id or analysis_id');
+  const { jobText, created_at, file_name, analysis_id } = body;
+  if (!analysis_id) {
+    console.error('[analyse-bg] missing analysis_id');
     return { statusCode: 400 };
   }
 

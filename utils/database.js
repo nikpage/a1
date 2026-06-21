@@ -78,6 +78,13 @@ export async function decrementToken(user_id) {
   return data;
 }
 
+// Add tokens (used by Stripe webhook — always call this, never read-modify-write)
+export async function addTokens(user_id, amount) {
+  const { data, error } = await supabase.rpc('add_tokens', { p_user_id: user_id, p_amount: amount });
+  if (error) throw error;
+  return data;
+}
+
 // Log AI cost directly to transactions (bypasses HTTP self-call, safe on serverless)
 export async function logAiTransaction({
   user_id,
