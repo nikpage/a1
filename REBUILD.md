@@ -54,9 +54,9 @@ works on stable, already-correct code.
 
 ## Milestone 3 — Observability
 
-- [ ] **3.1** Introduce a leveled logger; replace the 34 `console.log`s; silence info/debug in production; never log secrets, tokens, full Stripe events, or full CV text.
-- [ ] **3.2** Wire error monitoring (Sentry or equivalent) for API routes + the background function.
-- [ ] **3.3** Add a Gemini spend guard/alert (daily budget threshold) so a cost-bomb is visible.
+- [x] **3.1** Leveled logger (`lib/logger.js`); all 40 `console.*` callsites replaced; info/debug silenced in production; sensitive fields trimmed. *(20cba6c — architect-verified: removing the `IS_PROD` no-op turns the two no-op tests red)*
+- [x] **3.2** Sentry wired (`@sentry/nextjs` for routes/edge, `@sentry/node` in the background fn; `withSentryConfig` wraps `next.config.js`). Documented-only per Testing-law honesty clause — no hollow unit test. *(20cba6c)*
+- [x] **3.3** Gemini daily spend guard (`trackDailySpend` in `utils/openai.js`, Redis `INCRBYFLOAT` + budget alert), fired by all three AI calls. *(20cba6c — architect-verified: removing the `>= DAILY_BUDGET` check turns the budget-exceeded test red)*
 
 ## Milestone 4 — Database & data hygiene
 
@@ -81,4 +81,5 @@ works on stable, already-correct code.
 | 2 | 0.4, 1.1, 1.2, 1.3, 1.5 | ✅ verified | c7ddf17 |
 | 3 | 1.4, 1.6, 1.7, 1.8 | ✅ verified | 3fedbe1 |
 | 4 | 2.1, 2.2, 2.3, 2.4 | ✅ verified | e5fd0db |
+| 5 | 3.1, 3.2, 3.3 | ✅ verified | 20cba6c |
 </content>
