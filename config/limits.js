@@ -18,7 +18,8 @@ export const LIMITS = {
   FREE_ANALYSES: null,
 
   // Free CV + cover generations granted to a new account (the "generations_left" seed).
-  FREE_GENERATIONS: 1,
+  // 2 = one free CV AND one free cover (each document costs one write).
+  FREE_GENERATIONS: 2,
 
   // Free document downloads unlocked once a card is on file (no charge taken).
   FREE_DOWNLOADS: 1,
