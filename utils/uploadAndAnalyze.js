@@ -75,6 +75,15 @@ export async function uploadAndAnalyze({
     const { extraction, gemini_usage: extractUsage } = await extractRes.json();
     logGemini(extractUsage);
 
+    const hasContent = extraction &&
+      (extraction.position_title?.trim() || (extraction.required_skills?.length > 0));
+    if (!hasContent) {
+      throw new Error(
+        'No job details could be extracted from this URL — the page may load its content via JavaScript. ' +
+        'Please paste the job ad text directly instead.'
+      );
+    }
+
     if (typeof onJobExtracted === 'function') {
       const confirmed = await onJobExtracted(extraction);
       if (!confirmed) {
