@@ -1,5 +1,6 @@
 import requireAuth from '../../lib/requireAuth';
 import { analyzeJobOnly } from '../../utils/openai';
+import { logAiTransaction } from '../../utils/database';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,6 +15,15 @@ async function handler(req, res) {
 
   try {
     const { output, gemini_usage } = await analyzeJobOnly(String(jobText));
+    await logAiTransaction({
+      user_id: req.user.user_id,
+      model: gemini_usage.model,
+      cache_miss_tokens: gemini_usage.inputTokens,
+      cache_hit_tokens: 0,
+      completion_tokens: gemini_usage.outputTokens + gemini_usage.thinkingTokens,
+      thinking_tokens: gemini_usage.thinkingTokens,
+      detail: { type: 'job_extraction' },
+    });
     return res.status(200).json({ extraction: output, gemini_usage });
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Extraction failed' });

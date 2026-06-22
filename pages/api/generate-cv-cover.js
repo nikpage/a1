@@ -103,30 +103,28 @@ async function handler(req, res) {
       }
 
       if (type === 'cv' || type === 'both') {
-        const u = cvRes?.usage || {};
-        const thinking = Math.max(0, (u.total_tokens || 0) - (u.prompt_tokens || 0) - (u.completion_tokens || 0));
+        const gu = cvRes.gemini_usage;
         await logAiTransaction({
           user_id,
           source_gen_id: crypto.randomUUID(),
-          model: 'gemini-3.5-flash',
+          model: gu.model,
           cache_hit_tokens: 0,
-          cache_miss_tokens: u.prompt_tokens || 0,
-          completion_tokens: (u.completion_tokens || 0) + thinking,
-          thinking_tokens: thinking,
+          cache_miss_tokens: gu.inputTokens,
+          completion_tokens: gu.outputTokens + gu.thinkingTokens,
+          thinking_tokens: gu.thinkingTokens,
           detail: { tone, type: 'cv' },
         });
       }
       if (type === 'cover' || type === 'both') {
-        const u = coverRes?.usage || {};
-        const thinking = Math.max(0, (u.total_tokens || 0) - (u.prompt_tokens || 0) - (u.completion_tokens || 0));
+        const gu = coverRes.gemini_usage;
         await logAiTransaction({
           user_id,
           source_gen_id: crypto.randomUUID(),
-          model: 'gemini-3.5-flash',
+          model: gu.model,
           cache_hit_tokens: 0,
-          cache_miss_tokens: u.prompt_tokens || 0,
-          completion_tokens: (u.completion_tokens || 0) + thinking,
-          thinking_tokens: thinking,
+          cache_miss_tokens: gu.inputTokens,
+          completion_tokens: gu.outputTokens + gu.thinkingTokens,
+          thinking_tokens: gu.thinkingTokens,
           detail: { tone, type: 'cover' },
         });
       }

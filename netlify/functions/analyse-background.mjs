@@ -149,16 +149,15 @@ export const handler = async (event) => {
       analysis_id,
     });
 
-    const usage = result?.usage || {};
-    const thinkingTokens = Math.max(0, (usage.total_tokens || 0) - (usage.prompt_tokens || 0) - (usage.completion_tokens || 0));
+    const gu = result.gemini_usage;
     await logAiTransaction({
       user_id,
       source_gen_id: analysis_id,
-      model: 'gemini-3.5-flash',
-      cache_miss_tokens: usage.prompt_tokens || 0,
+      model: gu.model,
+      cache_miss_tokens: gu.inputTokens,
       cache_hit_tokens: 0,
-      completion_tokens: (usage.completion_tokens || 0) + thinkingTokens,
-      thinking_tokens: thinkingTokens,
+      completion_tokens: gu.outputTokens + gu.thinkingTokens,
+      thinking_tokens: gu.thinkingTokens,
       detail: { job_title, company },
     });
 

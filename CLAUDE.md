@@ -71,6 +71,24 @@ npm run build          # next build
 
 Secrets come from **Doppler** — do not add `.env` files or hardcode values. If a secret is missing locally, fetch it via `doppler run -- npm run dev`.
 
+## AI cost logging rule (DO NOT REMOVE — owner order required to change)
+
+Every AI step — job extraction, CV+job analysis, CV generation, cover-letter generation — **must** report all of the following in **both** places:
+
+| Field | DB column (`transactions`) | Console (`[Gemini] …` line) |
+|---|---|---|
+| Model name | `model` | `model:` |
+| Input tokens | `cache_miss_tokens` | `in:` |
+| Output tokens | `completion_tokens - thinking_tokens` | `out:` |
+| Thinking tokens | `thinking_tokens` | `think:` |
+| Cost (USD) | `amount_usd` (calculated from `model_pricing`) | `cost:` |
+
+Implementation pattern:
+- Use `gemini_usage` returned by every `utils/openai.js` function — it already contains `{ model, inputTokens, outputTokens, thinkingTokens, costUsd }`.
+- Pass `model: gu.model` (never hardcode the model string), `cache_miss_tokens: gu.inputTokens`, `completion_tokens: gu.outputTokens + gu.thinkingTokens`, `thinking_tokens: gu.thinkingTokens` to `logAiTransaction()`.
+- Console log is emitted by `logGemini(gemini_usage)` in `utils/uploadAndAnalyze.js` (server-side) or `DocumentGenerator.js` / `TabbedViewer.js` (browser-side).
+- Adding a new AI call without both DB and console logging is a defect. No exceptions.
+
 ## Security rules
 
 Every API route that touches state or PII is wrapped in `requireAuth` (`lib/requireAuth.js`), which verifies the `auth-token` cookie and populates `req.user`. Never bypass this:
