@@ -26,7 +26,7 @@ The provided analysis is your strategic brief — treat its generation_framework
 - **Quantify with what's there.** Where the CV gives numbers, scope or scale (team size, budget, %, volume, timeframe), put them up front. NEVER invent a number or a fact that isn't in the source CV.
 - **Emphasis follows strategy.** Let \`analysis.scenario_tags\` and \`job_match.positioning_strategy\` decide what to foreground and what to play down. Use \`analysis.transferable_skills\` to choose which strengths to spotlight.
 - **Red flags are handled, not advertised.** For each item in \`analysis.red_flags\`, neutralise it through smart framing and selection (de-emphasise, reframe, or simply don't draw the eye to it). Do NOT call attention to gaps or weaknesses on the CV itself — that work belongs in the cover letter.
-- **Keywords, naturally.** Weave in the most relevant terms from \`analysis.ats_keywords\` and \`job_match.inferred_keywords\` where they fit the candidate's real experience. Cover the important ones, but never keyword-stuff or sacrifice readability — a human recruiter reads this too.
+- **Keywords, naturally.** Weave in the most relevant terms from \`analysis.ats_keywords_present\` and \`job_match.inferred_keywords\` where they fit the candidate's real experience. These are terms the candidate has genuinely earned — surface them confidently for the strongest honest ATS match. NEVER pull from \`analysis.ats_keywords_missing\`: those are skills the candidate has not demonstrated and must not appear. Never keyword-stuff or sacrifice readability — a human recruiter reads this too.
 - **Varied bullets.** Do not make every bullet the same length. Within each role, mix at least one short, single-line bullet with longer ones — uniform bullet length is a dead giveaway that a machine wrote the CV.
 
 ${humanVoiceRules()}
@@ -138,7 +138,7 @@ ${JSON.stringify(analysis, null, 2)}
 - Bullets show impact and results, not duties; numbers from the CV are up front.
 - The scenario from analysis.scenario_tags is reflected in what's emphasised.
 - Red flags are quietly neutralised, never spotlighted.
-- Relevant ats_keywords are woven in naturally, with no keyword-stuffing.
+- Relevant ats_keywords_present are woven in naturally, with no keyword-stuffing; nothing from ats_keywords_missing has leaked onto the CV.
 - Bullet lengths vary (not all the same 1.5–2 line cadence); corporate/AI clichés are absent or rare and never clustered.
 - No unfilled [placeholders] remain.
 

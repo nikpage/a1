@@ -20,6 +20,7 @@
   "structureLength": "Structure & Length:",
   "writingStyle": "Writing Style:",
   "atsOptimization": "ATS Optimization:",
+  "atsGaps": "Missing Keywords (add only if true):",
   "applicantFit": "Applicant Fit",
   "culturalFit": "Cultural Fit:",
   "jobMatchCommentary": "Job Match Commentary:",

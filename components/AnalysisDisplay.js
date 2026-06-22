@@ -106,7 +106,8 @@ export default function AnalysisDisplay({ analysis }) {
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('cvAssessment')}</h3>
                 {data.analysis?.cv_format_analysis && <div><strong>{t('structureLength')}</strong> {data.analysis.cv_format_analysis}</div>}
                 {data.analysis?.style_wording && <div><strong>{t('writingStyle')}</strong> {data.analysis.style_wording}</div>}
-                {data.analysis?.ats_keywords && <div><strong>{t('atsOptimization')}</strong> {data.analysis.ats_keywords}</div>}
+                {data.analysis?.ats_keywords_present && <div><strong>{t('atsOptimization')}</strong> {data.analysis.ats_keywords_present}</div>}
+                {data.analysis?.ats_keywords_missing && <div><strong>{t('atsGaps')}</strong> {data.analysis.ats_keywords_missing}</div>}
               </div>
               {hasJobMatch && (
                 <div style={{ marginBottom: '1.5rem' }}>

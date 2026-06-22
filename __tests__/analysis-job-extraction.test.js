@@ -47,7 +47,8 @@ describe('buildAnalysisPrompt — job_extraction schema', () => {
     // These downstream-used fields must survive regardless of hasJobText
     expect(userPrompt).toContain('job_data');
     expect(userPrompt).toContain('job_match');
-    expect(userPrompt).toContain('ats_keywords');
+    expect(userPrompt).toContain('ats_keywords_present');
+    expect(userPrompt).toContain('ats_keywords_missing');
   });
 
   test('with hasJobText=true: job description is included in the prompt', () => {

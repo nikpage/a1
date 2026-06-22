@@ -44,7 +44,8 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 - analysis.cv_format_analysis: MUST review length (with page count), structure and design.
 - analysis.cultural_fit: review the CV against the customs of the JOB's country.
 - analysis.style_wording: tone, clarity and professionalism, quoting CV wording; MUST include length advice.
-- analysis.ats_keywords: strong terms already present AND important missing terms, quoting exact CV / job-ad phrases. A keyword is PRESENT if the CV demonstrates the concept — not just the exact phrase. Examples: "managed a team of 8" satisfies "people management"; "reduced churn by 30%" satisfies "retention"; "built CI/CD pipelines" satisfies "DevOps". A keyword is MISSING only if the CV shows no evidence of the concept at all.
+- analysis.ats_keywords_present: strong terms the CV ALREADY EARNS, quoting the exact CV phrase that proves each. A keyword is PRESENT if the CV demonstrates the concept — not just the exact phrase. Examples: "managed a team of 8" satisfies "people management"; "reduced churn by 30%" satisfies "retention"; "built CI/CD pipelines" satisfies "DevOps". Be generous and thorough here: surface every term the candidate has genuinely earned but under-labelled — this is where honest ATS gains come from. These are safe to put on the CV.
+- analysis.ats_keywords_missing: important job-ad terms for which the CV shows NO evidence at all (e.g. a named tool/language/certification the candidate never demonstrates). These are ADVICE TO THE CANDIDATE ONLY — list them so the user can add them IF true. They must NEVER be treated as facts about the candidate, must NEVER feed skills_to_highlight, and must NEVER appear on the generated CV. Empty if none.
 - analysis.action_items.cv_changes.critical: MUST include length reduction if the CV is too long.
 - job_match.positioning_strategy: strategy heavily based on the scenario tags.
 - generation_framework.cv_blueprint.target_length_pages: e.g. "1 page" or "2 pages" based on seniority.
@@ -54,7 +55,7 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely.
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Use plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer will adapt this draft into the requested tone, so make it factual and dense, not stylised.
 - analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.
-- generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn from transferable_skills and ats_keywords, ordered by relevance.
+- generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
 
 JSON OUTPUT SCHEMA:
 {
@@ -76,7 +77,8 @@ JSON OUTPUT SCHEMA:
     "parallel_experience": "",
     "transferable_skills": "",
     "style_wording": "",
-    "ats_keywords": "",
+    "ats_keywords_present": "",
+    "ats_keywords_missing": "",
     "action_items": {
       "cv_changes": {
         "critical": [],

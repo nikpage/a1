@@ -20,6 +20,7 @@
   "structureLength": "Struktura i długość:",
   "writingStyle": "Styl pisania:",
   "atsOptimization": "Optymalizacja ATS:",
+  "atsGaps": "Brakujące słowa kluczowe (dodaj tylko jeśli prawdziwe):",
   "applicantFit": "Dopasowanie kandydata",
   "culturalFit": "Dopasowanie kulturowe:",
   "jobMatchCommentary": "Komentarz do dopasowania:",

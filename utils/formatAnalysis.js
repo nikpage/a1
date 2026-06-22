@@ -30,7 +30,8 @@ const REQUIRED_SCHEMA = {
     parallel_experience: "",
     transferable_skills: "",
     style_wording: "",
-    ats_keywords: "",
+    ats_keywords_present: "",
+    ats_keywords_missing: "",
     action_items: {
       cv_changes: {
         critical: [],
