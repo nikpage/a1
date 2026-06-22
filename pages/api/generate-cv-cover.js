@@ -8,7 +8,12 @@ import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import requireAuth from '../../lib/requireAuth';
 
-const redis = Redis.fromEnv();
+let _redis;
+function getRedis() {
+  if (!_redis) _redis = Redis.fromEnv();
+  return _redis;
+}
+const redis = new Proxy({}, { get: (_, prop) => getRedis()[prop] });
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -152,7 +157,7 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Generation failed', detail });
     }
   } finally {
-    await redis.del(lockKey);
+    try { await redis.del(lockKey); } catch (e) { logger.error('Redis unlock error:', e.message); }
   }
 }
 
