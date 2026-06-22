@@ -7,6 +7,7 @@ export default function ToneDocModal({ onClose, onSubmit }) {
   const { t } = useTranslation('toneDocModal');
   const [tone, setTone] = useState('formal');
   const [types, setTypes] = useState({ cv: true, coverLetter: true });
+  const [tweak, setTweak] = useState('');
 
   // The server expects 'cv' / 'cover'; the UI state uses 'coverLetter' as its key.
   const keyToType = { cv: 'cv', coverLetter: 'cover' };
@@ -21,7 +22,7 @@ export default function ToneDocModal({ onClose, onSubmit }) {
       return;
     }
 
-    onSubmit({ tone, selected });
+    onSubmit({ tone, selected, tweak });
   };
 
   const toneOptions = ['formal', 'friendly', 'enthusiastic', 'cocky'];
@@ -69,6 +70,29 @@ export default function ToneDocModal({ onClose, onSubmit }) {
             </label>
           ))}
         </div>
+      </div>
+
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+          {t('tweakHeading')}
+        </h2>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>
+          {t('tweakHint')}
+        </p>
+        <textarea
+          value={tweak}
+          onChange={e => setTweak(e.target.value)}
+          placeholder={t('tweakPlaceholder')}
+          rows={3}
+          style={{
+            width: '100%',
+            padding: '0.6rem',
+            borderRadius: '6px',
+            border: '1px solid #ccc',
+            fontSize: '0.9rem',
+            resize: 'vertical'
+          }}
+        />
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '1rem' }}>

@@ -124,7 +124,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       .catch(() => {});
   }, [user_id]);
 
-  const handleSubmit = async ({ tone, selected, jobText }) => {
+  const handleSubmit = async ({ tone, selected, jobText, tweak = '' }) => {
     setShowLoadingModal(true);
     setLoadingModalTitle(t('generatingDocsTitle'));
     setLoadingModalMessage(t('generatingDocsMsg'));
@@ -150,7 +150,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
         return fetch('/api/generate-cv-cover', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType }),
+          body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType, tweak }),
         })
         .then(async (res) => {
           const data = await res.json();

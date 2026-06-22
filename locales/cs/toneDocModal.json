@@ -8,5 +8,8 @@
   "selectDocType": "📄 Vyberte typ dokumentu",
   "cv": "Životopis",
   "coverLetter": "Motivační dopis",
+  "tweakHeading": "✏️ Chcete něco upravit?",
+  "tweakHint": "Nepovinné. Řekněte autorovi, co zdůraznit nebo změnit — např. začít vedením týmu, vejít se na jednu stranu, vyzdvihnout práci ve startupu. Nic, co není pravda ve vašem životopise, si nevymyslíme.",
+  "tweakPlaceholder": "např. Zdůrazněte mé vedení týmu a buďte struční",
   "generate": "Vygenerovat"
 }

@@ -3,7 +3,10 @@
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 
-export function buildCoverPrompt(cv, analysis, tone) {
+export function buildCoverPrompt(cv, analysis, tone, tweak = '') {
+  const tweakBlock = tweak && tweak.trim()
+    ? `    # The candidate's own instructions (HIGHEST PRIORITY)\n    Follow this over any conflicting guidance below, but NEVER invent facts to satisfy it:\n    "${tweak.trim()}"\n`
+    : '';
   const systemMessage = {
     role: 'system',
     content: 'You are an expert cover-letter writer for CEE tech roles. You write tight, specific, persuasive letters — every sentence earns its place — and you follow formatting rules precisely.'
@@ -11,7 +14,7 @@ export function buildCoverPrompt(cv, analysis, tone) {
 
   const userMessage = {
     role: 'user',
-    content: `
+    content: `${tweakBlock}
     # Task
     Write a cover letter in the "${tone}" tone, using only real facts from the CV and analysis. Do NOT invent information. Output must match the CV's detected language (fall back to English if unclear). If the job ad is in another language, the CV language takes precedence.
 

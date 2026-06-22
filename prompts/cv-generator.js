@@ -3,7 +3,11 @@
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 
-export function buildCvPrompt(cv, analysis, tone) {
+export function buildCvPrompt(cv, analysis, tone, tweak = '') {
+  const tweakBlock = tweak && tweak.trim()
+    ? `\n# The candidate's own instructions (HIGHEST PRIORITY)\nThe candidate asked for this specifically — follow it over any conflicting guidance above, but NEVER invent facts, roles, skills or numbers to satisfy it:\n"${tweak.trim()}"\n`
+    : '';
+
   const systemMessage = {
     role: 'system',
     content: `You are an elite professional CV writer — the kind candidates pay hundreds for. You take a person's real experience and a strategist's blueprint and turn them into a CV that a senior recruiter cannot put down. You write with impact, precision and zero filler, and you output a finished CV only — never notes, never commentary.`
@@ -11,7 +15,7 @@ export function buildCvPrompt(cv, analysis, tone) {
 
   const userMessage = {
     role: 'user',
-    content: `
+    content: `${tweakBlock}
 # How to work
 The provided analysis is your strategic brief — treat its generation_framework blueprint as the plan and execute it. Read these before writing:
 - Target length: generation_framework.cv_blueprint.target_length_pages

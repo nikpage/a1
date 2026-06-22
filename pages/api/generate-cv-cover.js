@@ -16,7 +16,7 @@ async function handler(req, res) {
   }
 
   const user_id = req.user.user_id;
-  const { analysis: analysisRaw, tone = 'Formal', type = 'both' } = req.body;
+  const { analysis: analysisRaw, tone = 'Formal', type = 'both', tweak = '' } = req.body;
   if (!analysisRaw || !type) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -68,12 +68,12 @@ async function handler(req, res) {
 
     try {
       if (type === 'cv' || type === 'both') {
-        cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone });
+        cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone, tweak });
         cv = cvRes.content;
       }
 
       if (type === 'cover' || type === 'both') {
-        coverRes = await generateCoverLetter({ cv: cvRecord.cv_data, analysis, tone });
+        coverRes = await generateCoverLetter({ cv: cvRecord.cv_data, analysis, tone, tweak });
         cover = coverRes.content;
       }
 

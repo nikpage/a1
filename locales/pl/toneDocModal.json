@@ -8,5 +8,8 @@
   "selectDocType": "📄 Wybierz typ dokumentu",
   "cv": "CV",
   "coverLetter": "List motywacyjny",
+  "tweakHeading": "✏️ Chcesz coś dostosować?",
+  "tweakHint": "Opcjonalne. Powiedz autorowi, co podkreślić lub zmienić — np. zacznij od przywództwa, zmieść się na jednej stronie, wyeksponuj pracę w startupie. Nie wymyślimy niczego, co nie jest prawdą w Twoim CV.",
+  "tweakPlaceholder": "np. Podkreśl moje przywództwo w zespole i zachowaj zwięzłość",
   "generate": "Generuj"
 }
