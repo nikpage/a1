@@ -101,9 +101,9 @@ async function handler(req, res) {
   const html = raw.length > MAX_BODY_CHARS ? raw.slice(0, MAX_BODY_CHARS) : raw;
   const text = stripHtml(html);
 
-  if (text.length < 200) {
+  if (text.length < 500) {
     return res.status(422).json({
-      error: 'The page returned too little text — it may be behind a bot wall. Try pasting the job ad text instead.',
+      error: 'This page appears to block automated access or loads its content via JavaScript. Please paste the job ad text directly instead.',
     });
   }
 

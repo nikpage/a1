@@ -79,22 +79,20 @@ export async function uploadAndAnalyze({
       (extraction.position_title?.trim() || (extraction.required_skills?.length > 0));
     if (!hasContent) {
       throw new Error(
-        'No job details could be extracted from this URL — the page may load its content via JavaScript. ' +
-        'Please paste the job ad text directly instead.'
+        'This doesn\'t appear to be a job ad — please check the URL or paste the job ad text directly.'
       );
     }
 
-    if (typeof onJobExtracted === 'function') {
-      const confirmed = await onJobExtracted(extraction);
-      if (!confirmed) {
-        const cancelErr = new Error('Job extraction cancelled');
-        cancelErr.cancelled = true;
-        throw cancelErr;
-      }
-      confirmedJob = confirmed;
-    } else {
-      confirmedJob = extraction;
+    if (typeof onJobExtracted !== 'function') {
+      throw new Error('onJobExtracted callback is required when jobText is provided');
     }
+    const confirmed = await onJobExtracted(extraction);
+    if (!confirmed) {
+      const cancelErr = new Error('Job extraction cancelled');
+      cancelErr.cancelled = true;
+      throw cancelErr;
+    }
+    confirmedJob = confirmed;
   }
 
   // 3. Kick off the background analysis (relative URL → no base-URL dependency).
