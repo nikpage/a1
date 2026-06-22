@@ -20,6 +20,7 @@ import tokenPurchasePanelEn from './locales/en/tokenPurchasePanel.json'
 import toneDocModalEn from './locales/en/toneDocModal.json'
 import headerEn from './locales/en/header.json'
 import jobAdInputEn from './locales/en/jobAdInput.json'
+import jobExtractionModalEn from './locales/en/jobExtractionModal.json'
 
 import indexPageCs from './locales/cs/indexPage.json'
 import pricingCs from './locales/cs/pricing.json'
@@ -38,6 +39,7 @@ import tokenPurchasePanelCs from './locales/cs/tokenPurchasePanel.json'
 import toneDocModalCs from './locales/cs/toneDocModal.json'
 import headerCs from './locales/cs/header.json'
 import jobAdInputCs from './locales/cs/jobAdInput.json'
+import jobExtractionModalCs from './locales/cs/jobExtractionModal.json'
 
 import indexPagePl from './locales/pl/indexPage.json'
 import pricingPl from './locales/pl/pricing.json'
@@ -56,6 +58,7 @@ import tokenPurchasePanelPl from './locales/pl/tokenPurchasePanel.json'
 import toneDocModalPl from './locales/pl/toneDocModal.json'
 import headerPl from './locales/pl/header.json'
 import jobAdInputPl from './locales/pl/jobAdInput.json'
+import jobExtractionModalPl from './locales/pl/jobExtractionModal.json'
 
 i18n
   .use(LanguageDetector)
@@ -80,6 +83,7 @@ i18n
         toneDocModal: toneDocModalEn,
         header: headerEn,
         jobAdInput: jobAdInputEn,
+        jobExtractionModal: jobExtractionModalEn,
       },
       cs: {
         indexPage: indexPageCs,
@@ -99,6 +103,7 @@ i18n
         toneDocModal: toneDocModalCs,
         header: headerCs,
         jobAdInput: jobAdInputCs,
+        jobExtractionModal: jobExtractionModalCs,
       },
       pl: {
         indexPage: indexPagePl,
@@ -118,6 +123,7 @@ i18n
         toneDocModal: toneDocModalPl,
         header: headerPl,
         jobAdInput: jobAdInputPl,
+        jobExtractionModal: jobExtractionModalPl,
       }
     },
     fallbackLng: 'en',
@@ -140,6 +146,7 @@ i18n
       'toneDocModal',
       'header',
       'jobAdInput',
+      'jobExtractionModal',
     ],
     defaultNS: 'indexPage',
     detection: {

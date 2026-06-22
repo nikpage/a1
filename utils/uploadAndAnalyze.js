@@ -4,6 +4,11 @@
 // CV+job-ad flow: (optionally) upload the CV, kick the background analysis
 // function directly, then poll until the result is saved. Calling the background
 // function with a relative URL avoids any server-to-server hop / base-URL env.
+//
+// When jobText is present, a cheap extraction pass runs first and the optional
+// onJobExtracted callback lets callers show an editable confirmation modal before
+// the full (expensive) analysis is kicked. If onJobExtracted throws or returns
+// null the full analysis is not started.
 
 import { logger } from '../lib/logger.js';
 
@@ -29,6 +34,7 @@ export async function uploadAndAnalyze({
   fallbackCvText,     // kept for call-site compatibility (unused)
   fallbackCreatedAt,  // kept for call-site compatibility
   onPing,
+  onJobExtracted,     // optional: async (extraction) => confirmedJob | throws to cancel
 }) {
   let finalUserId = user_id ?? (typeof window !== 'undefined' ? window.localStorage.getItem('user_id') : null);
   const finalCreatedAt = created_at ?? fallbackCreatedAt ?? null;
@@ -50,7 +56,39 @@ export async function uploadAndAnalyze({
 
   if (!finalUserId) throw new Error('Missing user_id for analysis');
 
-  // 2. Kick off the background analysis (relative URL → no base-URL dependency).
+  // 2. When jobText is present, run the cheap extraction pass and let the caller
+  //    confirm or edit before we spend the full analysis budget.
+  let confirmedJob = null;
+  const hasJobText = typeof jobText === 'string' && jobText.trim().length > 0;
+
+  if (hasJobText) {
+    const extractRes = await fetch('/api/extract-job', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobText }),
+    });
+    if (!extractRes.ok) {
+      const err = await extractRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Job extraction failed');
+    }
+    const { extraction, gemini_usage: extractUsage } = await extractRes.json();
+    logGemini(extractUsage);
+
+    if (typeof onJobExtracted === 'function') {
+      const confirmed = await onJobExtracted(extraction);
+      if (!confirmed) {
+        const cancelErr = new Error('Job extraction cancelled');
+        cancelErr.cancelled = true;
+        throw cancelErr;
+      }
+      confirmedJob = confirmed;
+    } else {
+      confirmedJob = extraction;
+    }
+  }
+
+  // 3. Kick off the background analysis (relative URL → no base-URL dependency).
   //    Background functions answer 202 and keep running.
   const analysis_id = (typeof crypto !== 'undefined' && crypto.randomUUID)
     ? crypto.randomUUID()
@@ -63,6 +101,7 @@ export async function uploadAndAnalyze({
     body: JSON.stringify({
       user_id: finalUserId,
       jobText,
+      confirmedJob,
       created_at: finalCreatedAt,
       file_name: finalFileName,
       analysis_id,
@@ -72,7 +111,7 @@ export async function uploadAndAnalyze({
     throw new Error(`Could not start analysis (${kickRes.status})`);
   }
 
-  // 3. Poll until the analysis is saved (or an error sentinel / timeout)
+  // 4. Poll until the analysis is saved (or an error sentinel / timeout)
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
     if (typeof onPing === 'function') onPing({ status: 'thinking' });

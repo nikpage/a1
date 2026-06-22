@@ -1,11 +1,12 @@
 // pages/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Header from '../components/Header';
 import LoadingModal from '../components/LoadingModal';
 import AnalysisDisplay from '../components/AnalysisDisplay';
 import LoginModal from '../components/LoginModal';
+import JobExtractionModal from '../components/JobExtractionModal';
 import { useTranslation } from 'react-i18next';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { resolveJobText } from '../utils/resolveJobText';
@@ -22,6 +23,9 @@ export default function IndexPage() {
   const [loadingModalTitle, setLoadingModalTitle] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [jobExtractionData, setJobExtractionData] = useState(null);
+  const [showJobExtractionModal, setShowJobExtractionModal] = useState(false);
+  const jobExtractionCallbackRef = useRef(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('parsed_cv');
@@ -35,6 +39,28 @@ export default function IndexPage() {
       }
     }
   }, []);
+
+  const onJobExtracted = (extraction) => {
+    return new Promise((resolve, reject) => {
+      setJobExtractionData(extraction);
+      jobExtractionCallbackRef.current = { resolve, reject };
+      setShowJobExtractionModal(true);
+    });
+  };
+
+  const handleJobExtractionConfirm = (confirmed) => {
+    setShowJobExtractionModal(false);
+    jobExtractionCallbackRef.current?.resolve(confirmed);
+    jobExtractionCallbackRef.current = null;
+  };
+
+  const handleJobExtractionCancel = () => {
+    setShowJobExtractionModal(false);
+    const err = new Error('cancelled');
+    err.cancelled = true;
+    jobExtractionCallbackRef.current?.reject(err);
+    jobExtractionCallbackRef.current = null;
+  };
 
   const handleUploadAndAnalyze = async (e) => {
     e.preventDefault();
@@ -53,6 +79,7 @@ export default function IndexPage() {
         jobText: resolvedJobText,
         user_id: currentUserId || (typeof window !== 'undefined' ? localStorage.getItem('user_id') : null),
         onPing: () => setLoadingModalMessage(t('modal.inProgress')),
+        onJobExtracted,
       });
 
       setCurrentUserId(user_id);
@@ -61,6 +88,7 @@ export default function IndexPage() {
       setAnalysis(analysis);
 
     } catch (err) {
+      if (err.cancelled) return;
       const message = err.response?.data?.error || err.message;
       setError(t('modal.errorPrefix') + message);
     } finally {
@@ -167,6 +195,13 @@ export default function IndexPage() {
           <LoginModal
             onClose={() => setShowLoginModal(false)}
             userId={currentUserId}
+          />
+        )}
+        {showJobExtractionModal && jobExtractionData && (
+          <JobExtractionModal
+            extraction={jobExtractionData}
+            onConfirm={handleJobExtractionConfirm}
+            onCancel={handleJobExtractionCancel}
           />
         )}
       <footer style={{ textAlign: 'center', padding: '1rem', fontSize: '0.8rem', color: '#888' }}>

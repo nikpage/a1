@@ -1,0 +1,24 @@
+{
+  "title": "Potvrďte detaily pracovní pozice",
+  "subtitle": "Zkontrolujte, co jsme vytáhli z inzerátu, a opravte případné chyby před spuštěním analýzy.",
+  "confirm": "Vypadá dobře — analyzovat",
+  "cancel": "Zrušit",
+  "emptyWarning": "Nenalezeno v inzerátu",
+  "addPlaceholder": "Přidejte a stiskněte Enter",
+  "fields": {
+    "position_title": "Název pozice",
+    "company": "Společnost",
+    "hr_contact": "HR kontakt",
+    "location": "Místo",
+    "seniority": "Seniority",
+    "employment_type": "Typ úvazku",
+    "salary": "Plat",
+    "required_skills": "Požadované dovednosti",
+    "desired_skills": "Žádoucí dovednosti",
+    "must_have_requirements": "Povinné požadavky",
+    "nice_to_have": "Výhodou",
+    "responsibilities": "Odpovědnosti",
+    "keywords_for_ats": "ATS klíčová slova",
+    "language_requirements": "Jazykové požadavky"
+  }
+}

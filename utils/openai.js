@@ -6,6 +6,7 @@ import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
@@ -88,6 +89,29 @@ async function callGemini(model, messages, options = {}) {
   const rateLimitErr = new Error('All Gemini API keys are rate-limited. Try again later.');
   rateLimitErr.isRateLimit = true;
   throw rateLimitErr;
+}
+
+export async function analyzeJobOnly(jobText) {
+  const messages = buildJobExtractionPrompt(jobText);
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low' });
+  const gemini_usage = geminiUsage('extract job', data, GEMINI_ANALYSIS_MODEL);
+
+  let jsonOutput = data.choices?.[0]?.message?.content || '';
+  if (jsonOutput.includes('```json')) {
+    jsonOutput = jsonOutput.replace(/```json\s*/, '').replace(/\s*```$/, '');
+  } else if (jsonOutput.includes('```')) {
+    jsonOutput = jsonOutput.replace(/```\s*/, '').replace(/\s*```$/, '');
+  }
+  jsonOutput = jsonOutput.trim();
+
+  try {
+    const output = JSON.parse(jsonOutput);
+    trackDailySpend(gemini_usage.costUsd);
+    return { output, usage: data.usage, gemini_usage };
+  } catch (e) {
+    logger.error('Invalid JSON from job extraction:', e.message);
+    throw new Error('Job extraction returned invalid JSON');
+  }
 }
 
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {

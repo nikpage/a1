@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
 import { resolveJobText } from '../utils/resolveJobText'
+import JobExtractionModal from './JobExtractionModal'
 
 
 export default function CVUploader({ user_id, onUpload, selectedCv }) {
@@ -14,6 +15,9 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
   const [jobText, setJobText] = useState('')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [jobExtractionData, setJobExtractionData] = useState(null)
+  const [showJobExtractionModal, setShowJobExtractionModal] = useState(false)
+  const jobExtractionCallbackRef = useRef(null)
   const handleFileChange = (f) => {
     setError('')
     if (!f || f.type !== 'application/pdf' || f.size > 200 * 1024) {
@@ -27,6 +31,28 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
   }
 
 
+
+  const onJobExtracted = (extraction) => {
+    return new Promise((resolve, reject) => {
+      setJobExtractionData(extraction)
+      jobExtractionCallbackRef.current = { resolve, reject }
+      setShowJobExtractionModal(true)
+    })
+  }
+
+  const handleJobExtractionConfirm = (confirmed) => {
+    setShowJobExtractionModal(false)
+    jobExtractionCallbackRef.current?.resolve(confirmed)
+    jobExtractionCallbackRef.current = null
+  }
+
+  const handleJobExtractionCancel = () => {
+    setShowJobExtractionModal(false)
+    const err = new Error('cancelled')
+    err.cancelled = true
+    jobExtractionCallbackRef.current?.reject(err)
+    jobExtractionCallbackRef.current = null
+  }
 
   async function handleUpload() {
     if (!file) {
@@ -45,6 +71,7 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
         user_id: user_id || localStorage.getItem('user_id'),
         fallbackCvText: null,
         fallbackCreatedAt: null,
+        onJobExtracted,
       })
 
       window.dispatchEvent(new CustomEvent('new-analysis', { detail: { analysis: result.analysis } }));
@@ -56,6 +83,7 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
       }
 
     } catch (err) {
+      if (err.cancelled) return
       console.error(err)
       setError(err.message || 'Upload or analysis failed')
     }
@@ -113,6 +141,14 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
       </button>
 
       {error && <div className="text-red-500 text-center w-full">{error}</div>}
+
+      {showJobExtractionModal && jobExtractionData && (
+        <JobExtractionModal
+          extraction={jobExtractionData}
+          onConfirm={handleJobExtractionConfirm}
+          onCancel={handleJobExtractionCancel}
+        />
+      )}
 
       <style jsx>{`
         .real-file-input {

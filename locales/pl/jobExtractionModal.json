@@ -1,0 +1,24 @@
+{
+  "title": "Potwierdź szczegóły stanowiska",
+  "subtitle": "Sprawdź, co wyciągnęliśmy z ogłoszenia, i popraw ewentualne błędy przed uruchomieniem analizy.",
+  "confirm": "Wygląda dobrze — analizuj",
+  "cancel": "Anuluj",
+  "emptyWarning": "Nie znaleziono w ogłoszeniu",
+  "addPlaceholder": "Dodaj i naciśnij Enter",
+  "fields": {
+    "position_title": "Nazwa stanowiska",
+    "company": "Firma",
+    "hr_contact": "Kontakt HR",
+    "location": "Lokalizacja",
+    "seniority": "Poziom doświadczenia",
+    "employment_type": "Rodzaj zatrudnienia",
+    "salary": "Wynagrodzenie",
+    "required_skills": "Wymagane umiejętności",
+    "desired_skills": "Pożądane umiejętności",
+    "must_have_requirements": "Wymagania obowiązkowe",
+    "nice_to_have": "Mile widziane",
+    "responsibilities": "Obowiązki",
+    "keywords_for_ats": "Słowa kluczowe ATS",
+    "language_requirements": "Wymagania językowe"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Confirm Job Details",
+  "subtitle": "Review what we pulled from the job ad and correct anything before the full analysis runs.",
+  "confirm": "Looks Good — Analyze",
+  "cancel": "Cancel",
+  "emptyWarning": "Not found in the ad",
+  "addPlaceholder": "Add and press Enter",
+  "fields": {
+    "position_title": "Position Title",
+    "company": "Company",
+    "hr_contact": "HR Contact",
+    "location": "Location",
+    "seniority": "Seniority",
+    "employment_type": "Employment Type",
+    "salary": "Salary",
+    "required_skills": "Required Skills",
+    "desired_skills": "Desired Skills",
+    "must_have_requirements": "Must-Have Requirements",
+    "nice_to_have": "Nice to Have",
+    "responsibilities": "Responsibilities",
+    "keywords_for_ats": "ATS Keywords",
+    "language_requirements": "Language Requirements"
+  }
+}

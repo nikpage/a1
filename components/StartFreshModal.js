@@ -1,9 +1,10 @@
 // components/StartFreshModal.js
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import StartFreshSelector from './StartFreshSelector'
 import StartFreshDbModal from './StartFreshDbModal'
 import StartFreshUploadModal from './StartFreshUploadModal'
 import StartFreshHeader from './StartFreshHeader'
+import JobExtractionModal from './JobExtractionModal'
 import { useTranslation } from 'react-i18next'
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
 import { resolveJobText } from '../utils/resolveJobText'
@@ -20,6 +21,9 @@ export default function StartFreshModal({
   const [loading, setLoading] = useState(false)
   const [selectedCvId, setSelectedCvId] = useState('')
   const [jobDescription, setJobDescription] = useState('')
+  const [jobExtractionData, setJobExtractionData] = useState(null)
+  const [showJobExtractionModal, setShowJobExtractionModal] = useState(false)
+  const jobExtractionCallbackRef = useRef(null)
 
   const fetchCVs = async () => {
     setLoading(true)
@@ -51,6 +55,28 @@ export default function StartFreshModal({
     }
   }, [user_id])
 
+  const onJobExtracted = (extraction) => {
+    return new Promise((resolve, reject) => {
+      setJobExtractionData(extraction)
+      jobExtractionCallbackRef.current = { resolve, reject }
+      setShowJobExtractionModal(true)
+    })
+  }
+
+  const handleJobExtractionConfirm = (confirmed) => {
+    setShowJobExtractionModal(false)
+    jobExtractionCallbackRef.current?.resolve(confirmed)
+    jobExtractionCallbackRef.current = null
+  }
+
+  const handleJobExtractionCancel = () => {
+    setShowJobExtractionModal(false)
+    const err = new Error('cancelled')
+    err.cancelled = true
+    jobExtractionCallbackRef.current?.reject(err)
+    jobExtractionCallbackRef.current = null
+  }
+
   const handleGenerateAnalysis = async (cvId, jobDesc) => {
     setLoading(true)
     try {
@@ -62,6 +88,7 @@ export default function StartFreshModal({
         created_at: selectedCv?.created_at,
         file_name: selectedCv?.name || 'Unnamed file',
         jobText: resolvedJobText,
+        onJobExtracted,
       })
 
       window.dispatchEvent(new CustomEvent('new-analysis', {
@@ -70,6 +97,7 @@ export default function StartFreshModal({
       onStartFresh()
       onClose()
     } catch (error) {
+      if (error.cancelled) return
       console.error(t('analysisError'), error)
       alert(`Error: ${error.message}`)
     } finally {
@@ -119,6 +147,14 @@ export default function StartFreshModal({
           user_id={user_id}
           onBack={() => setStep(0)}
           onClose={() => { setStep(0); onClose() }}
+        />
+      )}
+
+      {showJobExtractionModal && jobExtractionData && (
+        <JobExtractionModal
+          extraction={jobExtractionData}
+          onConfirm={handleJobExtractionConfirm}
+          onCancel={handleJobExtractionCancel}
         />
       )}
     </>
