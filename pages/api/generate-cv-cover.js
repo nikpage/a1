@@ -13,7 +13,6 @@ function getRedis() {
   if (!_redis) _redis = Redis.fromEnv();
   return _redis;
 }
-const redis = new Proxy({}, { get: (_, prop) => getRedis()[prop] });
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -36,7 +35,7 @@ async function handler(req, res) {
   const lockKey = `gen_lock:${user_id}`;
   let acquired;
   try {
-    acquired = await redis.set(lockKey, '1', { nx: true, ex: 30 });
+    acquired = await getRedis().set(lockKey, '1', { nx: true, ex: 30 });
   } catch (redisErr) {
     logger.error('Redis lock error:', redisErr.message);
     return res.status(500).json({ error: 'Service temporarily unavailable' });
@@ -157,7 +156,7 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Generation failed', detail });
     }
   } finally {
-    try { await redis.del(lockKey); } catch (e) { logger.error('Redis unlock error:', e.message); }
+    try { await getRedis().del(lockKey); } catch (e) { logger.error('Redis unlock error:', e.message); }
   }
 }
 
