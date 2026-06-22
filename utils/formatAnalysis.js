@@ -1,6 +1,7 @@
 // utils/formatAnalysis.js
 
 const REQUIRED_SCHEMA = {
+  candidate_core: "",
   summary: "",
   cv_data: {
     Name: "",

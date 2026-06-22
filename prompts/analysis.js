@@ -34,6 +34,7 @@ ${hasJobText ? `- Overqualified\n- Under-qualified\n- Career Pivot\n- Major Pivo
 FIELD INSTRUCTIONS (apply when filling the schema below):
 ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extract ONLY what is literally stated in the ad — quote exact phrasing where possible. Use empty arrays where the ad is silent. NEVER invent, infer, or embellish.
 ` : ''}
+- candidate_core: 2-3 sentences capturing WHO THIS CANDIDATE IS across any job — the durable through-line of what they bring (e.g. the kind of value, leadership, or domain depth that travels with them), drawn ONLY from real evidence in the CV. Job-agnostic: do not mention the target job. This becomes the candidate's editable profile and a steering principle for future documents — so make it identity-level and true, never aspirational or invented.
 - summary: 1-2 sentence attention-grabbing TL;DR of the candidate's real situation that makes the reader want to keep reading.
 - analysis.career_arc: 1-4 sentences telling the honest-but-flattering story of this candidate's trajectory — where they've been heading and why it's compelling.
 - analysis.parallel_experience: side projects, teaching, speaking, volunteering, certifications drawn ONLY from the CV that strengthen the candidate.
@@ -59,6 +60,7 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 
 JSON OUTPUT SCHEMA:
 {
+  "candidate_core": "",
   "summary": "",
   "cv_data": { "Name": "", "Seniority": "", "Industry": "", "Country": "" },
   "job_data": { "Position": "n/a", "Seniority": "n/a", "Company": "n/a", "Industry": "n/a", "Country": "n/a", "HR Contact": "" },
