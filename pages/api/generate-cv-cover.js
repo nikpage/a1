@@ -33,14 +33,17 @@ async function handler(req, res) {
   }
 
   const lockKey = `gen_lock:${user_id}`;
-  let acquired;
+  // Best-effort double-submit guard. If Upstash is unreachable, proceed WITHOUT
+  // the lock rather than failing the user's generation — the lock is a safeguard,
+  // not a core dependency. A Redis outage must never take down writing.
+  let lockHeld = false;
   try {
-    acquired = await getRedis().set(lockKey, '1', { nx: true, ex: 30 });
+    const acquired = await getRedis().set(lockKey, '1', { nx: true, ex: 30 });
+    if (acquired !== 'OK') return res.status(429).json({ error: 'Generation already in progress' });
+    lockHeld = true;
   } catch (redisErr) {
-    logger.error('Redis lock error:', redisErr.message);
-    return res.status(500).json({ error: 'Service temporarily unavailable' });
+    logger.error('Redis lock unavailable, proceeding without lock:', redisErr.message);
   }
-  if (acquired !== 'OK') return res.status(429).json({ error: 'Generation already in progress' });
 
   try {
     let user;
@@ -156,7 +159,9 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Generation failed', detail });
     }
   } finally {
-    try { await getRedis().del(lockKey); } catch (e) { logger.error('Redis unlock error:', e.message); }
+    if (lockHeld) {
+      try { await getRedis().del(lockKey); } catch (e) { logger.error('Redis unlock error:', e.message); }
+    }
   }
 }
 

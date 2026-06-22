@@ -150,6 +150,23 @@ describe('2.2 — generation lock', () => {
     expect(mockDecrementGenerations).not.toHaveBeenCalled();
   });
 
+  test('Redis unavailable (set throws) → fail open: generation proceeds, 200, no unlock attempted', async () => {
+    // Regression: old code returned 500 "Service temporarily unavailable" here,
+    // taking down all writing whenever Upstash hiccupped. The lock is best-effort.
+    mockRedisSet.mockRejectedValue(new Error('Failed to parse URL from /pipeline'));
+
+    const req = makeReq({ analysis: JSON.stringify({ job: 'engineer' }), tone: 'Formal', type: 'cv' });
+    const res = createResponse();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(mockGenerateCV).toHaveBeenCalledTimes(1);
+    expect(mockDecrementGenerations).toHaveBeenCalledTimes(1);
+    // No lock was held, so we must not try to release one.
+    expect(mockRedisDel).not.toHaveBeenCalled();
+  });
+
   test('AI throws after lock acquired → lock released (redis.del called)', async () => {
     mockGenerateCV.mockRejectedValue(new Error('Gemini exploded'));
 
