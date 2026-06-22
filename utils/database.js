@@ -308,7 +308,7 @@ export async function saveGeneratedDoc({
   content,
   analysis_id
 }) {
-  const { data, error } = await supabase
+  const { data, error } = await getAdminSupabase()
     .from('gen_data')
     .insert([{
       user_id,

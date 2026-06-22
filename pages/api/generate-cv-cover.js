@@ -29,7 +29,13 @@ async function handler(req, res) {
   }
 
   const lockKey = `gen_lock:${user_id}`;
-  const acquired = await redis.set(lockKey, '1', { nx: true, ex: 30 });
+  let acquired;
+  try {
+    acquired = await redis.set(lockKey, '1', { nx: true, ex: 30 });
+  } catch (redisErr) {
+    logger.error('Redis lock error:', redisErr.message);
+    return res.status(500).json({ error: 'Service temporarily unavailable' });
+  }
   if (acquired !== 'OK') return res.status(429).json({ error: 'Generation already in progress' });
 
   try {
