@@ -202,6 +202,35 @@ export async function updateUserEmail(user_id, email) {
   if (error) throw error;
 }
 
+// Read the user's saved candidate-core profile (job-agnostic "who I am").
+export async function getCandidateCore(user_id) {
+  const { data, error } = await getAdminSupabase()
+    .from('users').select('candidate_core').eq('user_id', user_id).single();
+  if (error) throw error;
+  return data?.candidate_core || '';
+}
+
+// Seed candidate_core from the AI draft, but ONLY if the user hasn't one yet —
+// never clobber a value the user has edited. Returns true if it wrote.
+export async function setCandidateCoreIfEmpty(user_id, core) {
+  if (!core || !core.trim()) return false;
+  const { data, error } = await getAdminSupabase()
+    .from('users')
+    .update({ candidate_core: core.trim() })
+    .eq('user_id', user_id)
+    .is('candidate_core', null)
+    .select('user_id');
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
+// Overwrite candidate_core with the user's own edit.
+export async function updateCandidateCore(user_id, core) {
+  const { error } = await getAdminSupabase()
+    .from('users').update({ candidate_core: core }).eq('user_id', user_id);
+  if (error) throw error;
+}
+
 // Create a new user with email
 export async function createUserWithEmail(email) {
   const { data, error } = await getAdminSupabase()

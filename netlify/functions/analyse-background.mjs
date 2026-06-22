@@ -15,7 +15,7 @@
 
 import * as Sentry from '@sentry/node';
 import { analyzeCvJob } from '../../utils/openai.js';
-import { saveGeneratedDoc, logAiTransaction, supabase } from '../../utils/database.js';
+import { saveGeneratedDoc, logAiTransaction, setCandidateCoreIfEmpty, supabase } from '../../utils/database.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
 
@@ -130,6 +130,15 @@ export const handler = async (event) => {
       obj._gemini_usage = result.gemini_usage;
       if (confirmedJob && typeof confirmedJob === 'object') {
         obj.job_extraction = confirmedJob;
+      }
+      // Seed the user's persistent candidate-core profile from this analysis,
+      // but only if they don't have one yet (never overwrite a user edit).
+      if (obj.candidate_core) {
+        try {
+          await setCandidateCoreIfEmpty(user_id, obj.candidate_core);
+        } catch (e) {
+          logger.error('[analyse-bg] candidate_core seed failed:', e.message);
+        }
       }
       toSave = JSON.stringify(obj);
     } catch { /* keep raw content if it isn't parseable */ }
