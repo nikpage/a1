@@ -1,4 +1,3 @@
-import requireAuth from '../../lib/requireAuth';
 import { logger } from '../../lib/logger';
 
 const MAX_BODY_CHARS = 2 * 1024 * 1024; // ~2 MB
@@ -112,4 +111,4 @@ async function handler(req, res) {
   return res.status(200).json({ text });
 }
 
-export default requireAuth(handler);
+export default handler;

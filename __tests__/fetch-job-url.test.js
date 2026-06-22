@@ -56,19 +56,19 @@ describe('POST /api/fetch-job-url', () => {
     });
   });
 
-  describe('auth guard', () => {
-    test('no cookie → 401, fetch never called', async () => {
+  describe('no auth required (public route)', () => {
+    test('no cookie → handler runs, fetch is called', async () => {
       const mockFetch = makeFetchMock();
       vi.stubGlobal('fetch', mockFetch);
 
       const { req, res } = mockReqRes({ method: 'POST', cookies: {}, body: { url: 'https://example.com/job' } });
       await handler(req, res);
 
-      expect(res.statusCode).toBe(401);
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    test('invalid token → 401, fetch never called', async () => {
+    test('invalid token → handler runs, fetch is called', async () => {
       const mockFetch = makeFetchMock();
       vi.stubGlobal('fetch', mockFetch);
 
@@ -79,8 +79,8 @@ describe('POST /api/fetch-job-url', () => {
       });
       await handler(req, res);
 
-      expect(res.statusCode).toBe(401);
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+      expect(mockFetch).toHaveBeenCalled();
     });
   });
 
