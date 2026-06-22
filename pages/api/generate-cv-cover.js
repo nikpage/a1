@@ -50,6 +50,10 @@ async function handler(req, res) {
       return res.status(403).json({ error: 'NO_TOKENS_LEFT' });
     }
 
+    // The user's saved candidate-core profile steers every document. Prefer the
+    // (possibly user-edited) saved value; fall back to the draft in the analysis.
+    const core = (user.candidate_core && user.candidate_core.trim()) || analysis?.candidate_core || '';
+
     let cvRecord;
     try {
       cvRecord = await getCV(user_id);
@@ -68,12 +72,12 @@ async function handler(req, res) {
 
     try {
       if (type === 'cv' || type === 'both') {
-        cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone, tweak });
+        cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone, tweak, core });
         cv = cvRes.content;
       }
 
       if (type === 'cover' || type === 'both') {
-        coverRes = await generateCoverLetter({ cv: cvRecord.cv_data, analysis, tone, tweak });
+        coverRes = await generateCoverLetter({ cv: cvRecord.cv_data, analysis, tone, tweak, core });
         cover = coverRes.content;
       }
 

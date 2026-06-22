@@ -3,7 +3,10 @@
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 
-export function buildCoverPrompt(cv, analysis, tone, tweak = '') {
+export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '') {
+  const coreBlock = core && core.trim()
+    ? `    # Who this candidate is (steering)\n    The candidate describes the durable value they bring to any role as: "${core.trim()}"\n    Let it guide what you foreground and how you frame the story — never state anything the CV doesn't actually prove.\n`
+    : '';
   const tweakBlock = tweak && tweak.trim()
     ? `    # The candidate's own instructions (HIGHEST PRIORITY)\n    Follow this over any conflicting guidance below, but NEVER invent facts to satisfy it:\n    "${tweak.trim()}"\n`
     : '';
@@ -14,7 +17,7 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '') {
 
   const userMessage = {
     role: 'user',
-    content: `${tweakBlock}
+    content: `${tweakBlock}${coreBlock}
     # Task
     Write a cover letter in the "${tone}" tone, using only real facts from the CV and analysis. Do NOT invent information. Output must match the CV's detected language (fall back to English if unclear). If the job ad is in another language, the CV language takes precedence.
 

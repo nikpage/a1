@@ -3,7 +3,10 @@
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 
-export function buildCvPrompt(cv, analysis, tone, tweak = '') {
+export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '') {
+  const coreBlock = core && core.trim()
+    ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`
+    : '';
   const tweakBlock = tweak && tweak.trim()
     ? `\n# The candidate's own instructions (HIGHEST PRIORITY)\nThe candidate asked for this specifically — follow it over any conflicting guidance above, but NEVER invent facts, roles, skills or numbers to satisfy it:\n"${tweak.trim()}"\n`
     : '';
@@ -15,7 +18,7 @@ export function buildCvPrompt(cv, analysis, tone, tweak = '') {
 
   const userMessage = {
     role: 'user',
-    content: `${tweakBlock}
+    content: `${tweakBlock}${coreBlock}
 # How to work
 The provided analysis is your strategic brief — treat its generation_framework blueprint as the plan and execute it. Read these before writing:
 - Target length: generation_framework.cv_blueprint.target_length_pages
