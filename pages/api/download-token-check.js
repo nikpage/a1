@@ -1,6 +1,7 @@
 // pages/api/download-token-check.js
-import { getUser, decrementToken } from '../../utils/database';
+import { consumeDownloadCredit } from '../../utils/database';
 import { supabase } from '../../utils/database';
+import { LIMITS } from '../../config/limits';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import requireAuth from '../../lib/requireAuth';
 
@@ -21,26 +22,24 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields: type or content.' });
   }
 
-  let user;
+  // Spend a free download first (card-on-file grant), otherwise a paid token.
+  let credit;
   try {
-    user = await getUser(user_id);
+    credit = await consumeDownloadCredit(user_id);
   } catch {
-    return res.status(500).json({ error: 'Failed to retrieve user data.' });
+    return res.status(500).json({ error: 'Database update failed.' });
   }
 
-  if (!user || user.tokens < 1) {
+  if (credit === 'none') {
     return res.status(402).json({ error: 'INSUFFICIENT_TOKENS' });
   }
 
   try {
-    await decrementToken(user_id);
-
-    // 🔑 Reset generations to 10 on every successful download
+    // Refill the free generation allowance on every successful download.
     await supabase
       .from('users')
-      .update({ generations_left: 10 })
+      .update({ generations_left: LIMITS.FREE_GENERATIONS })
       .eq('user_id', user_id);
-
   } catch {
     return res.status(500).json({ error: 'Database update failed.' });
   }

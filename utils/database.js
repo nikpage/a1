@@ -202,6 +202,34 @@ export async function updateUserEmail(user_id, email) {
   if (error) throw error;
 }
 
+// Atomically spend a download credit: a free download first, else a paid token.
+// Returns 'free' | 'token' | 'none'. Race-safe via the consume_download_credit RPC.
+export async function consumeDownloadCredit(user_id) {
+  const { data, error } = await supabase.rpc('consume_download_credit', { p_user_id: user_id });
+  if (error) throw error;
+  return data;
+}
+
+// Mark a card as verified (Stripe SetupIntent succeeded — no charge taken) and
+// grant the free-download allowance. Idempotent: only the first verification
+// flips the flag and grants downloads, so a replayed webhook can't double-grant.
+// Returns true if this call performed the (first) grant.
+export async function markCardVerified(user_id, stripe_customer_id, freeDownloadsGrant) {
+  const { data, error } = await getAdminSupabase()
+    .from('users')
+    .update({
+      card_on_file: true,
+      card_verified_at: new Date().toISOString(),
+      stripe_customer_id,
+      free_downloads_left: freeDownloadsGrant,
+    })
+    .eq('user_id', user_id)
+    .eq('card_on_file', false)
+    .select('user_id');
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
 // Read the user's saved candidate-core profile (job-agnostic "who I am").
 export async function getCandidateCore(user_id) {
   const { data, error } = await getAdminSupabase()

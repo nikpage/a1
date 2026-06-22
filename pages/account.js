@@ -3,13 +3,29 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../components/Header';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
-import { getUserStats, getCandidateCore } from '../utils/database';
+import { getUser } from '../utils/database';
 
-export default function AccountPage({ user_id, email, tokens, generationsLeft, initialCore }) {
+export default function AccountPage({ user_id, email, tokens, generationsLeft, cardOnFile, freeDownloadsLeft, initialCore }) {
   const [core, setCore] = useState(initialCore || '');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState(null);
+
+  const verifyCard = async () => {
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      const res = await fetch('/api/stripe/create-setup', { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'Could not start verification');
+      window.location.href = data.url;
+    } catch (e) {
+      setVerifyError(e.message);
+      setVerifying(false);
+    }
+  };
 
   const saveCore = async () => {
     setSaving(true);
@@ -60,6 +76,32 @@ export default function AccountPage({ user_id, email, tokens, generationsLeft, i
               <div className="font-medium text-[#41b4a2]">{tokens}</div>
             </div>
           </div>
+
+          {!cardOnFile ? (
+            <div className="mt-5 p-4 rounded-lg bg-[#f0faf8] border border-[#cdeee8]">
+              <div className="font-medium mb-1">Get your first download free</div>
+              <p className="text-sm text-slate-600 mb-3">
+                Add a card to verify your account — <strong>no charge</strong>. You&apos;ll unlock {freeDownloadsLeft || 1} free
+                download and can buy more anytime with one click.
+              </p>
+              <button
+                onClick={verifyCard}
+                disabled={verifying}
+                className="bg-[#41b4a2] hover:bg-[#2c9486] text-white px-5 py-2 rounded-lg font-medium transition-colors disabled:opacity-60"
+              >
+                {verifying ? 'Opening…' : 'Add card (no charge)'}
+              </button>
+              {verifyError && <span className="ml-3 text-sm text-red-600">{verifyError}</span>}
+            </div>
+          ) : (
+            <div className="mt-5 text-sm">
+              <span className="inline-block px-2 py-1 rounded bg-[#f0faf8] text-[#2c9486] border border-[#cdeee8]">
+                ✓ Card verified
+              </span>
+              <span className="ml-3 text-slate-600">Free downloads left: <strong>{freeDownloadsLeft}</strong></span>
+            </div>
+          )}
+
           <div className="mt-4 flex gap-4 text-sm">
             <Link href={`/${user_id}`} className="text-[#41b4a2] hover:underline">Your documents →</Link>
             <Link href="/pricing" className="text-[#41b4a2] hover:underline">Buy tokens →</Link>
@@ -106,23 +148,22 @@ export async function getServerSideProps({ req }) {
     }
     const user_id = decoded.user_id;
 
-    let stats;
+    let user;
     try {
-      stats = await getUserStats(user_id);
+      user = await getUser(user_id);
     } catch {
       return { redirect: { destination: '/?error=user-not-found', permanent: false } };
     }
 
-    let initialCore = '';
-    try { initialCore = await getCandidateCore(user_id); } catch { initialCore = ''; }
-
     return {
       props: {
         user_id,
-        email: stats.email || '',
-        tokens: stats.tokens ?? 0,
-        generationsLeft: stats.generations_left ?? 0,
-        initialCore,
+        email: user.email || '',
+        tokens: user.tokens ?? 0,
+        generationsLeft: user.generations_left ?? 0,
+        cardOnFile: !!user.card_on_file,
+        freeDownloadsLeft: user.free_downloads_left ?? 0,
+        initialCore: user.candidate_core || '',
       },
     };
   } catch {
