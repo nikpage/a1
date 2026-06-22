@@ -137,10 +137,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
         return;
       }
 
+      // Writing is free — block only when the free-write allowance is short,
+      // never on paid tokens (those are for downloads).
       const tokensRes = await fetch(`/api/tokens?user_id=${user_id}`);
       const tokensData = await tokensRes.json();
-      if (!tokensRes.ok || tokensData.tokens < selected.length) {
+      if (!tokensRes.ok || tokensData.generations_left < selected.length) {
         setShowModal(false);
+        setPanelMode("generations");
         setShowBuyPanel(true);
         setShowLoadingModal(false);
         return;

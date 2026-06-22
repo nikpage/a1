@@ -42,12 +42,10 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Error fetching user data' });
     }
 
+    // Writing is free — gated only by the free-write allowance, never by paid
+    // tokens. Tokens are spent at download time, not generation.
     if (user.generations_left <= 0) {
       return res.status(403).json({ error: 'NO_GENERATIONS_LEFT' });
-    }
-
-    if (user.tokens <= 0) {
-      return res.status(403).json({ error: 'NO_TOKENS_LEFT' });
     }
 
     // The user's saved candidate-core profile steers every document. Prefer the
