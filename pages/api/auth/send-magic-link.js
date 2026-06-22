@@ -3,7 +3,7 @@
 import { logger } from '../../../lib/logger';
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import crypto from "crypto";
 import { getBaseUrl, isValidOrigin } from "../../../utils/originCheck";
 import {
@@ -20,7 +20,14 @@ const ratelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(10, "60 s"),
   prefix: "auth-api",
 });
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  auth: {
+    user: 'pod.one@gmail.com',
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -103,15 +110,16 @@ export default async function handler(req, res) {
       });
     }
 
-    const { error: mailErr } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'noreply@thecv.pro',
-      to: emailNorm,
-      subject: 'Your login link for thecv.pro',
-      html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
-    });
-    if (mailErr) {
+    try {
+      await transporter.sendMail({
+        from: 'pod.one@gmail.com',
+        to: emailNorm,
+        subject: 'Your login link for thecv.pro',
+        html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
+      });
+    } catch (mailErr) {
       logger.error('Mail error:', mailErr.message);
-      return res.status(500).json({ error: 'Email send failed.' });
+      return res.status(500).json({ error: 'Email send failed.', detail: mailErr.message });
     }
 
     return res.status(200).json({
