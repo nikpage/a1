@@ -15,7 +15,7 @@ async function handler(req, res) {
 
   try {
     const { output, gemini_usage } = await analyzeJobOnly(String(jobText));
-    await logAiTransaction({
+    logAiTransaction({
       user_id: req.user.user_id,
       model: gemini_usage.model,
       cache_miss_tokens: gemini_usage.inputTokens,
@@ -23,7 +23,7 @@ async function handler(req, res) {
       completion_tokens: gemini_usage.outputTokens + gemini_usage.thinkingTokens,
       thinking_tokens: gemini_usage.thinkingTokens,
       detail: { type: 'job_extraction' },
-    });
+    }).catch(() => {});
     return res.status(200).json({ extraction: output, gemini_usage });
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Extraction failed' });
