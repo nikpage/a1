@@ -40,7 +40,8 @@ Each user has one persisted **master CV** — a structured career record (facts 
 
 - **Build:** the background analysis worker builds the master from the raw CV text the first time it's absent, persists it, cost-logs it, then feeds the master (not the raw CV — that would process the same CV twice) into `analyzeCvJob`. Falls back to raw text only if the build fails.
 - **Merge (multi-CV):** when a user who already has a master uploads another CV, `uploadAndAnalyze` shows `AddCvChoiceModal` (add-to-profile vs start-fresh). "Merge" → `/api/add-cv` previews the merge and stashes the proposed master in Redis under a nonce (nothing saved yet); if it surfaces conflicts, `MergeConflictModal` lets the user resolve them; `/api/add-cv-commit` saves (re-merging once only when the user overrides the newest-wins default). Identity always from `req.user`.
-- **Never-fabricate** is absolute here too: the master records only what the input evidences; gaps stay gaps.
+- **Verify pass (runs after every build/merge, i.e. each time the CV is updated):** `buildOrMergeMaster` automatically follows the build/merge with `verifyMaster()`. It is a safety net for cheap-model slips: (1) a **deterministic code check** drops any `voice_sample` that isn't a real substring of the source (catches paraphrased "verbatim" quotes, no AI); (2) **one targeted AI call** (`buildMasterVerifyPrompt`) flags only a wrong most-recent-role country, gaps that contradict the extracted data, and skills/metrics unsupported by the source — corrections are applied deterministically, so it cannot rewrite `candidate_core` / `transferable_notes` / achievement text (no churn). On merge it gets the existing master as "trusted prior facts" so legacy content isn't flagged. `buildOrMergeMaster` returns `usages: [build/merge, verify]`; **log every entry** (the cost-logging rule covers the verify call too).
+- **Never-fabricate** is absolute here too: the master records only what the input evidences; gaps stay gaps. The build prompt's SELF-CONSISTENCY block + the verify pass are the two layers that keep gaps/country/conflicts honest on a cheap model.
 
 ## AI cost logging
 
@@ -82,7 +83,7 @@ Secrets come from **Doppler** — do not add `.env` files or hardcode values. If
 
 ## AI cost logging rule (DO NOT REMOVE — owner order required to change)
 
-Every AI step — job extraction, master-CV build/merge, CV+job analysis, CV generation, cover-letter generation — **must** report all of the following in **both** places:
+Every AI step — job extraction, master-CV build/merge, master-CV verify, CV+job analysis, CV generation, cover-letter generation — **must** report all of the following in **both** places:
 
 | Field | DB column (`transactions`) | Console (`[Gemini] …` line) |
 |---|---|---|

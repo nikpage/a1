@@ -63,6 +63,44 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
   "conflicts": []                       // contradictions to surface, not silently resolve. BUILD: internal disagreements in the input (see SELF-CONSISTENCY). MERGE: see MERGE rules. Each { "field": "", "old_value": "", "new_value": "", "where": "" }. [] if none.
 }`;
 
+// Targeted verify pass — runs after every build/merge as a safety net for the
+// classes of error a cheap model slips on: a wrong most-recent-role country,
+// gaps that contradict the extracted entries, and skills/metrics not supported
+// by the source. It does NOT re-derive or rewrite anything (no churn on the
+// valuable narrative fields); it only returns a small list of corrections that
+// the caller applies deterministically. Verbatim voice is checked in code, not
+// here. `trustedMaster` (merge only) carries already-verified prior facts so
+// legacy content isn't flagged as unsupported just because it isn't in the new
+// source text.
+export function buildMasterVerifyPrompt({ master, sourceText, trustedMaster = null }) {
+  const system = `You are a strict, literal fact-checker for a career master record. You are given the SOURCE text a record was built from and the MASTER JSON derived from it. Your ONLY job is to catch a few specific defects and report corrections — never rewrite, re-derive, rephrase, reorder or "improve" anything. Be conservative: when in doubt, do NOT flag.
+
+Find only these:
+1. COUNTRY: the country of the candidate's MOST-RECENT role (from that role's location). If master.identity.country disagrees with it, report the correct value.
+2. BAD GAPS: any entry in master.gaps that contradicts the data — i.e. it claims a field is missing when that field is actually populated in the master. Report the exact gap string to remove.
+3. UNSUPPORTED SKILLS: any string in a skills_utilized array that the SOURCE does not support at all — a tool, technology, domain or claim never evidenced. Do NOT flag reasonable relabels of work that is described; only clear inventions.
+4. UNSUPPORTED METRICS: any non-empty "metric" value that states a number/quantity the SOURCE does not contain.${trustedMaster ? `\n\nNOTE: this is a MERGE. Treat facts present in the TRUSTED PRIOR RECORD as already verified — do NOT flag them as unsupported even if the new SOURCE text doesn't mention them.` : ''}
+
+Return VALID JSON only, exactly this shape — empty arrays / empty string where there is nothing to correct:
+{
+  "country": "",            // corrected most-recent-role country, or "" to leave as-is
+  "remove_gaps": [],        // exact gap strings to delete from master.gaps
+  "unsupported_skills": [], // exact skill strings to delete from any skills_utilized
+  "unsupported_metrics": [] // exact metric strings to clear
+}`;
+
+  const user = `MASTER:
+${JSON.stringify(master)}
+${trustedMaster ? `\nTRUSTED PRIOR RECORD (already verified — do not flag its facts):\n${JSON.stringify(trustedMaster)}\n` : ''}
+SOURCE:
+${sourceText}`;
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
 export function buildMasterCvPrompt({ mode = 'build', rawInput = '', existingMaster = null, overrides = [] } = {}) {
   const isMerge = mode === 'merge';
 

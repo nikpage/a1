@@ -7,7 +7,7 @@ import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
-import { buildMasterCvPrompt } from '../prompts/master-cv.js';
+import { buildMasterCvPrompt, buildMasterVerifyPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
@@ -154,10 +154,79 @@ function stripJsonFences(raw) {
   return s.trim();
 }
 
+// Normalise whitespace so a verbatim check tolerates wrapping/spacing differences.
+const normWs = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+
+// Deterministic verbatim guard: keep only voice_samples that actually appear in
+// the source (or were already trusted from a prior merge). Cheap models sometimes
+// paraphrase a "verbatim" quote; this drops any that aren't real substrings.
+function pruneVoiceSamples(master, sourceText, trustedMaster) {
+  if (!Array.isArray(master.voice_samples)) return master;
+  const haystack = normWs(sourceText);
+  const trusted = new Set((trustedMaster?.voice_samples || []).map(normWs));
+  master.voice_samples = master.voice_samples.filter((q) => {
+    const n = normWs(q);
+    return n && (haystack.includes(n) || trusted.has(n));
+  });
+  return master;
+}
+
+// Apply the targeted verifier's corrections to the master, deterministically.
+function applyVerifyCorrections(master, corr) {
+  if (!corr || typeof corr !== 'object') return master;
+
+  if (typeof corr.country === 'string' && corr.country.trim()) {
+    master.identity = master.identity || {};
+    master.identity.country = corr.country.trim();
+  }
+
+  const removeGaps = new Set((corr.remove_gaps || []).map(normWs));
+  if (Array.isArray(master.gaps) && removeGaps.size) {
+    master.gaps = master.gaps.filter((g) => !removeGaps.has(normWs(g)));
+  }
+
+  const badSkills = new Set((corr.unsupported_skills || []).map(normWs));
+  const badMetrics = new Set((corr.unsupported_metrics || []).map(normWs));
+  if ((badSkills.size || badMetrics.size) && Array.isArray(master.experience)) {
+    for (const role of master.experience) {
+      for (const a of role.achievements || []) {
+        if (badSkills.size && Array.isArray(a.skills_utilized)) {
+          a.skills_utilized = a.skills_utilized.filter((s) => !badSkills.has(normWs(s)));
+        }
+        if (badMetrics.size && a.metric && badMetrics.has(normWs(a.metric))) {
+          a.metric = '';
+        }
+      }
+    }
+  }
+  return master;
+}
+
+// Targeted verify pass — see buildMasterVerifyPrompt. Mutates+returns the master
+// with corrections applied; returns the verify call's usage (null if it failed,
+// which is non-fatal — the unverified master is still usable).
+export async function verifyMaster(master, sourceText, trustedMaster = null) {
+  pruneVoiceSamples(master, sourceText, trustedMaster);
+  try {
+    const messages = buildMasterVerifyPrompt({ master, sourceText, trustedMaster });
+    const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
+    const gemini_usage = geminiUsage('master-cv verify', data, GEMINI_MASTER_MODEL);
+    const corr = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+    applyVerifyCorrections(master, corr);
+    trackDailySpend(gemini_usage.costUsd);
+    return { master, gemini_usage };
+  } catch (e) {
+    logger.error('master-cv verify failed (using unverified master):', e.message);
+    return { master, gemini_usage: null };
+  }
+}
+
 // Build (or merge into) the per-user MASTER CV — the persisted source-of-truth.
 //   buildOrMergeMaster(rawInput)                  → fresh build from raw/unstructured input
 //   buildOrMergeMaster(rawInput, existingMaster)  → fold new input into an existing master
-// Returns { output: <master JSON object>, usage, gemini_usage }.
+// Every build/merge is followed by a targeted verify pass (runs each time the CV
+// is updated). Returns { output, usage, gemini_usage (build/merge call),
+// usages: [build/merge, verify] for cost logging }.
 export async function buildOrMergeMaster(rawInput, existingMaster = null, overrides = []) {
   const mode = existingMaster ? 'merge' : 'build';
   const messages = buildMasterCvPrompt({ mode, rawInput, existingMaster, overrides });
@@ -165,14 +234,19 @@ export async function buildOrMergeMaster(rawInput, existingMaster = null, overri
   const gemini_usage = geminiUsage(`master-cv ${mode}`, data, GEMINI_MASTER_MODEL);
 
   const jsonOutput = stripJsonFences(data.choices?.[0]?.message?.content || '');
+  let output;
   try {
-    const output = JSON.parse(jsonOutput);
-    trackDailySpend(gemini_usage.costUsd);
-    return { output, usage: data.usage, gemini_usage };
+    output = JSON.parse(jsonOutput);
   } catch (e) {
     logger.error(`Invalid JSON from master-cv ${mode}:`, e.message);
     throw new Error('Master CV build returned invalid JSON');
   }
+  trackDailySpend(gemini_usage.costUsd);
+
+  const { gemini_usage: verifyUsage } = await verifyMaster(output, rawInput, existingMaster);
+
+  const usages = [gemini_usage, verifyUsage].filter(Boolean);
+  return { output, usage: data.usage, gemini_usage, usages };
 }
 
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {

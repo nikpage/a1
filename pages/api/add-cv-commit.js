@@ -44,25 +44,27 @@ async function handler(req, res) {
     : [];
 
   let finalMaster = proposedMaster;
-  let gemini_usage = null;
+  let usages = [];
   if (validOverrides.length) {
     try {
       const remerged = await buildOrMergeMaster(newText, existingMaster, validOverrides);
       finalMaster = remerged.output;
-      gemini_usage = remerged.gemini_usage;
+      usages = remerged.usages;
     } catch (e) {
       logger.error('[add-cv-commit] re-merge with overrides failed:', e.message);
       return res.status(502).json({ error: 'Could not apply your choices. Please try again.' });
     }
-    logAiTransaction({
-      user_id,
-      model: gemini_usage.model,
-      cache_miss_tokens: gemini_usage.inputTokens,
-      cache_hit_tokens: 0,
-      completion_tokens: gemini_usage.outputTokens + gemini_usage.thinkingTokens,
-      thinking_tokens: gemini_usage.thinkingTokens,
-      detail: { type: 'master_cv_merge_commit' },
-    }).catch(() => {});
+    for (const gu of usages) {
+      logAiTransaction({
+        user_id,
+        model: gu.model,
+        cache_miss_tokens: gu.inputTokens,
+        cache_hit_tokens: 0,
+        completion_tokens: gu.outputTokens + gu.thinkingTokens,
+        thinking_tokens: gu.thinkingTokens,
+        detail: { type: `${gu.label} (commit)` },
+      }).catch(() => {});
+    }
   }
 
   try {
@@ -74,7 +76,7 @@ async function handler(req, res) {
   }
 
   await redis.del(key).catch(() => {});
-  return res.status(200).json({ ok: true, gemini_usage });
+  return res.status(200).json({ ok: true, gemini_usage: usages });
 }
 
 export default requireAuth(handler);

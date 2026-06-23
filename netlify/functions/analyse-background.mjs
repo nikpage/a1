@@ -117,17 +117,19 @@ export const handler = async (event) => {
         const built = await buildOrMergeMaster(cv_data);
         master = built.output;
         await saveMasterCv(user_id, master);
-        const mu = built.gemini_usage;
-        await logAiTransaction({
-          user_id,
-          source_gen_id: analysis_id,
-          model: mu.model,
-          cache_miss_tokens: mu.inputTokens,
-          cache_hit_tokens: 0,
-          completion_tokens: mu.outputTokens + mu.thinkingTokens,
-          thinking_tokens: mu.thinkingTokens,
-          detail: { type: 'master_cv_build' },
-        }).catch(() => {});
+        // Log every AI call the build made (build + verify pass).
+        for (const mu of built.usages) {
+          await logAiTransaction({
+            user_id,
+            source_gen_id: analysis_id,
+            model: mu.model,
+            cache_miss_tokens: mu.inputTokens,
+            cache_hit_tokens: 0,
+            completion_tokens: mu.outputTokens + mu.thinkingTokens,
+            thinking_tokens: mu.thinkingTokens,
+            detail: { type: mu.label },
+          }).catch(() => {});
+        }
       } catch (e) {
         // A master-build failure must not sink the analysis — fall back to raw text.
         logger.error('[analyse-bg] master-cv build failed, using raw CV:', e.message);

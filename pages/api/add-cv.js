@@ -62,26 +62,28 @@ async function handler(req, res) {
     return res.status(409).json({ error: 'No existing profile to merge into' });
   }
 
-  let proposedMaster, gemini_usage;
+  let proposedMaster, usages;
   try {
     const merged = await buildOrMergeMaster(newText, existingMaster);
     proposedMaster = merged.output;
-    gemini_usage = merged.gemini_usage;
+    usages = merged.usages;
   } catch (e) {
     logger.error('[add-cv] merge failed:', e.message);
     return res.status(502).json({ error: 'Could not merge this CV. Please try again.' });
   }
 
-  // The merge AI call really happened — log its cost (DB + return usage for console).
-  logAiTransaction({
-    user_id,
-    model: gemini_usage.model,
-    cache_miss_tokens: gemini_usage.inputTokens,
-    cache_hit_tokens: 0,
-    completion_tokens: gemini_usage.outputTokens + gemini_usage.thinkingTokens,
-    thinking_tokens: gemini_usage.thinkingTokens,
-    detail: { type: 'master_cv_merge_preview' },
-  }).catch(() => {});
+  // The merge + verify AI calls really happened — log each (DB + return for console).
+  for (const gu of usages) {
+    logAiTransaction({
+      user_id,
+      model: gu.model,
+      cache_miss_tokens: gu.inputTokens,
+      cache_hit_tokens: 0,
+      completion_tokens: gu.outputTokens + gu.thinkingTokens,
+      thinking_tokens: gu.thinkingTokens,
+      detail: { type: `${gu.label} (preview)` },
+    }).catch(() => {});
+  }
 
   const nonce = crypto.randomUUID();
   await getRedis().set(
@@ -91,7 +93,7 @@ async function handler(req, res) {
   );
 
   const conflicts = Array.isArray(proposedMaster.conflicts) ? proposedMaster.conflicts : [];
-  return res.status(200).json({ nonce, conflicts, gemini_usage });
+  return res.status(200).json({ nonce, conflicts, gemini_usage: usages });
 }
 
 export default requireAuth(handler);
