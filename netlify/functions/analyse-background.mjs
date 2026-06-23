@@ -143,7 +143,7 @@ export const handler = async (event) => {
     // fallback when the master build failed. (Generation still reads the raw CV
     // separately for full voice fidelity.)
     const cvForAnalysis = master
-      ? `=== MASTER CAREER RECORD (structured source-of-truth) ===\n${JSON.stringify(master, null, 2)}`
+      ? `=== MASTER CAREER RECORD (structured source-of-truth) ===\n${JSON.stringify(master)}`
       : cv_data;
 
     const result = await analyzeCvJob(cvForAnalysis, jobText, file_name || 'Unnamed file');

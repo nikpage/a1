@@ -81,7 +81,7 @@ async function handler(req, res) {
     } catch (masterErr) {
       logger.error('Master CV fetch error:', masterErr.message);
     }
-    const source = master ? JSON.stringify(master, null, 2) : cvRecord?.cv_data;
+    const source = master ? JSON.stringify(master) : cvRecord?.cv_data;
     if (!source) {
       return res.status(404).json({ error: 'CV not found for user' });
     }
