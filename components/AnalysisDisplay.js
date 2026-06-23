@@ -160,6 +160,20 @@ export default function AnalysisDisplay({ analysis }) {
               )}
               <ListField label={t('quickWins')} items={a.quick_wins} />
               <ListField label={t('redFlags')} items={a.red_flags} />
+              {/* Teaser-only: surfaces only when present, so the full analysis is unaffected. */}
+              <ListField label="A couple of things we'd clarify with you:" items={a.nuance_clarifications} />
+              {a.scope && Object.values(a.scope).some((v) => !isEmpty(v)) && (
+                <div style={{ marginTop: '1rem' }}>
+                  <strong>Also analysed — full detail unlocks when you continue:</strong>
+                  <ul>
+                    {Object.entries(a.scope)
+                      .filter(([, v]) => !isEmpty(v))
+                      .map(([k, v]) => (
+                        <li key={k}>• {v}</li>
+                      ))}
+                  </ul>
+                </div>
+              )}
             </div>
           }
         />

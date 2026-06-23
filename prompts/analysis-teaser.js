@@ -1,11 +1,11 @@
 // prompts/analysis-teaser.js
 //
-// The LANDING-PAGE TEASER analysis. Its mission is conversion: give real,
-// surprising value up top, prove we read the CV closely, and make the reader
-// hungry for the rest — without handing over the full action plan (that unlocks
-// on account creation). Deliberately small output so it runs cheap on the strong
-// model: the "hero" fields are full quality; the "scope" one-liners just show the
-// breadth of what we analyse.
+// The LANDING-PAGE TEASER analysis. Mission: give real, surprising value up top,
+// prove we read the CV closely, make the reader hungry for the rest — without the
+// full rewrite plan (that unlocks on sign-up). Small output so the strong model
+// runs cheap (~$0.02 vs ~$0.05). Output is SHAPED to the existing AnalysisDisplay
+// (cv_data / analysis.* / job_match.positioning_strategy / final_thought) so it
+// renders with no display rework; nuance_clarifications + scope are additive.
 //
 // Same never-fabricate law as the full analysis: only what the CV evidences.
 
@@ -21,44 +21,40 @@ export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText) {
       role: 'user',
       content: `Produce a TEASER analysis as VALID JSON only — no markdown, no comments, no trailing commas. Be specific and concrete; generic advice is failure.
 
-HERO FIELDS (full quality — these are shown in full and must stand on their own as real value):
-- cv_data: { Name, Seniority, Industry, Country } drawn from the CV (Country = the most-recent role's country, not the contact block).
-- scores: { overall, ats } each "0-10" — honest.
-- commentary: 2-3 sentences. The insightful read of who this candidate is and the ONE thing diluting their story. Has depth — name the real strength and the real tension.
-- career_arc: 1-3 sentences telling the honest, compelling story of their trajectory.
-- parallel_experience: the side strengths (speaking, teaching, certifications, advisory) that genuinely elevate them, drawn only from the CV.
-- positioning_strategy: 2-3 sentences on how to position this candidate to win — by re-emphasising real experience, never by claiming what the CV doesn't prove.
-- red_flags: ARRAY of every specific concern a recruiter would flag (short, concrete, e.g. "14-month gap 2021-2022"). The UI shows the first one and a "+N more" count, so order them strongest-first. Empty array only if genuinely none.
-- nuance_clarifications: EXACTLY 2 short questions that surface a REAL ambiguity or tension you noticed in THIS CV that the candidate may not have weighed — proof you read closely. Each names the specific detail (a date overlap, a location mismatch, a title that undersells, a role whose framing is unclear) and why resolving it matters. NOT marketing ("ready to upgrade?"), NOT generic ("what are your goals?") — specific, observational, genuinely useful.
+FIELDS (full quality — shown in full, must stand on their own as real value):
+- cv_data: { Name, Seniority, Industry, Country } from the CV (Country = the most-recent role's country, not the contact block).
+- analysis.overall_score / analysis.ats_score: each "0-10", honest.
+- analysis.overall_commentary: 2-3 sentences. The insightful read of who this candidate is and the ONE thing diluting their story. Real depth — name the real strength and the real tension.
+- analysis.career_arc: 1-3 sentences telling the honest, compelling story of their trajectory.
+- analysis.parallel_experience: side strengths (speaking, teaching, certifications, advisory) that genuinely elevate them, from the CV only.
+- job_match.positioning_strategy: 2-3 sentences on how to position this candidate to win — by re-emphasising real experience, never claiming what the CV doesn't prove.
+- analysis.red_flags: ARRAY of every specific concern a recruiter would flag (short, concrete, e.g. "14-month gap 2021-2022"), strongest first. Empty only if genuinely none.
+- analysis.nuance_clarifications: EXACTLY 2 short questions that surface a REAL ambiguity or tension you noticed in THIS CV that the candidate may not have weighed — proof you read closely. Each names the specific detail (a date overlap, a location mismatch, a title that undersells) and why it matters. NOT marketing, NOT generic — specific and observational.
+- analysis.scope: ONE short sentence per key, each carrying ONE real specific crumb about THIS CV (never an empty label); the full content unlocks on sign-up.
 - final_thought: 1-2 sentences — the honest bottom line and what would elevate this CV most.
 
-SCOPE (the "see how much more we cover" row — ONE short sentence each, each carrying ONE real specific crumb about THIS CV, never an empty label; the full content is unlocked on sign-up):
-- quick_wins: e.g. "3 high-impact fixes you can make in minutes — starting with [one real example]."
-- cv_action_plan: tease the rewrite plan with one concrete move.
-- ats_keywords: one real, specific keyword observation (earned-but-underlabelled, or missing vs the job).
-- cultural_fit: one specific norm point for the candidate's market.
-- writing_style: one specific style fix, quoting or naming a real CV phrase.
-- cover_letter: one specific angle the cover letter should take for this candidate.
-
-JSON SHAPE:
+OUTPUT EXACTLY THIS SHAPE:
 {
   "cv_data": { "Name": "", "Seniority": "", "Industry": "", "Country": "" },
-  "scores": { "overall": "0-10", "ats": "0-10" },
-  "commentary": "",
-  "career_arc": "",
-  "parallel_experience": "",
-  "positioning_strategy": "",
-  "red_flags": [],
-  "nuance_clarifications": [],
-  "final_thought": "",
-  "scope": {
-    "quick_wins": "",
-    "cv_action_plan": "",
-    "ats_keywords": "",
-    "cultural_fit": "",
-    "writing_style": "",
-    "cover_letter": ""
-  }
+  "analysis": {
+    "overall_score": "0-10",
+    "ats_score": "0-10",
+    "overall_commentary": "",
+    "career_arc": "",
+    "parallel_experience": "",
+    "red_flags": [],
+    "nuance_clarifications": [],
+    "scope": {
+      "quick_wins": "",
+      "cv_action_plan": "",
+      "ats_keywords": "",
+      "cultural_fit": "",
+      "writing_style": "",
+      "cover_letter": ""
+    }
+  },
+  "job_match": { "positioning_strategy": "" },
+  "final_thought": ""
 }
 
 CV CONTENT:

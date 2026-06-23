@@ -14,7 +14,7 @@
 // overridden with the confirmed values so edits survive into generation.
 
 import * as Sentry from '@sentry/node';
-import { analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
+import { analyzeTeaser, buildOrMergeMaster } from '../../utils/openai.js';
 import { saveGeneratedDoc, logAiTransaction, setCandidateCoreIfEmpty, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
@@ -145,7 +145,7 @@ export const handler = async (event) => {
     // GENERATION, wrong for critique (it makes the analysis guess page count and
     // amplify inferred skills into claims). The master is still built above for
     // generation; it just doesn't feed the analysis.
-    const result = await analyzeCvJob(cv_data, jobText, file_name || 'Unnamed file');
+    const result = await analyzeTeaser(cv_data, jobText);
     const content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
