@@ -2,13 +2,44 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-function TagList({ items }) {
-  if (!Array.isArray(items) || items.length === 0) return null;
+// A value is "empty" if it is null/undefined, a placeholder sentinel, or an
+// array/string that contains nothing real. Used to guarantee we never render a
+// labelled headline with no content behind it.
+const NA = new Set(['', 'n/a', 'na', 'null', 'none', 'undefined', '0-10']);
+function isEmpty(v) {
+  if (v == null) return true;
+  if (Array.isArray(v)) return v.every(isEmpty);
+  return NA.has(String(v).trim().toLowerCase());
+}
+
+// Render a value as text: arrays become a comma-separated list (never a run-on).
+function display(v) {
+  if (Array.isArray(v)) return v.filter((x) => !isEmpty(x)).join(', ');
+  return v;
+}
+
+// A labelled field that renders nothing when its value is empty.
+function Field({ label, value }) {
+  if (isEmpty(value)) return null;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
-      {items.map((item, i) => (
-        <span key={i} className="inline-block bg-blue-50 border border-blue-200 text-blue-800 text-sm px-2 py-0.5 rounded-full">{item}</span>
-      ))}
+    <div>
+      <strong>{label}</strong> {display(value)}
+    </div>
+  );
+}
+
+// A bulleted list that renders nothing (not even its heading) when empty.
+function ListField({ label, items, style }) {
+  const list = Array.isArray(items) ? items.filter((x) => !isEmpty(x)) : [];
+  if (list.length === 0) return null;
+  return (
+    <div style={style || { marginTop: '1rem' }}>
+      <strong>{label}</strong>
+      <ul>
+        {list.map((item, i) => (
+          <li key={i}>• {item}</li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -40,7 +71,10 @@ export default function AnalysisDisplay({ analysis }) {
     </div>
   );
 
-  const hasJobMatch = data.job_data?.Position !== 'null' && data.job_data?.Position;
+  // A job ad is present only when the model actually extracted a position.
+  // The no-job sentinel is "n/a" (and friends), so test for real content.
+  const hasJobMatch = !isEmpty(data.job_data?.Position);
+  const a = data.analysis || {};
 
   return (
     <div className="analysis-fix">
@@ -64,17 +98,13 @@ export default function AnalysisDisplay({ analysis }) {
           content={
             <div>
               {Object.entries(data.cv_data || {}).map(([k, v]) => (
-                <div key={k}>
-                  <strong>{k.replace(/_/g, ' ')}:</strong> {Array.isArray(v) ? v.join(', ') : v}
-                </div>
+                <Field key={k} label={`${k.replace(/_/g, ' ')}:`} value={v} />
               ))}
               {hasJobMatch && (
                 <div style={{ marginTop: '1rem' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('jobAdData')}</h3>
                   {Object.entries(data.job_data || {}).map(([k, v]) => (
-                    <div key={k}>
-                      <strong>{k.replace(/_/g, ' ')}:</strong> {Array.isArray(v) ? v.join(', ') : v}
-                    </div>
+                    <Field key={k} label={`${k.replace(/_/g, ' ')}:`} value={v} />
                   ))}
                 </div>
               )}
@@ -85,60 +115,51 @@ export default function AnalysisDisplay({ analysis }) {
           title={t('analysis')}
           content={
             <div>
-              {hasJobMatch && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('jobMatchEvaluation')}</h3>
-                  {data.analysis?.overall_score != null && <div><strong>{t('overallMatchScore')}</strong> {data.analysis.overall_score}/10</div>}
-                  {data.analysis?.ats_score != null && <div><strong>{t('atsScore')}</strong> {data.analysis.ats_score}/10</div>}
-                  {Array.isArray(data.analysis?.scenario_tags) && data.analysis.scenario_tags.length > 0 && (
-                    <div><strong>{t('scenarios')}</strong> {data.analysis.scenario_tags.join(', ')}</div>
-                  )}
-                  {data.job_match?.keyword_match !== 'null' && (
-                    <div style={{ marginTop: '1rem' }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t('keywordSkills')}</h4>
-                      <div><strong>{t('matches')}</strong> {data.job_match.keyword_match}</div>
-                      <div><strong>{t('suggestedAdditions')}</strong> {Array.isArray(data.job_match.inferred_keywords) ? data.job_match.inferred_keywords.join(', ') : data.job_match.inferred_keywords}</div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Overall/ATS scores and scenario are general CV metrics — shown
+                  with or without a job, but labelled as a job match only when one exists. */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                  {hasJobMatch ? t('jobMatchEvaluation') : t('cvScore')}
+                </h3>
+                {!isEmpty(a.overall_score) && (
+                  <Field label={hasJobMatch ? t('overallMatchScore') : t('overallScore')} value={`${a.overall_score}/10`} />
+                )}
+                {!isEmpty(a.ats_score) && <Field label={t('atsScore')} value={`${a.ats_score}/10`} />}
+                <Field label={t('scenarios')} value={a.scenario_tags} />
+                {hasJobMatch && (
+                  <div style={{ marginTop: '1rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t('keywordSkills')}</h4>
+                    <Field label={t('matches')} value={data.job_match?.keyword_match} />
+                    <Field label={t('suggestedAdditions')} value={data.job_match?.inferred_keywords} />
+                  </div>
+                )}
+              </div>
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('cvAssessment')}</h3>
-                {data.analysis?.cv_format_analysis && <div><strong>{t('structureLength')}</strong> {data.analysis.cv_format_analysis}</div>}
-                {data.analysis?.style_wording && <div><strong>{t('writingStyle')}</strong> {data.analysis.style_wording}</div>}
-                {data.analysis?.ats_keywords_present && <div><strong>{t('atsOptimization')}</strong> {data.analysis.ats_keywords_present}</div>}
-                {data.analysis?.ats_keywords_missing && <div><strong>{t('atsGaps')}</strong> {data.analysis.ats_keywords_missing}</div>}
+                <Field label={t('structureLength')} value={a.cv_format_analysis} />
+                <Field label={t('writingStyle')} value={a.style_wording} />
+                <Field label={t('atsOptimization')} value={a.ats_keywords_present} />
+                <Field label={t('atsGaps')} value={a.ats_keywords_missing} />
               </div>
-              {hasJobMatch && (
+              {hasJobMatch ? (
                 <div style={{ marginBottom: '1.5rem' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('applicantFit')}</h3>
-                  {data.analysis?.cultural_fit && <div><strong>{t('culturalFit')}</strong> {data.analysis.cultural_fit}</div>}
-                  {data.analysis?.overall_commentary && <div><strong>{t('jobMatchCommentary')}</strong> {data.analysis.overall_commentary}</div>}
+                  <Field label={t('culturalFit')} value={a.cultural_fit} />
+                  <Field label={t('jobMatchCommentary')} value={a.overall_commentary} />
                 </div>
-              )}
-              {!hasJobMatch && (
+              ) : (
                 <div style={{ marginBottom: '1.5rem' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('generalAssessment')}</h3>
-                  {data.analysis?.cultural_fit && <div><strong>{t('culturalFit')}</strong> {data.analysis.cultural_fit}</div>}
-                  {data.analysis?.overall_commentary && <div><strong>{t('commentary')}</strong> {data.analysis.overall_commentary}</div>}
-                  {Array.isArray(data.analysis?.suitable_positions) && <div><strong>{t('suitablePositions')}</strong> {data.analysis.suitable_positions.join(', ')}</div>}
-                  {data.analysis?.career_arc && <div><strong>{t('careerArc')}</strong> {data.analysis.career_arc}</div>}
-                  {data.analysis?.parallel_experience && <div><strong>{t('parallelExperience')}</strong> {data.analysis.parallel_experience}</div>}
-                  {data.analysis?.transferable_skills && <div><strong>{t('transferableSkills')}</strong> {data.analysis.transferable_skills}</div>}
+                  <Field label={t('culturalFit')} value={a.cultural_fit} />
+                  <Field label={t('commentary')} value={a.overall_commentary} />
+                  <Field label={t('suitablePositions')} value={a.suitable_positions} />
+                  <Field label={t('careerArc')} value={a.career_arc} />
+                  <Field label={t('parallelExperience')} value={a.parallel_experience} />
+                  <Field label={t('transferableSkills')} value={a.transferable_skills} />
                 </div>
               )}
-              {Array.isArray(data.analysis?.quick_wins) && (
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>{t('quickWins')}</strong>
-                  <ul>{data.analysis.quick_wins.map((item, i) => <li key={i}>• {item}</li>)}</ul>
-                </div>
-              )}
-              {Array.isArray(data.analysis?.red_flags) && (
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>{t('redFlags')}</strong>
-                  <ul>{data.analysis.red_flags.map((item, i) => <li key={i}>• {item}</li>)}</ul>
-                </div>
-              )}
+              <ListField label={t('quickWins')} items={a.quick_wins} />
+              <ListField label={t('redFlags')} items={a.red_flags} />
             </div>
           }
         />
@@ -146,34 +167,22 @@ export default function AnalysisDisplay({ analysis }) {
           title={t('suggestions')}
           content={
             <div>
-              {hasJobMatch && (
-                <div>
-                  {data.job_match?.positioning_strategy && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong>{t('positioningStrategy')}</strong> {data.job_match.positioning_strategy}
-                    </div>
-                  )}
-                  {data.job_match?.career_scenario && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong>{t('careerScenario')}</strong> {data.job_match.career_scenario}
-                    </div>
-                  )}
-                </div>
-              )}
-              {data.analysis?.action_items && Object.keys(data.analysis.action_items).length > 0 && (
+              <Field label={t('positioningStrategy')} value={data.job_match?.positioning_strategy} />
+              <Field label={t('careerScenario')} value={data.job_match?.career_scenario} />
+              {a.action_items && Object.keys(a.action_items).length > 0 && (
                 <div style={{ marginTop: '1rem' }}>
                   <strong>{t('actionItems')}</strong>
-                  {Object.entries(data.analysis.action_items).map(([section, categories]) => (
+                  {Object.entries(a.action_items).map(([section, categories]) => (
                     <div key={section} style={{ marginTop: '0.5rem' }}>
                       <div style={{ fontWeight: 'bold' }}>
                         {section === 'cv_changes' ? t('cv') : section === 'cover_letter' ? t('coverLetter') : section}
                       </div>
                       {Object.entries(categories).map(([priority, items]) =>
-                        Array.isArray(items) && items.length > 0 ? (
+                        Array.isArray(items) && items.filter((x) => !isEmpty(x)).length > 0 ? (
                           <div key={priority} style={{ marginLeft: '1rem', marginTop: '0.25rem' }}>
                             <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>{priority}:</div>
                             <ul style={{ marginLeft: '1rem' }}>
-                              {items.map((text, i) => (
+                              {items.filter((x) => !isEmpty(x)).map((text, i) => (
                                 <li key={i}>• {text}</li>
                               ))}
                             </ul>
@@ -187,11 +196,8 @@ export default function AnalysisDisplay({ analysis }) {
             </div>
           }
         />
-        {data.final_thought && (
-          <Section
-            title={t('finalThought')}
-            content={<div>{data.final_thought}</div>}
-          />
+        {!isEmpty(data.final_thought) && (
+          <Section title={t('finalThought')} content={<div>{data.final_thought}</div>} />
         )}
       </div>
     </div>
