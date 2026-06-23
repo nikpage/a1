@@ -71,9 +71,24 @@ function geminiUsage(label, data, modelHint) {
 const TRANSIENT_STATUSES = new Set([500, 502, 503, 504]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Pull Gemini's real error message out of the axios error so it isn't hidden
+// behind the generic "Request failed with status code 503".
+function geminiErrorMessage(error) {
+  const d = error.response?.data;
+  if (d) {
+    if (typeof d === 'string') return d;
+    if (d.error?.message) return d.error.message;
+    try { return JSON.stringify(d); } catch { /* fall through */ }
+  }
+  return error.message || 'unknown error';
+}
+
 async function callGemini(model, messages, options = {}) {
   const totalKeys = keyManager.keys.filter(k => k !== null).length;
-  const maxAttempts = Math.max(totalKeys, 3);
+  // Up to 6 attempts with exponential backoff so a transient 503 (model
+  // overloaded) is ridden out. The heavy callers (master build/verify, analysis)
+  // run in the 15-min background function, so generous waits are safe there.
+  const maxAttempts = Math.max(totalKeys, 6);
   let lastError;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -99,16 +114,24 @@ async function callGemini(model, messages, options = {}) {
         continue;
       }
 
-      // Transient server/network error (e.g. Gemini 503 overload): brief backoff, then retry.
+      // Transient server/network error (e.g. Gemini 503 overload): exponential
+      // backoff with jitter, then retry. Log Gemini's actual message so a
+      // deterministic failure (not real overload) is visible, not hidden.
       const isTransient = TRANSIENT_STATUSES.has(status) || !error.response;
+      const detail = geminiErrorMessage(error);
       if (isTransient && attempt < maxAttempts - 1) {
-        const backoff = Math.min(2000, 400 * (attempt + 1));
-        logger.warn(`[callGemini] Transient error ${status || error.code || 'network'} — retrying in ${backoff}ms (${attempt + 1}/${maxAttempts})`);
+        const backoff = Math.min(10000, 500 * 2 ** attempt) + Math.floor(Math.random() * 250);
+        logger.warn(`[callGemini] ${model} transient ${status || error.code || 'network'}: "${detail}" — retry ${attempt + 1}/${maxAttempts} in ${backoff}ms`);
         await sleep(backoff);
         continue;
       }
 
-      throw error;
+      logger.error(`[callGemini] ${model} failed (status ${status || error.code || 'network'}): ${detail}`);
+      // Surface Gemini's real reason instead of the opaque axios message.
+      const surfaced = new Error(`Gemini ${status || ''} ${detail}`.trim());
+      surfaced.status = status;
+      surfaced.isRateLimit = error.isRateLimit;
+      throw surfaced;
     }
   }
 
