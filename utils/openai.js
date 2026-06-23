@@ -206,8 +206,8 @@ function applyVerifyCorrections(master, corr) {
 // with corrections applied; returns the verify call's usage (null if it failed,
 // which is non-fatal — the unverified master is still usable).
 export async function verifyMaster(master, sourceText, trustedMaster = null) {
-  pruneVoiceSamples(master, sourceText, trustedMaster);
   try {
+    pruneVoiceSamples(master, sourceText, trustedMaster);
     const messages = buildMasterVerifyPrompt({ master, sourceText, trustedMaster });
     const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
     const gemini_usage = geminiUsage('master-cv verify', data, GEMINI_MASTER_MODEL);
