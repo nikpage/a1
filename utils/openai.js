@@ -35,15 +35,17 @@ export async function trackDailySpend(costUsd) {
 }
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-// Analysis is the strategic brain that drives every downstream document. Generation
-// writes the actual CV/cover prose, so it gets the same strong model — its output is
-// short (~1.5k tokens) so it stays well under the Netlify function timeout.
-const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash-lite';
-const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash-lite';
-// Master-CV build/merge: the once-per-user deep pass that every later match reads.
-// Kept on flash-lite for dev; this is the call to raise to gemini-2.5-pro (higher
-// reasoning_effort) for production output quality — its cost amortises over reuse.
-const GEMINI_MASTER_MODEL      = 'gemini-2.5-flash-lite';
+// Model allocation by task nature (see CLAUDE.md "AI layer"):
+//   lite  — extract / classify / check against a schema or source (verifiable;
+//           lite ≈ flagship here at a fraction of the cost)
+//   flash — strategy + prose (judgment / voice that can't be fully verified)
+// Keeping the per-use heavy calls (analysis, generation) on flash also pulls
+// them off the overloaded flash-lite pool.
+const GEMINI_EXTRACTION_MODEL  = 'gemini-2.5-flash-lite'; // job-ad parsing, verifiable against the ad
+const GEMINI_MASTER_MODEL      = 'gemini-2.5-flash-lite'; // master build/merge — once per user, backstopped by verify
+const GEMINI_VERIFY_MODEL      = 'gemini-2.5-flash-lite'; // master verify — a checker, low creativity
+const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash';      // strategic brain that drives every downstream doc
+const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash';      // CV/cover prose — writing quality + voice are visible
 
 // Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
 const PRICING = {
@@ -146,8 +148,8 @@ async function callGemini(model, messages, options = {}) {
 
 export async function analyzeJobOnly(jobText) {
   const messages = buildJobExtractionPrompt(jobText);
-  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low' });
-  const gemini_usage = geminiUsage('extract job', data, GEMINI_ANALYSIS_MODEL);
+  const data = await callGemini(GEMINI_EXTRACTION_MODEL, messages, { reasoning_effort: 'low' });
+  const gemini_usage = geminiUsage('extract job', data, GEMINI_EXTRACTION_MODEL);
 
   let jsonOutput = data.choices?.[0]?.message?.content || '';
   if (jsonOutput.includes('```json')) {
@@ -232,8 +234,8 @@ export async function verifyMaster(master, sourceText, trustedMaster = null) {
   try {
     pruneVoiceSamples(master, sourceText, trustedMaster);
     const messages = buildMasterVerifyPrompt({ master, sourceText, trustedMaster });
-    const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
-    const gemini_usage = geminiUsage('master-cv verify', data, GEMINI_MASTER_MODEL);
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
+    const gemini_usage = geminiUsage('master-cv verify', data, GEMINI_VERIFY_MODEL);
     const corr = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
     applyVerifyCorrections(master, corr);
     trackDailySpend(gemini_usage.costUsd);
