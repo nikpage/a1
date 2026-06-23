@@ -4,6 +4,7 @@ import axios from 'axios'
 import { Redis } from '@upstash/redis';
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
+import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
@@ -272,6 +273,26 @@ export async function buildOrMergeMaster(rawInput, existingMaster = null, overri
 
   const usages = [gemini_usage, verifyUsage].filter(Boolean);
   return { output, usage: data.usage, gemini_usage, usages };
+}
+
+// Landing-page TEASER analysis — small, high-impact output on the strong model
+// (~$0.02 vs ~$0.05 for the full pass). Hero fields are full quality; the `scope`
+// block is brief breadth-signalling. The full deep analysis runs after sign-up.
+export async function analyzeTeaser(cvText, jobText) {
+  const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
+  const messages = buildAnalysisTeaserPrompt(cvText, jobText, hasJobText);
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low' });
+  const gemini_usage = geminiUsage('analyze teaser', data, GEMINI_ANALYSIS_MODEL);
+
+  const jsonOutput = stripJsonFences(data.choices?.[0]?.message?.content || '');
+  try {
+    JSON.parse(jsonOutput);
+    trackDailySpend(gemini_usage.costUsd);
+    return { output: jsonOutput, usage: data.usage, gemini_usage };
+  } catch (e) {
+    logger.error('Invalid JSON from teaser analysis:', e.message);
+    throw new Error('Teaser analysis returned invalid JSON');
+  }
 }
 
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
