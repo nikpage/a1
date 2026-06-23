@@ -66,10 +66,17 @@ function geminiUsage(label, data, modelHint) {
   return { label, model: servedModel, inputTokens, outputTokens, thinkingTokens, totalTokens, costUsd };
 }
 
+// Transient server-side failures worth retrying — chiefly Gemini 503 (model
+// overloaded), plus the other transient 5xx and bare network errors.
+const TRANSIENT_STATUSES = new Set([500, 502, 503, 504]);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function callGemini(model, messages, options = {}) {
   const totalKeys = keyManager.keys.filter(k => k !== null).length;
+  const maxAttempts = Math.max(totalKeys, 3);
+  let lastError;
 
-  for (let attempt = 0; attempt < Math.max(totalKeys, 1); attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const response = await axios.post(
         GEMINI_URL,
@@ -83,17 +90,35 @@ async function callGemini(model, messages, options = {}) {
       );
       return response.data;
     } catch (error) {
-      if (error.response?.status === 429) {
-        logger.warn(`[callGemini] Key ${attempt + 1}/${totalKeys} rate-limited (429), trying next key`);
+      lastError = error;
+      const status = error.response?.status;
+
+      // 429: this key is rate-limited — rotate to the next key immediately.
+      if (status === 429) {
+        logger.warn(`[callGemini] Key rate-limited (429), trying next key (${attempt + 1}/${maxAttempts})`);
         continue;
       }
+
+      // Transient server/network error (e.g. Gemini 503 overload): brief backoff, then retry.
+      const isTransient = TRANSIENT_STATUSES.has(status) || !error.response;
+      if (isTransient && attempt < maxAttempts - 1) {
+        const backoff = Math.min(2000, 400 * (attempt + 1));
+        logger.warn(`[callGemini] Transient error ${status || error.code || 'network'} — retrying in ${backoff}ms (${attempt + 1}/${maxAttempts})`);
+        await sleep(backoff);
+        continue;
+      }
+
       throw error;
     }
   }
 
-  const rateLimitErr = new Error('All Gemini API keys are rate-limited. Try again later.');
-  rateLimitErr.isRateLimit = true;
-  throw rateLimitErr;
+  // Attempts exhausted.
+  if (lastError?.response?.status === 429) {
+    const rateLimitErr = new Error('All Gemini API keys are rate-limited. Try again later.');
+    rateLimitErr.isRateLimit = true;
+    throw rateLimitErr;
+  }
+  throw lastError || new Error('Gemini request failed');
 }
 
 export async function analyzeJobOnly(jobText) {
