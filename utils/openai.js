@@ -44,7 +44,7 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat
 const GEMINI_EXTRACTION_MODEL  = 'gemini-2.5-flash-lite'; // job-ad parsing, verifiable against the ad
 const GEMINI_MASTER_MODEL      = 'gemini-2.5-flash-lite'; // master build/merge — once per user, backstopped by verify
 const GEMINI_VERIFY_MODEL      = 'gemini-2.5-flash-lite'; // master verify — a checker, low creativity
-const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash';      // strategic brain that drives every downstream doc
+const GEMINI_ANALYSIS_MODEL    = 'gemini-3.5-flash';      // strategic brain that drives every downstream doc
 const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash';      // CV/cover prose — writing quality + voice are visible
 
 // Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
