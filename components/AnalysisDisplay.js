@@ -164,14 +164,13 @@ export default function AnalysisDisplay({ analysis }) {
                 <div style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
                   <strong>One line from your CV, rewritten:</strong>
                   <div style={{ marginTop: '0.5rem', opacity: 0.7 }}>
-                    <span style={{ fontWeight: 600 }}>Before: </span>
-                    <span style={{ textDecoration: 'line-through' }}>{a.sample_rewrite.before}</span>
+                    <span style={{ fontWeight: 600 }}>Before: </span>{a.sample_rewrite.before}
                   </div>
                   <div style={{ marginTop: '0.25rem' }}>
                     <span style={{ fontWeight: 600 }}>After: </span>{a.sample_rewrite.after}
                   </div>
                   <div style={{ marginTop: '0.25rem', fontStyle: 'italic', opacity: 0.8 }}>
-                    We do this to every line.
+                    Every line in your CV gets this treatment.
                   </div>
                 </div>
               )}
