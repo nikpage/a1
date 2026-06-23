@@ -21,6 +21,8 @@ import toneDocModalEn from './locales/en/toneDocModal.json'
 import headerEn from './locales/en/header.json'
 import jobAdInputEn from './locales/en/jobAdInput.json'
 import jobExtractionModalEn from './locales/en/jobExtractionModal.json'
+import addCvChoiceModalEn from './locales/en/addCvChoiceModal.json'
+import mergeConflictModalEn from './locales/en/mergeConflictModal.json'
 
 import indexPageCs from './locales/cs/indexPage.json'
 import pricingCs from './locales/cs/pricing.json'
@@ -40,6 +42,8 @@ import toneDocModalCs from './locales/cs/toneDocModal.json'
 import headerCs from './locales/cs/header.json'
 import jobAdInputCs from './locales/cs/jobAdInput.json'
 import jobExtractionModalCs from './locales/cs/jobExtractionModal.json'
+import addCvChoiceModalCs from './locales/cs/addCvChoiceModal.json'
+import mergeConflictModalCs from './locales/cs/mergeConflictModal.json'
 
 import indexPagePl from './locales/pl/indexPage.json'
 import pricingPl from './locales/pl/pricing.json'
@@ -59,6 +63,8 @@ import toneDocModalPl from './locales/pl/toneDocModal.json'
 import headerPl from './locales/pl/header.json'
 import jobAdInputPl from './locales/pl/jobAdInput.json'
 import jobExtractionModalPl from './locales/pl/jobExtractionModal.json'
+import addCvChoiceModalPl from './locales/pl/addCvChoiceModal.json'
+import mergeConflictModalPl from './locales/pl/mergeConflictModal.json'
 
 i18n
   .use(LanguageDetector)
@@ -84,6 +90,8 @@ i18n
         header: headerEn,
         jobAdInput: jobAdInputEn,
         jobExtractionModal: jobExtractionModalEn,
+        addCvChoiceModal: addCvChoiceModalEn,
+        mergeConflictModal: mergeConflictModalEn,
       },
       cs: {
         indexPage: indexPageCs,
@@ -104,6 +112,8 @@ i18n
         header: headerCs,
         jobAdInput: jobAdInputCs,
         jobExtractionModal: jobExtractionModalCs,
+        addCvChoiceModal: addCvChoiceModalCs,
+        mergeConflictModal: mergeConflictModalCs,
       },
       pl: {
         indexPage: indexPagePl,
@@ -124,6 +134,8 @@ i18n
         header: headerPl,
         jobAdInput: jobAdInputPl,
         jobExtractionModal: jobExtractionModalPl,
+        addCvChoiceModal: addCvChoiceModalPl,
+        mergeConflictModal: mergeConflictModalPl,
       }
     },
     fallbackLng: 'en',
@@ -147,6 +159,8 @@ i18n
       'header',
       'jobAdInput',
       'jobExtractionModal',
+      'addCvChoiceModal',
+      'mergeConflictModal',
     ],
     defaultNS: 'indexPage',
     detection: {

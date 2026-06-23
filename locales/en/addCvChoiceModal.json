@@ -1,0 +1,13 @@
+{
+  "title": "You already have a career profile",
+  "subtitle": "What should we do with this CV?",
+  "merge": {
+    "title": "Add it to my profile",
+    "desc": "Combine this CV with your existing one — keeps your full history and gives us more to work with. Recommended."
+  },
+  "fresh": {
+    "title": "Start fresh",
+    "desc": "Use this CV on its own as a new, separate profile. Your existing profile is left untouched."
+  },
+  "cancel": "Cancel"
+}

@@ -3,8 +3,7 @@
 import { logger } from '../../lib/logger'
 import formidable from 'formidable'
 import { upsertUser, upsertCV } from '../../utils/database'
-import extractTextFromPDF from '../../utils/pdf-extract'
-import mammoth from 'mammoth'
+import { extractTextFromUpload, CvFileError } from '../../utils/extractCvText'
 import crypto from 'crypto'
 import { setSessionCookie } from '../../lib/session'
 
@@ -31,16 +30,6 @@ async function sha256(str) {
   }
 }
 
-async function extractTextFromDOCX(buffer) {
-  try {
-    const result = await mammoth.extractRawText({ buffer })
-    return result.value
-  } catch (error) {
-    logger.error('DOCX extraction error:', error.message)
-    throw new Error('Failed to extract text from DOCX file')
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -54,44 +43,14 @@ export default async function handler(req, res) {
       }
 
       const file = files.file
-      if (!file) {
-        return res.status(400).json({ error: 'No file uploaded' })
-      }
-
-      const uploadedFileName = file.originalFilename || file.newFilename || file.name || 'unknown'
-
-      const supportedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-      if (!file.mimetype || !supportedTypes.includes(file.mimetype)) {
-        return res.status(400).json({ error: 'File must be PDF or DOCX format' })
-      }
-
-      if (file.size > 200 * 1024) {
-        return res.status(400).json({ error: 'File too large' })
-      }
-
-      let buffer
-      if (file.filepath) {
-        const fs = require('fs')
-        buffer = fs.readFileSync(file.filepath)
-      } else if (Buffer.isBuffer(file)) {
-        buffer = file
-      } else {
-        buffer = await streamToBuffer(file)
-      }
-
       let text
       try {
-        if (file.mimetype === 'application/pdf') {
-          text = await extractTextFromPDF(buffer)
-        } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-          text = await extractTextFromDOCX(buffer)
-        }
-
-        if (!text || !text.trim()) {
-          return res.status(400).json({ error: "No text extracted from file" })
-        }
+        text = await extractTextFromUpload(file)
       } catch (err) {
-        return res.status(400).json({ error: 'File parse error', details: String(err) })
+        if (err instanceof CvFileError) {
+          return res.status(400).json({ error: err.message })
+        }
+        throw err
       }
 
       let phone = extractPhone(text)
@@ -121,19 +80,5 @@ export default async function handler(req, res) {
       logger.error("Server error:", e.message)
       return res.status(500).json({ error: 'Server error', details: String(e) })
     }
-  })
-}
-
-// Buffer utility, never remove!
-function streamToBuffer(file) {
-  return new Promise((resolve, reject) => {
-    const chunks = []
-    const stream = file._readStream || file._writeStream || file
-    if (!stream) {
-      return reject(new Error('No file stream'))
-    }
-    stream.on('data', chunk => chunks.push(chunk))
-    stream.on('end', () => resolve(Buffer.concat(chunks)))
-    stream.on('error', err => reject(err))
   })
 }

@@ -1,0 +1,13 @@
+{
+  "title": "Už máte svůj kariérní profil",
+  "subtitle": "Co máme s tímto životopisem udělat?",
+  "merge": {
+    "title": "Přidat do mého profilu",
+    "desc": "Spojí tento životopis se stávajícím – zachová celou vaši historii a získá víc podkladů. Doporučeno."
+  },
+  "fresh": {
+    "title": "Začít znovu",
+    "desc": "Použít tento životopis samostatně jako nový profil. Stávající profil zůstane nedotčen."
+  },
+  "cancel": "Zrušit"
+}

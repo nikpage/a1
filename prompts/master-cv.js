@@ -54,7 +54,7 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
   "conflicts": []                       // merge mode only: see MERGE rules. [] in build mode.
 }`;
 
-export function buildMasterCvPrompt({ mode = 'build', rawInput = '', existingMaster = null } = {}) {
+export function buildMasterCvPrompt({ mode = 'build', rawInput = '', existingMaster = null, overrides = [] } = {}) {
   const isMerge = mode === 'merge';
 
   const system = `You are a meticulous career archivist. You read whatever a person gives you about their working life — a polished CV, a messy LinkedIn paste, half a Word doc, unstructured notes — and distil it into ONE structured, durable master record of their real career.
@@ -82,7 +82,15 @@ ${NEVER_FABRICATE}`;
 EXISTING MASTER:
 ${existingMaster ? JSON.stringify(existingMaster) : '{}'}`;
 
-  const user = `${isMerge ? mergeTask : buildTask}
+  // When the user has reviewed conflicts and chosen to keep some OLD values, those
+  // decisions are authoritative: place the chosen value and drop that conflict.
+  const overridesBlock = (isMerge && overrides.length)
+    ? `\n\nUSER CONFLICT RESOLUTIONS (authoritative — the user reviewed these and decided):\n${overrides
+        .map((o) => `- For "${o.where}": use this value verbatim — "${o.value}". Do NOT list this as a conflict in the output; it is resolved.`)
+        .join('\n')}`
+    : '';
+
+  const user = `${isMerge ? mergeTask + overridesBlock : buildTask}
 
 ${SCHEMA}
 

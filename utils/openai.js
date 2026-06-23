@@ -133,9 +133,9 @@ function stripJsonFences(raw) {
 //   buildOrMergeMaster(rawInput)                  → fresh build from raw/unstructured input
 //   buildOrMergeMaster(rawInput, existingMaster)  → fold new input into an existing master
 // Returns { output: <master JSON object>, usage, gemini_usage }.
-export async function buildOrMergeMaster(rawInput, existingMaster = null) {
+export async function buildOrMergeMaster(rawInput, existingMaster = null, overrides = []) {
   const mode = existingMaster ? 'merge' : 'build';
-  const messages = buildMasterCvPrompt({ mode, rawInput, existingMaster });
+  const messages = buildMasterCvPrompt({ mode, rawInput, existingMaster, overrides });
   const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
   const gemini_usage = geminiUsage(`master-cv ${mode}`, data, GEMINI_MASTER_MODEL);
 

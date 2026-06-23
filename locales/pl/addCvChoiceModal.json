@@ -1,0 +1,13 @@
+{
+  "title": "Masz już swój profil zawodowy",
+  "subtitle": "Co zrobić z tym CV?",
+  "merge": {
+    "title": "Dodaj do mojego profilu",
+    "desc": "Połącz to CV z istniejącym – zachowa pełną historię i da nam więcej materiału. Zalecane."
+  },
+  "fresh": {
+    "title": "Zacznij od nowa",
+    "desc": "Użyj tego CV osobno jako nowy profil. Istniejący profil pozostanie nienaruszony."
+  },
+  "cancel": "Anuluj"
+}
