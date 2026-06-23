@@ -1,7 +1,7 @@
 // pages/api/generate-cv-cover.js
 
 import { logger } from '../../lib/logger';
-import { getCV, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
+import { getCV, getMasterCv, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
 import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { Redis } from '@upstash/redis';
@@ -65,15 +65,25 @@ async function handler(req, res) {
     // (possibly user-edited) saved value; fall back to the draft in the analysis.
     const core = (user.candidate_core && user.candidate_core.trim()) || analysis?.candidate_core || '';
 
+    // The MASTER CV is the source generation builds from — the complete,
+    // structured source-of-truth. Fall back to the raw CV text only for users
+    // whose master hasn't been built (older accounts / a failed build).
     let cvRecord;
     try {
       cvRecord = await getCV(user_id);
-      if (!cvRecord || !cvRecord.cv_data) {
-        return res.status(404).json({ error: 'CV not found for user' });
-      }
     } catch (dbErr) {
       logger.error('CV fetch error:', dbErr.message);
       return res.status(500).json({ error: 'Error fetching CV data' });
+    }
+    let master = null;
+    try {
+      master = await getMasterCv(user_id);
+    } catch (masterErr) {
+      logger.error('Master CV fetch error:', masterErr.message);
+    }
+    const source = master ? JSON.stringify(master, null, 2) : cvRecord?.cv_data;
+    if (!source) {
+      return res.status(404).json({ error: 'CV not found for user' });
     }
 
     let cvRes = null;
@@ -83,12 +93,12 @@ async function handler(req, res) {
 
     try {
       if (type === 'cv' || type === 'both') {
-        cvRes = await generateCV({ cv: cvRecord.cv_data, analysis, tone, tweak, core });
+        cvRes = await generateCV({ cv: source, analysis, tone, tweak, core });
         cv = cvRes.content;
       }
 
       if (type === 'cover' || type === 'both') {
-        coverRes = await generateCoverLetter({ cv: cvRecord.cv_data, analysis, tone, tweak, core });
+        coverRes = await generateCoverLetter({ cv: source, analysis, tone, tweak, core });
         cover = coverRes.content;
       }
 

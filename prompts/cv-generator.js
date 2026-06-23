@@ -29,9 +29,9 @@ The provided analysis is your strategic brief — treat its generation_framework
 - Scenario: analysis.scenario_tags (this drives which experience to emphasise)
 
 # What makes this CV impressive
-- **Achievements, not duties.** Every bullet should show impact, not list responsibilities. Source bullets from the real roles in \`jobs_extracted\`, reframed as accomplishments. Lead with the result, then the action.
-- **Quantify with what's there.** Where the CV gives numbers, scope or scale (team size, budget, %, volume, timeframe), put them up front. NEVER invent a number or a fact that isn't in the source CV.
-- **Emphasis follows strategy.** Let \`analysis.scenario_tags\` and \`job_match.positioning_strategy\` decide what to foreground and what to play down. Use \`analysis.transferable_skills\` to choose which strengths to spotlight. The strategy, \`quick_wins\` and \`action_items\` steer EMPHASIS and FRAMING only — they tell you what real experience to lead with, not new facts to add. If any of them say to "add", "mention", "introduce" or "highlight" a skill, tool or achievement, do it ONLY when \`jobs_extracted\` or the source CV already proves it; otherwise ignore that instruction entirely. The target job's requirements are NEVER evidence about this candidate.
+- **Achievements, not duties.** Every bullet should show impact, not list responsibilities. Source bullets from the real roles in the master CV's \`experience[]\` (each achievement carries its own \`metric\` and \`skills_utilized\`), reframed as accomplishments. Lead with the result, then the action.
+- **Quantify with what's there.** Where the master CV gives numbers, scope or scale (team size, budget, %, volume, timeframe — in \`experience[].achievements[].metric\` or the achievement text), put them up front. NEVER invent a number or a fact that isn't in the master CV.
+- **Emphasis follows strategy.** Let \`analysis.scenario_tags\` and \`job_match.positioning_strategy\` decide what to foreground and what to play down. Use \`analysis.transferable_skills\` to choose which strengths to spotlight. The strategy, \`quick_wins\` and \`action_items\` steer EMPHASIS and FRAMING only — they tell you what real experience to lead with, not new facts to add. If any of them say to "add", "mention", "introduce" or "highlight" a skill, tool or achievement, do it ONLY when the master CV already proves it; otherwise ignore that instruction entirely. The target job's requirements are NEVER evidence about this candidate.
 - **Red flags are handled, not advertised.** For each item in \`analysis.red_flags\`, neutralise it through smart framing and selection (de-emphasise, reframe, or simply don't draw the eye to it). Do NOT call attention to gaps or weaknesses on the CV itself — that work belongs in the cover letter.
 - **Keywords, naturally.** Weave in the most relevant terms from \`analysis.ats_keywords_present\` and \`job_match.inferred_keywords\` where they fit the candidate's real experience. These are terms the candidate has genuinely earned — surface them confidently for the strongest honest ATS match. NEVER pull from \`analysis.ats_keywords_missing\`: those are skills the candidate has not demonstrated and must not appear. Never keyword-stuff or sacrifice readability — a human recruiter reads this too.
 - **Varied bullets.** Do not make every bullet the same length. Within each role, mix at least one short, single-line bullet with longer ones — uniform bullet length is a dead giveaway that a machine wrote the CV.
@@ -42,12 +42,12 @@ ${humanVoiceRules()}
 Write the Professional Summary by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register to match the tone. 2-4 sentences, impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
 
 # Job history rules
-- Use \`jobs_extracted\` as the definitive source for all employment; follow the blueprint's job_selection exactly.
+- Use the master CV's \`experience[]\` as the definitive source for all employment (roles, companies, dates, locations, achievements); follow the blueprint's job_selection exactly.
 - Show overlapping roles with concurrency clear; show ongoing roles as "[start_date] - Present".
 - Never fabricate dates or create artificial gaps.
 
 # Task & constraints
-Generate a new CV in the "${tone}" tone, based ONLY on the provided CV and analysis. Do NOT invent facts, roles, skills or numbers. Output must match the CV's detected language (fall back to English if unclear); if the job ad is in another language, the CV language wins.
+Generate a new CV in the "${tone}" tone, based ONLY on the provided master CV and analysis. Do NOT invent facts, roles, skills or numbers. Output must match the master CV's detected language (fall back to English if unclear); if the job ad is in another language, the master CV's language wins.
 
 Tone — "${tone}": ${toneInstructions(tone)}
 
@@ -134,7 +134,7 @@ Output in Markdown with this exact structure:
 [Other content as needed]
 
 # Inputs
-## CV:
+## Master CV (the candidate's complete, structured career record — your sole factual source):
 ${cv}
 
 ## Analysis:
