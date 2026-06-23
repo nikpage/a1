@@ -51,6 +51,28 @@ export async function getCV(user_id) {
   return data;
 }
 
+// Read the per-user MASTER CV (the persisted source-of-truth). Returns the
+// parsed object, or null if none has been built yet.
+export async function getMasterCv(user_id) {
+  const { data, error } = await supabase
+    .from('cv_data')
+    .select('master_cv')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0]?.master_cv || null;
+}
+
+// Persist the per-user MASTER CV (service-role write). Stored as JSONB.
+export async function saveMasterCv(user_id, master) {
+  const { error } = await getAdminSupabase()
+    .from('cv_data')
+    .update({ master_cv: master })
+    .eq('user_id', user_id);
+  if (error) throw new Error(`saveMasterCv failed: ${error.message || JSON.stringify(error)}`);
+}
+
 // getCvData (ALIAS: for handler expecting this name)
 export async function getCvData(user_id) {
   const { data, error } = await supabase

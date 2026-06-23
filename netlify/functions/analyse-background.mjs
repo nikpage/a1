@@ -14,8 +14,8 @@
 // overridden with the confirmed values so edits survive into generation.
 
 import * as Sentry from '@sentry/node';
-import { analyzeCvJob } from '../../utils/openai.js';
-import { saveGeneratedDoc, logAiTransaction, setCandidateCoreIfEmpty, supabase } from '../../utils/database.js';
+import { analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
+import { saveGeneratedDoc, logAiTransaction, setCandidateCoreIfEmpty, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
 
@@ -108,7 +108,42 @@ export const handler = async (event) => {
       return { statusCode: 202 };
     }
 
-    const result = await analyzeCvJob(cv_data, jobText, file_name || 'Unnamed file');
+    // Ensure the per-user MASTER CV exists. It is the durable source-of-truth the
+    // analysis reasons from. Build it once from the raw CV text if absent; reuse it
+    // thereafter. The expensive deep pass is amortised over every future match.
+    let master = await getMasterCv(user_id).catch(() => null);
+    if (!master) {
+      try {
+        const built = await buildOrMergeMaster(cv_data);
+        master = built.output;
+        await saveMasterCv(user_id, master);
+        const mu = built.gemini_usage;
+        await logAiTransaction({
+          user_id,
+          source_gen_id: analysis_id,
+          model: mu.model,
+          cache_miss_tokens: mu.inputTokens,
+          cache_hit_tokens: 0,
+          completion_tokens: mu.outputTokens + mu.thinkingTokens,
+          thinking_tokens: mu.thinkingTokens,
+          detail: { type: 'master_cv_build' },
+        }).catch(() => {});
+      } catch (e) {
+        // A master-build failure must not sink the analysis — fall back to raw text.
+        logger.error('[analyse-bg] master-cv build failed, using raw CV:', e.message);
+        master = null;
+      }
+    }
+
+    // Feed the analysis the structured master (insight: transferable notes,
+    // achievements, candidate_core) AND the original CV text (exact phrasing /
+    // voice). Master alone would lose the user's wording; raw alone loses the
+    // deep one-time reasoning. Together they are strictly richer than either.
+    const cvForAnalysis = master
+      ? `=== MASTER CAREER RECORD (structured source-of-truth) ===\n${JSON.stringify(master, null, 2)}\n\n=== ORIGINAL CV TEXT (exact phrasing / voice) ===\n${cv_data}`
+      : cv_data;
+
+    const result = await analyzeCvJob(cvForAnalysis, jobText, file_name || 'Unnamed file');
     const content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');

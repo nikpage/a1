@@ -7,6 +7,7 @@ import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
+import { buildMasterCvPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
@@ -37,8 +38,12 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat
 // Analysis is the strategic brain that drives every downstream document. Generation
 // writes the actual CV/cover prose, so it gets the same strong model — its output is
 // short (~1.5k tokens) so it stays well under the Netlify function timeout.
-const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash-lite'';
-const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash-lite'';
+const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash-lite';
+const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash-lite';
+// Master-CV build/merge: the once-per-user deep pass that every later match reads.
+// Kept on flash-lite for dev; this is the call to raise to gemini-2.5-pro (higher
+// reasoning_effort) for production output quality — its cost amortises over reuse.
+const GEMINI_MASTER_MODEL      = 'gemini-2.5-flash-lite';
 
 // Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
 const PRICING = {
@@ -111,6 +116,37 @@ export async function analyzeJobOnly(jobText) {
   } catch (e) {
     logger.error('Invalid JSON from job extraction:', e.message);
     throw new Error('Job extraction returned invalid JSON');
+  }
+}
+
+function stripJsonFences(raw) {
+  let s = raw || '';
+  if (s.includes('```json')) {
+    s = s.replace(/```json\s*/, '').replace(/\s*```$/, '');
+  } else if (s.includes('```')) {
+    s = s.replace(/```\s*/, '').replace(/\s*```$/, '');
+  }
+  return s.trim();
+}
+
+// Build (or merge into) the per-user MASTER CV — the persisted source-of-truth.
+//   buildOrMergeMaster(rawInput)                  → fresh build from raw/unstructured input
+//   buildOrMergeMaster(rawInput, existingMaster)  → fold new input into an existing master
+// Returns { output: <master JSON object>, usage, gemini_usage }.
+export async function buildOrMergeMaster(rawInput, existingMaster = null) {
+  const mode = existingMaster ? 'merge' : 'build';
+  const messages = buildMasterCvPrompt({ mode, rawInput, existingMaster });
+  const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
+  const gemini_usage = geminiUsage(`master-cv ${mode}`, data, GEMINI_MASTER_MODEL);
+
+  const jsonOutput = stripJsonFences(data.choices?.[0]?.message?.content || '');
+  try {
+    const output = JSON.parse(jsonOutput);
+    trackDailySpend(gemini_usage.costUsd);
+    return { output, usage: data.usage, gemini_usage };
+  } catch (e) {
+    logger.error(`Invalid JSON from master-cv ${mode}:`, e.message);
+    throw new Error('Master CV build returned invalid JSON');
   }
 }
 

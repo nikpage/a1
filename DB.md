@@ -18,6 +18,7 @@
 |---|---|---|---|
 | `user_id` | text | — | PK, FK → users |
 | `cv_data` | text | — | Extracted CV text |
+| `master_cv` | jsonb | — | Per-user MASTER CV (source-of-truth): structured career record built once from `cv_data` by the background analysis worker and reused by every later match. Built/merged via `buildOrMergeMaster()` in `utils/openai.js`; read/written via `getMasterCv()` / `saveMasterCv()`. Added in `005_master_cv.sql`. |
 | `cv_file_url` | text | — | Storage URL |
 | `created_at` | timestamp | now() | |
 
@@ -124,4 +125,4 @@ The authenticated `DELETE /api/delete-account` route runs this same cascade via 
 
 ## Migrations
 
-`scripts/migrations/` holds SQL applied manually in the Supabase SQL editor. `001_fix_transactions_user_id.sql` converts `transactions.user_id` from `uuid` to `text`; after it runs, drop the `::text` casts above.
+`scripts/migrations/` holds SQL applied manually in the Supabase SQL editor. `001_fix_transactions_user_id.sql` converts `transactions.user_id` from `uuid` to `text`; after it runs, drop the `::text` casts above. `005_master_cv.sql` adds the `cv_data.master_cv` JSONB column.
