@@ -17,12 +17,21 @@
 
 const NEVER_FABRICATE = `NEVER-FABRICATE (absolute, governs every field): Record ONLY what the input actually evidences. Never invent or infer an employer, date, title, tool, skill, metric, location or achievement that is not in the input. Concrete facts — employer, location, dates, tools, numbers — are immutable and copied verbatim. If something is absent, ambiguous, or unreadable, mark it missing or flag it — NEVER fill the gap with a plausible guess. A relabel is allowed ONLY when the substitute denotes the SAME underlying fact ("coordinated releases" → "led release management" only if they genuinely led it); upgrading a term into a claim of MORE than was done is fabrication. The master must be 100% true so that everything generated from it is safe to put on a real CV.`;
 
+// Applies to EVERY profile, however messy. Cheap models tend to (a) write gaps
+// that contradict the data they just extracted, and (b) silently pick one side of
+// an internal disagreement. These rules force a self-check rather than relying on
+// a stronger model. No profile-specific values — principles only.
+const SELF_CONSISTENCY = `SELF-CONSISTENCY (re-check before you output — your gaps and conflicts MUST agree with the data you actually wrote):
+- GAPS: before listing a field as missing, look at the entry you produced. NEVER report a field as absent if you populated it. Report each genuinely-missing field on its own — do not lump distinct fields together (a role missing only its country is NOT "missing dates or country"; if its dates are filled, only the country is missing).
+- COUNTRY: identity.country is where the person MOST RECENTLY worked or resides — derive it from the most-recent role's location, NOT from the contact block. If the contact-block location or the phone-number country implies a different country than the recent roles, do NOT silently choose one — record it as a conflict.
+- CONTRADICTIONS: whenever two parts of the input disagree on a concrete fact (contact location vs recent-role location, dates that cannot both be true, a title stated two ways), surface it in "conflicts" instead of quietly resolving it.`;
+
 const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON only, no markdown, no comments, no trailing commas):
 {
   "identity": {
     "name": "",
     "contact": { "email": "", "phone": "", "location": "", "links": [] },
-    "country": "",                      // most-recent country of work/residence (a fact from the input)
+    "country": "",                      // country of the MOST-RECENT role's location (where they currently work/reside) — derive from experience, NOT the contact block; mismatch → a conflict (see SELF-CONSISTENCY)
     "languages": [ { "language": "", "level": "" } ]   // level only if stated; else ""
   },
   "candidate_core": "",                 // 2-3 sentences: the durable through-line of who this person is across ANY job — value/leadership/domain depth that travels with them. Identity-level, job-agnostic, true. Never aspirational.
@@ -50,8 +59,8 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
     { "observation": "", "evidence": "", "useful_for": [] }   // e.g. observation: "calm decision-making under pressure", evidence: "volunteer firefighter, 6 years", useful_for: ["leadership roles","crisis/ops roles"]
   ],
   "voice_samples": [],                  // 3-6 of the user's OWN sentences, copied VERBATIM from the input. These preserve their real writing voice for cover letters. Do NOT paraphrase, polish, or invent — exact quotes only. [] if the input has no usable prose.
-  "gaps": [],                           // honest record of what's missing or unclear (e.g. "no dates on the TechCorp role", "education section absent")
-  "conflicts": []                       // merge mode only: see MERGE rules. [] in build mode.
+  "gaps": [],                           // fields GENUINELY missing/unclear, verified against the entries you wrote (see SELF-CONSISTENCY). One missing field per item; never list a field you populated.
+  "conflicts": []                       // contradictions to surface, not silently resolve. BUILD: internal disagreements in the input (see SELF-CONSISTENCY). MERGE: see MERGE rules. Each { "field": "", "old_value": "", "new_value": "", "where": "" }. [] if none.
 }`;
 
 export function buildMasterCvPrompt({ mode = 'build', rawInput = '', existingMaster = null, overrides = [] } = {}) {
@@ -61,7 +70,9 @@ export function buildMasterCvPrompt({ mode = 'build', rawInput = '', existingMas
 
 You read for MEANING, not layout: inconsistent headings, missing headings, bullet soup and pasted profile text are all normal input and you handle them without complaint. You are not writing a CV here and you are not tailoring to any job — you are building the true, reusable source-of-truth that future tailored CVs and cover letters will be generated from. Its only job is to be COMPLETE and TRUE.
 
-${NEVER_FABRICATE}`;
+${NEVER_FABRICATE}
+
+${SELF_CONSISTENCY}`;
 
   const buildTask = `TASK — BUILD the master record from the input below.
 - Extract every role, with dates and concurrency where shown; most-recent first.
@@ -69,7 +80,7 @@ ${NEVER_FABRICATE}`;
 - Write candidate_core: the honest durable through-line of who this person is — drawn only from real evidence.
 - Fill transferable_notes: surface genuine strengths from one domain that carry into others (e.g. hospitality → reading people; firefighting → calm leadership under pressure). Each note needs real evidence from the input and is a strength the person ACTUALLY demonstrated — never an aspiration.
 - Capture voice_samples: copy 3-6 of the person's OWN sentences verbatim so their writing voice is preserved. Exact quotes only.
-- Record gaps honestly. Leave conflicts as [].`;
+- Record gaps honestly, verified against what you extracted (see SELF-CONSISTENCY). Record any internal contradictions in the input in conflicts; otherwise leave conflicts as [].`;
 
   const mergeTask = `TASK — MERGE the new input below INTO the existing master record (provided as JSON). The user has uploaded an additional CV; combine, do not replace.
 - AUGMENT overlapping entries: when a role matches an existing one (same company + overlapping dates), MERGE the detail from both into one richer entry — keep every real achievement and skill from each version. Do not discard the old detail in favour of the new, or vice versa.
