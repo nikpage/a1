@@ -21,20 +21,20 @@ export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText) {
       role: 'user',
       content: `Produce a TEASER analysis as VALID JSON only — no markdown, no comments, no trailing commas. Be specific and concrete; generic advice is failure.
 
-TONE LAW — the teaser must make the reader feel SEEN and HOPEFUL, never audited. Lead with what is rare and strong about them; frame every problem as a winnable, fixable opportunity, not a verdict. We sell the fix, not the faults. A teaser that mostly lists flaws fails even if every flaw is true.
+TONE LAW — write like a sharp, plain-spoken human who actually read THIS CV. The reader should feel precisely seen, not flattered. HARD BAN on praise adjectives and hype: never use rare, elite, exceptional, world-class, stellar, prestigious, impressive, sought-after, tier-one, pedigree, mastery, pioneer, or any synonym. Never use exclamation or salesman warmth. Every positive must be a CONCRETE FACT lifted from the CV (a named role, a thing built, a number) — if you cannot point to the fact, delete the sentence. State problems plainly as fixable. Specificity is the value; enthusiasm is not.
 
 FIELDS (full quality — shown in full, must stand on their own as real value):
 - cv_data: { Name, Seniority, Industry, Country } from the CV (Country = the most-recent role's country, not the contact block).
 - analysis.overall_score / analysis.ats_score: each "0-10", honest.
-- analysis.overall_commentary: 2-3 sentences. OPEN with the genuinely rare/strong thing about this candidate (specific, from the CV), THEN name the ONE tension diluting it — as one fixable thing, not a list. Respect first, problem second.
-- analysis.career_arc: 1-3 sentences telling the honest, compelling story of their trajectory.
-- analysis.parallel_experience: side strengths (speaking, teaching, certifications, advisory) that genuinely elevate them, from the CV only.
+- analysis.overall_commentary: 2-3 sentences. OPEN by naming a concrete thing this person actually did (a specific role, build, or outcome from the CV — a fact, no adjective), THEN name the ONE tension diluting it as a single fixable thing. No praise words.
+- analysis.career_arc: 1-3 sentences telling the trajectory in plain, factual terms — what they did, in what order. No hype.
+- analysis.parallel_experience: side facts from the CV only (speaking, teaching, certifications, advisory) — stated plainly, no editorializing about how impressive they are.
 - analysis.sample_rewrite: { "before": "", "after": "" } — take ONE real, weak line VERBATIM from the CV (a flat title line or passive bullet) as "before", and rewrite it as "after" to show the quality of fix they'd get: sharper framing, real outcome/scale, no invented facts. This is the single most persuasive proof we read the CV and can fix it — make it concrete and impossible to paste onto another CV. The "before" must be a real substring of the CV.
 - job_match.positioning_strategy: 2-3 sentences on how to position this candidate to win — by re-emphasising real experience, never claiming what the CV doesn't prove.
-- analysis.red_flags: ARRAY of AT MOST the 2 most important concerns a recruiter would flag, each phrased as a fixable opportunity (short, concrete, e.g. "14-month gap 2021-2022 — easily addressed with framing"), strongest first. Do NOT dump every flaw; the full list unlocks on sign-up. Empty if genuinely none.
+- analysis.red_flags: ARRAY of AT MOST the 2 most important concerns a recruiter would flag, short and concrete (e.g. "14-month gap 2021-2022"). Plain statement of fact, no reassurance padding. Do NOT dump every flaw; the full list unlocks on sign-up. Empty if genuinely none.
 - analysis.nuance_clarifications: EXACTLY 2 short questions that surface a REAL ambiguity or tension you noticed in THIS CV that the candidate may not have weighed — proof you read closely. Each names the specific detail (a date overlap, a location mismatch, a title that undersells) and why it matters. NOT marketing, NOT generic — specific and observational.
 - analysis.scope: ONE short sentence per key, each carrying ONE real specific crumb about THIS CV (never an empty label); the full content unlocks on sign-up.
-- final_thought: 1-2 sentences — frame the score as a LEVER: name the current score and the ONE change that would move it up most. Hopeful, specific, forward-looking.
+- final_thought: 1-2 sentences — name the current score and the ONE specific change that would move it up most. Plain and concrete, no hype, no "world-class".
 
 OUTPUT EXACTLY THIS SHAPE:
 {
