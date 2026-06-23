@@ -37,8 +37,8 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat
 // Analysis is the strategic brain that drives every downstream document. Generation
 // writes the actual CV/cover prose, so it gets the same strong model — its output is
 // short (~1.5k tokens) so it stays well under the Netlify function timeout.
-const GEMINI_ANALYSIS_MODEL    = 'gemini-3.5-flash';
-const GEMINI_GENERATION_MODEL  = 'gemini-3.5-flash';
+const GEMINI_ANALYSIS_MODEL    = 'gemini-2.5-flash';
+const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash';
 
 // Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
 const PRICING = {
