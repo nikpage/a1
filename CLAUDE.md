@@ -18,9 +18,9 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, and the SQL
 | Sessions / rate-limit | Upstash Redis (`@upstash/redis` + `@upstash/ratelimit`) |
 | Payments | Stripe |
 | Email | Resend |
-| AI | **Gemini** (`gemini-3.5-flash` via `utils/openai.js`) |
+| AI | **Gemini** (model constants in `utils/openai.js`; currently `gemini-2.5-flash-lite`) |
 | Styling | Tailwind CSS |
-| i18n | next-translate (en, cs) |
+| i18n | react-i18next, namespace JSON in `locales/{en,cs,pl}/` registered in `i18n.js` |
 | Deployment | **Netlify** (`@netlify/plugin-nextjs`) |
 | Monitoring | **Sentry** (`@sentry/nextjs` for routes/edge, `@sentry/node` in the background fn) |
 | Logging | Leveled logger in `lib/logger.js` (info/debug silenced in production) |
@@ -28,11 +28,19 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, and the SQL
 
 ## AI layer
 
-- `utils/openai.js` (misleading name — calls **Gemini**, not OpenAI) via the Gemini OpenAI-compatible endpoint. Both analysis and generation use `gemini-3.5-flash`. Key rotation via `utils/key-manager.js` over `GEMINI_API_KEYS` (comma-separated).
+- `utils/openai.js` (misleading name — calls **Gemini**, not OpenAI) via the Gemini OpenAI-compatible endpoint. Model is set by three constants — `GEMINI_ANALYSIS_MODEL`, `GEMINI_GENERATION_MODEL`, `GEMINI_MASTER_MODEL` (the master-CV build/merge pass) — all currently `gemini-2.5-flash-lite` for dev. Raise them (e.g. `gemini-2.5-pro` for the master pass) for production output quality; never hardcode a model string elsewhere. Key rotation via `utils/key-manager.js` over `GEMINI_API_KEYS` (comma-separated).
 - The OpenAI-compatible endpoint cannot set `safetySettings`. Mild profanity (e.g. the "cocky" tone's "shit-hot") comes through fine; if Gemini ever sanitizes output, the only lever is switching that call to the native `generateContent` endpoint with `BLOCK_NONE`.
 - Pricing is in `PRICING` in `utils/openai.js` — the single source of truth. Verify rates at ai.google.dev/gemini-api/docs/pricing. Per-call cost is logged to the browser console as `[Gemini] …` and written to the `transactions` table via `logAiTransaction()` in `utils/database.js`.
 - Every successful AI call fires `trackDailySpend()` (fire-and-forget) in `utils/openai.js`, which accumulates the day's USD spend in Redis and emits a `logger.error` alert once `GEMINI_DAILY_BUDGET_USD` (default $10) is reached.
-- The three prompt builders in `prompts/` are provider-agnostic; tone definitions live in `prompts/tone.js` (shared by cv-generator and cover-letter).
+- The prompt builders in `prompts/` are provider-agnostic; tone definitions live in `prompts/tone.js` (shared by cv-generator and cover-letter).
+
+## Master CV (per-user source-of-truth)
+
+Each user has one persisted **master CV** — a structured career record (facts + verbatim `voice_samples` + transferable-value notes) in `cv_data.master_cv` (JSONB). It is the durable thing analysis reasons from, built once and reused across every later job match. See `prompts/master-cv.js` (build + merge modes) and `buildOrMergeMaster()` in `utils/openai.js`; read/write via `getMasterCv()` / `saveMasterCv()` in `utils/database.js`.
+
+- **Build:** the background analysis worker builds the master from the raw CV text the first time it's absent, persists it, cost-logs it, then feeds the master (not the raw CV — that would process the same CV twice) into `analyzeCvJob`. Falls back to raw text only if the build fails.
+- **Merge (multi-CV):** when a user who already has a master uploads another CV, `uploadAndAnalyze` shows `AddCvChoiceModal` (add-to-profile vs start-fresh). "Merge" → `/api/add-cv` previews the merge and stashes the proposed master in Redis under a nonce (nothing saved yet); if it surfaces conflicts, `MergeConflictModal` lets the user resolve them; `/api/add-cv-commit` saves (re-merging once only when the user overrides the newest-wins default). Identity always from `req.user`.
+- **Never-fabricate** is absolute here too: the master records only what the input evidences; gaps stay gaps.
 
 ## AI cost logging
 
@@ -57,6 +65,7 @@ Gemini analysis runs longer than Netlify's 10s synchronous function limit (which
 prompts/analysis.js
 prompts/cv-generator.js
 prompts/cover-letter.js
+prompts/master-cv.js
 ```
 
 These are the product IP. Import them; never copy-paste their content into handlers.
@@ -73,7 +82,7 @@ Secrets come from **Doppler** — do not add `.env` files or hardcode values. If
 
 ## AI cost logging rule (DO NOT REMOVE — owner order required to change)
 
-Every AI step — job extraction, CV+job analysis, CV generation, cover-letter generation — **must** report all of the following in **both** places:
+Every AI step — job extraction, master-CV build/merge, CV+job analysis, CV generation, cover-letter generation — **must** report all of the following in **both** places:
 
 | Field | DB column (`transactions`) | Console (`[Gemini] …` line) |
 |---|---|---|
