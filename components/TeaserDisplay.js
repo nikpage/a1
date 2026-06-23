@@ -70,6 +70,14 @@ export default function TeaserDisplay({ analysis }) {
         </div>
       )}
 
+      {/* The realistic 7-second recruiter read — the impression they can't see */}
+      {!isEmpty(a.hr_first_seconds) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <div className="text-base font-semibold text-slate-800 mb-1">How a recruiter sees you in the first 7 seconds</div>
+          <p className="text-slate-700">{a.hr_first_seconds}</p>
+        </div>
+      )}
+
       {/* The hook — what's holding them back, in plain words */}
       {!isEmpty(a.overall_commentary) && (
         <div>

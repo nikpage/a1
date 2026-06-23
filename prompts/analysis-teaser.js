@@ -26,6 +26,7 @@ TONE LAW — write like a sharp, plain-spoken human who actually read THIS CV. T
 FIELDS (full quality — shown in full, must stand on their own as real value):
 - cv_data: { Name, Seniority, Industry, Country } from the CV (Country = the most-recent role's country, not the contact block).
 - analysis.overall_score / analysis.ats_score: each "0-10", honest.
+- analysis.hr_first_seconds: 2-3 sentences — the BLUNT, realistic snap-judgment a busy recruiter forms in the first ~7 seconds skimming the TOP of this CV, before reading any detail. Base it only on what hits the eye first: the current/most-recent job title, the latest dates (recency, any gap), how senior it reads, and whether the path is instantly legible. Write it as the recruiter's honest inner reaction in plain language ("Reads as a senior product person, but the most recent line is a contract that ended over a year ago, so my first instinct is to wonder why."). It must be REALISTIC, not flattering and not cruel — what an actual recruiter thinks, including the unfair-but-real assumptions. Reference THIS CV's real top-line facts. This block exists to show the candidate the first impression they cannot see themselves.
 - analysis.overall_commentary: 2-3 sentences. OPEN by naming a concrete thing this person actually did (a specific role, build, or outcome from the CV — a fact, no adjective), THEN name the ONE tension diluting it as a single fixable thing. No praise words.
 - analysis.career_arc: 1-3 sentences telling the trajectory in plain, factual terms — what they did, in what order. No hype.
 - analysis.parallel_experience: side facts from the CV only (speaking, teaching, certifications, advisory) — stated plainly, no editorializing about how impressive they are.
@@ -42,6 +43,7 @@ OUTPUT EXACTLY THIS SHAPE:
   "analysis": {
     "overall_score": "0-10",
     "ats_score": "0-10",
+    "hr_first_seconds": "",
     "overall_commentary": "",
     "career_arc": "",
     "parallel_experience": "",
