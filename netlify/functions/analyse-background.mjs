@@ -112,10 +112,12 @@ export const handler = async (event) => {
     // analysis reasons from. Build it once from the raw CV text if absent; reuse it
     // thereafter. The expensive deep pass is amortised over every future match.
     let master = await getMasterCv(user_id).catch(() => null);
+    let masterUsages = []; // build + verify usages, surfaced to the browser console alongside the analysis call
     if (!master) {
       try {
         const built = await buildOrMergeMaster(cv_data);
         master = built.output;
+        masterUsages = built.usages;
         await saveMasterCv(user_id, master);
         // Log every AI call the build made (build + verify pass).
         for (const mu of built.usages) {
@@ -137,16 +139,13 @@ export const handler = async (event) => {
       }
     }
 
-    // Feed the analysis the structured master — it already captures the CV's
-    // content, including verbatim voice_samples, so there's no need to also send
-    // the raw CV text and process the same CV twice. Raw text is only the
-    // fallback when the master build failed. (Generation still reads the raw CV
-    // separately for full voice fidelity.)
-    const cvForAnalysis = master
-      ? `=== MASTER CAREER RECORD (structured source-of-truth) ===\n${JSON.stringify(master)}`
-      : cv_data;
-
-    const result = await analyzeCvJob(cvForAnalysis, jobText, file_name || 'Unnamed file');
+    // Analysis critiques the REAL uploaded CV, so it reads the raw text — the
+    // actual document (length, formatting, literal facts), never the master.
+    // The master is a restructured, inference-laden derivative: great for
+    // GENERATION, wrong for critique (it makes the analysis guess page count and
+    // amplify inferred skills into claims). The master is still built above for
+    // generation; it just doesn't feed the analysis.
+    const result = await analyzeCvJob(cv_data, jobText, file_name || 'Unnamed file');
     const content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
@@ -165,7 +164,9 @@ export const handler = async (event) => {
     let toSave = content;
     try {
       const obj = JSON.parse(content);
-      obj._gemini_usage = result.gemini_usage;
+      // Surface EVERY Gemini call this run made (master build + verify + analysis)
+      // so the browser console matches what the transactions table records.
+      obj._gemini_usage = [...masterUsages, result.gemini_usage];
       if (confirmedJob && typeof confirmedJob === 'object') {
         obj.job_extraction = confirmedJob;
       }
