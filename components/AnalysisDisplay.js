@@ -158,38 +158,8 @@ export default function AnalysisDisplay({ analysis }) {
                   <Field label={t('transferableSkills')} value={a.transferable_skills} />
                 </div>
               )}
-              {/* Teaser-only: one real line rewritten, before -> after. The proof
-                  that we read the CV and can fix it. Renders only when present. */}
-              {a.sample_rewrite && !isEmpty(a.sample_rewrite.before) && !isEmpty(a.sample_rewrite.after) && (
-                <div style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
-                  <strong>One line from your CV, rewritten:</strong>
-                  <div style={{ marginTop: '0.5rem', opacity: 0.7 }}>
-                    <span style={{ fontWeight: 600 }}>Before: </span>{a.sample_rewrite.before}
-                  </div>
-                  <div style={{ marginTop: '0.25rem' }}>
-                    <span style={{ fontWeight: 600 }}>After: </span>{a.sample_rewrite.after}
-                  </div>
-                  <div style={{ marginTop: '0.25rem', fontStyle: 'italic', opacity: 0.8 }}>
-                    Every line in your CV gets this treatment.
-                  </div>
-                </div>
-              )}
               <ListField label={t('quickWins')} items={a.quick_wins} />
               <ListField label={t('redFlags')} items={a.red_flags} />
-              {/* Teaser-only: surfaces only when present, so the full analysis is unaffected. */}
-              <ListField label="A couple of things we'd clarify with you:" items={a.nuance_clarifications} />
-              {a.scope && Object.values(a.scope).some((v) => !isEmpty(v)) && (
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>Also analysed — full detail unlocks when you continue:</strong>
-                  <ul>
-                    {Object.entries(a.scope)
-                      .filter(([, v]) => !isEmpty(v))
-                      .map(([k, v]) => (
-                        <li key={k}>• {v}</li>
-                      ))}
-                  </ul>
-                </div>
-              )}
             </div>
           }
         />

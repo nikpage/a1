@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Header from '../components/Header';
 import LoadingModal from '../components/LoadingModal';
-import AnalysisDisplay from '../components/AnalysisDisplay';
+import TeaserDisplay from '../components/TeaserDisplay';
 import LoginModal from '../components/LoginModal';
 import JobExtractionModal from '../components/JobExtractionModal';
 import { useTranslation } from 'react-i18next';
@@ -175,7 +175,7 @@ export default function IndexPage() {
         ) : (
           <div className="border rounded-lg p-6 bg-white shadow-sm max-w-3xl mx-auto text-left">
             <div className="mb-6 text-2xl font-bold text-center">{t('form.analysisTitle')}</div>
-            <AnalysisDisplay analysis={analysis} />
+            <TeaserDisplay analysis={analysis} />
             <button
               onClick={handleWriteNowClick}
               className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 mt-6 touch-manipulation mx-auto block"
