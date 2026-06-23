@@ -135,12 +135,13 @@ export const handler = async (event) => {
       }
     }
 
-    // Feed the analysis the structured master (insight: transferable notes,
-    // achievements, candidate_core) AND the original CV text (exact phrasing /
-    // voice). Master alone would lose the user's wording; raw alone loses the
-    // deep one-time reasoning. Together they are strictly richer than either.
+    // Feed the analysis the structured master — it already captures the CV's
+    // content, including verbatim voice_samples, so there's no need to also send
+    // the raw CV text and process the same CV twice. Raw text is only the
+    // fallback when the master build failed. (Generation still reads the raw CV
+    // separately for full voice fidelity.)
     const cvForAnalysis = master
-      ? `=== MASTER CAREER RECORD (structured source-of-truth) ===\n${JSON.stringify(master, null, 2)}\n\n=== ORIGINAL CV TEXT (exact phrasing / voice) ===\n${cv_data}`
+      ? `=== MASTER CAREER RECORD (structured source-of-truth) ===\n${JSON.stringify(master, null, 2)}`
       : cv_data;
 
     const result = await analyzeCvJob(cvForAnalysis, jobText, file_name || 'Unnamed file');
