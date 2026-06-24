@@ -25,6 +25,7 @@
 //
 // Reads only what the model returned; every block hides itself when empty.
 import React from 'react';
+import Head from 'next/head';
 import { useTranslation } from 'react-i18next';
 
 const NA = new Set(['', 'n/a', 'na', 'null', 'none', 'undefined', '0-10']);
@@ -102,6 +103,11 @@ export default function TeaserDisplay({ analysis }) {
 
   return (
     <div className="teaser">
+      <Head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+      </Head>
       {/* header */}
       {(!isEmpty(cv.Name) || who || hasChecks) && (
         <div className="head">
