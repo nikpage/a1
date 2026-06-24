@@ -66,6 +66,52 @@ describe('deleteUserData', () => {
   });
 });
 
+describe('saveMasterCv', () => {
+  // Builds an admin client whose update().eq().select() chain resolves to the
+  // given { data, error }. Records the table and the values passed to update().
+  function makeUpdateMock({ data, error = null }) {
+    const calls = {};
+    const builder = {
+      update(values) { calls.values = values; return builder; },
+      eq(field, value) { calls.eq = [field, value]; return builder; },
+      select() { return Promise.resolve({ data, error }); },
+    };
+    const fromSpy = vi.fn((table) => { calls.table = table; return builder; });
+    return { client: { from: fromSpy }, calls };
+  }
+
+  test('throws when the update matches no row (the silent no-op that leaves master_cv null)', async () => {
+    const { client, calls } = makeUpdateMock({ data: [] });
+    _adminMock = client;
+    const { saveMasterCv } = await import('../utils/database.js');
+
+    await expect(saveMasterCv('uid-1', { candidate_core: 'x' })).rejects.toThrow(/saved nothing/);
+    // It still aimed the write at the right place — the bug is zero rows, not a bad query.
+    expect(calls.table).toBe('cv_data');
+    expect(calls.values).toEqual({ master_cv: { candidate_core: 'x' } });
+    expect(calls.eq).toEqual(['user_id', 'uid-1']);
+  });
+
+  test('persists and returns the updated row when one matches', async () => {
+    const { client, calls } = makeUpdateMock({ data: [{ user_id: 'uid-1' }] });
+    _adminMock = client;
+    const { saveMasterCv } = await import('../utils/database.js');
+
+    const res = await saveMasterCv('uid-1', { voice_samples: ['real quote'] });
+
+    expect(res).toEqual([{ user_id: 'uid-1' }]);
+    expect(calls.values).toEqual({ master_cv: { voice_samples: ['real quote'] } });
+  });
+
+  test('throws when Supabase returns an error', async () => {
+    const { client } = makeUpdateMock({ data: null, error: { message: 'boom' } });
+    _adminMock = client;
+    const { saveMasterCv } = await import('../utils/database.js');
+
+    await expect(saveMasterCv('uid-1', {})).rejects.toThrow(/saveMasterCv failed: boom/);
+  });
+});
+
 describe('getLatestAnalysis', () => {
   test('calls .from(gen_data) with correct user_id and returns content', async () => {
     const fromSpy = vi.fn().mockReturnValue({

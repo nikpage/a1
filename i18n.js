@@ -23,6 +23,7 @@ import jobAdInputEn from './locales/en/jobAdInput.json'
 import jobExtractionModalEn from './locales/en/jobExtractionModal.json'
 import addCvChoiceModalEn from './locales/en/addCvChoiceModal.json'
 import mergeConflictModalEn from './locales/en/mergeConflictModal.json'
+import teaserDisplayEn from './locales/en/teaserDisplay.json'
 
 import indexPageCs from './locales/cs/indexPage.json'
 import pricingCs from './locales/cs/pricing.json'
@@ -44,6 +45,7 @@ import jobAdInputCs from './locales/cs/jobAdInput.json'
 import jobExtractionModalCs from './locales/cs/jobExtractionModal.json'
 import addCvChoiceModalCs from './locales/cs/addCvChoiceModal.json'
 import mergeConflictModalCs from './locales/cs/mergeConflictModal.json'
+import teaserDisplayCs from './locales/cs/teaserDisplay.json'
 
 import indexPagePl from './locales/pl/indexPage.json'
 import pricingPl from './locales/pl/pricing.json'
@@ -65,6 +67,7 @@ import jobAdInputPl from './locales/pl/jobAdInput.json'
 import jobExtractionModalPl from './locales/pl/jobExtractionModal.json'
 import addCvChoiceModalPl from './locales/pl/addCvChoiceModal.json'
 import mergeConflictModalPl from './locales/pl/mergeConflictModal.json'
+import teaserDisplayPl from './locales/pl/teaserDisplay.json'
 
 i18n
   .use(LanguageDetector)
@@ -92,6 +95,7 @@ i18n
         jobExtractionModal: jobExtractionModalEn,
         addCvChoiceModal: addCvChoiceModalEn,
         mergeConflictModal: mergeConflictModalEn,
+        teaserDisplay: teaserDisplayEn,
       },
       cs: {
         indexPage: indexPageCs,
@@ -114,6 +118,7 @@ i18n
         jobExtractionModal: jobExtractionModalCs,
         addCvChoiceModal: addCvChoiceModalCs,
         mergeConflictModal: mergeConflictModalCs,
+        teaserDisplay: teaserDisplayCs,
       },
       pl: {
         indexPage: indexPagePl,
@@ -136,6 +141,7 @@ i18n
         jobExtractionModal: jobExtractionModalPl,
         addCvChoiceModal: addCvChoiceModalPl,
         mergeConflictModal: mergeConflictModalPl,
+        teaserDisplay: teaserDisplayPl,
       }
     },
     fallbackLng: 'en',
@@ -161,6 +167,7 @@ i18n
       'jobExtractionModal',
       'addCvChoiceModal',
       'mergeConflictModal',
+      'teaserDisplay',
     ],
     defaultNS: 'indexPage',
     detection: {

@@ -65,12 +65,21 @@ export async function getMasterCv(user_id) {
 }
 
 // Persist the per-user MASTER CV (service-role write). Stored as JSONB.
+// Returns the updated rows so callers can confirm the write landed. A bare
+// `.update().eq()` whose filter matches NO row reports no error and saves
+// nothing — that silent no-op is exactly how a "built but never saved" master
+// happens — so we ask for the changed rows back and throw if none were touched.
 export async function saveMasterCv(user_id, master) {
-  const { error } = await getAdminSupabase()
+  const { data, error } = await getAdminSupabase()
     .from('cv_data')
     .update({ master_cv: master })
-    .eq('user_id', user_id);
+    .eq('user_id', user_id)
+    .select('user_id');
   if (error) throw new Error(`saveMasterCv failed: ${error.message || JSON.stringify(error)}`);
+  if (!data || data.length === 0) {
+    throw new Error(`saveMasterCv saved nothing: no cv_data row for user ${user_id}`);
+  }
+  return data;
 }
 
 // getCvData (ALIAS: for handler expecting this name)
