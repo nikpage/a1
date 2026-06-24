@@ -47,6 +47,14 @@ describe('buildAnalysisTeaserPrompt — gauntlet gates', () => {
     expect(p).not.toMatch(/EXACTLY 2 short questions/);
   });
 
+  test('prompt forbids restating the same finding across sections', () => {
+    const p = userPrompt(false);
+    expect(p).toMatch(/NO REPETITION/);
+    expect(p).toMatch(/cover DIFFERENT ground/);
+    // scope is capped so it cannot become an 8-item dump.
+    expect(p).toMatch(/analysis\.scope:\s*2 to 4 values MAX/);
+  });
+
   test('the existing teaser proof fields survive the rebuild', () => {
     const p = userPrompt(false);
     for (const key of ['hr_first_seconds', 'sample_rewrite', 'scope', 'overall_score', 'ats_score']) {

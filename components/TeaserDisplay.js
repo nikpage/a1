@@ -2,15 +2,24 @@
 //
 // The LANDING-PAGE teaser, built to SELL — not the shared report layout that
 // AnalysisDisplay renders for the paid full analysis. Same teaser JSON shape
-// (cv_data / analysis.* / job_match.positioning_strategy / final_thought), but
-// arranged as a conversion page around the GAUNTLET a real CV runs: gate 1 (the
-// ATS machine screen) -> gate 2 (the ~7-second recruiter skim) -> a solid /
-// needs-work branch (survives it = tune to each job next; needs work = we fix it,
-// then tune) -> score -> proof rewrite -> locked curiosity gap -> the 1-4 sharp
-// questions. The email / free-account CTA lives in pages/index.js right below this.
+// (cv_data / analysis.* / job_match.positioning_strategy / final_thought).
 //
-// Reads only what the model returned; every block hides itself when empty, so a
-// thin analysis never renders an empty heading.
+// It reads as ONE story, told in plain language for any reader (nurse, teacher,
+// engineer — we don't know who):
+//   who we see -> where you stand (score) -> how it clears the two screens every
+//   CV faces (software, then a recruiter's first glance) -> what a person thinks
+//   on the closer read -> proof we can fix it -> what else is inside -> a couple
+//   of genuine questions. The email / free-account CTA lives in pages/index.js.
+//
+// Hard rules learned the hard way:
+//  - No internal jargon ("gate", "gauntlet") ever reaches the user.
+//  - The copy must never contradict the verdicts it just showed: if both screens
+//    pass, we do NOT say the CV "needs work before it competes". Passing the
+//    screens means it gets through the door; the remaining work is the closer
+//    read and per-job tailoring.
+//  - Every section covers DIFFERENT ground — no restating the same finding.
+//
+// Reads only what the model returned; every block hides itself when empty.
 import React from 'react';
 
 const NA = new Set(['', 'n/a', 'na', 'null', 'none', 'undefined', '0-10']);
@@ -19,6 +28,27 @@ function isEmpty(v) {
   if (Array.isArray(v)) return v.every(isEmpty);
   if (typeof v === 'object') return Object.values(v).every(isEmpty);
   return NA.has(String(v).trim().toLowerCase());
+}
+
+// Collapse near-duplicate findings so the same issue never appears twice. We
+// compare on a normalized signature (lowercased words, no punctuation); if two
+// lines share most of their meaningful words, we keep only the first.
+function dedupe(lines) {
+  const seen = [];
+  const out = [];
+  for (const line of lines) {
+    const words = new Set(
+      String(line).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 3)
+    );
+    const isDup = seen.some((prev) => {
+      if (words.size === 0) return false;
+      let shared = 0;
+      for (const w of words) if (prev.has(w)) shared++;
+      return shared / words.size >= 0.6;
+    });
+    if (!isDup) { seen.push(words); out.push(line); }
+  }
+  return out;
 }
 
 export default function TeaserDisplay({ analysis }) {
@@ -34,47 +64,56 @@ export default function TeaserDisplay({ analysis }) {
 
   const a = data.analysis || {};
   const cv = data.cv_data || {};
-  const scope = Object.values(a.scope || {}).filter((v) => !isEmpty(v));
-  const flags = (a.red_flags || []).filter((v) => !isEmpty(v));
-  const questions = (a.nuance_clarifications || []).filter((v) => !isEmpty(v));
+  const flags = dedupe((a.red_flags || []).filter((v) => !isEmpty(v)));
+  // The locked "what else is inside" list, deduped against itself AND against the
+  // red flags above so we never tease a fix for something already shown.
+  const scopeAll = dedupe(Object.values(a.scope || {}).filter((v) => !isEmpty(v)));
+  const scope = dedupe([...flags, ...scopeAll]).filter((s) => !flags.includes(s)).slice(0, 4);
+  // Questions must not echo anything already surfaced above.
+  const questions = dedupe([...flags, ...scope, ...(a.nuance_clarifications || []).filter((v) => !isEmpty(v))])
+    .filter((q) => !flags.includes(q) && !scope.includes(q));
   const rw = a.sample_rewrite || {};
   const hasRewrite = !isEmpty(rw.before) && !isEmpty(rw.after);
 
   const who = [cv.Seniority, cv.Industry].filter((x) => !isEmpty(x)).join(' · ');
 
-  // The two binary gates a CV runs before a human reads it properly. We only
-  // claim a verdict when the model actually returned "pass"/"fail".
   const verdict = (v) => {
     const s = String(v || '').trim().toLowerCase();
     return s === 'pass' || s === 'fail' ? s : null;
   };
   const atsPass = verdict(a.ats_verdict);
   const scanPass = verdict(a.scan_verdict);
-  // Solid only when the model says so; otherwise infer needs-work if either gate failed.
-  const stateRaw = String(a.cv_state || '').trim().toLowerCase();
-  const isSolid = stateRaw === 'solid' || (!stateRaw && atsPass === 'pass' && scanPass === 'pass' && flags.length === 0);
+  const hasScreens = atsPass || scanPass;
+  const anyFail = atsPass === 'fail' || scanPass === 'fail';
+  // "Through the door" the moment nothing failed — independent of how many
+  // polish items remain. This is what keeps the copy from contradicting itself.
+  const throughTheDoor = hasScreens && !anyFail;
 
-  // A single pass/fail gate row.
-  const Gate = ({ title, pass, reason, detail }) => {
+  // One row inside the "two screens" card.
+  const ScreenRow = ({ label, pass, reason, quote }) => {
     if (!pass) return null;
     const ok = pass === 'pass';
     return (
-      <div className={`rounded-xl border p-5 ${ok ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
+      <div className="py-3 first:pt-0 last:pb-0">
         <div className="flex items-center justify-between gap-3 mb-1">
-          <div className="text-base font-semibold text-slate-800">{title}</div>
-          <span className={`text-xs font-bold uppercase tracking-wide px-2 py-1 rounded ${ok ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
-            {ok ? 'Pass' : 'Fail'}
+          <div className="font-semibold text-slate-800">{label}</div>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+            {ok ? 'Clears it' : 'Gets stopped'}
           </span>
         </div>
-        {!isEmpty(reason) && <p className="text-slate-700">{reason}</p>}
-        {!isEmpty(detail) && <p className="text-slate-600 text-sm mt-2">{detail}</p>}
+        {!isEmpty(reason) && <p className="text-slate-700 text-sm">{reason}</p>}
+        {!isEmpty(quote) && (
+          <p className="text-slate-600 text-sm italic mt-2 border-l-2 border-slate-200 pl-3">
+            Their gut reaction: “{quote}”
+          </p>
+        )}
       </div>
     );
   };
 
   return (
     <div className="flex flex-col gap-6 text-left">
-      {/* Who we read — small, proves we parsed the real CV */}
+      {/* Who we read — proves we parsed the real CV */}
       {(!isEmpty(cv.Name) || who) && (
         <div className="text-center">
           {!isEmpty(cv.Name) && <div className="text-xl font-bold text-slate-800">{cv.Name}</div>}
@@ -82,48 +121,18 @@ export default function TeaserDisplay({ analysis }) {
         </div>
       )}
 
-      {/* THE GAUNTLET — gate one (machine) and gate two (the 7-second human skim) */}
-      <Gate title="Gate 1 · The ATS (machine screen)" pass={atsPass} reason={a.ats_reason} />
-      <Gate
-        title="Gate 2 · The 7-second recruiter skim"
-        pass={scanPass}
-        reason={a.scan_reason}
-        detail={a.hr_first_seconds}
-      />
-
-      {/* The verdict-driven branch: solid → tune to the job; needs-work → fix first, then tune */}
-      <div className={`rounded-xl border p-5 ${isSolid ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
-        {isSolid ? (
-          <>
-            <div className="text-base font-semibold text-slate-800 mb-1">Your CV survives the gauntlet</div>
-            <p className="text-slate-700">
-              It already clears the screens most CVs die at. The leverage now isn't fixing it — it's
-              tuning it to each specific job so it gets shortlisted. That's exactly what we do next.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="text-base font-semibold text-slate-800 mb-1">Your CV needs work before it competes</div>
-            <p className="text-slate-700">
-              Right now it stumbles at a gate above — the fixes are below. We rebuild it into a solid
-              master CV, then tune that to each job you apply for so it gets shortlisted.
-            </p>
-          </>
-        )}
-      </div>
-
-      {/* Score as a gap, not a grade */}
+      {/* Where you stand — the number as the headline, with the single change that moves it */}
       {!isEmpty(a.overall_score) && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex items-center justify-center gap-8">
             <div className="text-center">
               <div className="text-4xl font-extrabold text-slate-800">{a.overall_score}<span className="text-2xl text-slate-400">/10</span></div>
-              <div className="text-xs uppercase tracking-wide text-slate-500 mt-1">Your CV today</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500 mt-1">Your CV overall</div>
             </div>
             {!isEmpty(a.ats_score) && (
               <div className="text-center">
                 <div className="text-4xl font-extrabold text-slate-800">{a.ats_score}<span className="text-2xl text-slate-400">/10</span></div>
-                <div className="text-xs uppercase tracking-wide text-slate-500 mt-1">ATS / parser score</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500 mt-1">Reads cleanly to software</div>
               </div>
             )}
           </div>
@@ -133,32 +142,50 @@ export default function TeaserDisplay({ analysis }) {
         </div>
       )}
 
-      {/* The hook — what's holding them back, in plain words */}
+      {/* The two screens every CV faces before a person reads it — as one unit */}
+      {hasScreens && (
+        <div className="rounded-xl border border-slate-200 p-5">
+          <div className="text-base font-semibold text-slate-800 mb-1">Before anyone reads it, your CV passes two screens</div>
+          <p className="text-sm text-slate-500 mb-3">First the application software, then a recruiter's few-second glance.</p>
+          <div className="divide-y divide-slate-100">
+            <ScreenRow label="The application software" pass={atsPass} reason={a.ats_reason} />
+            <ScreenRow label="A recruiter's first glance" pass={scanPass} reason={a.scan_reason} quote={a.hr_first_seconds} />
+          </div>
+        </div>
+      )}
+
+      {/* The closer read — opens with a bridge that AGREES with the screens above */}
       {!isEmpty(a.overall_commentary) && (
         <div>
-          <div className="text-base font-semibold text-slate-800 mb-1">What's holding your CV back</div>
-          <p className="text-slate-700">{a.overall_commentary}</p>
+          <div className="text-base font-semibold text-slate-800 mb-1">
+            {throughTheDoor ? 'Once someone reads it properly' : 'Why it stalls before someone reads it'}
+          </div>
+          <p className="text-slate-700">
+            {throughTheDoor
+              ? 'Both screens let your CV through — further than most get. What wins the interview now is the closer read, and how well the CV is shaped to each specific job. On that closer read: '
+              : 'Your CV is getting filtered out before a person properly reads it — so that comes first. Here is what a closer read also turns up: '}
+            {a.overall_commentary}
+          </p>
         </div>
       )}
 
-      {/* The proof — one real line, upgraded */}
+      {/* Proof we can fix it — one real line, lifted and upgraded */}
       {hasRewrite && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-          <div className="text-base font-semibold text-slate-800 mb-3">One line from your CV, rewritten</div>
-          <div className="text-sm text-slate-500 mb-1"><span className="font-semibold">Before</span> · your CV</div>
+          <div className="text-base font-semibold text-slate-800 mb-1">What that fix looks like</div>
+          <p className="text-sm text-slate-500 mb-3">One real line from your CV, rewritten:</p>
+          <div className="text-sm text-slate-500 mb-1">Your wording</div>
           <p className="text-slate-600 mb-3">{rw.before}</p>
-          <div className="text-sm text-emerald-700 mb-1"><span className="font-semibold">After</span> · what you'd get</div>
+          <div className="text-sm text-emerald-700 mb-1">Rewritten</div>
           <p className="text-slate-900 font-medium">{rw.after}</p>
-          <div className="mt-3 text-sm italic text-slate-600">Every line in your CV gets this treatment.</div>
+          <div className="mt-3 text-sm italic text-slate-600">Every line gets this treatment.</div>
         </div>
       )}
 
-      {/* The locked curiosity gap — what we found, fixes withheld */}
+      {/* What else is inside — distinct from everything above, fixes withheld */}
       {(flags.length > 0 || scope.length > 0) && (
         <div className="rounded-xl border border-slate-200 p-5">
-          <div className="text-base font-semibold text-slate-800 mb-3">
-            What we found in your CV{flags.length + scope.length > 0 ? ` (${flags.length + scope.length})` : ''}
-          </div>
+          <div className="text-base font-semibold text-slate-800 mb-3">What else we found</div>
           {flags.length > 0 && (
             <ul className="mb-3 space-y-1">
               {flags.map((f, i) => (
@@ -173,15 +200,15 @@ export default function TeaserDisplay({ analysis }) {
               ))}
             </ul>
           )}
-          <div className="mt-3 text-sm text-slate-600">The fixes unlock when you continue.</div>
+          <div className="mt-3 text-sm text-slate-600">The fixes come with the full rewrite.</div>
         </div>
       )}
 
-      {/* Proof we read closely — the two sharp questions */}
+      {/* A couple of genuine questions — consultation, not a growth hook */}
       {questions.length > 0 && (
         <div>
           <div className="text-base font-semibold text-slate-800 mb-2">
-            {questions.length === 1 ? 'One thing only you can answer' : `${questions.length} things only you can answer`}
+            {questions.length === 1 ? 'One thing we’d check with you first' : 'A couple of things we’d check with you first'}
           </div>
           <ul className="space-y-2">
             {questions.map((q, i) => (
