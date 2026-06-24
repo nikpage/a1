@@ -176,12 +176,16 @@ export default function IndexPage() {
           <div className="border rounded-lg p-6 bg-white shadow-sm max-w-3xl mx-auto text-left">
             <div className="mb-6 text-2xl font-bold text-center">{t('form.analysisTitle')}</div>
             <TeaserDisplay analysis={analysis} />
-            <button
-              onClick={handleWriteNowClick}
-              className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 mt-6 touch-manipulation mx-auto block"
-            >
-              {t('form.writeNow')}
-            </button>
+            <div className="mt-8 text-center">
+              <div className="text-lg font-semibold text-slate-800 mb-3">{t('form.ctaHeadline')}</div>
+              <button
+                onClick={handleWriteNowClick}
+                className="action-btn w-full max-w-xl text-sm sm:text-base py-3 sm:py-4 touch-manipulation mx-auto block"
+              >
+                {t('form.writeNow')}
+              </button>
+              <div className="text-xs text-slate-500 mt-2">{t('form.ctaSubnote')}</div>
+            </div>
           </div>
         )}
         {showLoadingModal && (

@@ -3,8 +3,11 @@
 // The LANDING-PAGE teaser, built to SELL — not the shared report layout that
 // AnalysisDisplay renders for the paid full analysis. Same teaser JSON shape
 // (cv_data / analysis.* / job_match.positioning_strategy / final_thought), but
-// arranged as a conversion page: hook -> proof -> locked curiosity gap -> the
-// two sharp questions. The CTA button lives in pages/index.js right below this.
+// arranged as a conversion page around the GAUNTLET a real CV runs: gate 1 (the
+// ATS machine screen) -> gate 2 (the ~7-second recruiter skim) -> a solid /
+// needs-work branch (survives it = tune to each job next; needs work = we fix it,
+// then tune) -> score -> proof rewrite -> locked curiosity gap -> the 1-4 sharp
+// questions. The email / free-account CTA lives in pages/index.js right below this.
 //
 // Reads only what the model returned; every block hides itself when empty, so a
 // thin analysis never renders an empty heading.
@@ -39,6 +42,36 @@ export default function TeaserDisplay({ analysis }) {
 
   const who = [cv.Seniority, cv.Industry].filter((x) => !isEmpty(x)).join(' · ');
 
+  // The two binary gates a CV runs before a human reads it properly. We only
+  // claim a verdict when the model actually returned "pass"/"fail".
+  const verdict = (v) => {
+    const s = String(v || '').trim().toLowerCase();
+    return s === 'pass' || s === 'fail' ? s : null;
+  };
+  const atsPass = verdict(a.ats_verdict);
+  const scanPass = verdict(a.scan_verdict);
+  // Solid only when the model says so; otherwise infer needs-work if either gate failed.
+  const stateRaw = String(a.cv_state || '').trim().toLowerCase();
+  const isSolid = stateRaw === 'solid' || (!stateRaw && atsPass === 'pass' && scanPass === 'pass' && flags.length === 0);
+
+  // A single pass/fail gate row.
+  const Gate = ({ title, pass, reason, detail }) => {
+    if (!pass) return null;
+    const ok = pass === 'pass';
+    return (
+      <div className={`rounded-xl border p-5 ${ok ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div className="text-base font-semibold text-slate-800">{title}</div>
+          <span className={`text-xs font-bold uppercase tracking-wide px-2 py-1 rounded ${ok ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+            {ok ? 'Pass' : 'Fail'}
+          </span>
+        </div>
+        {!isEmpty(reason) && <p className="text-slate-700">{reason}</p>}
+        {!isEmpty(detail) && <p className="text-slate-600 text-sm mt-2">{detail}</p>}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-6 text-left">
       {/* Who we read — small, proves we parsed the real CV */}
@@ -48,6 +81,36 @@ export default function TeaserDisplay({ analysis }) {
           {who && <div className="text-sm text-slate-500">{who}</div>}
         </div>
       )}
+
+      {/* THE GAUNTLET — gate one (machine) and gate two (the 7-second human skim) */}
+      <Gate title="Gate 1 · The ATS (machine screen)" pass={atsPass} reason={a.ats_reason} />
+      <Gate
+        title="Gate 2 · The 7-second recruiter skim"
+        pass={scanPass}
+        reason={a.scan_reason}
+        detail={a.hr_first_seconds}
+      />
+
+      {/* The verdict-driven branch: solid → tune to the job; needs-work → fix first, then tune */}
+      <div className={`rounded-xl border p-5 ${isSolid ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+        {isSolid ? (
+          <>
+            <div className="text-base font-semibold text-slate-800 mb-1">Your CV survives the gauntlet</div>
+            <p className="text-slate-700">
+              It already clears the screens most CVs die at. The leverage now isn't fixing it — it's
+              tuning it to each specific job so it gets shortlisted. That's exactly what we do next.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="text-base font-semibold text-slate-800 mb-1">Your CV needs work before it competes</div>
+            <p className="text-slate-700">
+              Right now it stumbles at a gate above — the fixes are below. We rebuild it into a solid
+              master CV, then tune that to each job you apply for so it gets shortlisted.
+            </p>
+          </>
+        )}
+      </div>
 
       {/* Score as a gap, not a grade */}
       {!isEmpty(a.overall_score) && (
@@ -67,14 +130,6 @@ export default function TeaserDisplay({ analysis }) {
           {!isEmpty(data.final_thought) && (
             <div className="mt-4 text-center text-sm text-slate-700">{data.final_thought}</div>
           )}
-        </div>
-      )}
-
-      {/* The realistic 7-second recruiter read — the impression they can't see */}
-      {!isEmpty(a.hr_first_seconds) && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-          <div className="text-base font-semibold text-slate-800 mb-1">How a recruiter sees you in the first 7 seconds</div>
-          <p className="text-slate-700">{a.hr_first_seconds}</p>
         </div>
       )}
 
@@ -125,7 +180,9 @@ export default function TeaserDisplay({ analysis }) {
       {/* Proof we read closely — the two sharp questions */}
       {questions.length > 0 && (
         <div>
-          <div className="text-base font-semibold text-slate-800 mb-2">Two things only you can answer</div>
+          <div className="text-base font-semibold text-slate-800 mb-2">
+            {questions.length === 1 ? 'One thing only you can answer' : `${questions.length} things only you can answer`}
+          </div>
           <ul className="space-y-2">
             {questions.map((q, i) => (
               <li key={i} className="text-slate-700 flex gap-2"><span className="text-slate-400">{i + 1}.</span><span>{q}</span></li>

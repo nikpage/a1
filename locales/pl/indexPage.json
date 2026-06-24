@@ -28,8 +28,10 @@
       "submit": "Prześlij i analizuj",
       "loading": "Przesyłanie i analiza…"
     },
-    "writeNow": "Napisz teraz",
-    "analysisTitle": "Twoja analiza CV"
+    "writeNow": "Załóż darmowe konto i kontynuuj",
+    "ctaHeadline": "Odblokuj pełny plan przeróbki CV",
+    "ctaSubnote": "Darmowe konto · bez karty",
+    "analysisTitle": "Twoje CV w sicie rekrutera"
   },
   "user": {
     "analysis": {

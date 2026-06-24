@@ -28,7 +28,9 @@
       "submit": "Nahrát a analyzovat",
       "loading": "Nahrávám a analyzuji…"
     },
-    "writeNow": "Napište hned",
-    "analysisTitle": "Analýza vašeho životopisu"
+    "writeNow": "Vytvořit účet zdarma a pokračovat",
+    "ctaHeadline": "Odemkněte kompletní plán přepisu",
+    "ctaSubnote": "Účet zdarma · bez platební karty",
+    "analysisTitle": "Váš životopis přes náborovou prověrku"
   }
 }

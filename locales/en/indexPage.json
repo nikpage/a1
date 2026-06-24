@@ -29,8 +29,10 @@
       "submit": "Upload & Analyze",
       "loading": "Uploading & Analyzing…"
     },
-    "writeNow": "Write Now",
-    "analysisTitle": "Your CV Analysis"
+    "writeNow": "Create my free account & continue",
+    "ctaHeadline": "Unlock the full rewrite plan",
+    "ctaSubnote": "Free account · no card required",
+    "analysisTitle": "Your CV, through the recruiter's gauntlet"
   },
   "user": {
     "analysis": {
