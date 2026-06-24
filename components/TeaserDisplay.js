@@ -1,27 +1,23 @@
 // components/TeaserDisplay.js
 //
-// The LANDING-PAGE teaser. This renders the design Nik supplied as HTML, wired to
-// the model's teaser JSON so it works for ANY candidate (the supplied mock was
-// hardcoded). Layout/styling are reproduced with scoped styled-jsx so nothing
-// leaks into the rest of the app.
+// The LANDING-PAGE teaser. This reproduces the HTML mock Nik supplied 1:1 —
+// structure and CSS verbatim — with the per-candidate text swapped for the
+// model's teaser JSON so it works for ANY candidate. Styling is scoped with
+// styled-jsx so nothing leaks into the rest of the app.
 //
-// Structure (matches the mock, with the agreed edits):
-//   name + role + lead line
-//   -> the two checks every CV faces, as two cards (the application software,
-//      then a recruiter's first glance), with the recruiter's raw gut reaction
-//      folded in beneath as a single teal quote block
-//   -> what's getting buried (the model's positioning_strategy)
-//   -> a couple of genuine questions
+// Sections (exactly the mock's order):
+//   header: name + role + lead
+//   gates:  two check cards (the application software (ATS), a recruiter's glance)
+//   alert:  "The recruiter's eye snags here" — numbered snag steps + navy quote
+//   asset:  "And here's what they never reach" — buried-credential chips + note
+//   questions: "A couple of questions before the rewrite"
 // The email / sign-up CTA lives in pages/index.js, as before.
 //
-// Edits applied vs the raw mock:
-//   - opening line no longer says "gates" (internal jargon) -> i18n t('lead')
-//   - first check labelled "The application software (ATS)"
-//   - the separate "recruiter's eye snags" section is GONE; it's the same thing
-//     as check 02, so it's one thought (the check's reason) + the teal quote
-//   - a failed check shows its decisive reason the same way a passing one does
-//   - "A couple of questions before the rewrite"
-//   - all fixed chrome is localized (locales/*/teaserDisplay.json)
+// IMPORTANT: every block of markup lives DIRECTLY in this component's return.
+// styled-jsx only scopes `<style jsx>` to elements in this component's own
+// render tree — markup lifted into a child component renders unstyled, which is
+// the bug that made the gate cards appear as plain text. Do not extract pieces
+// into sub-components.
 //
 // Reads only what the model returned; every block hides itself when empty.
 import React from 'react';
@@ -72,6 +68,8 @@ export default function TeaserDisplay({ analysis }) {
   const cv = data.cv_data || {};
   const positioning = data.job_match?.positioning_strategy;
   const questions = dedupe((a.nuance_clarifications || []).filter((v) => !isEmpty(v)));
+  const snags = (a.scan_snags || []).filter((s) => s && !isEmpty(s.point));
+  const creds = (a.buried_credentials || []).filter((c) => c && !isEmpty(c.name));
 
   const who = [cv.Seniority, cv.Industry].filter((x) => !isEmpty(x)).join(' · ');
 
@@ -83,16 +81,14 @@ export default function TeaserDisplay({ analysis }) {
   const scanPass = verdict(a.scan_verdict);
   const hasChecks = atsPass || scanPass;
 
-  // The two checks. Rendered INLINE in the JSX below — deliberately NOT lifted
-  // into a <Gate> sub-component, because styled-jsx only scopes this component's
-  // `<style jsx>` to elements in ITS OWN render tree. Markup in a child component
-  // receives none of the .gate/.dot/.gate-verdict rules and renders unstyled.
-  // Each card shows its decisive reason whether it passed or failed — a failed
-  // ATS check explains itself just like the human one.
+  // The two checks, rendered inline (see file header for why not a sub-component).
   const gates = [
     { label: t('gate1'), seq: '01', pass: atsPass, reason: a.ats_reason },
     { label: t('gate2'), seq: '02', pass: scanPass, reason: a.scan_reason },
   ];
+
+  const hasSnagBlock = snags.length > 0 || !isEmpty(a.hr_first_seconds);
+  const hasAsset = creds.length > 0 || !isEmpty(positioning);
 
   return (
     <div className="teaser">
@@ -101,6 +97,7 @@ export default function TeaserDisplay({ analysis }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
       </Head>
+
       {/* header */}
       {(!isEmpty(cv.Name) || who || hasChecks) && (
         <div className="head">
@@ -110,7 +107,7 @@ export default function TeaserDisplay({ analysis }) {
         </div>
       )}
 
-      {/* the two checks + the recruiter's gut reaction (teal) folded in */}
+      {/* the two checks */}
       {hasChecks && (
         <div className="gates">
           <div className="gate-row">
@@ -130,24 +127,55 @@ export default function TeaserDisplay({ analysis }) {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* the recruiter's eye snags here — numbered steps + the raw gut-reaction quote */}
+      {hasSnagBlock && (
+        <div className={`block ${snags.length > 0 ? 'alert' : ''}`}>
+          {snags.length > 0 && (
+            <>
+              <h2>{t('snagTitle')}</h2>
+              <ul className="snag">
+                {snags.map((s, i) => (
+                  <li key={i}>
+                    <div className="step">{i + 1}</div>
+                    <div>
+                      <b>{s.point}</b>
+                      {!isEmpty(s.detail) && <span className="sub">{s.detail}</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {!isEmpty(a.hr_first_seconds) && (
             <div className="quote"><span className="q">“</span>{a.hr_first_seconds}”</div>
           )}
         </div>
       )}
 
-      {/* what's getting buried */}
-      {!isEmpty(positioning) && (
+      {/* and here's what they never reach at all */}
+      {hasAsset && (
         <div className="block">
-          <h2>{t('assetTitle')}</h2>
-          <p className="asset-note">{positioning}</p>
+          <h2 className="sm">{t('assetTitle')}</h2>
+          {creds.length > 0 && (
+            <div className="asset-row">
+              {creds.map((c, i) => (
+                <div className="chip" key={i}>
+                  {!isEmpty(c.tag) && <span>{c.tag}</span>} {c.name}
+                </div>
+              ))}
+            </div>
+          )}
+          {!isEmpty(positioning) && <p className="asset-note">{positioning}</p>}
         </div>
       )}
 
-      {/* a couple of genuine questions */}
+      {/* a couple of questions before the rewrite */}
       {questions.length > 0 && (
         <div className="block">
-          <h2>{questions.length === 1 ? t('questionsOne') : t('questionsMany')}</h2>
+          <h2 className="sm">{questions.length === 1 ? t('questionsOne') : t('questionsMany')}</h2>
           <div className="q-list">
             {questions.map((q, i) => (
               <div className="q-item" key={i}>
@@ -175,8 +203,7 @@ export default function TeaserDisplay({ analysis }) {
         .gates { margin-top:28px; }
         .gate-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
         @media(max-width:560px){ .gate-row{ grid-template-columns:1fr; } }
-        .gate { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:var(--shadow); }
-        .gate.fail { border-color:#f3d0d0; background:linear-gradient(180deg,var(--red-bg),#fff 60%); }
+        .gate { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 22px 20px; box-shadow:var(--shadow); position:relative; }
         .gate-top { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
         .dot { width:16px; height:16px; border-radius:50%; flex:none; position:relative; }
         .dot::after { content:""; position:absolute; inset:-5px; border-radius:50%; opacity:.18; }
@@ -189,11 +216,24 @@ export default function TeaserDisplay({ analysis }) {
         .gate.fail .gate-verdict { color:var(--red); }
         .gate-desc { font-size:13.5px; color:var(--muted); line-height:1.5; }
 
-        .quote { background:var(--teal); color:#f0fbf9; border-radius:14px; padding:22px 24px; margin-top:16px; font-size:16.5px; line-height:1.6; }
-        .quote .q { color:#bff1ea; font-family:'Poppins',sans-serif; font-weight:700; font-size:30px; line-height:0; vertical-align:-12px; margin-right:4px; }
+        .block { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px 30px; box-shadow:var(--shadow); margin-top:22px; }
+        .block.alert { border-color:#f3d0d0; background:linear-gradient(180deg,var(--red-bg),#fff 55%); }
+        .block h2 { font-family:'Poppins',sans-serif; font-weight:600; font-size:20px; color:var(--navy); letter-spacing:-.01em; margin:0 0 14px; }
+        .block h2.sm { font-size:18px; }
 
-        .block { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px 28px; box-shadow:var(--shadow); margin-top:22px; }
-        .block h2 { font-family:'Poppins',sans-serif; font-weight:600; font-size:18px; color:var(--navy); letter-spacing:-.01em; margin:0 0 12px; }
+        .snag { list-style:none; display:flex; flex-direction:column; gap:0; margin:0; padding:0; }
+        .snag li { display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:start; padding:13px 0; border-top:1px solid var(--line); }
+        .snag li:first-child { border-top:none; }
+        .step { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:#fff; background:var(--red); width:24px; height:24px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px; }
+        .snag b { color:var(--navy); font-weight:600; }
+        .snag .sub { color:var(--muted); font-size:13.5px; display:block; margin-top:1px; }
+
+        .quote { background:var(--navy); color:#eaf0fa; border-radius:14px; padding:22px 24px; margin-top:18px; font-size:16.5px; line-height:1.6; position:relative; }
+        .quote .q { color:var(--teal); font-family:'Poppins',sans-serif; font-weight:700; font-size:30px; line-height:0; vertical-align:-12px; margin-right:4px; }
+
+        .asset-row { display:flex; gap:14px; flex-wrap:wrap; margin:14px 0 4px; }
+        .chip { background:var(--green-bg); border:1px solid #cfeede; color:var(--teal-dk); border-radius:999px; padding:7px 15px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:8px; }
+        .chip span { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--green); background:#fff; border-radius:5px; padding:2px 6px; }
         .asset-note { color:var(--ink); font-size:15px; line-height:1.6; margin:0; }
 
         .q-list { display:flex; flex-direction:column; gap:14px; }
