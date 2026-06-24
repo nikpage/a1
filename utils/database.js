@@ -65,19 +65,23 @@ export async function getMasterCv(user_id) {
 }
 
 // Persist the per-user MASTER CV (service-role write). Stored as JSONB.
-// Returns the updated rows so callers can confirm the write landed. A bare
-// `.update().eq()` whose filter matches NO row reports no error and saves
-// nothing — that silent no-op is exactly how a "built but never saved" master
-// happens — so we ask for the changed rows back and throw if none were touched.
+//
+// Uses UPSERT on the user_id PK, not a bare `.update().eq()`. An update whose
+// filter matches no row reports no error and writes nothing — the silent no-op
+// that leaves master_cv null even though the build was paid for. Upsert instead
+// guarantees a write: it updates the row when it exists and inserts it when it
+// somehow doesn't. Only `user_id` + `master_cv` are sent, so an existing row's
+// `cv_data` text and other columns are left untouched on the conflict update.
+// We read the row back and throw if nothing came back, so a failed write can
+// never again pass silently.
 export async function saveMasterCv(user_id, master) {
   const { data, error } = await getAdminSupabase()
     .from('cv_data')
-    .update({ master_cv: master })
-    .eq('user_id', user_id)
+    .upsert([{ user_id, master_cv: master }], { onConflict: ['user_id'] })
     .select('user_id');
   if (error) throw new Error(`saveMasterCv failed: ${error.message || JSON.stringify(error)}`);
   if (!data || data.length === 0) {
-    throw new Error(`saveMasterCv saved nothing: no cv_data row for user ${user_id}`);
+    throw new Error(`saveMasterCv saved nothing for user ${user_id}`);
   }
   return data;
 }

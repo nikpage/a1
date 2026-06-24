@@ -134,7 +134,11 @@ export const handler = async (event) => {
         }
       } catch (e) {
         // A master-build failure must not sink the analysis — fall back to raw text.
-        logger.error('[analyse-bg] master-cv build failed, using raw CV:', e.message);
+        // But it must NOT pass silently either: the user was charged for the build,
+        // so a master that never lands is a real defect, not noise. Surface it to
+        // Sentry so an empty master_cv column is diagnosable instead of mysterious.
+        logger.error('[analyse-bg] master-cv build/save failed, using raw CV:', e.message);
+        Sentry.captureException(e);
         master = null;
       }
     }

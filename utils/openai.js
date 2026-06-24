@@ -180,6 +180,27 @@ function stripJsonFences(raw) {
   return s.trim();
 }
 
+// Tolerant JSON parse for cheap-model output. The master build/merge runs on the
+// overloaded flash-lite pool, which occasionally wraps its JSON in a one-line
+// preamble or a trailing note ("Here is the JSON:" / "Let me know if…"). A strict
+// JSON.parse on the whole string then throws, the worker swallows it as "build
+// failed", and the user is charged for a master that never gets saved. This first
+// tries clean parse, then falls back to the first balanced {...} slice so a stray
+// preamble can't throw away a paid build. Throws only if nothing parseable exists.
+function parseJsonLoose(raw) {
+  const s = stripJsonFences(raw);
+  try {
+    return JSON.parse(s);
+  } catch (_) {
+    const first = s.indexOf('{');
+    const last = s.lastIndexOf('}');
+    if (first !== -1 && last > first) {
+      return JSON.parse(s.slice(first, last + 1)); // may throw — caller handles it
+    }
+    throw new SyntaxError('No JSON object found in model output');
+  }
+}
+
 // Normalise whitespace so a verbatim check tolerates wrapping/spacing differences.
 const normWs = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 
@@ -259,10 +280,9 @@ export async function buildOrMergeMaster(rawInput, existingMaster = null, overri
   const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
   const gemini_usage = geminiUsage(`master-cv ${mode}`, data, GEMINI_MASTER_MODEL);
 
-  const jsonOutput = stripJsonFences(data.choices?.[0]?.message?.content || '');
   let output;
   try {
-    output = JSON.parse(jsonOutput);
+    output = parseJsonLoose(data.choices?.[0]?.message?.content || '');
   } catch (e) {
     logger.error(`Invalid JSON from master-cv ${mode}:`, e.message);
     throw new Error('Master CV build returned invalid JSON');
