@@ -83,23 +83,16 @@ export default function TeaserDisplay({ analysis }) {
   const scanPass = verdict(a.scan_verdict);
   const hasChecks = atsPass || scanPass;
 
-  // One card in the "two checks" row. Shows its decisive reason whether it passed
-  // or failed — a failed ATS check explains itself just like the human one.
-  const Gate = ({ label, seq, pass, reason }) => {
-    if (!pass) return null;
-    const ok = pass === 'pass';
-    return (
-      <div className={`gate ${ok ? 'pass' : 'fail'}`}>
-        <div className="gate-top">
-          <div className={`dot ${ok ? 'green' : 'red'}`} />
-          <div className="gate-name">{label}</div>
-          <div className="gate-seq">{seq}</div>
-        </div>
-        <div className="gate-verdict">{ok ? t('clearsIt') : t('stopsHere')}</div>
-        {!isEmpty(reason) && <div className="gate-desc">{reason}</div>}
-      </div>
-    );
-  };
+  // The two checks. Rendered INLINE in the JSX below — deliberately NOT lifted
+  // into a <Gate> sub-component, because styled-jsx only scopes this component's
+  // `<style jsx>` to elements in ITS OWN render tree. Markup in a child component
+  // receives none of the .gate/.dot/.gate-verdict rules and renders unstyled.
+  // Each card shows its decisive reason whether it passed or failed — a failed
+  // ATS check explains itself just like the human one.
+  const gates = [
+    { label: t('gate1'), seq: '01', pass: atsPass, reason: a.ats_reason },
+    { label: t('gate2'), seq: '02', pass: scanPass, reason: a.scan_reason },
+  ];
 
   return (
     <div className="teaser">
@@ -121,8 +114,21 @@ export default function TeaserDisplay({ analysis }) {
       {hasChecks && (
         <div className="gates">
           <div className="gate-row">
-            <Gate label={t('gate1')} seq="01" pass={atsPass} reason={a.ats_reason} />
-            <Gate label={t('gate2')} seq="02" pass={scanPass} reason={a.scan_reason} />
+            {gates.map((g, i) => {
+              if (!g.pass) return null;
+              const ok = g.pass === 'pass';
+              return (
+                <div className={`gate ${ok ? 'pass' : 'fail'}`} key={i}>
+                  <div className="gate-top">
+                    <div className={`dot ${ok ? 'green' : 'red'}`} />
+                    <div className="gate-name">{g.label}</div>
+                    <div className="gate-seq">{g.seq}</div>
+                  </div>
+                  <div className="gate-verdict">{ok ? t('clearsIt') : t('stopsHere')}</div>
+                  {!isEmpty(g.reason) && <div className="gate-desc">{g.reason}</div>}
+                </div>
+              );
+            })}
           </div>
           {!isEmpty(a.hr_first_seconds) && (
             <div className="quote"><span className="q">“</span>{a.hr_first_seconds}”</div>
