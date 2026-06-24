@@ -1,27 +1,27 @@
 // components/TeaserDisplay.js
 //
-// The LANDING-PAGE teaser, built to SELL — not the shared report layout that
-// AnalysisDisplay renders for the paid full analysis. Same teaser JSON shape
-// (cv_data / analysis.* / job_match.positioning_strategy / final_thought).
+// The LANDING-PAGE teaser. This renders the design Nik supplied as HTML, wired to
+// the model's teaser JSON so it works for ANY candidate (the supplied mock was
+// hardcoded). Layout/styling are reproduced with scoped styled-jsx so nothing
+// leaks into the rest of the app.
 //
-// It reads as ONE story, told in plain language for any reader (nurse, teacher,
-// engineer — we don't know who):
-//   who we see -> the two checks every CV faces before a person reads it (the
-//   application software, then a recruiter's first glance), with the recruiter's
-//   raw gut reaction shown verbatim -> what's getting buried -> the closer read
-//   -> proof we can fix it -> what else is inside -> a couple of genuine
-//   questions. The email / free-account CTA lives in pages/index.js.
+// Structure (matches the mock, with the agreed edits):
+//   name + role + lead line
+//   -> the two checks every CV faces, as two cards (the application software,
+//      then a recruiter's first glance), with the recruiter's raw gut reaction
+//      folded in beneath as a single teal quote block
+//   -> what's getting buried (the model's positioning_strategy)
+//   -> a couple of genuine questions
+// The email / sign-up CTA lives in pages/index.js, as before.
 //
-// Hard rules learned the hard way:
-//  - No internal jargon ("gate", "gauntlet", "screen") ever reaches the user.
-//    All visible copy lives in locales/*/teaserDisplay.json (i18n), never the
-//    model's job — the model returns the per-candidate prose already in the CV's
-//    language; we only translate the fixed chrome around it.
-//  - The copy must never contradict the verdicts it just showed: if both checks
-//    pass, we do NOT say the CV "needs work before it competes". Passing them
-//    means it gets through the door; the remaining work is the closer read and
-//    per-job tailoring.
-//  - Every section covers DIFFERENT ground — no restating the same finding.
+// Edits applied vs the raw mock:
+//   - opening line no longer says "gates" (internal jargon) -> i18n t('lead')
+//   - first check labelled "The application software (ATS)"
+//   - the separate "recruiter's eye snags" section is GONE; it's the same thing
+//     as check 02, so it's one thought (the check's reason) + the teal quote
+//   - a failed check shows its decisive reason the same way a passing one does
+//   - "A couple of questions before the rewrite"
+//   - all fixed chrome is localized (locales/*/teaserDisplay.json)
 //
 // Reads only what the model returned; every block hides itself when empty.
 import React from 'react';
@@ -35,9 +35,7 @@ function isEmpty(v) {
   return NA.has(String(v).trim().toLowerCase());
 }
 
-// Collapse near-duplicate findings so the same issue never appears twice. We
-// compare on a normalized signature (lowercased words, no punctuation); if two
-// lines share most of their meaningful words, we keep only the first.
+// Collapse near-duplicate questions so the same point never appears twice.
 function dedupe(lines) {
   const seen = [];
   const out = [];
@@ -72,16 +70,7 @@ export default function TeaserDisplay({ analysis }) {
   const a = data.analysis || {};
   const cv = data.cv_data || {};
   const positioning = data.job_match?.positioning_strategy;
-  const flags = dedupe((a.red_flags || []).filter((v) => !isEmpty(v)));
-  // The locked "what else is inside" list, deduped against itself AND against the
-  // red flags above so we never tease a fix for something already shown.
-  const scopeAll = dedupe(Object.values(a.scope || {}).filter((v) => !isEmpty(v)));
-  const scope = dedupe([...flags, ...scopeAll]).filter((s) => !flags.includes(s)).slice(0, 4);
-  // Questions must not echo anything already surfaced above.
-  const questions = dedupe([...flags, ...scope, ...(a.nuance_clarifications || []).filter((v) => !isEmpty(v))])
-    .filter((q) => !flags.includes(q) && !scope.includes(q));
-  const rw = a.sample_rewrite || {};
-  const hasRewrite = !isEmpty(rw.before) && !isEmpty(rw.after);
+  const questions = dedupe((a.nuance_clarifications || []).filter((v) => !isEmpty(v)));
 
   const who = [cv.Seniority, cv.Industry].filter((x) => !isEmpty(x)).join(' · ');
 
@@ -92,133 +81,114 @@ export default function TeaserDisplay({ analysis }) {
   const atsPass = verdict(a.ats_verdict);
   const scanPass = verdict(a.scan_verdict);
   const hasChecks = atsPass || scanPass;
-  const anyFail = atsPass === 'fail' || scanPass === 'fail';
-  // "Through the door" the moment nothing failed — independent of how many
-  // polish items remain. This is what keeps the copy from contradicting itself.
-  const throughTheDoor = hasChecks && !anyFail;
 
-  // One card: the machine check, then the recruiter check. We show the decisive
-  // reason for BOTH outcomes (a clear pass and a clear fail get the same detail),
-  // so a failed ATS check explains itself just as the human one does.
-  const CheckCard = ({ label, seq, pass, reason }) => {
+  // One card in the "two checks" row. Shows its decisive reason whether it passed
+  // or failed — a failed ATS check explains itself just like the human one.
+  const Gate = ({ label, seq, pass, reason }) => {
     if (!pass) return null;
     const ok = pass === 'pass';
     return (
-      <div className={`rounded-2xl border bg-white p-5 ${ok ? 'border-slate-200' : 'border-rose-200'}`}>
-        <div className="flex items-center gap-3 mb-2">
-          <span className={`w-3.5 h-3.5 rounded-full flex-none ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`} aria-hidden />
-          <span className="font-semibold text-slate-800">{label}</span>
-          <span className="ml-auto text-xs font-mono text-slate-400">{seq}</span>
+      <div className={`gate ${ok ? 'pass' : 'fail'}`}>
+        <div className="gate-top">
+          <div className={`dot ${ok ? 'green' : 'red'}`} />
+          <div className="gate-name">{label}</div>
+          <div className="gate-seq">{seq}</div>
         </div>
-        <div className={`text-sm font-semibold mb-1 ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>
-          {ok ? t('clearsIt') : t('stopsHere')}
-        </div>
-        {!isEmpty(reason) && <p className="text-sm text-slate-500 leading-relaxed">{reason}</p>}
+        <div className="gate-verdict">{ok ? t('clearsIt') : t('stopsHere')}</div>
+        {!isEmpty(reason) && <div className="gate-desc">{reason}</div>}
       </div>
     );
   };
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Who we read — proves we parsed the real CV — plus the framing line */}
+    <div className="teaser">
+      {/* header */}
       {(!isEmpty(cv.Name) || who || hasChecks) && (
-        <div className="text-center">
-          {!isEmpty(cv.Name) && <div className="text-2xl font-bold text-slate-800">{cv.Name}</div>}
-          {who && <div className="text-sm text-slate-500 mt-0.5">{who}</div>}
-          {hasChecks && (
-            <p className="max-w-xl mx-auto mt-4 text-slate-700">{t('lead')}</p>
-          )}
+        <div className="head">
+          {!isEmpty(cv.Name) && <div className="cand-name">{cv.Name}</div>}
+          {who && <div className="cand-role">{who}</div>}
+          {hasChecks && <p className="lead">{t('lead')}</p>}
         </div>
       )}
 
-      {/* The two checks every CV faces before a person reads it — as one unit.
-          The recruiter's raw gut reaction sits right beneath, in their voice. */}
+      {/* the two checks + the recruiter's gut reaction (teal) folded in */}
       {hasChecks && (
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CheckCard label={t('gate1')} seq="01" pass={atsPass} reason={a.ats_reason} />
-            <CheckCard label={t('gate2')} seq="02" pass={scanPass} reason={a.scan_reason} />
+        <div className="gates">
+          <div className="gate-row">
+            <Gate label={t('gate1')} seq="01" pass={atsPass} reason={a.ats_reason} />
+            <Gate label={t('gate2')} seq="02" pass={scanPass} reason={a.scan_reason} />
           </div>
           {!isEmpty(a.hr_first_seconds) && (
-            <div className="rounded-2xl bg-teal-600 p-5 text-teal-50">
-              <p className="text-base leading-relaxed">
-                <span className="align-[-0.25em] mr-1 text-2xl font-bold text-teal-200">“</span>
-                {a.hr_first_seconds}”
-              </p>
-            </div>
+            <div className="quote"><span className="q">“</span>{a.hr_first_seconds}”</div>
           )}
         </div>
       )}
 
-      {/* What's getting buried — real strengths positioned where they won't be seen */}
+      {/* what's getting buried */}
       {!isEmpty(positioning) && (
-        <div className="rounded-xl border border-slate-200 p-5">
-          <div className="text-base font-semibold text-slate-800 mb-1">{t('assetTitle')}</div>
-          <p className="text-slate-700">{positioning}</p>
+        <div className="block">
+          <h2>{t('assetTitle')}</h2>
+          <p className="asset-note">{positioning}</p>
         </div>
       )}
 
-      {/* The closer read — opens with a bridge that AGREES with the checks above */}
-      {!isEmpty(a.overall_commentary) && (
-        <div>
-          <div className="text-base font-semibold text-slate-800 mb-1">
-            {throughTheDoor ? t('closerThrough') : t('closerStalls')}
-          </div>
-          <p className="text-slate-700">
-            {throughTheDoor ? t('bridgeThrough') : t('bridgeStalls')}
-            {a.overall_commentary}
-          </p>
-        </div>
-      )}
-
-      {/* Proof we can fix it — one real line, lifted and upgraded */}
-      {hasRewrite && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-          <div className="text-base font-semibold text-slate-800 mb-1">{t('rewriteTitle')}</div>
-          <p className="text-sm text-slate-500 mb-3">{t('rewriteSub')}</p>
-          <div className="text-sm text-slate-500 mb-1">{t('yourWording')}</div>
-          <p className="text-slate-600 mb-3">{rw.before}</p>
-          <div className="text-sm text-emerald-700 mb-1">{t('rewritten')}</div>
-          <p className="text-slate-900 font-medium">{rw.after}</p>
-          <div className="mt-3 text-sm italic text-slate-600">{t('everyLine')}</div>
-        </div>
-      )}
-
-      {/* What else is inside — distinct from everything above, fixes withheld */}
-      {(flags.length > 0 || scope.length > 0) && (
-        <div className="rounded-xl border border-slate-200 p-5">
-          <div className="text-base font-semibold text-slate-800 mb-3">{t('whatElseTitle')}</div>
-          {flags.length > 0 && (
-            <ul className="mb-3 space-y-1">
-              {flags.map((f, i) => (
-                <li key={`f${i}`} className="text-slate-700 flex gap-2"><span className="text-amber-500">▲</span><span>{f}</span></li>
-              ))}
-            </ul>
-          )}
-          {scope.length > 0 && (
-            <ul className="space-y-1">
-              {scope.map((s, i) => (
-                <li key={`s${i}`} className="text-slate-500 flex gap-2"><span aria-hidden>🔒</span><span>{s}</span></li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-3 text-sm text-slate-600">{t('fixesNote')}</div>
-        </div>
-      )}
-
-      {/* A couple of genuine questions — consultation, not a growth hook */}
+      {/* a couple of genuine questions */}
       {questions.length > 0 && (
-        <div>
-          <div className="text-base font-semibold text-slate-800 mb-2">
-            {questions.length === 1 ? t('questionsOne') : t('questionsMany')}
-          </div>
-          <ul className="space-y-2">
+        <div className="block">
+          <h2>{questions.length === 1 ? t('questionsOne') : t('questionsMany')}</h2>
+          <div className="q-list">
             {questions.map((q, i) => (
-              <li key={i} className="text-slate-700 flex gap-2"><span className="text-slate-400">{i + 1}.</span><span>{q}</span></li>
+              <div className="q-item" key={i}>
+                <div className="q-num">{i + 1}</div>
+                <div className="q-text">{q}</div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
+
+      <style jsx>{`
+        .teaser {
+          --navy:#1a2b4a; --teal:#16b8a6; --teal-dk:#0f9686; --ink:#2a3550;
+          --muted:#6b7790; --line:#e6eaf0; --card:#ffffff; --green:#2bb673;
+          --amber:#e9a13b; --red:#e25555; --red-bg:#fdf0f0; --green-bg:#eef9f3;
+          --shadow:0 1px 3px rgba(26,43,74,.06),0 8px 24px rgba(26,43,74,.06);
+          font-family:'Inter',system-ui,sans-serif; color:var(--ink); text-align:left;
+        }
+        .head { text-align:center; }
+        .cand-name { font-family:'Poppins',sans-serif; font-weight:700; font-size:30px; color:var(--navy); letter-spacing:-.01em; }
+        .cand-role { color:var(--muted); font-size:15px; margin-top:2px; }
+        .lead { max-width:540px; margin:18px auto 0; color:var(--ink); font-size:16px; line-height:1.55; }
+
+        .gates { margin-top:28px; }
+        .gate-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        @media(max-width:560px){ .gate-row{ grid-template-columns:1fr; } }
+        .gate { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:var(--shadow); }
+        .gate.fail { border-color:#f3d0d0; background:linear-gradient(180deg,var(--red-bg),#fff 60%); }
+        .gate-top { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+        .dot { width:16px; height:16px; border-radius:50%; flex:none; position:relative; }
+        .dot::after { content:""; position:absolute; inset:-5px; border-radius:50%; opacity:.18; }
+        .dot.green { background:var(--green); } .dot.green::after { background:var(--green); }
+        .dot.red { background:var(--red); } .dot.red::after { background:var(--red); }
+        .gate-name { font-family:'Poppins',sans-serif; font-weight:600; font-size:15px; color:var(--navy); }
+        .gate-seq { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); margin-left:auto; }
+        .gate-verdict { font-weight:600; font-size:14px; margin-bottom:4px; }
+        .gate.pass .gate-verdict { color:var(--green); }
+        .gate.fail .gate-verdict { color:var(--red); }
+        .gate-desc { font-size:13.5px; color:var(--muted); line-height:1.5; }
+
+        .quote { background:var(--teal); color:#f0fbf9; border-radius:14px; padding:22px 24px; margin-top:16px; font-size:16.5px; line-height:1.6; }
+        .quote .q { color:#bff1ea; font-family:'Poppins',sans-serif; font-weight:700; font-size:30px; line-height:0; vertical-align:-12px; margin-right:4px; }
+
+        .block { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px 28px; box-shadow:var(--shadow); margin-top:22px; }
+        .block h2 { font-family:'Poppins',sans-serif; font-weight:600; font-size:18px; color:var(--navy); letter-spacing:-.01em; margin:0 0 12px; }
+        .asset-note { color:var(--ink); font-size:15px; line-height:1.6; margin:0; }
+
+        .q-list { display:flex; flex-direction:column; gap:14px; }
+        .q-item { display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:start; }
+        .q-num { font-family:'Poppins',sans-serif; font-weight:600; font-size:14px; color:var(--teal-dk); background:var(--green-bg); border:1px solid #cfeede; border-radius:9px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; flex:none; }
+        .q-text { font-size:15px; color:var(--ink); line-height:1.55; }
+      `}</style>
     </div>
   );
 }
