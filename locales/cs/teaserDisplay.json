@@ -1,10 +1,11 @@
 {
   "lead": "Mezi vaším životopisem a skutečným pohovorem stojí dvě rychlé kontroly. Tady vidíte, jak daleko se ten váš dostane.",
-  "gate1": "Náborový software (ATS)",
-  "gate2": "První pohled náboráře",
+  "gate1": "Náborový software (ATS): Shoda klíčových slov",
+  "gate2": "Rychlé třídění náboráře: Pozvat, nebo vyhodit",
   "clearsIt": "Projde",
   "stopsHere": "Tady končí",
-  "snagTitle": "Tady oko náboráře zakopne",
+  "atsFailHead": "Kde se software zasekne:",
+  "scanFailHead": "Pozornost náboráře se zastaví tady:",
   "assetTitle": "A tohle už skoro nevidí",
   "questionsOne": "Jedna otázka před přepisem",
   "questionsMany": "Pár otázek před přepisem"

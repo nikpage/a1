@@ -1,10 +1,11 @@
 {
   "lead": "Two quick checks stand between your CV and a real conversation. Here's how far yours gets.",
-  "gate1": "The application software (ATS)",
-  "gate2": "A recruiter's first glance",
+  "gate1": "The Applicant Tracking Software (ATS): Keyword Match",
+  "gate2": "The Recruiter's Quick Sort: Invite or Trash",
   "clearsIt": "Clears it",
   "stopsHere": "Stops here",
-  "snagTitle": "The recruiter's eye snags here",
+  "atsFailHead": "Where the software gets stuck:",
+  "scanFailHead": "The recruiter's focus lands here:",
   "assetTitle": "And here's what they never reach at all",
   "questionsOne": "One question before the rewrite",
   "questionsMany": "A couple of questions before the rewrite"

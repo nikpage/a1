@@ -55,6 +55,28 @@ describe('buildAnalysisTeaserPrompt — gauntlet gates', () => {
     expect(p).toMatch(/analysis\.scope:\s*2 to 4 values MAX/);
   });
 
+  test('both gates expose fail-point arrays (ats_snags + scan_snags) for the per-card fail blocks', () => {
+    const p = userPrompt(false);
+    // Each gate's fail card renders its own up-to-3 walk-through points, so the
+    // prompt must ask for BOTH arrays — the old prompt had no ats_snags.
+    expect(p).toContain('ats_snags');
+    expect(p).toContain('scan_snags');
+    // Never-fabricate guard must be explicit on each (the whole product dies if
+    // we invent fail points), and each is capped at 3, not a fixed count.
+    expect(p).toMatch(/ats_snags[\s\S]{0,700}NEVER invent/);
+    expect(p).toMatch(/scan_snags[\s\S]{0,700}NEVER invent/);
+    expect(p).toMatch(/ats_snags:\s*ARRAY of UP TO 3/);
+    expect(p).toMatch(/scan_snags:\s*ARRAY of UP TO 3/);
+  });
+
+  test('scan_snags points are raw CV facts, and the question stays in the quote only', () => {
+    const p = userPrompt(false);
+    // The eye-lands framing is gone — points are the verbatim fact.
+    expect(p).toMatch(/scan_snags[\s\S]{0,700}never "Eye lands on/);
+    // The open question must not be duplicated into a snag detail.
+    expect(p).toMatch(/scan_snags[\s\S]{0,700}Do NOT phrase any "detail" as a question/);
+  });
+
   test('the existing teaser proof fields survive the rebuild', () => {
     const p = userPrompt(false);
     for (const key of ['hr_first_seconds', 'sample_rewrite', 'scope', 'overall_score', 'ats_score']) {

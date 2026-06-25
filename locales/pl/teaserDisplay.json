@@ -1,10 +1,11 @@
 {
   "lead": "Między Twoim CV a prawdziwą rozmową stoją dwie szybkie kontrole. Oto jak daleko dociera Twoje.",
-  "gate1": "Oprogramowanie rekrutacyjne (ATS)",
-  "gate2": "Pierwszy rzut oka rekrutera",
+  "gate1": "Oprogramowanie rekrutacyjne (ATS): Dopasowanie słów kluczowych",
+  "gate2": "Szybka selekcja rekrutera: Zaprosić czy odrzucić",
   "clearsIt": "Przechodzi",
   "stopsHere": "Tu się zatrzymuje",
-  "snagTitle": "Tu wzrok rekrutera się zacina",
+  "atsFailHead": "Tu oprogramowanie się zacina:",
+  "scanFailHead": "Uwaga rekrutera zatrzymuje się tutaj:",
   "assetTitle": "A oto część, do której ledwo docierają",
   "questionsOne": "Jedno pytanie przed przepisaniem",
   "questionsMany": "Kilka pytań przed przepisaniem"
