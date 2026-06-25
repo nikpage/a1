@@ -32,6 +32,21 @@ function isEmpty(v) {
   return NA.has(String(v).trim().toLowerCase());
 }
 
+// Coerce a model value to displayable text. The teaser fields are meant to be
+// strings, but a cheap model sometimes returns an object (e.g. nuance items
+// shaped like { point, detail }) — rendering that object directly throws React
+// error #31 and crashes the whole page, so flatten any object to its text.
+function asText(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') {
+    return [v.question, v.point, v.detail, v.text, v.label, v.value]
+      .filter((x) => typeof x === 'string' && x.trim())
+      .join(' — ');
+  }
+  return String(v);
+}
+
 // Collapse near-duplicate questions so the same point never appears twice.
 function dedupe(lines) {
   const seen = [];
@@ -67,7 +82,7 @@ export default function TeaserDisplay({ analysis }) {
   const a = data.analysis || {};
   const cv = data.cv_data || {};
   const positioning = data.job_match?.positioning_strategy;
-  const questions = dedupe((a.nuance_clarifications || []).filter((v) => !isEmpty(v)));
+  const questions = dedupe((a.nuance_clarifications || []).map(asText).filter((v) => !isEmpty(v)));
   const snags = (a.scan_snags || []).filter((s) => s && !isEmpty(s.point));
   const creds = (a.buried_credentials || []).filter((c) => c && !isEmpty(c.name));
 
@@ -122,7 +137,7 @@ export default function TeaserDisplay({ analysis }) {
                     <div className="gate-seq">{g.seq}</div>
                   </div>
                   <div className="gate-verdict">{ok ? t('clearsIt') : t('stopsHere')}</div>
-                  {!isEmpty(g.reason) && <div className="gate-desc">{g.reason}</div>}
+                  {!isEmpty(g.reason) && <div className="gate-desc">{asText(g.reason)}</div>}
                 </div>
               );
             })}
@@ -141,8 +156,8 @@ export default function TeaserDisplay({ analysis }) {
                   <li key={i}>
                     <div className="step">{i + 1}</div>
                     <div>
-                      <b>{s.point}</b>
-                      {!isEmpty(s.detail) && <span className="sub">{s.detail}</span>}
+                      <b>{asText(s.point)}</b>
+                      {!isEmpty(s.detail) && <span className="sub">{asText(s.detail)}</span>}
                     </div>
                   </li>
                 ))}
@@ -150,7 +165,7 @@ export default function TeaserDisplay({ analysis }) {
             </>
           )}
           {!isEmpty(a.hr_first_seconds) && (
-            <div className="quote"><span className="q">“</span>{a.hr_first_seconds}”</div>
+            <div className="quote"><span className="q">“</span>{asText(a.hr_first_seconds)}”</div>
           )}
         </div>
       )}
@@ -163,12 +178,12 @@ export default function TeaserDisplay({ analysis }) {
             <div className="asset-row">
               {creds.map((c, i) => (
                 <div className="chip" key={i}>
-                  {!isEmpty(c.tag) && <span>{c.tag}</span>} {c.name}
+                  {!isEmpty(c.tag) && <span>{asText(c.tag)}</span>} {asText(c.name)}
                 </div>
               ))}
             </div>
           )}
-          {!isEmpty(positioning) && <p className="asset-note">{positioning}</p>}
+          {!isEmpty(positioning) && <p className="asset-note">{asText(positioning)}</p>}
         </div>
       )}
 
