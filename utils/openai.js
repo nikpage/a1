@@ -277,22 +277,37 @@ export async function verifyMaster(master, sourceText, trustedMaster = null) {
 export async function buildOrMergeMaster(rawInput, existingMaster = null, overrides = []) {
   const mode = existingMaster ? 'merge' : 'build';
   const messages = buildMasterCvPrompt({ mode, rawInput, existingMaster, overrides });
-  const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
-  const gemini_usage = geminiUsage(`master-cv ${mode}`, data, GEMINI_MASTER_MODEL);
 
+  // callGemini retries HTTP failures, but a 200 carrying malformed/truncated JSON
+  // slips past it and parseJsonLoose throws — dropping a paid build to a null
+  // master_cv. Retry the whole call on a parse failure so a one-off bad payload
+  // self-corrects. Every paid attempt is cost-logged via `usages`.
+  const MAX_PARSE_ATTEMPTS = 3;
+  const attemptUsages = [];
   let output;
-  try {
-    output = parseJsonLoose(data.choices?.[0]?.message?.content || '');
-  } catch (e) {
-    logger.error(`Invalid JSON from master-cv ${mode}:`, e.message);
-    throw new Error('Master CV build returned invalid JSON');
+  let lastData;
+  let parseErr;
+  for (let attempt = 1; attempt <= MAX_PARSE_ATTEMPTS; attempt++) {
+    lastData = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
+    const gu = geminiUsage(`master-cv ${mode}`, lastData, GEMINI_MASTER_MODEL);
+    attemptUsages.push(gu);
+    trackDailySpend(gu.costUsd);
+    try {
+      output = parseJsonLoose(lastData.choices?.[0]?.message?.content || '');
+      parseErr = null;
+      break;
+    } catch (e) {
+      parseErr = e;
+      logger.error(`Invalid JSON from master-cv ${mode} (attempt ${attempt}/${MAX_PARSE_ATTEMPTS}):`, e.message);
+    }
   }
-  trackDailySpend(gemini_usage.costUsd);
+  if (parseErr) throw new Error('Master CV build returned invalid JSON');
 
+  const gemini_usage = attemptUsages[attemptUsages.length - 1];
   const { gemini_usage: verifyUsage } = await verifyMaster(output, rawInput, existingMaster);
 
-  const usages = [gemini_usage, verifyUsage].filter(Boolean);
-  return { output, usage: data.usage, gemini_usage, usages };
+  const usages = [...attemptUsages, verifyUsage].filter(Boolean);
+  return { output, usage: lastData.usage, gemini_usage, usages };
 }
 
 // Landing-page TEASER analysis — small, high-impact output on the strong model
