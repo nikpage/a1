@@ -315,11 +315,32 @@ export async function analyzeTeaser(cvText, jobText) {
   }
 }
 
-export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
+// Merge the carried-forward teaser object with the deep DELTA the full pass
+// produced. The delta never re-emits the teaser's fields (see prompts/analysis.js),
+// so we glue them: top-level keys union, `analysis` and `job_match` merged key-wise
+// with the delta winning on shared keys (e.g. red_flags expands from teaser's
+// preview to the full list). Teaser-only keys (scores, verdicts, final_thought,
+// positioning_strategy) survive untouched.
+export function mergeTeaserAndDelta(teaser, delta) {
+  return {
+    ...teaser,
+    ...delta,
+    analysis: { ...(teaser.analysis || {}), ...(delta.analysis || {}) },
+    job_match: { ...(teaser.job_match || {}), ...(delta.job_match || {}) },
+  };
+}
+
+// `teaser` (optional): the parsed teaser object (or its JSON string) already
+// produced for this CV. When supplied, the full pass is handed those findings and
+// generates ONLY the deep delta, which we merge here — so the second call writes
+// roughly half as much. With no teaser, the full schema is generated as before.
+export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', teaser = null) {
   // DO NOT REMOVE THIS LINE OR MOVE IT
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
 
-  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText);
+  const teaserObj = typeof teaser === 'string' ? JSON.parse(teaser) : teaser;
+
+  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, teaserObj);
 
   const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low' });
 
@@ -341,9 +362,13 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf') {
   jsonOutput = jsonOutput.trim();
 
   try {
-    JSON.parse(jsonOutput);
+    const parsed = JSON.parse(jsonOutput);
+    // When a teaser seeded this call, the model returned only the delta — glue
+    // the carried teaser fields back on so callers get one complete analysis.
+    const finalObj = teaserObj ? mergeTeaserAndDelta(teaserObj, parsed) : parsed;
+    const finalOutput = teaserObj ? JSON.stringify(finalObj) : jsonOutput;
     trackDailySpend(gemini_usage.costUsd);
-    return { choices: data.choices, output: jsonOutput, usage: data.usage, gemini_usage };
+    return { choices: data.choices, output: finalOutput, usage: data.usage, gemini_usage };
   } catch (jsonError) {
     logger.error('Invalid JSON returned from API:', jsonError.message);
     logger.error('Cleaned JSON output:', jsonOutput);
