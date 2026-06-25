@@ -40,7 +40,7 @@ confirm each goes red, restore. (Money path — this is mandatory.)
 
 ## Task 1.6 — One origin checker (`utils/originCheck.js`)
 - Make `utils/originCheck.js` the single source. `isValidOrigin(origin)` must allow the
-  production site from `NEXT_PUBLIC_SITE_URL` (i.e. `https://thecv.pro`) and `http://localhost:3000`
+  production site from `NEXT_PUBLIC_SITE_URL` (i.e. `https://mysuper.cv`) and `http://localhost:3000`
   in non-production. Drop the hardcoded `cv-pro.netlify.app`.
 - `getBaseUrl()` stays (returns `NEXT_PUBLIC_SITE_URL` || localhost).
 - Grep for `lib/originCheck.js` usages; if unused, **delete it**; if used, repoint callers to

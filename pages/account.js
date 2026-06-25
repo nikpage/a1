@@ -51,7 +51,7 @@ export default function AccountPage({ user_id, email, tokens, generationsLeft, c
   return (
     <>
       <Head>
-        <title>Your Profile — thecv.pro</title>
+        <title>Your Profile — mysuper.cv</title>
         <link rel="icon" href="/favicon-32x32.png" />
       </Head>
       <Header user_id={user_id} generationsRemaining={generationsLeft} docDownloadsRemaining={tokens} />

@@ -8,7 +8,7 @@ vi.hoisted(() => {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'fake-anon-key';
   process.env.UPSTASH_REDIS_REST_URL = 'http://fake.redis';
   process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token';
-  process.env.RESEND_FROM_EMAIL = 'noreply@thecv.pro';
+  process.env.RESEND_FROM_EMAIL = 'noreply@mysuper.cv';
 });
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
@@ -39,7 +39,7 @@ vi.mock('@upstash/ratelimit', () => {
 
 vi.mock('../utils/originCheck', () => ({
   isValidOrigin: () => true,
-  getBaseUrl: () => 'https://thecv.pro',
+  getBaseUrl: () => 'https://mysuper.cv',
 }));
 
 const mockGetUserByEmail           = vi.hoisted(() => vi.fn());
@@ -100,7 +100,7 @@ describe('POST /api/auth/send-magic-link', () => {
       const [sendArgs] = mockSend.mock.calls;
       expect(sendArgs[0].to).toBe(VALID_EMAIL);
       expect(sendArgs[0].subject).toContain('login link');
-      expect(sendArgs[0].from).toBe('noreply@thecv.pro');
+      expect(sendArgs[0].from).toBe('noreply@mysuper.cv');
       expect(res.statusCode).toBe(200);
     } finally {
       process.env.NODE_ENV = orig;

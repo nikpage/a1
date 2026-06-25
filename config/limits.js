@@ -5,7 +5,7 @@
 // Read everywhere via this module — never hardcode a free-tier number in a
 // route or component.
 //
-// The funnel (thecv.pro):
+// The funnel (mysuper.cv):
 //   1. Free job match & analysis        -> FREE_ANALYSES
 //   2. Account creation                 -> (no cost)
 //   3. One free CV & cover written       -> FREE_GENERATIONS

@@ -121,7 +121,7 @@ export default function Header({ user_id }) {
             <Link href="/">
               <Image
                 src="/logo_cvprp+trans.png"
-                alt="TheCV.Pro Logo"
+                alt="mysuper.cv Logo"
                 width={120}
                 height={60}
                 className="h-12 w-auto object-contain"
@@ -173,7 +173,7 @@ export default function Header({ user_id }) {
             <Link href="/">
               <Image
                 src="/logo_cvprp+trans.png"
-                alt="TheCV.Pro Logo"
+                alt="mysuper.cv Logo"
                 width={120}
                 height={60}
                 className="h-10 w-auto object-contain sm:h-12"

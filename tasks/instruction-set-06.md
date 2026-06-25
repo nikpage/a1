@@ -125,9 +125,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 Replace the `transporter.sendMail(...)` call with:
 ```js
 const { error: mailErr } = await resend.emails.send({
-  from: process.env.RESEND_FROM_EMAIL || 'noreply@thecv.pro',
+  from: process.env.RESEND_FROM_EMAIL || 'noreply@mysuper.cv',
   to: emailNorm,
-  subject: 'Your login link for thecv.pro',
+  subject: 'Your login link for mysuper.cv',
   html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
 });
 if (mailErr) {
@@ -136,7 +136,7 @@ if (mailErr) {
 }
 ```
 
-Add `RESEND_FROM_EMAIL` to the env-var table in `CLAUDE.md` (purpose: "Verified sender address for magic-link email, e.g. noreply@thecv.pro").
+Add `RESEND_FROM_EMAIL` to the env-var table in `CLAUDE.md` (purpose: "Verified sender address for magic-link email, e.g. noreply@mysuper.cv").
 
 **Tests** (`__tests__/send-magic-link.test.js`):
 
@@ -319,7 +319,7 @@ export default function Privacy() {
       <p><strong>Your rights:</strong> you can delete your account and all associated data at any time from your account page.</p>
       <p><strong>Payments:</strong> we do not store card details. Payments are processed by Stripe.</p>
       <p><strong>AI processing:</strong> your CV and job description are sent to Google Gemini for analysis and document generation. Google's data-handling terms apply.</p>
-      <p><strong>Contact:</strong> questions? Email us at privacy@thecv.pro.</p>
+      <p><strong>Contact:</strong> questions? Email us at privacy@mysuper.cv.</p>
     </main>
   );
 }

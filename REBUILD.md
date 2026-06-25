@@ -1,6 +1,6 @@
 # REBUILD.md — master work plan & API contract
 
-This is the tracked contract for bringing a1 / thecv.pro to **professional SaaS quality**:
+This is the tracked contract for bringing a1 / mysuper.cv to **professional SaaS quality**:
 secure, resilient, observable, and safe to build on. Work is executed in **milestones**.
 Each task is small, independently verifiable, and **ships with real tests** (see the
 "Testing law" in `CLAUDE.md` — tests must prove correctness, not just pass).

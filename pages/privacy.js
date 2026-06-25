@@ -7,7 +7,7 @@ export default function Privacy() {
       <p><strong>Your rights:</strong> you can delete your account and all associated data at any time from your account page.</p>
       <p><strong>Payments:</strong> we do not store card details. Payments are processed by Stripe.</p>
       <p><strong>AI processing:</strong> your CV and job description are sent to Google Gemini for analysis and document generation. Google&apos;s data-handling terms apply.</p>
-      <p><strong>Contact:</strong> questions? Email us at privacy@thecv.pro.</p>
+      <p><strong>Contact:</strong> questions? Email us at privacy@mysuper.cv.</p>
     </main>
   );
 }

@@ -114,7 +114,7 @@ export default async function handler(req, res) {
       await transporter.sendMail({
         from: 'pod.one@gmail.com',
         to: emailNorm,
-        subject: 'Your login link for thecv.pro',
+        subject: 'Your login link for mysuper.cv',
         html: `<p>Click <a href="${magicLink}">here</a> to log in. Link expires in 15 minutes.</p>`,
       });
     } catch (mailErr) {

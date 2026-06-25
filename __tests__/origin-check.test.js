@@ -22,37 +22,37 @@ describe('isValidOrigin', () => {
   });
 
   test('allows the configured production site URL in production', () => {
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://thecv.pro';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
     process.env.NODE_ENV = 'production';
-    expect(isValidOrigin('https://thecv.pro')).toBe(true);
+    expect(isValidOrigin('https://mysuper.cv')).toBe(true);
   });
 
   test('blocks a foreign origin in production', () => {
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://thecv.pro';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
     process.env.NODE_ENV = 'production';
     expect(isValidOrigin('https://evil.com')).toBe(false);
   });
 
   test('blocks old hardcoded netlify origin', () => {
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://thecv.pro';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
     process.env.NODE_ENV = 'production';
     expect(isValidOrigin('https://cv-pro.netlify.app')).toBe(false);
   });
 
   test('allows localhost in non-production', () => {
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://thecv.pro';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
     process.env.NODE_ENV = 'test';
     expect(isValidOrigin('http://localhost:3000')).toBe(true);
   });
 
   test('blocks localhost in production', () => {
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://thecv.pro';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
     process.env.NODE_ENV = 'production';
     expect(isValidOrigin('http://localhost:3000')).toBe(false);
   });
 
   test('returns false for null/undefined origin', () => {
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://thecv.pro';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
     process.env.NODE_ENV = 'production';
     expect(isValidOrigin(null)).toBe(false);
     expect(isValidOrigin(undefined)).toBe(false);
@@ -72,8 +72,8 @@ describe('getBaseUrl', () => {
   });
 
   test('returns NEXT_PUBLIC_SITE_URL when set', () => {
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://thecv.pro';
-    expect(getBaseUrl()).toBe('https://thecv.pro');
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
+    expect(getBaseUrl()).toBe('https://mysuper.cv');
   });
 
   test('falls back to localhost when env var is not set', () => {

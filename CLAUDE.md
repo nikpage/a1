@@ -1,8 +1,8 @@
-# CLAUDE.md — a1 / thecv.pro
+# CLAUDE.md — a1 / mysuper.cv
 
 ## What this is
 
-CV and cover-letter generator with token-based billing. Deployed at **thecv.pro**.
+CV and cover-letter generator with token-based billing. Deployed at **mysuper.cv**.
 
 - User uploads CV (PDF/DOCX) → optionally pastes job description → app analyses CV ↔ job → user picks tone → generates tailored CV, cover letter, or both.
 - Each generation costs 1 token. Tokens bought via Stripe (€6/€8/€23/€42 for 1/2/10/30).
@@ -124,8 +124,8 @@ Every API route that touches state or PII is wrapped in `requireAuth` (`lib/requ
 | `STRIPE_SECRET_KEY` | Stripe server key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook validation |
 | `RESEND_API_KEY` | Email sending |
-| `RESEND_FROM_EMAIL` | Verified sender address, e.g. noreply@thecv.pro |
-| `NEXT_PUBLIC_SITE_URL` | `https://thecv.pro` |
+| `RESEND_FROM_EMAIL` | Verified sender address, e.g. noreply@mysuper.cv |
+| `NEXT_PUBLIC_SITE_URL` | `https://mysuper.cv` |
 | `GEMINI_DAILY_BUDGET_USD` | Daily Gemini spend alert threshold (default $10) |
 | `JWT_SECRET` | Signs session cookies — required at startup, no fallback |
 | `SENTRY_DSN` | Error monitoring (server + edge) |

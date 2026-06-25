@@ -34,7 +34,7 @@ async function handler(req, res) {
       customer = created.id;
     }
 
-    const origin = req.headers.origin || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.thecv.pro';
+    const origin = req.headers.origin || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mysuper.cv';
     const session = await stripe.checkout.sessions.create({
       mode: 'setup',
       payment_method_types: ['card'],
