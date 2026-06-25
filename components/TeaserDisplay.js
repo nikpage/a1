@@ -105,8 +105,8 @@ export default function TeaserDisplay({ analysis }) {
   // shows up to 3 real walk-through points + the blunt bottom-line reason. Only
   // the recruiter gate carries the navy gut-reaction quote.
   const gates = [
-    { title: t('gate1'), seq: '01', pass: atsPass, reason: a.ats_reason, snags: atsSnags, failHead: t('atsFailHead'), quote: null },
-    { title: t('gate2'), seq: '02', pass: scanPass, reason: a.scan_reason, snags: scanSnags, failHead: t('scanFailHead'), quote: a.hr_first_seconds },
+    { title: t('gate1'), pass: atsPass, reason: a.ats_reason, snags: atsSnags, failHead: t('atsFailHead'), quote: null },
+    { title: t('gate2'), pass: scanPass, reason: a.scan_reason, snags: scanSnags, failHead: t('scanFailHead'), quote: a.hr_first_seconds },
   ];
 
   const hasAsset = creds.length > 0 || !isEmpty(positioning);
@@ -139,7 +139,6 @@ export default function TeaserDisplay({ analysis }) {
                 <div className="gate-top">
                   <div className={`dot ${ok ? 'green' : 'red'}`} />
                   <div className="gate-name">{g.title}</div>
-                  <div className="gate-seq">{g.seq}</div>
                 </div>
                 <div className="gate-verdict">{ok ? t('clearsIt') : t('stopsHere')}</div>
 
@@ -165,8 +164,6 @@ export default function TeaserDisplay({ analysis }) {
                         </ul>
                       </>
                     )}
-                    {/* the blunt 30-second-scan reason it gets binned */}
-                    {!isEmpty(g.reason) && <div className="ding">{asText(g.reason)}</div>}
                     {/* recruiter gate only: the raw gut-reaction quote */}
                     {!isEmpty(g.quote) && (
                       <div className="quote">
@@ -235,14 +232,13 @@ export default function TeaserDisplay({ analysis }) {
         .dot.green { background:var(--green); } .dot.green::after { background:var(--green); }
         .dot.red { background:var(--red); } .dot.red::after { background:var(--red); }
         .gate-name { font-family:'Poppins',sans-serif; font-weight:600; font-size:15px; color:var(--navy); }
-        .gate-seq { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); margin-left:auto; }
         .gate-verdict { font-weight:600; font-size:14px; margin-bottom:4px; }
         .gate.pass .gate-verdict { color:var(--green); }
         .gate.fail .gate-verdict { color:var(--red); }
         .gate-desc { font-size:13.5px; color:var(--muted); line-height:1.5; }
 
-        /* fail block — lives inside the failing card */
-        .fail { margin-top:8px; }
+        /* fail block — lives inside the failing card; the gap is the blank line under the verdict */
+        .fail { margin-top:20px; }
         .fail-head { font-family:'Poppins',sans-serif; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--red); margin:0 0 6px; }
 
         .snag { list-style:none; display:flex; flex-direction:column; gap:0; margin:0; padding:0; }
@@ -253,9 +249,6 @@ export default function TeaserDisplay({ analysis }) {
            creates is the line that must be read, so it carries the weight. */
         .snag .data { display:block; color:var(--muted); font-size:13px; line-height:1.45; }
         .snag .issue { display:block; color:var(--navy); font-weight:700; font-size:15px; line-height:1.45; margin-top:3px; }
-
-        /* the blunt 30-second-scan disqualifier — the DING */
-        .ding { margin-top:14px; padding-top:14px; border-top:1px solid #f0d6d6; color:var(--navy); font-weight:700; font-size:15.5px; line-height:1.5; }
 
         .block { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px 30px; box-shadow:var(--shadow); margin-top:22px; }
         .block h2 { font-family:'Poppins',sans-serif; font-weight:600; font-size:20px; color:var(--navy); letter-spacing:-.01em; margin:0 0 14px; }
