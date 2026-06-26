@@ -2,8 +2,10 @@
 
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
+import { scenarioGenerationRules } from './scenarios.js';
 
 export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '') {
+  const scenarioBlock = scenarioGenerationRules(analysis?.analysis?.scenario_tags);
   const coreBlock = core && core.trim()
     ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`
     : '';
@@ -36,6 +38,7 @@ The provided analysis is your strategic brief — treat its generation_framework
 - **Keywords, naturally.** Weave in the most relevant terms from \`analysis.ats_keywords_present\` and \`job_match.inferred_keywords\` where they fit the candidate's real experience. These are terms the candidate has genuinely earned — surface them confidently for the strongest honest ATS match. NEVER pull from \`analysis.ats_keywords_missing\`: those are skills the candidate has not demonstrated and must not appear. Never keyword-stuff or sacrifice readability — a human recruiter reads this too.
 - **Varied bullets.** Do not make every bullet the same length. Within each role, mix at least one short, single-line bullet with longer ones — uniform bullet length is a dead giveaway that a machine wrote the CV.
 
+${scenarioBlock}
 ${humanVoiceRules()}
 
 # The summary
