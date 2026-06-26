@@ -89,6 +89,7 @@ export default function StartFreshModal({
         file_name: selectedCv?.name || 'Unnamed file',
         jobText: resolvedJobText,
         onJobExtracted,
+        deep: true,
       })
 
       window.dispatchEvent(new CustomEvent('new-analysis', {

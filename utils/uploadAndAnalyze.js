@@ -35,6 +35,7 @@ export async function uploadAndAnalyze({
   fallbackCreatedAt,  // kept for call-site compatibility
   onPing,
   onJobExtracted,     // optional: async (extraction) => confirmedJob | throws to cancel
+  deep = false,       // true only for the post-signup analysis on the user's page; the landing teaser leaves this false so it stays a single cheap call
 }) {
   let finalUserId = user_id ?? (typeof window !== 'undefined' ? window.localStorage.getItem('user_id') : null);
   const finalCreatedAt = created_at ?? fallbackCreatedAt ?? null;
@@ -113,6 +114,7 @@ export async function uploadAndAnalyze({
       created_at: finalCreatedAt,
       file_name: finalFileName,
       analysis_id,
+      deep,
     }),
   });
   if (kickRes.status !== 202 && !kickRes.ok) {

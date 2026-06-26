@@ -5,7 +5,7 @@
 // full rewrite plan (that unlocks on sign-up). Small output so the strong model
 // runs cheap (~$0.02 vs ~$0.05). Output is SHAPED to the existing AnalysisDisplay
 // (cv_data / analysis.* / job_match.positioning_strategy / final_thought) so it
-// renders with no display rework; headline_summary + nuance_clarifications are additive.
+// renders with no display rework; nuance_clarifications is additive.
 //
 // Same never-fabricate law as the full analysis: only what the CV evidences.
 
@@ -25,15 +25,12 @@ export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText) {
 
 TONE LAW — write like a sharp, plain-spoken human who actually read THIS CV. The reader should feel precisely seen, not flattered. HARD BAN on praise adjectives and hype: never use rare, elite, exceptional, world-class, stellar, prestigious, impressive, sought-after, tier-one, pedigree, mastery, pioneer, or any synonym. Never use exclamation or salesman warmth. Every positive must be a CONCRETE FACT lifted from the CV (a named role, a thing built, a number) — if you cannot point to the fact, delete the sentence. State problems plainly as fixable. Specificity is the value; enthusiasm is not.
 
-SCENARIO (decide this FIRST — it steers every judgement below, but is NEVER printed as a label to the user):
-Classify this candidate's career scenario — choose 1-2 MAX from the list. This is the single most important step for getting the verdict right: a senior portfolio/consultant whose standing practice spans shorter corporate stints is NOT a job-hopper, and an older candidate's long history is a signal to manage, not a fault to punish. Let the chosen scenario shape scan_verdict, hr_first_seconds, red_flags and positioning_strategy. Do NOT name the scenario in any visible field — prove you understood it through the specificity of the read, not the jargon.
-SCENARIO LIST (choose 1-2):
-${scenarioList(hasJobText)}
+SCENARIO (classify first; never printed to the user): choose 1-2 from the list and let them steer scan_verdict, hr_first_seconds, red_flags and positioning_strategy — e.g. a senior portfolio/consultant whose standing practice spans shorter corporate stints is not a job-hopper. Prove it through the specificity of the read, never the label.
+SCENARIO LIST: ${scenarioList(hasJobText)}
 
 FIELDS (full quality — shown in full, must stand on their own as real value):
 - cv_data: { Name, Seniority, Industry, Country } from the CV (Country = the most-recent role's country, not the contact block).
 - analysis.scenario_tags: ARRAY of the 1-2 chosen scenario tags (internal steering + carried forward to the deep analysis; never rendered to the user).
-- analysis.headline_summary: ONE sentence — a rewritten professional-summary line for THIS candidate, sharp enough to sit at the top of their CV. This is the teaser's OPENER and its single proof of craft: show them their own identity written better than they wrote it. Impact-first, concrete, true to the CV. HARD BAN on hype/filler ("results-driven", "proven track record", "passionate", "dynamic", "seasoned"). No invented facts. Let the chosen scenario shape it — e.g. a senior portfolio leads with the continuous practice and depth, an older applicant leads with current relevance not total years. Must be impossible to paste onto another candidate's CV.
 - analysis.overall_score / analysis.ats_score: each "0-10", honest.
 
 THE GAUNTLET — a real CV runs two binary gates before a human ever reads it properly, and your scan reports both as a clean PASS or FAIL. Gate 1 is the machine (ATS); Gate 2 is the ~7-second human skim. A CV that fails Gate 1 is never seen; a CV that passes Gate 1 but fails Gate 2 is binned in seconds. Do NOT hedge the verdict — it is "pass" or "fail", nothing else. Then state the single decisive reason in plain language.
@@ -59,7 +56,6 @@ OUTPUT EXACTLY THIS SHAPE:
   "cv_data": { "Name": "", "Seniority": "", "Industry": "", "Country": "" },
   "analysis": {
     "scenario_tags": [],
-    "headline_summary": "",
     "overall_score": "0-10",
     "ats_score": "0-10",
     "ats_verdict": "",
