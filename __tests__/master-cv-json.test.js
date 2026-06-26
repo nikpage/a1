@@ -57,8 +57,10 @@ describe('buildOrMergeMaster — tolerant JSON parse', () => {
     expect(output).toEqual({ candidate_core: 'PM', voice_samples: ['led checkout redesign'] });
   });
 
-  test('still throws when the build output has no JSON at all', async () => {
-    mockAxiosPost.mockResolvedValueOnce(geminiResp('I cannot help with that.'));
+  test('still throws when every retry returns output with no JSON at all', async () => {
+    // The build retries a malformed payload; only when EVERY attempt is
+    // unparseable does it fail loudly. mockResolvedValue feeds all attempts.
+    mockAxiosPost.mockResolvedValue(geminiResp('I cannot help with that.'));
 
     await expect(buildOrMergeMaster('some cv text')).rejects.toThrow(/invalid JSON/i);
   });
