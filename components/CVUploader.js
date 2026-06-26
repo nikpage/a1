@@ -5,8 +5,6 @@ import { useRouter } from 'next/router'
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
 import { resolveJobText } from '../utils/resolveJobText'
 import JobExtractionModal from './JobExtractionModal'
-import AddCvChoiceModal from './AddCvChoiceModal'
-import MergeConflictModal from './MergeConflictModal'
 
 
 export default function CVUploader({ user_id, onUpload, selectedCv }) {
@@ -20,10 +18,6 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
   const [jobExtractionData, setJobExtractionData] = useState(null)
   const [showJobExtractionModal, setShowJobExtractionModal] = useState(false)
   const jobExtractionCallbackRef = useRef(null)
-  const [showChoiceModal, setShowChoiceModal] = useState(false)
-  const choiceCallbackRef = useRef(null)
-  const [conflictData, setConflictData] = useState(null)
-  const conflictCallbackRef = useRef(null)
   const handleFileChange = (f) => {
     setError('')
     if (!f || f.type !== 'application/pdf' || f.size > 200 * 1024) {
@@ -60,40 +54,6 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
     jobExtractionCallbackRef.current = null
   }
 
-  // Shown only when the user already has a profile: resolves with 'merge' | 'fresh' | null.
-  const onExistingProfile = () => {
-    return new Promise((resolve) => {
-      choiceCallbackRef.current = { resolve }
-      setShowChoiceModal(true)
-    })
-  }
-
-  const resolveChoice = (choice) => {
-    setShowChoiceModal(false)
-    choiceCallbackRef.current?.resolve(choice)
-    choiceCallbackRef.current = null
-  }
-
-  // Shown only when a merge has conflicts: resolves with overrides[] | null (cancel).
-  const onMergeConflicts = (conflicts) => {
-    return new Promise((resolve) => {
-      setConflictData(conflicts)
-      conflictCallbackRef.current = { resolve }
-    })
-  }
-
-  const handleConflictConfirm = (overrides) => {
-    setConflictData(null)
-    conflictCallbackRef.current?.resolve(overrides)
-    conflictCallbackRef.current = null
-  }
-
-  const handleConflictCancel = () => {
-    setConflictData(null)
-    conflictCallbackRef.current?.resolve(null)
-    conflictCallbackRef.current = null
-  }
-
   async function handleUpload() {
     if (!file) {
       setError('No file selected')
@@ -112,8 +72,6 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
         fallbackCvText: null,
         fallbackCreatedAt: null,
         onJobExtracted,
-        onExistingProfile,
-        onMergeConflicts,
       })
 
       window.dispatchEvent(new CustomEvent('new-analysis', { detail: { analysis: result.analysis } }));
@@ -189,22 +147,6 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
           extraction={jobExtractionData}
           onConfirm={handleJobExtractionConfirm}
           onCancel={handleJobExtractionCancel}
-        />
-      )}
-
-      {showChoiceModal && (
-        <AddCvChoiceModal
-          onMerge={() => resolveChoice('merge')}
-          onFresh={() => resolveChoice('fresh')}
-          onCancel={() => resolveChoice(null)}
-        />
-      )}
-
-      {conflictData && (
-        <MergeConflictModal
-          conflicts={conflictData}
-          onConfirm={handleConflictConfirm}
-          onCancel={handleConflictCancel}
         />
       )}
 
