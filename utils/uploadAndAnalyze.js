@@ -35,87 +35,24 @@ export async function uploadAndAnalyze({
   fallbackCreatedAt,  // kept for call-site compatibility
   onPing,
   onJobExtracted,     // optional: async (extraction) => confirmedJob | throws to cancel
-  onExistingProfile,  // optional: async () => 'merge' | 'fresh' | null  (shown only if the user already has a profile)
-  onMergeConflicts,   // optional: async (conflicts) => overrides[] | null  (shown only if a merge has conflicts)
 }) {
   let finalUserId = user_id ?? (typeof window !== 'undefined' ? window.localStorage.getItem('user_id') : null);
   const finalCreatedAt = created_at ?? fallbackCreatedAt ?? null;
   const finalFileName = file_name || (file && file.name) || 'Unnamed file';
 
-  // 1. Upload the file if one was provided
+  // 1. Upload the file if one was provided. Every upload mints/refreshes the
+  //    identity and rebuilds the master from this CV — one CV, one profile.
   if (file) {
-    // 1a. If this user already has a profile, make the outcome explicit: merge
-    //     this CV into the existing master, or start fresh as a new profile.
-    let choice = 'fresh';
-    if (typeof onExistingProfile === 'function' && finalUserId) {
-      let hasMaster = false;
-      try {
-        const ps = await fetch('/api/profile-status', { method: 'POST', credentials: 'include' });
-        if (ps.ok) hasMaster = (await ps.json()).hasMaster === true;
-      } catch { /* unreachable check → treat as no profile */ }
-      if (hasMaster) {
-        choice = await onExistingProfile();
-        if (!choice) {
-          const e = new Error('Upload cancelled');
-          e.cancelled = true;
-          throw e;
-        }
-      }
+    const formData = new FormData();
+    formData.append('file', file);
+    if (finalUserId) formData.append('user_id', finalUserId);
+
+    const uploadRes = await fetch('/api/upload-cv', { method: 'POST', body: formData });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok || !uploadData.user_id) {
+      throw new Error(uploadData.error || 'Upload failed');
     }
-
-    if (choice === 'merge') {
-      // 1b. MERGE path: fold the new CV into the existing master. Identity stays
-      //     the authenticated user (server reads req.user) — no new upload-cv row.
-      const fd = new FormData();
-      fd.append('file', file);
-      const previewRes = await fetch('/api/add-cv', { method: 'POST', credentials: 'include', body: fd });
-      if (!previewRes.ok) {
-        const err = await previewRes.json().catch(() => ({}));
-        throw new Error(err.error || 'Could not add this CV');
-      }
-      const { nonce, conflicts, gemini_usage: previewUsage } = await previewRes.json();
-      logGemini(previewUsage);
-
-      let overrides = [];
-      if (Array.isArray(conflicts) && conflicts.length) {
-        if (typeof onMergeConflicts !== 'function') {
-          throw new Error('onMergeConflicts callback is required when a merge has conflicts');
-        }
-        const resolved = await onMergeConflicts(conflicts);
-        if (!resolved) {
-          const e = new Error('Merge cancelled');
-          e.cancelled = true;
-          throw e;
-        }
-        overrides = resolved;
-      }
-
-      const commitRes = await fetch('/api/add-cv-commit', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nonce, overrides }),
-      });
-      if (!commitRes.ok) {
-        const err = await commitRes.json().catch(() => ({}));
-        throw new Error(err.error || 'Could not save the merge');
-      }
-      const commitData = await commitRes.json().catch(() => ({}));
-      logGemini(commitData.gemini_usage);
-      // finalUserId unchanged — analysis runs on the same, now-richer profile.
-    } else {
-      // 1c. FRESH path (default): normal upload mints/refreshes the identity.
-      const formData = new FormData();
-      formData.append('file', file);
-      if (finalUserId) formData.append('user_id', finalUserId);
-
-      const uploadRes = await fetch('/api/upload-cv', { method: 'POST', body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok || !uploadData.user_id) {
-        throw new Error(uploadData.error || 'Upload failed');
-      }
-      finalUserId = uploadData.user_id;
-    }
+    finalUserId = uploadData.user_id;
   }
 
   if (!finalUserId) throw new Error('Missing user_id for analysis');
