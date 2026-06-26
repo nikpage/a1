@@ -81,6 +81,28 @@ human stages 3-4 are where most CVs live or die -> L-scan = highest leverage her
 TAILWIND: the smarter/cheaper filtering gets, the more it rewards a genuinely good,
 honestly framed CV and punishes gaming. Our honesty strategy is the future-proof one.
 
+## STAGED FUNNEL (accumulates into master — never recompute)
+Business goal: maximize conversion to the NEXT step, through to paid.
+Technical goal: build the master CV as SOT. Same motion — each stage deposits
+into the master; the next stage reads it, never redoes it.
+
+Stage 1 — FREE teaser (no signup)
+  - Gives REAL value: a sharp, honest DIAGNOSIS of positioning. No clickbait
+    ("6 secrets", "3 fatal errors"). Show quality; withhold the cure.
+  - Diagnosis free, fix paid -> hunger comes from the read being real.
+  - Builds: partial master from the CV.
+Stage 2 — (MAYBE) FREE, behind email / no-fee CC-wall
+  - More DEPTH (fuller read, optionally job-matched). Still free.
+  - We capture the email; cost risk = free AND deeper, so keep it lean.
+  - Builds: enriches master.
+Stage 3 — PAID: full interactive AI interview
+  - The richest master-builder; probes liabilities/gaps directly.
+  - Builds: completes the master.
+
+Model spend rule: cheapest model that clears the QUALITY bar per stage; pay up
+(flash / sonnet) ONLY where the model's benefit justifies the cost. Latency alone
+(e.g. 300ms) never justifies a pricier model.
+
 ## Method (settling)
 - Checklist = AI's PRIVATE reasoning scaffold, not a user-facing form.
 - AI decides per item: applies / augments / replaces. Senior judgment, not pipeline.
