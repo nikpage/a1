@@ -18,16 +18,15 @@ const CARRIED_FROM_TEASER = [
   'analysis.overall_score',
   'analysis.ats_score',
   'analysis.overall_commentary',
+  'analysis.scenario_tags',
+  'analysis.headline_summary',
   'analysis.career_arc',
   'analysis.parallel_experience',
   'analysis.hr_first_seconds',
-  'analysis.sample_rewrite',
   'analysis.ats_verdict / ats_reason / ats_snags',
   'analysis.scan_verdict / scan_reason / scan_snags',
   'analysis.buried_credentials',
-  'analysis.cv_state',
   'analysis.nuance_clarifications',
-  'analysis.scope',
   'job_match.positioning_strategy',
   'final_thought',
 ];
@@ -60,14 +59,11 @@ Your job now is ONLY the DEEP fields below — the rewrite blueprint the teaser 
 ANALYSIS FRAMEWORK (for the delta only):
 1. Write all output in the SAME language the teaser used.
 2. Extract every job with: title, company, dates, location, key achievements. List most-recent first. Include overlapping roles and mark concurrency.
-3. Classify the primary career scenario (choose 1-2 MAX from the strict list below).
+3. The teaser ALREADY chose the career scenario — it is carried in analysis.scenario_tags above. Do NOT re-choose or re-emit it; treat it as established and apply its handling (below) throughout.
 4. Produce a 'generation_framework' — a concrete rewrite blueprint the CV writer will execute directly. Be specific and decisive: name exact jobs to include / condense / rewrite, draft the actual summary text, list the exact skills to highlight.
 5. Return VALID JSON only — no comments, no trailing commas, no markdown.
 
-STRICT SCENARIO LIST (Choose 1-2):
-${scenarioList(hasJobText)}
-
-SCENARIO HANDLING — once you choose the scenario(s), your positioning_strategy, action_items and generation_framework MUST follow the matching handling rule(s) below. These govern how the candidate is framed; they reframe/reorder/cut REAL content only and never license inventing experience:
+SCENARIO HANDLING — the carried analysis.scenario_tags determine which rule(s) apply. Your positioning_strategy, action_items and generation_framework MUST follow the matching handling rule(s) below. These govern how the candidate is framed; they reframe/reorder/cut REAL content only and never license inventing experience:
 ${scenarioHandling(hasJobText)}
 
 ${!hasJobText ? `NO JOB AD PROVIDED — STANDALONE CV REVIEW:
@@ -78,7 +74,6 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 ` : ''}- candidate_core: 2-3 sentences capturing WHO THIS CANDIDATE IS across any job — the durable through-line of what they bring (the kind of value, leadership, or domain depth that travels with them), drawn ONLY from real evidence in the CV. Job-agnostic: do not mention the target job. This becomes the candidate's editable profile and a steering principle for future documents — identity-level and true, never aspirational or invented.
 - summary: 1-2 sentence attention-grabbing TL;DR of the candidate's real situation that makes the reader want to keep reading.
 - jobs_extracted: ARRAY of every role { title, company, dates, location, achievements }, most-recent first, concurrency marked.
-- analysis.scenario_tags: the 1-2 chosen scenario tags from the strict list.
 - analysis.cv_format_analysis: MUST review length (with page count), structure and design.
 - analysis.cultural_fit: ${hasJobText ? `review the CV against the customs of the JOB's country.` : `review the CV against the customs of its OWN country (cv_data.Country). Do NOT invent a target country, city or market.`}
 - analysis.red_flags: the FULL list of specific concerns a recruiter would flag (e.g. "14-month gap 2021-2022", "4 jobs in 3 years"), each short and concrete — this expands beyond the top concerns shown in the teaser. Empty array if genuinely none.
@@ -106,7 +101,6 @@ OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field a
   "job_data": { "Position": "${hasJobText ? '' : 'n/a'}", "Seniority": "${hasJobText ? '' : 'n/a'}", "Company": "${hasJobText ? '' : 'n/a'}", "Industry": "${hasJobText ? '' : 'n/a'}", "Country": "${hasJobText ? '' : 'n/a'}", "HR Contact": "" },
   "jobs_extracted": [],
   "analysis": {
-    "scenario_tags": [],
     "cv_format_analysis": "",
     "cultural_fit": "",
     "red_flags": [],

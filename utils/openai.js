@@ -311,8 +311,8 @@ export async function buildOrMergeMaster(rawInput, existingMaster = null, overri
 }
 
 // Landing-page TEASER analysis — small, high-impact output on the strong model
-// (~$0.02 vs ~$0.05 for the full pass). Hero fields are full quality; the `scope`
-// block is brief breadth-signalling. The full deep analysis runs after sign-up.
+// (~$0.02 vs ~$0.05 for the full pass). Hero fields are full quality. The full
+// deep analysis runs after sign-up, building on this teaser.
 export async function analyzeTeaser(cvText, jobText) {
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
   const messages = buildAnalysisTeaserPrompt(cvText, jobText, hasJobText);

@@ -14,7 +14,7 @@
 // overridden with the confirmed values so edits survive into generation.
 
 import * as Sentry from '@sentry/node';
-import { analyzeTeaser, buildOrMergeMaster } from '../../utils/openai.js';
+import { analyzeTeaser, analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
 import { saveGeneratedDoc, logAiTransaction, setCandidateCoreIfEmpty, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
@@ -149,11 +149,34 @@ export const handler = async (event) => {
     // GENERATION, wrong for critique (it makes the analysis guess page count and
     // amplify inferred skills into claims). The master is still built above for
     // generation; it just doesn't feed the analysis.
+    // Teaser first: the cheap, high-impact read shown on the landing page. It is
+    // also the SEED the deeper pass builds on — it now carries analysis.scenario_tags.
     const result = await analyzeTeaser(cv_data, jobText);
-    const content = result?.output;
+    let content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
       return { statusCode: 202 };
+    }
+    // Every analysis AI call this run made, for cost logging + the browser console.
+    const analysisUsages = [result.gemini_usage];
+
+    // Past-the-wall (authenticated) users get the DEEP pass built ON the teaser:
+    // analyzeCvJob is handed the teaser and generates only the delta, which it
+    // merges back — so the scenario, scores and verdicts carry forward instead of
+    // being recomputed. Anonymous landing visitors keep the cheap teaser-only read.
+    if (verified?.user_id) {
+      try {
+        const deep = await analyzeCvJob(cv_data, jobText, file_name || 'cv.pdf', content);
+        if (deep?.output) {
+          content = deep.output;
+          analysisUsages.push(deep.gemini_usage);
+        }
+      } catch (e) {
+        // A deep-pass failure must not sink the analysis — the teaser already
+        // saved value. Surface it, keep the teaser content.
+        logger.error('[analyse-bg] deep analysis failed, keeping teaser:', e.message);
+        Sentry.captureException(e);
+      }
     }
 
     const extractMeta = (label) => {
@@ -168,9 +191,9 @@ export const handler = async (event) => {
     let toSave = content;
     try {
       const obj = JSON.parse(content);
-      // Surface EVERY Gemini call this run made (master build + verify + analysis)
-      // so the browser console matches what the transactions table records.
-      obj._gemini_usage = [...masterUsages, result.gemini_usage];
+      // Surface EVERY Gemini call this run made (master build + verify + teaser +
+      // deep) so the browser console matches what the transactions table records.
+      obj._gemini_usage = [...masterUsages, ...analysisUsages];
       if (confirmedJob && typeof confirmedJob === 'object') {
         obj.job_extraction = confirmedJob;
       }
@@ -201,17 +224,20 @@ export const handler = async (event) => {
       analysis_id,
     });
 
-    const gu = result.gemini_usage;
-    await logAiTransaction({
-      user_id,
-      source_gen_id: analysis_id,
-      model: gu.model,
-      cache_miss_tokens: gu.inputTokens,
-      cache_hit_tokens: 0,
-      completion_tokens: gu.outputTokens + gu.thinkingTokens,
-      thinking_tokens: gu.thinkingTokens,
-      detail: { job_title, company },
-    });
+    // Log EVERY analysis AI call (teaser, and the deep pass when it ran) — the
+    // cost-logging rule covers all of them, no exceptions.
+    for (const gu of analysisUsages) {
+      await logAiTransaction({
+        user_id,
+        source_gen_id: analysis_id,
+        model: gu.model,
+        cache_miss_tokens: gu.inputTokens,
+        cache_hit_tokens: 0,
+        completion_tokens: gu.outputTokens + gu.thinkingTokens,
+        thinking_tokens: gu.thinkingTokens,
+        detail: { job_title, company, type: gu.label },
+      }).catch(() => {});
+    }
 
     return { statusCode: 202 };
   } catch (e) {

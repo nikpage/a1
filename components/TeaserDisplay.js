@@ -90,7 +90,7 @@ export default function TeaserDisplay({ analysis }) {
   const scanSnags = (a.scan_snags || []).filter((s) => s && !isEmpty(s.point));
   const creds = (a.buried_credentials || []).filter((c) => c && !isEmpty(c.name));
 
-  const who = [cv.Seniority, cv.Industry].filter((x) => !isEmpty(x)).join(' · ');
+  const headline = asText(a.headline_summary);
 
   const verdict = (v) => {
     const s = String(v || '').trim().toLowerCase();
@@ -120,10 +120,10 @@ export default function TeaserDisplay({ analysis }) {
       </Head>
 
       {/* header */}
-      {(!isEmpty(cv.Name) || who || hasChecks) && (
+      {(!isEmpty(cv.Name) || !isEmpty(headline) || hasChecks) && (
         <div className="head">
           {!isEmpty(cv.Name) && <div className="cand-name">{cv.Name}</div>}
-          {who && <div className="cand-role">{who}</div>}
+          {!isEmpty(headline) && <p className="cand-headline">{headline}</p>}
           {hasChecks && <p className="lead">{t('lead')}</p>}
         </div>
       )}
@@ -220,7 +220,7 @@ export default function TeaserDisplay({ analysis }) {
         }
         .head { text-align:center; }
         .cand-name { font-family:'Poppins',sans-serif; font-weight:700; font-size:30px; color:var(--navy); letter-spacing:-.01em; }
-        .cand-role { color:var(--muted); font-size:15px; margin-top:2px; }
+        .cand-headline { max-width:600px; margin:12px auto 0; color:var(--navy); font-family:'Poppins',sans-serif; font-weight:500; font-size:19px; line-height:1.45; }
         .lead { max-width:540px; margin:18px auto 0; color:var(--ink); font-size:16px; line-height:1.55; }
 
         .gates { margin-top:28px; display:flex; flex-direction:column; gap:16px; }
