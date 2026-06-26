@@ -51,7 +51,24 @@ Strategy = play strengths + handle liabilities WITHOUT inventing.
 - AI-user chat (TO BUILD) — richest; the "writer's interview" that probes
   liabilities directly and fills master honestly.
 
+## RESOLUTION STATES (the core discipline of the analysis)
+The checklist is a self-AUDIT, not a to-do list. Every item must be CLOSED OUT
+to one of three states before writing. Silent skip is BANNED.
+  [ANSWERED]  resolved from evidence (CV/LI/chat) + state the basis.
+  [N/A]       genuinely doesn't apply + WHY (a reason, never "no data").
+  [UNKNOWN]   not in the inputs -> route to user (chat/form). Honest gap only.
+Rules:
+  - "Missing" is NOT a resolution. Every item lands ANSWERED / N/A / UNKNOWN.
+  - N/A needs a RATIONALE, and where checkable it rests on a DETERMINISTIC check
+    (timeline reconciles, claimed skill present in master) — reuse verify pattern.
+  - UNKNOWN is honest, not lazy: only for truths literally absent from inputs.
+    Don't dump judgeable items on the user to dodge deciding.
+  - This is the calibration we CAN control: a weak read becomes VISIBLE
+    (UNKNOWN->ask) instead of a confident hallucination. We don't solve
+    detection; we forbid it from failing silently.
+
 ## PRIVATE INTAKE CHECKLIST (AI asks itself; not user-facing)
+Each item resolves to [ANSWERED <basis> | N/A <reason> | UNKNOWN -> ask].
 A. Read the candidate (honest history)
   1. Real career arc — direction, momentum, level?
   2. Genuine strengths (evidenced, not claimed)?
@@ -98,9 +115,18 @@ D. Strategy (intake output, before writing)
 Design notes:
 - #12 = judge, don't flag uniformly. Same weakness fatal for one job, irrelevant for another.
 - #16 = only honest path to user forms: surface gap, never auto-fill.
+- #16 is essentially the UNKNOWN bucket made actionable: items the audit couldn't
+  close from evidence become the (short, surgical) user questions — not a long interview.
+
+## Parked (future, NOT this layer)
+- App-level calibration / outcome feedback loop. Per-CV rejection is unusable
+  signal (confounders: internal hire, frozen role; ranking margin; no
+  counterfactual). No control group ever -> can't prove delivery. Out of scope here.
 
 ## Open questions
 - Where does current output fall short of a human writer? (TBD)
 
 ## Next
 - Pressure-test checklist; decide what's analysis-step vs chat-step
+- Encode CEE per-market rules (CZ/PL norms, language defaults) — replace
+  "AI weighs it" deferral with actual rules
