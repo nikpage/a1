@@ -9,6 +9,8 @@
 //
 // Same never-fabricate law as the full analysis: only what the CV evidences.
 
+import { scenarioList } from './scenarios.js';
+
 const NEVER_FABRICATE = `Use ONLY what the CV (and job ad, if given) actually proves. Never invent employers, dates, titles, skills, numbers or achievements. Reference THIS candidate's real phrases, roles and companies — every line must be impossible to paste onto someone else's CV. Detect the CV's language and write ALL output in it.`;
 
 export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText) {
@@ -23,8 +25,14 @@ export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText) {
 
 TONE LAW — write like a sharp, plain-spoken human who actually read THIS CV. The reader should feel precisely seen, not flattered. HARD BAN on praise adjectives and hype: never use rare, elite, exceptional, world-class, stellar, prestigious, impressive, sought-after, tier-one, pedigree, mastery, pioneer, or any synonym. Never use exclamation or salesman warmth. Every positive must be a CONCRETE FACT lifted from the CV (a named role, a thing built, a number) — if you cannot point to the fact, delete the sentence. State problems plainly as fixable. Specificity is the value; enthusiasm is not.
 
+SCENARIO (decide this FIRST — it steers every judgement below, but is NEVER printed as a label to the user):
+Classify this candidate's career scenario — choose 1-2 MAX from the list. This is the single most important step for getting the verdict right: a senior portfolio/consultant whose standing practice spans shorter corporate stints is NOT a job-hopper, and an older candidate's long history is a signal to manage, not a fault to punish. Let the chosen scenario shape scan_verdict, hr_first_seconds, red_flags and positioning_strategy. Do NOT name the scenario in any visible field — prove you understood it through the specificity of the read, not the jargon.
+SCENARIO LIST (choose 1-2):
+${scenarioList(hasJobText)}
+
 FIELDS (full quality — shown in full, must stand on their own as real value):
 - cv_data: { Name, Seniority, Industry, Country } from the CV (Country = the most-recent role's country, not the contact block).
+- analysis.scenario_tags: ARRAY of the 1-2 chosen scenario tags (internal steering + carried forward to the deep analysis; never rendered to the user).
 - analysis.overall_score / analysis.ats_score: each "0-10", honest.
 
 THE GAUNTLET — a real CV runs two binary gates before a human ever reads it properly, and your scan reports both as a clean PASS or FAIL. Gate 1 is the machine (ATS); Gate 2 is the ~7-second human skim. A CV that fails Gate 1 is never seen; a CV that passes Gate 1 but fails Gate 2 is binned in seconds. Do NOT hedge the verdict — it is "pass" or "fail", nothing else. Then state the single decisive reason in plain language.
@@ -53,6 +61,7 @@ OUTPUT EXACTLY THIS SHAPE:
 {
   "cv_data": { "Name": "", "Seniority": "", "Industry": "", "Country": "" },
   "analysis": {
+    "scenario_tags": [],
     "overall_score": "0-10",
     "ats_score": "0-10",
     "ats_verdict": "",
