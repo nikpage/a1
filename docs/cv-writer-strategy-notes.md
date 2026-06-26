@@ -7,8 +7,15 @@ on emphasis/omission/framing for THIS task. No fixed formula. Never invent/lie.
 ## Settled
 - Master CV = source of truth (facts only, gaps stay gaps)
 - Analysis = strategy brain; Generation = execution
-- Parse-safety (single-column, clean text) = table-stakes, keep
+- Parse-safety (single-column, clean text) = UNIVERSAL default (see gauntlet)
 - Keyword gap = surface honestly ("you're missing X"), never fabricate
+
+## HONESTY RULE (restated precisely)
+The rule is NOT "the CV must be honest." It is: **the AI must not fabricate.**
+- AI never manufactures: no invented metrics, skills, titles, dates.
+- The USER may overstate their own history — their claim, their risk, their
+  interview to defend. We are NOT Morality Mom; we don't fact-check the human.
+- We police only OUR output. Goal = limit AI fakery as much as possible.
 
 ## Rejected (too formulaic / junior-writer)
 - 3-part bullet input forms
@@ -31,6 +38,48 @@ Implications:
   - Liability handling (#15): CV need not RESOLVE a gap, only avoid the filter
     and set up the candidate to address it live. Lower, more honest bar.
 PRINCIPLE: get them in the room with the strongest agenda they can DEFEND. Don't oversell.
+
+## GAUNTLET SPEC (per-stage pass-requirements) — our biggest value-add
+A good CV can be trashed BEFORE its goodness is seen. Clearing each stage with
+TRUE material (surface gaps, never invent) = the core win. NOT size-gated anymore:
+cheap SaaS ATS + LLM/AI screeners are accessible to any employer with 5 CVs.
+
+STAGE 1 — Machine parse (assume it ALWAYS happens)
+  Universal default, not large-company-only. Asymmetric risk: parse-safe when no
+  ATS = ~zero cost (also skims better for humans); not parse-safe when there IS
+  one = fatal (trashed unseen). So always buy the insurance.
+  Pass = clean text extraction: single-column, linear order, standard section
+  headings, real text (NO critical info in images/tables/text-boxes/headers/
+  footers), standard fonts, machine-readable dates.
+
+STAGE 2 — Keyword / screen filter  (nature is shifting)
+  Old ATS = dumb boolean string match -> exact keywords brittle + essential.
+  New LLM screener = SEMANTIC (understands Sales ~= Client Acquisition) AND
+  judges relevance/liabilities like a human -> Stage 2 BLURS into 3-4.
+  Our approach = BOTH, don't drop literal:
+    - keep literal exact strings for must-have skills/tools/certs (dumb ATS still
+      out there) — from the user's REAL history;
+    - ADD semantic phrasing so LLM screeners match meaning, not just tokens.
+  Stuffing degrades: smart filters see through it and increasingly penalize it.
+
+STAGE 3 — 6-second human skim (L / F-pattern)
+  Eye runs ACROSS the top (name -> headline/title) then DOWN the left margin
+  (titles, companies, dates), fixating only where something catches.
+  Pass requirements that follow:
+    - Top third STATES THE CASE — headline/summary makes relevance instant.
+    - Left margin CARRIES THE STORY — title/company/dates do the work (don't
+      bury the title after the company); that's the vertical the eye tracks.
+    - Bold anchors on first few words of bullets + key metrics = fixation hooks.
+    - Lead bullets with outcomes; tech stack visible at a glance; no dense prose.
+
+STAGE 4 — Relevance judgment (recruiter: interview y/n)
+  Pass = obvious fit to the 3-4 deciding things (#6); liabilities not screaming.
+  Where strategy/framing (#14-15) cashes out.
+
+CEE weighting: Stages 1-2 bite most for large/intl employers; in CZ/PL SMEs the
+human stages 3-4 are where most CVs live or die -> L-scan = highest leverage here.
+TAILWIND: the smarter/cheaper filtering gets, the more it rewards a genuinely good,
+honestly framed CV and punishes gaming. Our honesty strategy is the future-proof one.
 
 ## Method (settling)
 - Checklist = AI's PRIVATE reasoning scaffold, not a user-facing form.
@@ -106,6 +155,10 @@ This makes gauntlet + signal rules MARKET-RELATIVE. US-centric advice = wrong de
   - ATS penetration lower in CEE (esp. SMEs): parse/keyword matters for large/intl
     employers, but 6s skim + local-norm fit weigh RELATIVELY MORE than US keyword-ATS.
   - Language choice (cz vs en) per target = a strategy decision, not just UI locale.
+NOTE: market is DEFINED (CZ). "AI weighs per market" = a DEFERRAL, not a method.
+  Open work = ENCODE concrete CZ/PL rules (photo+DOB norm, language defaults, etc)
+  as applied defaults, not "AI decides fresh each time". Deterministic rails for
+  geography. NOT writing these rules yet — parked as next, see Next section.
 
 D. Strategy (intake output, before writing)
   14. Lead / emphasize / downplay / cut?
