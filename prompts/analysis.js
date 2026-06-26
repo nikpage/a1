@@ -10,6 +10,8 @@
 // full call only spends output tokens on what's new. With no teaser the prompt
 // keeps its original behaviour and emits the complete schema.
 
+import { scenarioList, scenarioHandling } from './scenarios.js';
+
 // Fields carried verbatim from the teaser — the delta call must NOT re-emit them.
 const CARRIED_FROM_TEASER = [
   'cv_data',
@@ -63,10 +65,10 @@ ANALYSIS FRAMEWORK (for the delta only):
 5. Return VALID JSON only — no comments, no trailing commas, no markdown.
 
 STRICT SCENARIO LIST (Choose 1-2):
-- Recent Grad
-- Job Returner
-- Older Applicant
-${hasJobText ? `- Overqualified\n- Under-qualified\n- Career Pivot\n- Major Pivot\n- Standard Career Progression` : ''}
+${scenarioList(hasJobText)}
+
+SCENARIO HANDLING — once you choose the scenario(s), your positioning_strategy, action_items and generation_framework MUST follow the matching handling rule(s) below. These govern how the candidate is framed; they reframe/reorder/cut REAL content only and never license inventing experience:
+${scenarioHandling(hasJobText)}
 
 ${!hasJobText ? `NO JOB AD PROVIDED — STANDALONE CV REVIEW:
 No job description was given, so there is NO target role, company, location, industry or market to measure against. Do NOT invent one. (Locations, industries or tools that appear in the CV itself are real facts and may be used; only an invented target is forbidden.) Assess against the norms of the CV's OWN country (cv_data.Country from the teaser). Every job-relative field stays neutral: job_data, job_match.* and job_extraction stay "n/a"; analysis.ats_keywords_missing MUST be an empty array.
@@ -182,10 +184,10 @@ ANALYSIS FRAMEWORK:
 8. Return VALID JSON only — no comments, no trailing commas, no markdown.
 
 STRICT SCENARIO LIST (Choose 1-2):
-- Recent Grad
-- Job Returner
-- Older Applicant
-${hasJobText ? `- Overqualified\n- Under-qualified\n- Career Pivot\n- Major Pivot\n- Standard Career Progression` : ''}
+${scenarioList(hasJobText)}
+
+SCENARIO HANDLING — once you choose the scenario(s), your positioning_strategy, action_items and generation_framework MUST follow the matching handling rule(s) below. These govern how the candidate is framed; they reframe/reorder/cut REAL content only and never license inventing experience:
+${scenarioHandling(hasJobText)}
 
 ${!hasJobText ? `NO JOB AD PROVIDED — STANDALONE CV REVIEW:
 No job description was given, so there is NO target role, company, location, industry or market to measure against. Do NOT invent one — no hypothetical target market, no assumed seniority jump, no keywords for a role the candidate never named. (Locations, industries or tools that appear in the CV itself are real facts and may be used; only an invented target is forbidden.) Assess the CV on its own merits and against the norms of its OWN country (cv_data.Country). Every job-relative field stays neutral: job_data, job_match.* and job_extraction stay "n/a"; analysis.ats_keywords_missing MUST be an empty array (you cannot be "missing" keywords with no job to compare against); positioning_strategy describes how to strengthen the CV for the kind of roles already in suitable_positions, asserting no unproven skill or target.
