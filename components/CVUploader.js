@@ -72,6 +72,7 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
         fallbackCvText: null,
         fallbackCreatedAt: null,
         onJobExtracted,
+        deep: true,
       })
 
       window.dispatchEvent(new CustomEvent('new-analysis', { detail: { analysis: result.analysis } }));

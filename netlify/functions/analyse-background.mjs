@@ -160,11 +160,12 @@ export const handler = async (event) => {
     // Every analysis AI call this run made, for cost logging + the browser console.
     const analysisUsages = [result.gemini_usage];
 
-    // Past-the-wall (authenticated) users get the DEEP pass built ON the teaser:
-    // analyzeCvJob is handed the teaser and generates only the delta, which it
-    // merges back — so the scenario, scores and verdicts carry forward instead of
-    // being recomputed. Anonymous landing visitors keep the cheap teaser-only read.
-    if (verified?.user_id) {
+    // The DEEP pass runs ONLY when the caller explicitly asks for it (deep:true),
+    // which is the post-signup analysis on the user's own page — NEVER the landing
+    // page. analyzeCvJob is handed the teaser and generates only the delta, merged
+    // back so scenario/scores/verdicts carry forward instead of being recomputed.
+    // The landing teaser stays a single cheap call.
+    if (body.deep === true && verified?.user_id) {
       try {
         const deep = await analyzeCvJob(cv_data, jobText, file_name || 'cv.pdf', content);
         if (deep?.output) {

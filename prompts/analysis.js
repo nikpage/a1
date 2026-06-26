@@ -19,7 +19,6 @@ const CARRIED_FROM_TEASER = [
   'analysis.ats_score',
   'analysis.overall_commentary',
   'analysis.scenario_tags',
-  'analysis.headline_summary',
   'analysis.career_arc',
   'analysis.parallel_experience',
   'analysis.hr_first_seconds',
