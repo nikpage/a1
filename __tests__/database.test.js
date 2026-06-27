@@ -111,6 +111,45 @@ describe('saveMasterCv', () => {
   });
 });
 
+describe('upsertCV', () => {
+  // upsertCV awaits the upsert directly (no .select()), so the builder's upsert
+  // resolves to { data, error }.
+  function makeUpsertCVMock({ data = [{ user_id: 'uid-1' }], error = null } = {}) {
+    const calls = {};
+    const builder = {
+      upsert(rows, opts) {
+        calls.rows = rows;
+        calls.opts = opts;
+        return Promise.resolve({ data, error });
+      },
+    };
+    const fromSpy = vi.fn((table) => { calls.table = table; return builder; });
+    return { client: { from: fromSpy }, calls };
+  }
+
+  test('a new upload nulls master_cv so the stale master is rebuilt from this CV', async () => {
+    const { client, calls } = makeUpsertCVMock({});
+    _adminMock = client;
+    const { upsertCV } = await import('../utils/database.js');
+
+    await upsertCV('uid-1', 'NEW CV TEXT');
+
+    expect(calls.table).toBe('cv_data');
+    // The decisive assertion: master_cv is explicitly cleared. Old code wrote
+    // only { user_id, cv_data } and left a stale (cleaned/merged) master behind.
+    expect(calls.rows).toEqual([{ user_id: 'uid-1', cv_data: 'NEW CV TEXT', master_cv: null }]);
+    expect(calls.opts).toEqual({ onConflict: ['user_id'] });
+  });
+
+  test('throws when Supabase returns an error', async () => {
+    const { client } = makeUpsertCVMock({ data: null, error: { message: 'boom' } });
+    _adminMock = client;
+    const { upsertCV } = await import('../utils/database.js');
+
+    await expect(upsertCV('uid-1', 'x')).rejects.toThrow(/UpsertCV failed: boom/);
+  });
+});
+
 describe('getLatestAnalysis', () => {
   test('calls .from(gen_data) with correct user_id and returns content', async () => {
     const fromSpy = vi.fn().mockReturnValue({

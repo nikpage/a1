@@ -32,10 +32,14 @@ export async function upsertUser(user_id, phone_hash = null, email = null) {
 }
 
 // Upsert CV
+// Upsert the extracted CV text. A new upload is a NEW CV, so the stored master
+// is stale — null it here so the next analysis rebuilds it from this CV (one CV,
+// one profile). Without this the master is built once and reused forever, so any
+// later improvement to the build never reaches an existing user.
 export async function upsertCV(user_id, cv_data) {
   const { data, error } = await supabase
     .from('cv_data')
-    .upsert([{ user_id, cv_data }], { onConflict: ['user_id'] });
+    .upsert([{ user_id, cv_data, master_cv: null }], { onConflict: ['user_id'] });
   if (error) throw new Error(`UpsertCV failed: ${error.message || JSON.stringify(error)}`);
   return data;
 }
