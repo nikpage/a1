@@ -3,7 +3,7 @@
 import { logger } from '../../lib/logger'
 import formidable from 'formidable'
 import { upsertUser, upsertCV } from '../../utils/database'
-import { extractTextFromUpload, CvFileError } from '../../utils/extractCvText'
+import { extractCvWithLayout, CvFileError } from '../../utils/extractCvText'
 import crypto from 'crypto'
 import { setSessionCookie } from '../../lib/session'
 
@@ -44,8 +44,9 @@ export default async function handler(req, res) {
 
       const file = files.file
       let text
+      let layout = null
       try {
-        text = await extractTextFromUpload(file)
+        ({ text, layout } = await extractCvWithLayout(file))
       } catch (err) {
         if (err instanceof CvFileError) {
           return res.status(400).json({ error: err.message })
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
 
       try {
         await upsertUser(user_id, phone_hash)
-        await upsertCV(user_id, text)
+        await upsertCV(user_id, text, layout)
         // Task 1.5: the stray write to data_gen was removed — upsertCV already persists
         // the CV to cv_data; the misspelled data_gen table write was a duplicate and is gone.
 

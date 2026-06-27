@@ -117,7 +117,6 @@ export function applyStructuralMerge(master, { parent, childIndexes, note = '' }
     role: parent.role || '',
     dates: parent.dates || '',
     location: parent.location || '',
-    concurrent: false,
     core_tags: parent.core_tags || [],
     achievements: parent.achievements || [],
     merge_note: note,

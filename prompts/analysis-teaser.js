@@ -15,7 +15,7 @@ import { scenarioList } from './scenarios.js';
 
 const NEVER_FABRICATE = `Use ONLY what the CV (and job ad, if given) actually proves. Never invent employers, dates, titles, skills, numbers or achievements. Reference THIS candidate's real phrases, roles and companies — every line must be impossible to paste onto someone else's CV. Detect the CV's language and write ALL output in it.`;
 
-export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText) {
+export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText, layoutNote = '') {
   return [
     {
       role: 'system',
@@ -35,7 +35,7 @@ FIELDS (full quality — shown in full, must stand on their own as real value):
 - analysis.scenario_tags: ARRAY of the 1-2 chosen scenario tags (internal steering + carried forward to the deep analysis; never rendered to the user).
 
 THE TWO-STAGE SCAN — a real CV runs two binary gates before a human ever reads it properly, and your scan reports both as a clean PASS or FAIL. Gate 1 is the machine (ATS); Gate 2 is the ~7-second human skim. A CV that fails Gate 1 is never seen; a CV that passes Gate 1 but fails Gate 2 is binned in seconds. Do NOT hedge the verdict — it is "pass" or "fail", nothing else. Then state the single decisive reason in plain language.
-- analysis.ats_verdict: EXACTLY "pass" or "fail" — would this CV survive automated parsing/keyword screening as written? Fail it for real, concrete parser problems (e.g. a two-column layout that scrambles, a scanned/image CV, missing the role's core terms entirely, dates a parser can't read), not for taste.
+- analysis.ats_verdict: EXACTLY "pass" or "fail" — would this CV survive automated parsing/keyword screening as written? Fail it for real, concrete parser problems (e.g. a two-column layout that scrambles, a scanned/image CV, missing the role's core terms entirely, dates a parser can't read), not for taste. You are reading the RAW extracted text exactly as a parser receives it; if a LAYOUT SIGNAL block is present below, treat it as ground truth about the file (column count, scanned/image, date formats) and let it drive this verdict — a flagged multi-column or scanned layout is a concrete FAIL, and quote the offending date string verbatim when the formats are inconsistent.
 - analysis.ats_reason: 1-2 sentences naming the ONE decisive thing — if fail, the specific reason it gets dropped (quote the offending detail); if pass, the concrete reason it parses cleanly. No generic "optimise keywords". On a PASS this is the one brief sentence shown on the card; on a FAIL it is the blunt bottom-line reason it is dropped.
 - analysis.ats_snags: ARRAY of UP TO 3 ordered { "point": "", "detail": "" } shown ONLY when ats_verdict is "fail" — each names ONE real, concrete parsing problem in THIS CV. "point" = the exact offending element, quoted from the CV (a real two-column block, a graphic/photo, an unusual section heading, an unreadable date format, a core role term that is simply absent); "detail" = the one-line consequence for the parser. NEVER invent a problem to reach three — return only as many as the CV genuinely has, down to one. [] whenever ats_verdict is "pass".
 - analysis.scan_verdict: EXACTLY "pass" or "fail" — in the ~7-second skim of the TOP of this CV, does a recruiter keep reading or bin it? Pass means a clear, legible, relevant top-line; fail means the eye hits a reason to stop (illegible title, stale most-recent date, no obvious fit, wall of text).
@@ -63,9 +63,9 @@ OUTPUT EXACTLY THIS SHAPE:
   }
 }
 
-CV CONTENT:
+CV CONTENT (raw extracted text, exactly as a parser receives it):
 ${cvText}
-
+${layoutNote ? `\n${layoutNote}\n` : ''}
 ${hasJobText ? `JOB DESCRIPTION:\n${jobText}` : 'No job ad provided — assess the CV on its own merits against the norms of its own country; do NOT invent a target role or market.'}
 `.trim(),
     },

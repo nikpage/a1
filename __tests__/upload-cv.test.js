@@ -31,8 +31,14 @@ vi.mock('formidable', () => ({
 }));
 
 // ── Mock PDF extractor ───────────────────────────────────────────────────────
+// The upload route now extracts text PLUS a layout sidecar, so the boundary mock
+// must provide both the plain-text default AND the layout-aware named export.
 vi.mock('../utils/pdf-extract.js', () => ({
   default: async () => 'John Smith\nSoftware Engineer\ntest@example.com',
+  extractPdfWithLayout: async () => ({
+    text: 'John Smith\nSoftware Engineer\ntest@example.com',
+    layout: { format: 'pdf', pages: 1, columns: 1, multi_column: false },
+  }),
 }));
 
 // ── Mock database utils (use vi.hoisted so refs are safe in factory) ─────────
@@ -95,6 +101,13 @@ describe('upload-cv — session cookie minted on successful upload', () => {
     const body = res._getJSONData();
     expect(body.user_id).toBeDefined();
     expect(typeof body.user_id).toBe('string');
+
+    // The captured layout sidecar must be persisted alongside the text so the
+    // teaser can later read it (third arg to upsertCV).
+    expect(mockUpsertCV).toHaveBeenCalledTimes(1);
+    const [, savedText, savedLayout] = mockUpsertCV.mock.calls[0];
+    expect(savedText).toMatch(/John Smith/);
+    expect(savedLayout).toMatchObject({ format: 'pdf', multi_column: false });
 
     // Cookie must be present
     const setCookie = res.getHeader('Set-Cookie');

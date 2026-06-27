@@ -24,7 +24,8 @@ const NEVER_FABRICATE = `NEVER-FABRICATE (absolute, governs every field): Record
 const SELF_CONSISTENCY = `SELF-CONSISTENCY (re-check before you output — your gaps and conflicts MUST agree with the data you actually wrote):
 - GAPS: before listing a field as missing, look at the entry you produced. NEVER report a field as absent if you populated it. Report each genuinely-missing field on its own — do not lump distinct fields together (a role missing only its country is NOT "missing dates or country"; if its dates are filled, only the country is missing).
 - COUNTRY: identity.country is where the person MOST RECENTLY worked or resides — derive it from the most-recent role's location, NOT from the contact block. If the contact-block location or the phone-number country implies a different country than the recent roles, do NOT silently choose one — record it as a conflict.
-- CONTRADICTIONS: whenever two parts of the input disagree on a concrete fact (contact location vs recent-role location, dates that cannot both be true, a title stated two ways), surface it in "conflicts" instead of quietly resolving it.`;
+- CONTRADICTIONS: whenever two parts of the input disagree on a concrete fact (contact location vs recent-role location, dates that cannot both be true, a title stated two ways), surface it in "conflicts" instead of quietly resolving it.
+- NO STRUCTURAL INFERENCE: you transcribe, you do not interpret structure. Never decide that two roles are the same engagement, contract, or consultancy; never merge, relabel, or lay out overlapping roles as one continuous span; never infer that the person was "self-employed throughout" or "between jobs". Keep every role as its own verbatim entry. When two roles' dates OVERLAP, that is exactly the kind of structural call only the candidate can make — record it as an open question in "conflicts" (field: "role_overlap", old_value/new_value = the two overlapping roles, where = "experience"), never resolve it yourself.`;
 
 const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON only, no markdown, no comments, no trailing commas):
 {
@@ -41,7 +42,6 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
       "role": "",
       "dates": "",                      // verbatim as given (e.g. "2018-Present"); "" if absent
       "location": "",
-      "concurrent": false,              // true if it overlaps another role
       "core_tags": [],                  // 2-5 short theme tags drawn from the work itself
       "achievements": [
         {
@@ -60,7 +60,7 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
   ],
   "voice_samples": [],                  // 3-6 of the user's OWN sentences, copied VERBATIM from the input. These preserve their real writing voice for cover letters. Do NOT paraphrase, polish, or invent — exact quotes only. [] if the input has no usable prose.
   "gaps": [],                           // fields GENUINELY missing/unclear, verified against the entries you wrote (see SELF-CONSISTENCY). One missing field per item; never list a field you populated.
-  "conflicts": []                       // contradictions to surface, not silently resolve. BUILD: internal disagreements in the input (see SELF-CONSISTENCY). MERGE: see MERGE rules. Each { "field": "", "old_value": "", "new_value": "", "where": "" }. [] if none.
+  "conflicts": []                       // contradictions AND structural open questions to surface, not silently resolve. BUILD: internal disagreements in the input + any overlapping roles as a "role_overlap" item (see SELF-CONSISTENCY — never decide whether overlapping roles are one consultancy yourself). MERGE: see MERGE rules. Each { "field": "", "old_value": "", "new_value": "", "where": "" }. [] if none.
 }`;
 
 // Targeted verify pass — runs after every build/merge as a safety net for the
@@ -113,7 +113,7 @@ ${NEVER_FABRICATE}
 ${SELF_CONSISTENCY}`;
 
   const buildTask = `TASK — BUILD the master record from the input below.
-- Extract every role, with dates and concurrency where shown; most-recent first.
+- Extract every role as its own entry, with dates exactly as written; most-recent first. Do NOT infer structure: never fold overlapping roles into a single consultancy/engagement or decide they are one contract — if two roles' dates overlap, keep them separate verbatim and record the overlap as a "role_overlap" open question in conflicts for the user to resolve (see SELF-CONSISTENCY).
 - For each role, capture achievements with their metric (only if the input states one) and the concrete skills each one demonstrates.
 - Write candidate_core: the honest durable through-line of who this person is — drawn only from real evidence.
 - Fill transferable_notes: surface genuine strengths from one domain that carry into others (e.g. hospitality → reading people; firefighting → calm leadership under pressure). Each note needs real evidence from the input and is a strength the person ACTUALLY demonstrated — never an aspiration.
