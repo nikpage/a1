@@ -143,15 +143,14 @@ export const handler = async (event) => {
       }
     }
 
-    // Analysis critiques the REAL uploaded CV, so it reads the raw text — the
-    // actual document (length, formatting, literal facts), never the master.
-    // The master is a restructured, inference-laden derivative: great for
-    // GENERATION, wrong for critique (it makes the analysis guess page count and
-    // amplify inferred skills into claims). The master is still built above for
-    // generation; it just doesn't feed the analysis.
+    // Use the master CV as the analysis source when available — it is structured,
+    // deduped, and pre-reasoned, giving the model cleaner signal and fewer tokens
+    // than the raw upload. Fall back to raw text only if the master build failed.
+    const analysisCv = master ? JSON.stringify(master) : cv_data;
+
     // Teaser first: the cheap, high-impact read shown on the landing page. It is
     // also the SEED the deeper pass builds on — it now carries analysis.scenario_tags.
-    const result = await analyzeTeaser(cv_data, jobText);
+    const result = await analyzeTeaser(analysisCv, jobText);
     let content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
@@ -167,7 +166,7 @@ export const handler = async (event) => {
     // The landing teaser stays a single cheap call.
     if (body.deep === true && verified?.user_id) {
       try {
-        const deep = await analyzeCvJob(cv_data, jobText, file_name || 'cv.pdf', content);
+        const deep = await analyzeCvJob(analysisCv, jobText, file_name || 'cv.pdf', content);
         if (deep?.output) {
           content = deep.output;
           analysisUsages.push(deep.gemini_usage);
