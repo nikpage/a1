@@ -135,6 +135,25 @@ export function applyStructuralMerge(master, { parent, childIndexes, note = '' }
   return next;
 }
 
+// Apply a CLARIFICATION: attach the user's answer to ONE existing experience
+// entry as `clarification` (e.g. why a short tenure ended, what a gap was). This
+// adds context for the generator; it deletes and overwrites nothing else.
+export function applyClarification(master, { index, note }) {
+  if (!master || typeof master !== 'object') {
+    throw new Error('applyClarification: master is required');
+  }
+  if (typeof note !== 'string' || note.trim() === '') {
+    throw new Error('applyClarification: a note is required');
+  }
+  const next = clone(master);
+  const list = next.experience;
+  if (!Array.isArray(list) || index < 0 || index >= list.length) {
+    throw new Error(`applyClarification: experience index ${index} out of range`);
+  }
+  list[index].clarification = note.trim();
+  return next;
+}
+
 // Orchestrator the API route calls. Returns the NEW master.
 //   resolution.decision: 'accept' | 'edit' | 'reject'  (single)
 //                       | 'merge'                       (structural)
@@ -152,6 +171,19 @@ export function resolveFlag(master, flag, resolution) {
       throw new Error('resolveFlag: a value is required to accept/edit a single fix');
     }
     return applySingleFix(master, flag.target, value);
+  }
+
+  if (flag.type === 'clarify') {
+    if (decision === 'reject') return clone(master); // user skips the question; no change
+    const note = resolution.value;
+    if (typeof note !== 'string' || note.trim() === '') {
+      throw new Error('resolveFlag: an answer is required to clarify');
+    }
+    const index = flag.target?.index;
+    if (typeof index !== 'number') {
+      throw new Error('resolveFlag: clarify flag is missing target.index');
+    }
+    return applyClarification(master, { index, note });
   }
 
   if (flag.type === 'structural') {

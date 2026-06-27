@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import {
   applySingleFix,
   applyStructuralMerge,
+  applyClarification,
   resolveFlag,
 } from './master-flags.js';
 
@@ -23,6 +24,46 @@ function sampleMaster() {
     voice_samples: ['I build things that ship.', 'No fluff.'],
   };
 }
+
+describe('applyClarification', () => {
+  it('attaches the answer to the targeted role and leaves others untouched', () => {
+    const before = sampleMaster();
+    const after = applyClarification(before, { index: 0, note: 'Contract ended' });
+    expect(after.experience[0].clarification).toBe('Contract ended');
+    expect(after.experience[1].clarification).toBeUndefined();
+    expect(before.experience[0].clarification).toBeUndefined(); // input not mutated
+  });
+
+  it('throws on an out-of-range index', () => {
+    expect(() => applyClarification(sampleMaster(), { index: 9, note: 'x' }))
+      .toThrow(/out of range/);
+  });
+
+  it('throws on an empty note', () => {
+    expect(() => applyClarification(sampleMaster(), { index: 0, note: '   ' }))
+      .toThrow(/note is required/);
+  });
+});
+
+describe('resolveFlag clarify', () => {
+  it('stores the chosen option onto the right experience entry', () => {
+    const flag = { type: 'clarify', target: { section: 'experience', index: 0 }, options: ['Contract ended', 'Better opportunity'] };
+    const after = resolveFlag(sampleMaster(), flag, { decision: 'option', value: 'Better opportunity' });
+    expect(after.experience[0].clarification).toBe('Better opportunity');
+  });
+
+  it('reject leaves the master unchanged', () => {
+    const flag = { type: 'clarify', target: { section: 'experience', index: 0 } };
+    const after = resolveFlag(sampleMaster(), flag, { decision: 'reject' });
+    expect(after.experience[0].clarification).toBeUndefined();
+  });
+
+  it('throws when the clarify flag has no target index', () => {
+    const flag = { type: 'clarify', target: { section: 'experience' } };
+    expect(() => resolveFlag(sampleMaster(), flag, { decision: 'option', value: 'x' }))
+      .toThrow(/missing target.index/);
+  });
+});
 
 describe('applySingleFix', () => {
   it('sets exactly the targeted experience field and nothing else', () => {

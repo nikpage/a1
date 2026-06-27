@@ -91,6 +91,43 @@ function FlagCard({ flag, onResolved }) {
         </div>
       )}
 
+      {flag.type === 'clarify' && (
+        <div className="mt-3">
+          {Array.isArray(flag.options) && flag.options.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {flag.options.map((opt) => (
+                <button
+                  key={opt}
+                  disabled={busy}
+                  onClick={() => send('option', opt)}
+                  className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="mt-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              placeholder="Or type your own answer"
+            />
+            <div className="mt-2 flex gap-2">
+              <button disabled={busy || !draft.trim()} onClick={() => send('option', draft.trim())}
+                className="px-3 py-1.5 text-sm rounded bg-green-600 text-white disabled:opacity-50">
+                Save
+              </button>
+              <button disabled={busy} onClick={() => send('reject')}
+                className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 disabled:opacity-50">
+                Skip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {flag.type === 'structural' && (
         <div className="mt-3">
           <textarea

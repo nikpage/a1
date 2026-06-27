@@ -22,7 +22,8 @@ async function handler(req, res) {
   const { user_id } = req.user;
   const { flag, decision, value } = req.body || {};
 
-  if (!flag || typeof flag !== 'object' || (flag.type !== 'single' && flag.type !== 'structural')) {
+  const VALID_TYPES = new Set(['single', 'structural', 'clarify']);
+  if (!flag || typeof flag !== 'object' || !VALID_TYPES.has(flag.type)) {
     return res.status(400).json({ error: 'A valid flag { type } is required' });
   }
   if (typeof decision !== 'string') {
