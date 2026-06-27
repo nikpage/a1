@@ -75,6 +75,22 @@ export default function AnalysisDisplay({ analysis }) {
   // The no-job sentinel is "n/a" (and friends), so test for real content.
   const hasJobMatch = !isEmpty(data.job_data?.Position);
   const a = data.analysis || {};
+  const any = (...vals) => vals.some((v) => !isEmpty(v));
+
+  const hasSummary =
+    data.summary && typeof data.summary === 'object'
+      ? any(data.summary.fit_summary, data.summary.cover_letter_focus)
+      : !isEmpty(data.summary);
+  const hasAssessment = any(a.cv_format_analysis, a.style_wording, a.ats_keywords_present, a.ats_keywords_missing);
+  const hasFit = hasJobMatch
+    ? any(a.cultural_fit, a.overall_commentary)
+    : any(a.cultural_fit, a.overall_commentary, a.suitable_positions, a.career_arc, a.parallel_experience, a.transferable_skills);
+  const hasScores = any(a.overall_score, a.ats_score, a.scenario_tags);
+  const hasActionItems = a.action_items && Object.values(a.action_items).some(
+    (cats) => cats && Object.values(cats).some((items) => Array.isArray(items) && items.filter((x) => !isEmpty(x)).length > 0)
+  );
+  const hasSuggestions = any(data.job_match?.positioning_strategy, data.job_match?.career_scenario) || hasActionItems;
+  const hasAnalysis = hasScores || hasAssessment || hasFit || any(a.quick_wins, a.red_flags);
 
   return (
     <div className="analysis-fix">
@@ -104,6 +120,7 @@ export default function AnalysisDisplay({ analysis }) {
             }
           />
         )}
+        {hasSummary && (
         <Section
           title={t('summary')}
           content={
@@ -118,6 +135,7 @@ export default function AnalysisDisplay({ analysis }) {
             )
           }
         />
+        )}
         <Section
           title={t('cvData')}
           content={
@@ -136,12 +154,14 @@ export default function AnalysisDisplay({ analysis }) {
             </div>
           }
         />
+        {hasAnalysis && (
         <Section
           title={t('analysis')}
           content={
             <div>
               {/* Overall/ATS scores and scenario are general CV metrics — shown
                   with or without a job, but labelled as a job match only when one exists. */}
+              {hasScores && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
                   {hasJobMatch ? t('jobMatchEvaluation') : t('cvScore')}
@@ -159,6 +179,8 @@ export default function AnalysisDisplay({ analysis }) {
                   </div>
                 )}
               </div>
+              )}
+              {hasAssessment && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('cvAssessment')}</h3>
                 <Field label={t('structureLength')} value={a.cv_format_analysis} />
@@ -166,7 +188,8 @@ export default function AnalysisDisplay({ analysis }) {
                 <Field label={t('atsOptimization')} value={a.ats_keywords_present} />
                 <Field label={t('atsGaps')} value={a.ats_keywords_missing} />
               </div>
-              {hasJobMatch ? (
+              )}
+              {hasFit && (hasJobMatch ? (
                 <div style={{ marginBottom: '1.5rem' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('applicantFit')}</h3>
                   <Field label={t('culturalFit')} value={a.cultural_fit} />
@@ -182,12 +205,14 @@ export default function AnalysisDisplay({ analysis }) {
                   <Field label={t('parallelExperience')} value={a.parallel_experience} />
                   <Field label={t('transferableSkills')} value={a.transferable_skills} />
                 </div>
-              )}
+              ))}
               <ListField label={t('quickWins')} items={a.quick_wins} />
               <ListField label={t('redFlags')} items={a.red_flags} />
             </div>
           }
         />
+        )}
+        {hasSuggestions && (
         <Section
           title={t('suggestions')}
           content={
@@ -221,6 +246,7 @@ export default function AnalysisDisplay({ analysis }) {
             </div>
           }
         />
+        )}
         {!isEmpty(data.final_thought) && (
           <Section title={t('finalThought')} content={<div>{data.final_thought}</div>} />
         )}
