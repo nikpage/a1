@@ -1,5 +1,11 @@
 # CLAUDE.md — a1 / mysuper.cv
 
+## Interaction rule (binding — never violate)
+
+NEVER use the `AskUserQuestion` tool / multiple-choice question box. Not once, ever.
+If you need to ask the user something, ask it in plain text in the chat and let
+them answer in plain text. The question-box artifact is forbidden in this repo.
+
 ## What this is
 
 CV and cover-letter generator with token-based billing. Deployed at **mysuper.cv**.
