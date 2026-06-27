@@ -143,14 +143,17 @@ export const handler = async (event) => {
       }
     }
 
-    // Use the master CV as the analysis source when available — it is structured,
-    // deduped, and pre-reasoned, giving the model cleaner signal and fewer tokens
-    // than the raw upload. Fall back to raw text only if the master build failed.
-    const analysisCv = master ? JSON.stringify(master) : cv_data;
+    // The DEEP pass reads the master CV when available — structured, deduped and
+    // pre-reasoned, giving the model cleaner signal and fewer tokens. The TEASER
+    // does NOT: its whole job is to surface what is wrong with the CV the user
+    // ACTUALLY uploaded, so it must read the RAW upload. Feeding it the cleaned
+    // master made every gate pass and killed the reason to sign up.
+    const deepCv = master ? JSON.stringify(master) : cv_data;
 
     // Teaser first: the cheap, high-impact read shown on the landing page. It is
     // also the SEED the deeper pass builds on — it now carries analysis.scenario_tags.
-    const result = await analyzeTeaser(analysisCv, jobText);
+    // Always reads the raw upload so its verdicts reflect the real, un-fixed CV.
+    const result = await analyzeTeaser(cv_data, jobText);
     let content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
@@ -166,7 +169,7 @@ export const handler = async (event) => {
     // The landing teaser stays a single cheap call.
     if (body.deep === true && verified?.user_id) {
       try {
-        const deep = await analyzeCvJob(analysisCv, jobText, file_name || 'cv.pdf', content);
+        const deep = await analyzeCvJob(deepCv, jobText, file_name || 'cv.pdf', content);
         if (deep?.output) {
           content = deep.output;
           analysisUsages.push(deep.gemini_usage);
