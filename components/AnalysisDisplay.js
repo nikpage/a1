@@ -79,6 +79,31 @@ export default function AnalysisDisplay({ analysis }) {
   return (
     <div className="analysis-fix">
       <div className="doc-viewer">
+        {(!isEmpty(a.hr_first_seconds) || !isEmpty(a.scan_reason)) && (
+          <Section
+            title={t('firstImpression', 'First Impression')}
+            content={
+              <div>
+                {!isEmpty(a.hr_first_seconds) && (
+                  <p style={{ fontStyle: 'italic', marginBottom: '0.75rem' }}>
+                    “{a.hr_first_seconds}”
+                  </p>
+                )}
+                {!isEmpty(a.scan_verdict) && (
+                  <Field label={t('sevenSecondScan', '7-second scan:')} value={String(a.scan_verdict).toUpperCase()} />
+                )}
+                <Field label="" value={a.scan_reason} />
+                {Array.isArray(a.scan_snags) && a.scan_snags.filter((s) => s && !isEmpty(s.point)).length > 0 && (
+                  <ul style={{ marginTop: '0.5rem' }}>
+                    {a.scan_snags.filter((s) => s && !isEmpty(s.point)).map((s, i) => (
+                      <li key={i}>• <strong>{s.point}</strong>{!isEmpty(s.detail) ? ` — ${s.detail}` : ''}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            }
+          />
+        )}
         <Section
           title={t('summary')}
           content={
