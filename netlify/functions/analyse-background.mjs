@@ -144,27 +144,34 @@ export const handler = async (event) => {
       }
     }
 
-    // SOURCE SPLIT — DATA from the master, GRAPHICS from the layout signal:
+    // SOURCE SPLIT — the TEASER reads the RAW CV; the DEEP pass reads the MASTER.
     //
-    // Both passes read the MASTER for all DATA judgments (dates, gaps, tenures,
-    // role overlaps, seniority). This is safe because the master build is now a
-    // PURE EXTRACTION — it keeps every role separate with verbatim dates and
-    // surfaces overlaps as a `role_overlap` conflict; it never merges two roles
-    // into one consultancy. So the data faults survive into the master, and the
-    // teaser reasons over clean structured facts instead of sloppily parsing raw
-    // text. Falls back to raw `cv_data` only if the master build failed.
+    // First impressions live in physical ORDER and SALIENCE. A recruiter — and a
+    // dumb ATS field-dump — hits whatever sits highest first: here, two short
+    // most-recent stints land before the spanning consultancy that explains them,
+    // and that unanswered "consulting, or fired fast?" doubt IS the signal. The
+    // master is an intelligent, reordered, reconciled record — it does that
+    // thinking for the recruiter (consultancy explains the stints, overlap logged
+    // as a resolved conflict) and dissolves the very signal the teaser exists to
+    // surface. So the TEASER reads the raw CV text, where order/salience/messiness
+    // are intact. The LAYOUT signal (column scramble, scanned/image — geometry the
+    // text can't show) still rides in on the request body and drives ONLY the ATS
+    // gate; absent on a re-analysis with no fresh upload, the ATS gate then judges
+    // on the text alone, which is fine.
     //
-    // The LAYOUT signal carries the GRAPHICS the master can't hold — column
-    // scramble, scanned/image — and drives ONLY the ATS gate. It rides in on the
-    // request body (computed at upload, used once, never stored); absent on a
-    // re-analysis with no fresh upload, so the ATS gate then judges on the record
-    // alone, which is fine.
+    // The DEEP pass reads the MASTER: it emits the rewrite blueprint AND
+    // master_flags, whose target.index / child_indexes point into the master's
+    // experience[] — so it must see that exact array. It is also handed the teaser,
+    // whose raw-based first-impression verdicts are carried forward verbatim
+    // (CARRIED_FROM_TEASER in prompts/analysis.js), so the warning the raw read
+    // caught survives into the deep record instead of being recomputed away.
     const layoutNote = formatLayoutForPrompt(layout);
-    const analysisCv = master ? JSON.stringify(master) : cv_data;
+    const teaserCv = cv_data;
+    const deepCv = master ? JSON.stringify(master) : cv_data;
 
     // Teaser first: the cheap, high-impact read shown on the landing page. It is
     // also the SEED the deeper pass builds on — it now carries analysis.scenario_tags.
-    const result = await analyzeTeaser(analysisCv, jobText, layoutNote);
+    const result = await analyzeTeaser(teaserCv, jobText, layoutNote);
     let content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
@@ -180,7 +187,7 @@ export const handler = async (event) => {
     // The landing teaser stays a single cheap call.
     if (body.deep === true && verified?.user_id) {
       try {
-        const deep = await analyzeCvJob(analysisCv, jobText, file_name || 'cv.pdf', content);
+        const deep = await analyzeCvJob(deepCv, jobText, file_name || 'cv.pdf', content);
         if (deep?.output) {
           content = deep.output;
           analysisUsages.push(deep.gemini_usage);

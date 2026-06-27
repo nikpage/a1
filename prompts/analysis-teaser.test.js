@@ -4,18 +4,19 @@ import { buildAnalysisTeaserPrompt } from './analysis-teaser.js';
 
 const userContent = (messages) => messages.find((m) => m.role === 'user').content;
 
-describe('buildAnalysisTeaserPrompt — data from the record, graphics from layout', () => {
-  it('frames the CV content as the faithful structured candidate record', () => {
-    const content = userContent(buildAnalysisTeaserPrompt('MY-RECORD-JSON', '', false));
-    expect(content).toContain('MY-RECORD-JSON');
-    expect(content).toMatch(/CANDIDATE RECORD/);
-    expect(content).toMatch(/faithful structured facts/i);
+describe('buildAnalysisTeaserPrompt — raw CV for first impressions, graphics from layout', () => {
+  it('frames the CV content as the raw CV text in its original order', () => {
+    const content = userContent(buildAnalysisTeaserPrompt('MY-RAW-CV-TEXT', '', false));
+    expect(content).toContain('MY-RAW-CV-TEXT');
+    expect(content).toMatch(/raw CV text/i);
+    expect(content).toMatch(/ORIGINAL ORDER/);
   });
 
-  it('tells the model that overlapping roles are a real signal, not a merge', () => {
+  it('forbids reconciling away a first-impression problem the page presents', () => {
     const content = userContent(buildAnalysisTeaserPrompt('rec', '', false));
     expect(content).toMatch(/role overlaps/i);
-    expect(content).toMatch(/not a merge/i);
+    expect(content).toMatch(/Do NOT reconcile away/i);
+    expect(content).toMatch(/two short most-recent stints sitting ABOVE a longer engagement/i);
   });
 
   it('injects the layout note when one is supplied', () => {
@@ -29,10 +30,10 @@ describe('buildAnalysisTeaserPrompt — data from the record, graphics from layo
     expect(content).not.toContain('undefined');
   });
 
-  it('drives the ATS verdict from the layout signal, NOT the structured record', () => {
+  it('drives the ATS verdict from the layout signal, since raw text lacks file geometry', () => {
     const content = userContent(buildAnalysisTeaserPrompt('cv', '', false, 'x'));
     expect(content).toMatch(/ats_verdict/);
-    expect(content).toMatch(/ONLY window into the real file is the LAYOUT SIGNAL/);
-    expect(content).toMatch(/do NOT infer parse problems from it/);
+    expect(content).toMatch(/window into that geometry is the LAYOUT SIGNAL/);
+    expect(content).toMatch(/NOT the physical geometry of the file/);
   });
 });
