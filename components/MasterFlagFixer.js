@@ -147,9 +147,13 @@ export default function MasterFlagFixer({ flags = [], onComplete }) {
         </p>
       </div>
 
-      {open.length > 0 && (
+      {open.length > 0 ? (
         <p className="text-sm text-gray-500 mb-3">
           {open.length} open {open.length === 1 ? 'question' : 'questions'} — your CVs are sharper once settled.
+        </p>
+      ) : (
+        <p className="text-sm text-green-700 mb-3">
+          Your record came through clean — nothing to settle. You’re ready to generate.
         </p>
       )}
 
@@ -175,7 +179,7 @@ export default function MasterFlagFixer({ flags = [], onComplete }) {
           onClick={onComplete}
           className="px-5 py-2.5 rounded bg-blue-600 text-white font-medium"
         >
-          {open.length > 0 ? `Finish my master (${open.length} left)` : 'Finish my master'}
+          {open.length > 0 ? `Continue (${open.length} left)` : 'Continue'}
         </button>
       </div>
     </div>

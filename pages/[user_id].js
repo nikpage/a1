@@ -49,7 +49,11 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
     }
   }, [user_id]);
 
-  const showOnboarding = !onboardingDone && flags.length > 0;
+  // The onboarding blueprint renders for every newly-analysed user, whether or
+  // not the AI surfaced open questions. A clean record simply shows the 4-step
+  // tracker with no question cards and a Continue button — it must always be
+  // visible post-registration, never gated on flags existing.
+  const showOnboarding = !onboardingDone && !!analysis;
 
   return (
     <>
