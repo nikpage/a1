@@ -32,16 +32,10 @@ export async function upsertUser(user_id, phone_hash = null, email = null) {
 }
 
 // Upsert CV
-// Upsert the extracted CV text and (optionally) its layout sidecar. The layout
-// is the column/scanned/date signal the landing teaser reads to judge the ATS
-// gate against the real document; it is only written when capture succeeded, so
-// a null layout never clobbers a previously stored one.
-export async function upsertCV(user_id, cv_data, cv_layout = undefined) {
-  const row = { user_id, cv_data };
-  if (cv_layout !== undefined && cv_layout !== null) row.cv_layout = cv_layout;
+export async function upsertCV(user_id, cv_data) {
   const { data, error } = await supabase
     .from('cv_data')
-    .upsert([row], { onConflict: ['user_id'] });
+    .upsert([{ user_id, cv_data }], { onConflict: ['user_id'] });
   if (error) throw new Error(`UpsertCV failed: ${error.message || JSON.stringify(error)}`);
   return data;
 }

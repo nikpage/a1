@@ -65,14 +65,16 @@ export default async function handler(req, res) {
 
       try {
         await upsertUser(user_id, phone_hash)
-        await upsertCV(user_id, text, layout)
+        await upsertCV(user_id, text)
         // Task 1.5: the stray write to data_gen was removed — upsertCV already persists
         // the CV to cv_data; the misspelled data_gen table write was a duplicate and is gone.
 
         // Task 1.2: mint a session cookie so subsequent protected routes trust this visitor
         setSessionCookie(res, { user_id })
 
-        return res.status(200).json({ user_id })
+        // The layout signal is NOT persisted — it is read once by the teaser and
+        // thrown away. Hand it back so it rides in-flight on the analysis kick.
+        return res.status(200).json({ user_id, layout })
       } catch (dbErr) {
         logger.error('DB error:', dbErr.message)
         return res.status(500).json({ error: 'DB error', details: String(dbErr) })

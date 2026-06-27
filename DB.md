@@ -19,7 +19,6 @@
 | `user_id` | text | — | PK, FK → users |
 | `cv_data` | text | — | Extracted CV text |
 | `master_cv` | jsonb | — | Per-user MASTER CV (source-of-truth): structured career record built once from `cv_data` by the background analysis worker and reused by every later match. Built/merged via `buildOrMergeMaster()` in `utils/openai.js`; read/written via `getMasterCv()` / `saveMasterCv()`. Added in `005_master_cv.sql`. |
-| `cv_layout` | jsonb | — | LAYOUT SIGNAL sidecar — how the uploaded file itself parses: `{ format, pages, columns, multi_column, has_tables, has_images, text_chars, likely_scanned, date_formats[], mixed_date_formats }`. Captured at extract time in `utils/extractCvText.js`; nullable (best-effort). The landing teaser reads this (NOT the master) so its ATS/scan gates judge the real document. Added in `006_cv_layout.sql`. |
 | `cv_file_url` | text | — | Storage URL |
 | `created_at` | timestamp | now() | |
 
@@ -126,4 +125,4 @@ The authenticated `DELETE /api/delete-account` route runs this same cascade via 
 
 ## Migrations
 
-`scripts/migrations/` holds SQL applied manually in the Supabase SQL editor. `001_fix_transactions_user_id.sql` converts `transactions.user_id` from `uuid` to `text`; after it runs, drop the `::text` casts above. `005_master_cv.sql` adds the `cv_data.master_cv` JSONB column. `006_cv_layout.sql` adds the `cv_data.cv_layout` JSONB column.
+`scripts/migrations/` holds SQL applied manually in the Supabase SQL editor. `001_fix_transactions_user_id.sql` converts `transactions.user_id` from `uuid` to `text`; after it runs, drop the `::text` casts above. `005_master_cv.sql` adds the `cv_data.master_cv` JSONB column.

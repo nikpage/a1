@@ -102,12 +102,13 @@ describe('upload-cv — session cookie minted on successful upload', () => {
     expect(body.user_id).toBeDefined();
     expect(typeof body.user_id).toBe('string');
 
-    // The captured layout sidecar must be persisted alongside the text so the
-    // teaser can later read it (third arg to upsertCV).
+    // The layout signal is NOT persisted — only the text is saved — and it is
+    // returned in the response so it can ride in-flight to the analysis call.
     expect(mockUpsertCV).toHaveBeenCalledTimes(1);
-    const [, savedText, savedLayout] = mockUpsertCV.mock.calls[0];
-    expect(savedText).toMatch(/John Smith/);
-    expect(savedLayout).toMatchObject({ format: 'pdf', multi_column: false });
+    const upsertArgs = mockUpsertCV.mock.calls[0];
+    expect(upsertArgs[1]).toMatch(/John Smith/);
+    expect(upsertArgs).toHaveLength(2); // (user_id, text) — no layout argument
+    expect(body.layout).toMatchObject({ format: 'pdf', multi_column: false });
 
     // Cookie must be present
     const setCookie = res.getHeader('Set-Cookie');

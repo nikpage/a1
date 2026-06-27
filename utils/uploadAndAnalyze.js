@@ -41,6 +41,11 @@ export async function uploadAndAnalyze({
   const finalCreatedAt = created_at ?? fallbackCreatedAt ?? null;
   const finalFileName = file_name || (file && file.name) || 'Unnamed file';
 
+  // The layout signal (column/scanned/date hints for the teaser's ATS gate) is
+  // never stored — it rides in-flight from the upload response to the analysis
+  // kick below, is read once by the teaser, and discarded. No file, no layout.
+  let layout = null;
+
   // 1. Upload the file if one was provided. Every upload mints/refreshes the
   //    identity and rebuilds the master from this CV — one CV, one profile.
   if (file) {
@@ -54,6 +59,7 @@ export async function uploadAndAnalyze({
       throw new Error(uploadData.error || 'Upload failed');
     }
     finalUserId = uploadData.user_id;
+    layout = uploadData.layout ?? null;
   }
 
   if (!finalUserId) throw new Error('Missing user_id for analysis');
@@ -115,6 +121,7 @@ export async function uploadAndAnalyze({
       file_name: finalFileName,
       analysis_id,
       deep,
+      layout,
     }),
   });
   if (kickRes.status !== 202 && !kickRes.ok) {

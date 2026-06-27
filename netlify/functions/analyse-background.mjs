@@ -82,7 +82,7 @@ export const handler = async (event) => {
     return { statusCode: 400 };
   }
 
-  const { created_at, file_name, analysis_id, confirmedJob } = body;
+  const { created_at, file_name, analysis_id, confirmedJob, layout } = body;
   let { jobText } = body;
 
   const user_id = verified?.user_id || body.user_id;
@@ -99,12 +99,11 @@ export const handler = async (event) => {
   }
 
   try {
-    let query = supabase.from('cv_data').select('cv_data, cv_layout').eq('user_id', user_id);
+    let query = supabase.from('cv_data').select('cv_data').eq('user_id', user_id);
     if (created_at) query = query.eq('created_at', created_at);
     const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
 
     const cv_data = data?.[0]?.cv_data;
-    const cv_layout = data?.[0]?.cv_layout || null;
     if (error || !cv_data) {
       await saveError(user_id, analysis_id, 'CV not found for analysis');
       return { statusCode: 202 };
@@ -147,16 +146,20 @@ export const handler = async (event) => {
 
     // SOURCE SPLIT — each pass reads the input it is actually qualified to judge:
     //
-    // TEASER reads the RAW extracted CV text + the layout sidecar, NEVER the
+    // TEASER reads the RAW extracted CV text + the layout signal, NEVER the
     // master. The teaser's whole job is to judge the real document a recruiter/ATS
     // receives — column scramble, scanned/image, unreadable dates, buried
     // credentials. The master is cleaned and structured, so feeding it the master
     // erases every one of those faults and the ATS/scan gates falsely PASS.
     //
+    // The layout signal rides in on the request body (computed at upload, used
+    // here once, never stored). Absent on a re-analysis with no fresh upload —
+    // the teaser then judges on text alone, which is fine.
+    //
     // DEEP pass reads the master (structured, deduped, pre-reasoned) — it is the
     // strategic layer, and interpretive/structural calls belong here on the strong
     // model, not baked in by the cheap master build.
-    const layoutNote = formatLayoutForPrompt(cv_layout);
+    const layoutNote = formatLayoutForPrompt(layout);
     const deepCv = master ? JSON.stringify(master) : cv_data;
 
     // Teaser first: the cheap, high-impact read shown on the landing page. It is
