@@ -144,27 +144,27 @@ export const handler = async (event) => {
       }
     }
 
-    // SOURCE SPLIT — each pass reads the input it is actually qualified to judge:
+    // SOURCE SPLIT — DATA from the master, GRAPHICS from the layout signal:
     //
-    // TEASER reads the RAW extracted CV text + the layout signal, NEVER the
-    // master. The teaser's whole job is to judge the real document a recruiter/ATS
-    // receives — column scramble, scanned/image, unreadable dates, buried
-    // credentials. The master is cleaned and structured, so feeding it the master
-    // erases every one of those faults and the ATS/scan gates falsely PASS.
+    // Both passes read the MASTER for all DATA judgments (dates, gaps, tenures,
+    // role overlaps, seniority). This is safe because the master build is now a
+    // PURE EXTRACTION — it keeps every role separate with verbatim dates and
+    // surfaces overlaps as a `role_overlap` conflict; it never merges two roles
+    // into one consultancy. So the data faults survive into the master, and the
+    // teaser reasons over clean structured facts instead of sloppily parsing raw
+    // text. Falls back to raw `cv_data` only if the master build failed.
     //
-    // The layout signal rides in on the request body (computed at upload, used
-    // here once, never stored). Absent on a re-analysis with no fresh upload —
-    // the teaser then judges on text alone, which is fine.
-    //
-    // DEEP pass reads the master (structured, deduped, pre-reasoned) — it is the
-    // strategic layer, and interpretive/structural calls belong here on the strong
-    // model, not baked in by the cheap master build.
+    // The LAYOUT signal carries the GRAPHICS the master can't hold — column
+    // scramble, scanned/image — and drives ONLY the ATS gate. It rides in on the
+    // request body (computed at upload, used once, never stored); absent on a
+    // re-analysis with no fresh upload, so the ATS gate then judges on the record
+    // alone, which is fine.
     const layoutNote = formatLayoutForPrompt(layout);
-    const deepCv = master ? JSON.stringify(master) : cv_data;
+    const analysisCv = master ? JSON.stringify(master) : cv_data;
 
     // Teaser first: the cheap, high-impact read shown on the landing page. It is
     // also the SEED the deeper pass builds on — it now carries analysis.scenario_tags.
-    const result = await analyzeTeaser(cv_data, jobText, layoutNote);
+    const result = await analyzeTeaser(analysisCv, jobText, layoutNote);
     let content = result?.output;
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
@@ -180,7 +180,7 @@ export const handler = async (event) => {
     // The landing teaser stays a single cheap call.
     if (body.deep === true && verified?.user_id) {
       try {
-        const deep = await analyzeCvJob(deepCv, jobText, file_name || 'cv.pdf', content);
+        const deep = await analyzeCvJob(analysisCv, jobText, file_name || 'cv.pdf', content);
         if (deep?.output) {
           content = deep.output;
           analysisUsages.push(deep.gemini_usage);
