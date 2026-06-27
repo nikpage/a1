@@ -15,19 +15,12 @@ import { scenarioList, scenarioHandling } from './scenarios.js';
 // Fields carried verbatim from the teaser — the delta call must NOT re-emit them.
 const CARRIED_FROM_TEASER = [
   'cv_data',
-  'analysis.overall_score',
-  'analysis.ats_score',
-  'analysis.overall_commentary',
   'analysis.scenario_tags',
-  'analysis.career_arc',
-  'analysis.parallel_experience',
   'analysis.hr_first_seconds',
   'analysis.ats_verdict / ats_reason / ats_snags',
   'analysis.scan_verdict / scan_reason / scan_snags',
   'analysis.buried_credentials',
   'analysis.nuance_clarifications',
-  'job_match.positioning_strategy',
-  'final_thought',
 ];
 
 export function buildAnalysisPrompt(cvText, jobText, hasJobText, teaser = null) {
@@ -41,19 +34,19 @@ WRITING QUALITY (non-negotiable): Reference actual phrases, roles, companies and
 
 LANGUAGE & FACTS: Detect the CV's language and write ALL output in it, even if the job ad is in another language. Base cultural norms on the job's country; fall back to EU norms if unknown. Use only what is actually in the CV and job ad — never invent employers, dates, skills or numbers.
 
-REFRAME vs ADD (hard rule — governs every instruction you give the CV writer): RE-EMPHASISE, REORDER, RELABEL and UPGRADE THE WORDING of experience the CV already proves; never INSERT experience it does not. Changing which real work leads, reframing a role around a different facet of what was genuinely done, cutting weak material, and replacing weak or under-labelled phrasing with a stronger, higher-impact or more ATS-standard EQUIVALENT for the same thing are all legitimate and encouraged — they operate on content that exists. A word swap is allowed ONLY when the substitute denotes the SAME underlying fact: same scope, seniority, domain and meaning ("coordinated releases" → "led release management" only if they genuinely led it). Concrete facts — employer, location, dates, tools, numbers — are immutable: never replace a real one with a different one because it reads better (a candidate based in Berlin is in Berlin, not London; a city is a fact, not a keyword). Introducing a skill, tool, technology, domain, metric or achievement the CV does not evidence — or upgrading a term into something that claims MORE than was actually done — is fabrication, however well it matches the job ad. A career pivot is won by reframing genuine transferable work, never by manufacturing experience in the target domain. Any capability the candidate lacks belongs ONLY in ats_keywords_missing (advice to the user) or as forward-looking cover-letter aspiration — it must NEVER become a CV instruction, a positioning claim, or a skill to highlight.${hasTeaser ? `\n\nYou have ALREADY produced a fast first-pass teaser read of this CV (supplied below). This step is the DEEP pass: you build the full rewrite plan ON TOP of that first read. Treat the teaser's findings as established and consistent — do not contradict its scores, verdicts or facts — and spend your effort only on the deeper fields it held back.` : ''}`;
+REFRAME vs ADD (hard rule — governs every instruction you give the CV writer): RE-EMPHASISE, REORDER, RELABEL and UPGRADE THE WORDING of experience the CV already proves; never INSERT experience it does not. Changing which real work leads, reframing a role around a different facet of what was genuinely done, cutting weak material, and replacing weak or under-labelled phrasing with a stronger, higher-impact or more ATS-standard EQUIVALENT for the same thing are all legitimate and encouraged — they operate on content that exists. A word swap is allowed ONLY when the substitute denotes the SAME underlying fact: same scope, seniority, domain and meaning ("coordinated releases" → "led release management" only if they genuinely led it). Concrete facts — employer, location, dates, tools, numbers — are immutable: never replace a real one with a different one because it reads better (a candidate based in Berlin is in Berlin, not London; a city is a fact, not a keyword). Introducing a skill, tool, technology, domain, metric or achievement the CV does not evidence — or upgrading a term into something that claims MORE than was actually done — is fabrication, however well it matches the job ad. A career pivot is won by reframing genuine transferable work, never by manufacturing experience in the target domain. Any capability the candidate lacks belongs ONLY in ats_keywords_missing (advice to the user) or as forward-looking cover-letter aspiration — it must NEVER become a CV instruction, a positioning claim, or a skill to highlight.${hasTeaser ? `\n\nYou have ALREADY produced a fast first-pass teaser read of this CV (supplied below). This step is the DEEP pass: you build the full rewrite plan ON TOP of that first read. Treat the teaser's findings as established and consistent — do not contradict its verdicts or facts — and spend your effort only on the deeper fields it held back.` : ''}`;
 
   // ---- delta (teaser already done) -------------------------------------------
   if (hasTeaser) {
     const userContent = `
-You already produced this first-pass TEASER read of the candidate (VALID JSON). It is ESTABLISHED — treat its scores, verdicts, facts and language as fixed truth:
+You already produced this first-pass TEASER read of the candidate (VALID JSON). It is ESTABLISHED — treat its verdicts, facts and language as fixed truth (the scores are yours to set in this pass, consistent with those verdicts):
 
 ${JSON.stringify(teaser, null, 2)}
 
 DO NOT RECOMPUTE OR RE-EMIT these — they are carried forward verbatim from the teaser:
 ${CARRIED_FROM_TEASER.map((f) => `- ${f}`).join('\n')}
 
-Your job now is ONLY the DEEP fields below — the rewrite blueprint the teaser deliberately held back. Stay consistent with the teaser (same language, same facts, same scores); expand, never contradict.
+Your job now is ONLY the DEEP fields below — the rewrite blueprint the teaser deliberately held back. Stay consistent with the teaser (same language, same facts, same verdicts); expand, never contradict.
 
 ANALYSIS FRAMEWORK (for the delta only):
 1. Write all output in the SAME language the teaser used.
@@ -73,6 +66,12 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 ` : ''}- candidate_core: 2-3 sentences capturing WHO THIS CANDIDATE IS across any job — the durable through-line of what they bring (the kind of value, leadership, or domain depth that travels with them), drawn ONLY from real evidence in the CV. Job-agnostic: do not mention the target job. This becomes the candidate's editable profile and a steering principle for future documents — identity-level and true, never aspirational or invented.
 - summary: 1-2 sentence attention-grabbing TL;DR of the candidate's real situation that makes the reader want to keep reading.
 - jobs_extracted: ARRAY of every role { title, company, dates, location, achievements }, most-recent first, concurrency marked.
+- analysis.overall_score / analysis.ats_score: each "0-10", honest; consistent with the teaser's verdicts.
+- analysis.overall_commentary: 2-3 sentences. Open by naming a concrete thing this person actually did (a fact, no adjective), then name the ONE tension diluting it as a fixable thing. No praise words.
+- analysis.career_arc: 1-3 sentences telling the trajectory in plain factual terms — what they did, in what order. No hype.
+- analysis.parallel_experience: side facts from the CV only (speaking, teaching, certifications, advisory), stated plainly.
+- job_match.positioning_strategy: 2-3 sentences on how to position this candidate to win — re-emphasising real experience, never claiming what the CV doesn't prove; follow the scenario handling above.
+- final_thought: 1-2 sentences — name the current overall_score and the ONE highest-impact change that would move it up. Plain, concrete, no hype.
 - analysis.cv_format_analysis: MUST review length (with page count), structure and design.
 - analysis.cultural_fit: ${hasJobText ? `review the CV against the customs of the JOB's country.` : `review the CV against the customs of its OWN country (cv_data.Country). Do NOT invent a target country, city or market.`}
 - analysis.red_flags: the FULL list of specific concerns a recruiter would flag (e.g. "14-month gap 2021-2022", "4 jobs in 3 years"), each short and concrete — this expands beyond the top concerns shown in the teaser. Empty array if genuinely none.
@@ -100,6 +99,11 @@ OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field a
   "job_data": { "Position": "${hasJobText ? '' : 'n/a'}", "Seniority": "${hasJobText ? '' : 'n/a'}", "Company": "${hasJobText ? '' : 'n/a'}", "Industry": "${hasJobText ? '' : 'n/a'}", "Country": "${hasJobText ? '' : 'n/a'}", "HR Contact": "" },
   "jobs_extracted": [],
   "analysis": {
+    "overall_score": "0-10",
+    "ats_score": "0-10",
+    "overall_commentary": "",
+    "career_arc": "",
+    "parallel_experience": "",
     "cv_format_analysis": "",
     "cultural_fit": "",
     "red_flags": [],
@@ -117,7 +121,8 @@ OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field a
   "job_match": {
     "keyword_match": "n/a",
     "inferred_keywords": "n/a",
-    "career_scenario": "n/a"
+    "career_scenario": "n/a",
+    "positioning_strategy": ""
   },
   "generation_framework": {
     "cv_blueprint": {
@@ -127,7 +132,8 @@ OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field a
       "summary_draft": "",
       "skills_to_highlight": []
     }
-  }${hasJobText ? `,
+  },
+  "final_thought": ""${hasJobText ? `,
   "job_extraction": {
     "position_title": "",
     "company": "",

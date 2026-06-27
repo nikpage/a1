@@ -84,7 +84,6 @@ export default function TeaserDisplay({ analysis }) {
 
   const a = data.analysis || {};
   const cv = data.cv_data || {};
-  const positioning = data.job_match?.positioning_strategy;
   const questions = dedupe((a.nuance_clarifications || []).map(asText).filter((v) => !isEmpty(v)));
   const atsSnags = (a.ats_snags || []).filter((s) => s && !isEmpty(s.point));
   const scanSnags = (a.scan_snags || []).filter((s) => s && !isEmpty(s.point));
@@ -108,7 +107,7 @@ export default function TeaserDisplay({ analysis }) {
     { title: t('gate2'), pass: scanPass, reason: a.scan_reason, snags: scanSnags, failHead: t('scanFailHead'), quote: a.hr_first_seconds },
   ];
 
-  const hasAsset = creds.length > 0 || !isEmpty(positioning);
+  const hasAsset = creds.length > 0;
 
   return (
     <div className="teaser">
@@ -189,7 +188,6 @@ export default function TeaserDisplay({ analysis }) {
               ))}
             </div>
           )}
-          {!isEmpty(positioning) && <p className="asset-note">{asText(positioning)}</p>}
         </div>
       )}
 
@@ -259,7 +257,6 @@ export default function TeaserDisplay({ analysis }) {
         .asset-row { display:flex; gap:14px; flex-wrap:wrap; margin:14px 0 4px; }
         .chip { background:var(--green-bg); border:1px solid #cfeede; color:var(--teal-dk); border-radius:999px; padding:7px 15px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:8px; }
         .chip span { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--green); background:#fff; border-radius:5px; padding:2px 6px; }
-        .asset-note { color:var(--ink); font-size:15px; line-height:1.6; margin:0; }
 
         .q-list { display:flex; flex-direction:column; gap:14px; }
         .q-item { display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:start; }
