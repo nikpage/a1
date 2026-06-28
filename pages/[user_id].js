@@ -22,6 +22,7 @@ function extractFlags(analysis) {
 export default function UserPage({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [analysis, setAnalysis] = useState('');
   const [flags, setFlags] = useState([]);
+  const [experience, setExperience] = useState([]);
   const [onboardingDone, setOnboardingDone] = useState(false);
   const { t } = useTranslation();
 
@@ -42,6 +43,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
         .then(data => {
           setAnalysis(data.analysis || '');
           setFlags(extractFlags(data.analysis));
+          setExperience(Array.isArray(data.experience) ? data.experience : []);
         })
         .catch(() => {
           setAnalysis('');
@@ -68,7 +70,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
       <main className="max-w-4xl mx-auto px-4 py-10">
         {showOnboarding ? (
           <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
-            <MasterFlagFixer flags={flags} onComplete={() => setOnboardingDone(true)} />
+            <MasterFlagFixer flags={flags} experience={experience} onComplete={() => setOnboardingDone(true)} />
           </div>
         ) : analysis ? (
           <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">

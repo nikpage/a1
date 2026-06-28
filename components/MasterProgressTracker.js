@@ -1,17 +1,18 @@
 // components/MasterProgressTracker.js
 //
 // The 4-step onboarding blueprint shown at the top of the master-build flow.
-// Steps 1 and 2 are already done by the time the user lands here (the teaser scan
-// and the background master build/standardization). Step 3 is the active Flag
-// Fixer. Step 4 is locked until onboarding completes and the user enters USE.
+// Step 1 (Add Your CV — upload + background master build) is already done by the
+// time the user lands here. Step 2 (Verify Master Profile) is the active step:
+// the user confirms the structured record and settles any open questions. Steps 3
+// and 4 are locked until onboarding completes and the user enters USE.
 //
 //   states per step: 'done' | 'active' | 'locked'
 
 const STEPS = [
-  { key: 'scan', label: 'Raw Scan' },
-  { key: 'standardize', label: 'Standardization & Restructuring' },
-  { key: 'flags', label: 'Resolve Open Questions' },
-  { key: 'generate', label: 'Generate Winner CV' },
+  { key: 'addcv', label: 'Add Your CV' },
+  { key: 'master', label: 'Verify Master Profile' },
+  { key: 'job', label: 'Add Target Job' },
+  { key: 'create', label: 'Create Super CV & Cover Letter' },
 ];
 
 function dot(state) {
@@ -21,7 +22,7 @@ function dot(state) {
 }
 
 export default function MasterProgressTracker({ states }) {
-  // states: { scan, standardize, flags, generate }
+  // states: { addcv, master, job, create }
   return (
     <ol className="flex items-center w-full mb-8" aria-label="Onboarding progress">
       {STEPS.map((step, i) => {
