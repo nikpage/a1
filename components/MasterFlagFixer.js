@@ -164,23 +164,23 @@ function FlagCard({ flag, onResolved }) {
 
       {flag.type === 'structural' && (
         <div className="mt-3">
+          <div className="flex flex-wrap gap-2">
+            <button disabled={busy} onClick={() => send('merge', draft.trim())}
+              className="px-3 py-1.5 text-sm rounded bg-green-600 text-white disabled:opacity-50">
+              Group them under this
+            </button>
+            <button disabled={busy} onClick={() => send('separate', draft.trim())}
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 bg-white text-gray-600">
+              No — separate roles
+            </button>
+          </div>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            rows={3}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-            placeholder="In your own words — e.g. these were both contracts under my consulting business"
+            rows={2}
+            className="mt-2 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            placeholder="Optional: in your own words — e.g. these were contracts under my consulting business"
           />
-          <div className="mt-2 flex gap-2">
-            <button disabled={busy || !draft.trim()} onClick={() => send('merge', draft.trim())}
-              className="px-3 py-1.5 text-sm rounded bg-green-600 text-white disabled:opacity-50">
-              Apply
-            </button>
-            <button disabled={busy} onClick={() => send('reject')}
-              className="px-3 py-1.5 text-sm rounded border border-gray-300 bg-white text-gray-600">
-              Leave as separate
-            </button>
-          </div>
         </div>
       )}
 

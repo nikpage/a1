@@ -47,10 +47,6 @@ const GAP_OPTIONS = [
   'Study / retraining',
   'Travel / personal project',
 ];
-const OVERLAP_OPTIONS = [
-  'They ran concurrently — I held this alongside the others',
-  'Those roles were engagements delivered under this',
-];
 
 // Parse one endpoint ("November 2022", "2022", "Present") into a comparable
 // month index (year*12 + month-1), plus whether it was month-precise. Returns
@@ -158,30 +154,39 @@ export function computeMasterIssues(master, now = new Date()) {
   // explained by an ongoing umbrella is never ALSO short-tenure-flagged, on this
   // scan or any re-scan.
   const ongoing = recent.filter((s) => s.ongoing);
-  const covered = new Set();
-  for (const o of ongoing) {
-    for (const r of recent) {
-      if (r.index === o.index) continue;
-      if (rolesOverlap(o, r)) covered.add(r.index);
-    }
-  }
 
   const issues = [];
   const answered = (i) => !!String(experience[i]?.clarification || '').trim();
 
-  // --- Overlap (ongoing role spanning others) → one clarify on the ongoing role
+  // --- Overlap (ongoing role spanning others) → a MERGE decision --------------
+  // The ambiguity is the RELATIONSHIP, not the dates: are these roles delivered
+  // UNDER the ongoing role, or held concurrently as separate jobs? Only the user
+  // knows. We ask it as a structural merge — "add them under this" (they become
+  // nested contracts and drop out of the timeline) vs "separate" (recorded as a
+  // clarification on the ongoing role, which leaves the short stints standalone
+  // and therefore still in need of their own explanation below).
+  //
+  // A child is suppressed from the short-tenure check ONLY while its overlap is
+  // still OPEN. Once the user says "separate" (the ongoing role gets a
+  // clarification), the suppression lifts and the short stints surface. Once
+  // merged, the children are nested away and never scanned again.
+  const suppressedShort = new Set();
   for (const o of ongoing) {
     const children = recent.filter((r) => r.index !== o.index && rolesOverlap(o, r));
     if (children.length === 0) continue;
-    if (answered(o.index)) continue;
+    if (answered(o.index)) continue; // user already chose "separate" → don't re-ask, don't suppress
+    children.forEach((c) => suppressedShort.add(c.index));
     const names = children.map((c) => c.entry?.company || c.entry?.role).filter(Boolean).join(', ');
     issues.push({
       id: `overlap-${o.index}`,
-      type: 'clarify',
+      type: 'structural',
       kind: 'overlap',
       target: { section: 'experience', index: o.index },
-      question: `Your ${roleLabel(o.entry)} (${o.entry?.dates}) runs across ${children.length} other role${children.length === 1 ? '' : 's'}${names ? ` — ${names}` : ''}. Did it run concurrently, or were those delivered under it?`,
-      options: OVERLAP_OPTIONS,
+      question: `Your ${roleLabel(o.entry)} (${o.entry?.dates}) runs across ${children.length} other role${children.length === 1 ? '' : 's'}${names ? ` — ${names}` : ''}. Were those delivered under it, or held separately at the same time?`,
+      merge: {
+        parent: { company: o.entry?.company || '', role: o.entry?.role || '', dates: o.entry?.dates || '', location: o.entry?.location || '' },
+        child_indexes: children.map((c) => c.index),
+      },
     });
   }
 
@@ -189,7 +194,7 @@ export function computeMasterIssues(master, now = new Date()) {
   for (const s of recent) {
     if (s.ongoing) continue;
     if (!(s.startPrecise && s.endPrecise)) continue; // year-only is too coarse to call "short"
-    if (covered.has(s.index)) continue;        // an ongoing umbrella already explains it
+    if (suppressedShort.has(s.index)) continue; // its overlap is still unanswered — settle that first
     if (s.end - s.start >= SHORT_TENURE_MAX_MONTHS) continue;
     if (answered(s.index)) continue;
     const months = s.end - s.start;

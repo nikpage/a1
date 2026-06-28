@@ -21,21 +21,20 @@ const realMaster = {
 };
 
 describe('computeMasterIssues — real CV', () => {
-  it('raises exactly one issue: the ongoing consultancy overlapping later roles', () => {
+  it('first asks ONE thing: were the overlapping roles delivered under the consultancy?', () => {
     const issues = computeMasterIssues(realMaster, NOW);
     expect(issues).toHaveLength(1);
     const [issue] = issues;
     expect(issue.kind).toBe('overlap');
-    expect(issue.type).toBe('clarify');
+    expect(issue.type).toBe('structural'); // a merge decision, not a free-text note
     expect(issue.target.index).toBe(2); // the Nik Page consultancy
-    expect(Array.isArray(issue.options) && issue.options.length).toBeGreaterThan(0);
+    expect(issue.merge.child_indexes).toEqual(expect.arrayContaining([0, 1, 3]));
   });
 
-  it('does NOT short-tenure-flag Salsita or wflow — they are covered by the consultancy', () => {
+  it('while the overlap is unanswered, Salsita/wflow are NOT yet short-tenure-flagged', () => {
     const issues = computeMasterIssues(realMaster, NOW);
     const shortIdx = issues.filter((i) => i.kind === 'short_tenure').map((i) => i.target.index);
-    expect(shortIdx).not.toContain(0); // Salsita (11mo)
-    expect(shortIdx).not.toContain(1); // wflow (9mo)
+    expect(shortIdx).toEqual([]);
   });
 
   it('finds no gaps — the ongoing consultancy fills the recent timeline', () => {
@@ -43,10 +42,31 @@ describe('computeMasterIssues — real CV', () => {
     expect(issues.some((i) => i.kind === 'gap')).toBe(false);
   });
 
-  it('is idempotent: once the overlap is answered, a re-scan asks nothing', () => {
-    const answered = JSON.parse(JSON.stringify(realMaster));
-    answered.experience[2].clarification = 'Ran concurrently alongside the employed roles.';
-    expect(computeMasterIssues(answered, NOW)).toHaveLength(0);
+  // The exact dependency: a short tenure is resolved ONLY if the job is grouped
+  // under the consultancy. If the user says "separate", the short stints stand.
+  it('answering "separate" surfaces Salsita (11mo) and wflow (9mo) as short tenures', () => {
+    const sep = JSON.parse(JSON.stringify(realMaster));
+    sep.experience[2].clarification = 'Held concurrently as separate roles.';
+    const issues = computeMasterIssues(sep, NOW);
+    expect(issues.some((i) => i.kind === 'overlap')).toBe(false); // not re-asked
+    const shortIdx = issues.filter((i) => i.kind === 'short_tenure').map((i) => i.target.index).sort();
+    expect(shortIdx).toEqual([0, 1]); // Salsita + wflow; Blockchain (26mo) is not short
+  });
+
+  it('grouping under the consultancy (children nested away) leaves nothing to ask', () => {
+    // applyStructuralMerge removes the children from experience[] and nests them
+    // under the parent — simulate the post-merge master: only the consultancy and
+    // the older standalone roles remain.
+    const merged = {
+      experience: [
+        { ...realMaster.experience[2], contracts: [realMaster.experience[0], realMaster.experience[1], realMaster.experience[3]] },
+        realMaster.experience[4],
+        realMaster.experience[5],
+        realMaster.experience[6],
+        realMaster.experience[7],
+      ],
+    };
+    expect(computeMasterIssues(merged, NOW)).toHaveLength(0);
   });
 });
 

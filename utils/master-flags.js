@@ -187,7 +187,20 @@ export function resolveFlag(master, flag, resolution) {
   }
 
   if (flag.type === 'structural') {
-    if (decision === 'reject') return clone(master);
+    if (decision === 'reject') return clone(master); // dismissed without a decision; no change
+    // "separate" — the user says the overlapping roles were NOT delivered under
+    // the ongoing role. Persist that as a clarification on the ongoing role so the
+    // question isn't re-asked and the short stints are no longer suppressed.
+    if (decision === 'separate') {
+      const index = flag.target?.index;
+      if (typeof index !== 'number') {
+        throw new Error('resolveFlag: separate decision needs target.index');
+      }
+      const note = (typeof resolution.value === 'string' && resolution.value.trim())
+        ? resolution.value.trim()
+        : 'Held concurrently as separate roles — not delivered under this engagement.';
+      return applyClarification(master, { index, note });
+    }
     if (!flag.merge) throw new Error('resolveFlag: structural flag is missing its merge hint');
     return applyStructuralMerge(master, {
       parent: flag.merge.parent,

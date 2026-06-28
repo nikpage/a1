@@ -161,4 +161,24 @@ describe('resolveFlag', () => {
     expect(parent.contracts).toHaveLength(2);
     expect(parent.merge_note).toBe('My consulting practice.');
   });
+
+  it('separate on a structural flag records a clarification on the ongoing role (no merge)', () => {
+    const before = sampleMaster();
+    const flag = {
+      type: 'structural',
+      target: { section: 'experience', index: 0 },
+      merge: { parent: { company: 'X' }, child_indexes: [1, 2] },
+    };
+    const after = resolveFlag(before, flag, { decision: 'separate', value: 'Held these concurrently.' });
+    // The note lands on the ongoing role; nothing is nested, the array is intact.
+    expect(after.experience[0].clarification).toBe('Held these concurrently.');
+    expect(after.experience).toHaveLength(before.experience.length);
+    expect(after.experience.some((e) => Array.isArray(e.contracts))).toBe(false);
+  });
+
+  it('separate falls back to a default note when none is typed', () => {
+    const flag = { type: 'structural', target: { section: 'experience', index: 0 }, merge: { parent: { company: 'X' }, child_indexes: [1] } };
+    const after = resolveFlag(sampleMaster(), flag, { decision: 'separate' });
+    expect(after.experience[0].clarification).toMatch(/separate/i);
+  });
 });
