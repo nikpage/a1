@@ -234,8 +234,31 @@ function applyVerifyCorrections(master, corr) {
 
   const badSkills = new Set((corr.unsupported_skills || []).map(normWs));
   const badMetrics = new Set((corr.unsupported_metrics || []).map(normWs));
-  if ((badSkills.size || badMetrics.size) && Array.isArray(master.experience)) {
+  const badAchievements = new Set((corr.unsupported_achievements || []).map(normWs));
+  // Real role kept, but an invented atomic field reverted to empty (never a guess).
+  const roleKey = (r) => `${normWs(r && r.company)} ${normWs(r && r.role)}`;
+  const inventedLocations = new Set((corr.invented_locations || []).filter((r) => r && typeof r === 'object').map(roleKey));
+  const inventedDates = new Set((corr.invented_dates || []).filter((r) => r && typeof r === 'object').map(roleKey));
+  const badRoles = new Set(
+    (corr.unsupported_roles || [])
+      .filter((r) => r && typeof r === 'object')
+      .map((r) => `${normWs(r.company)} ${normWs(r.role)}`)
+  );
+
+  if (Array.isArray(master.experience)) {
+    // Drop wholly-fabricated roles first (company + role both absent from source).
+    if (badRoles.size) {
+      master.experience = master.experience.filter(
+        (role) => !badRoles.has(`${normWs(role.company)} ${normWs(role.role)}`)
+      );
+    }
     for (const role of master.experience) {
+      if (inventedLocations.size && inventedLocations.has(roleKey(role))) role.location = '';
+      if (inventedDates.size && inventedDates.has(roleKey(role))) role.dates = '';
+      if (badAchievements.size && Array.isArray(role.achievements)) {
+        // Drop wholly-invented achievements (text not evidenced by the source).
+        role.achievements = role.achievements.filter((a) => !badAchievements.has(normWs(a.text)));
+      }
       for (const a of role.achievements || []) {
         if (badSkills.size && Array.isArray(a.skills_utilized)) {
           a.skills_utilized = a.skills_utilized.filter((s) => !badSkills.has(normWs(s)));
@@ -246,6 +269,110 @@ function applyVerifyCorrections(master, corr) {
       }
     }
   }
+
+  // Drop transferable_notes whose observation is an invented strength.
+  const badNotes = new Set((corr.unsupported_notes || []).map(normWs));
+  if (badNotes.size && Array.isArray(master.transferable_notes)) {
+    master.transferable_notes = master.transferable_notes.filter(
+      (n) => !badNotes.has(normWs(n.observation))
+    );
+  }
+  return master;
+}
+
+// Deterministic per-role grounding: every HARD fact (title, dates, location,
+// metric) must appear in the SOURCE text of ITS OWN role's section — not merely
+// somewhere in the CV. A fact that doesn't ground is removed from the
+// authoritative field and parked in `master.needs_confirmation`: never silently
+// kept (so nothing fabricated is asserted) and never silently destroyed (the
+// original value is preserved for the user to confirm). No AI, no guessing, no
+// synonyms. Roles whose company name is nowhere in the CV are pulled out for
+// confirmation rather than left to stand as invented jobs.
+function groundAtomicFactsPerRole(master, sourceText) {
+  if (!master || !Array.isArray(master.experience) || !master.experience.length) return master;
+
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const hay = norm(sourceText);
+  if (!hay) return master;
+
+  const flag = (entry) => {
+    if (!Array.isArray(master.needs_confirmation)) master.needs_confirmation = [];
+    master.needs_confirmation.push(entry);
+  };
+
+  // 1. Anchor each role to a position in the source by its company name, walking
+  //    successive occurrences in master order so two stints at one employer map
+  //    to two different blocks.
+  const cursorByCompany = new Map();
+  const anchored = [];
+  const kept = [];
+  for (const role of master.experience) {
+    const company = norm(role.company);
+    if (!company) {
+      // No company to anchor on — keep the role but surface it; we can't verify it.
+      flag({ kind: 'role', company: role.company || '', role: role.role || '', reason: 'no_company_to_verify' });
+      kept.push(role);
+      continue;
+    }
+    const from = cursorByCompany.get(company) || 0;
+    let pos = hay.indexOf(company, from);
+    if (pos === -1 && from > 0) pos = hay.indexOf(company); // reuse first occurrence if exhausted
+    if (pos === -1) {
+      // Company appears NOWHERE in the CV → invented job. Pull it for confirmation.
+      flag({ kind: 'role', company: role.company || '', role: role.role || '', reason: 'company_not_in_source' });
+      continue;
+    }
+    cursorByCompany.set(company, pos + company.length);
+    anchored.push({ role, pos });
+    kept.push(role);
+  }
+
+  // 2. Block boundaries: each anchored role owns the source text from its company
+  //    up to the next anchored role's company.
+  const sorted = [...anchored].sort((a, b) => a.pos - b.pos);
+  const blockOf = new Map();
+  for (let i = 0; i < sorted.length; i++) {
+    const end = i + 1 < sorted.length ? sorted[i + 1].pos : hay.length;
+    blockOf.set(sorted[i].role, hay.slice(sorted[i].pos, end));
+  }
+
+  // 3. Ground each fact against its OWN block only. Ungrounded → blank + park.
+  for (const { role } of anchored) {
+    const block = blockOf.get(role) || '';
+    // Snapshot the role's identity BEFORE any blanking, so every flag for this
+    // role still names it even after its own title has been stripped.
+    const label = { company: role.company || '', role: role.role || '' };
+    const checkField = (field) => {
+      const val = norm(role[field]);
+      if (val && !block.includes(val)) {
+        flag({ kind: 'field', ...label, field, value: role[field] });
+        role[field] = '';
+      }
+    };
+    checkField('role');
+    checkField('location');
+
+    // dates: every 4-digit year in the value must appear in this role's block.
+    if (role.dates) {
+      const years = String(role.dates).match(/\d{4}/g) || [];
+      if (years.length && years.some((y) => !block.includes(y))) {
+        flag({ kind: 'field', ...label, field: 'dates', value: role.dates });
+        role.dates = '';
+      }
+    }
+
+    // metric: each achievement's quantified result must appear in this block.
+    for (const a of role.achievements || []) {
+      const m = norm(a.metric);
+      if (m && !block.includes(m)) {
+        flag({ kind: 'field', ...label, field: 'metric', value: a.metric });
+        a.metric = '';
+      }
+    }
+  }
+
+  // 4. Keep original order; the invented (company_not_in_source) roles are gone.
+  master.experience = kept;
   return master;
 }
 
@@ -255,6 +382,9 @@ function applyVerifyCorrections(master, corr) {
 export async function verifyMaster(master, sourceText, trustedMaster = null) {
   try {
     pruneVoiceSamples(master, sourceText, trustedMaster);
+    // Deterministic per-role grounding runs FIRST and is authoritative; the AI
+    // pass below is only a secondary net over the prose it can't ground.
+    groundAtomicFactsPerRole(master, sourceText);
     const messages = buildMasterVerifyPrompt({ master, sourceText, trustedMaster });
     const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
     const gemini_usage = geminiUsage('master-cv verify', data, GEMINI_VERIFY_MODEL);

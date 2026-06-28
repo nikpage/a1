@@ -79,14 +79,24 @@ Find only these:
 1. COUNTRY: the country of the candidate's MOST-RECENT role (from that role's location). If master.identity.country disagrees with it, report the correct value.
 2. BAD GAPS: any entry in master.gaps that contradicts the data — i.e. it claims a field is missing when that field is actually populated in the master. Report the exact gap string to remove.
 3. UNSUPPORTED SKILLS: any string in a skills_utilized array that the SOURCE does not support at all — a tool, technology, domain or claim never evidenced. Do NOT flag reasonable relabels of work that is described; only clear inventions.
-4. UNSUPPORTED METRICS: any non-empty "metric" value that states a number/quantity the SOURCE does not contain.${trustedMaster ? `\n\nNOTE: this is a MERGE. Treat facts present in the TRUSTED PRIOR RECORD as already verified — do NOT flag them as unsupported even if the new SOURCE text doesn't mention them.` : ''}
+4. UNSUPPORTED METRICS: any non-empty "metric" value that states a number/quantity the SOURCE does not contain.
+5. UNSUPPORTED ACHIEVEMENTS: any achievement whose "text" asserts a responsibility, project, deliverable, result or claim the SOURCE never evidences. A relabel/reframe of work the source DOES describe is fine — flag only achievements that are wholly invented (the underlying work is nowhere in the source). Report the exact "text" string to delete.
+6. UNSUPPORTED ROLES: any entry in master.experience whose employer AND role together appear nowhere in the SOURCE — a wholly invented job. Do NOT flag a real role just because some of its detail is thin. Report it as { "company": "", "role": "" } copied verbatim from the master entry.
+7. UNSUPPORTED NOTES: any transferable_notes entry whose "observation" or "evidence" rests on experience the SOURCE never describes — an invented strength or invented evidence. Do NOT flag a fair inference from real evidence; only ones with no basis in the source. Report the exact "observation" string to delete.
+8. INVENTED LOCATION: a REAL role (kept in master.experience) whose "location" names a place the SOURCE nowhere attaches to that role — typically the source gave NO location for it and one was filled in. The role stays; only its invented location is wrong. Report the entry as { "company": "", "role": "" } so its location is blanked. Do NOT flag a location the source states for that role, nor a trivial reformat of one it states.
+9. INVENTED DATES: a REAL role whose "dates" state a period the SOURCE nowhere attaches to that role — usually the source gave no dates and a period was invented. The role stays; only its invented dates are wrong. Report { "company": "", "role": "" } so its dates are blanked. Do NOT flag a reformat of dates the source does state (e.g. "Jan 2020" vs "2020").${trustedMaster ? `\n\nNOTE: this is a MERGE. Treat facts present in the TRUSTED PRIOR RECORD as already verified — do NOT flag them as unsupported even if the new SOURCE text doesn't mention them.` : ''}
 
 Return VALID JSON only, exactly this shape — empty arrays / empty string where there is nothing to correct:
 {
-  "country": "",            // corrected most-recent-role country, or "" to leave as-is
-  "remove_gaps": [],        // exact gap strings to delete from master.gaps
-  "unsupported_skills": [], // exact skill strings to delete from any skills_utilized
-  "unsupported_metrics": [] // exact metric strings to clear
+  "country": "",                 // corrected most-recent-role country, or "" to leave as-is
+  "remove_gaps": [],             // exact gap strings to delete from master.gaps
+  "unsupported_skills": [],      // exact skill strings to delete from any skills_utilized
+  "unsupported_metrics": [],     // exact metric strings to clear
+  "unsupported_achievements": [],// exact achievement "text" strings to delete from any role
+  "unsupported_roles": [],       // [{ "company": "", "role": "" }] experience entries to delete
+  "unsupported_notes": [],       // exact transferable_notes "observation" strings to delete
+  "invented_locations": [],      // [{ "company": "", "role": "" }] real roles whose location is invented → blanked
+  "invented_dates": []           // [{ "company": "", "role": "" }] real roles whose dates are invented → blanked
 }`;
 
   const user = `MASTER:
