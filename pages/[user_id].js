@@ -7,18 +7,6 @@ import { verifyToken, getTokenFromReq } from '../lib/auth';
 import { getUserStats } from '../utils/database';
 import { useTranslation } from 'react-i18next';
 
-// Pull the deep analysis's master_flags out of the stored analysis blob, whether
-// it arrives as a JSON string or an already-parsed object.
-function extractFlags(analysis) {
-  if (!analysis) return [];
-  let obj = analysis;
-  if (typeof analysis === 'string') {
-    try { obj = JSON.parse(analysis); } catch { return []; }
-  }
-  const flags = obj?.master_flags;
-  return Array.isArray(flags) ? flags : [];
-}
-
 export default function UserPage({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [analysis, setAnalysis] = useState('');
   const [flags, setFlags] = useState([]);
@@ -42,7 +30,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
         })
         .then(data => {
           setAnalysis(data.analysis || '');
-          setFlags(extractFlags(data.analysis));
+          setFlags(Array.isArray(data.flags) ? data.flags : []);
           setExperience(Array.isArray(data.experience) ? data.experience : []);
         })
         .catch(() => {

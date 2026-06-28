@@ -12,15 +12,10 @@
 
 import { scenarioList, scenarioHandling } from './scenarios.js';
 
-// master_flags — the onboarding Flag Fixer's raw material. The CV you are given
-// IS the user's structured master record; flag ONLY genuine ambiguities that
-// need the USER to decide before the master is canonical. Do NOT flag strengths,
-// clear facts, or style preferences. Be sparing — 0 to ~5 flags, only real ones.
-const MASTER_FLAGS_INSTRUCTION = `- master_flags: ARRAY (0 to ~5; [] if the record is already clean) of items that need the USER to settle before the master is canonical. Flag ONLY real ones — never strengths, never clear facts, never taste. Three kinds:
-  • "single" — one field on ONE existing entry is wrong/unclear and you can propose the corrected value (a mis-parsed date, an unclear or under-labelled title, a wrong country). Emit: { "id": "<unique>", "type": "single", "confidence": 0.0-1.0 (your certainty in proposed_value), "question": "<plain question to the user>", "target": { "section": "experience"|"identity"|"candidate_core", "index": <0-based index into the master experience[] array, omit unless section is experience>, "field": "company"|"role"|"dates"|"location"|"country" }, "proposed_value": "<the corrected value>" }.
-  • "structural" — the SHAPE of the record is in question (e.g. several short stints that may actually be contracts under one consulting business, or a span that may be a gap vs a role). You cannot safely decide it alone, so ASK. Emit: { "id": "<unique>", "type": "structural", "confidence": 0.0-1.0, "question": "<plain question naming the specific entries>", "merge": { "parent": { "company": "", "role": "", "dates": "" }, "child_indexes": [<0-based indexes into experience[] to nest under the parent>] } }. The "merge" hint is your best guess at the grouping; the user confirms or corrects it in free text. Use a "structural" flag with a merge hint ONLY for grouping/nesting questions.
-  • "clarify" — a real RED FLAG a recruiter would stop on that ONLY the candidate can explain: a short tenure that ended quickly, an employment gap, an overlap. You cannot guess the reason, so ASK — and offer the likely answers as quick options. Emit: { "id": "<unique>", "type": "clarify", "confidence": 0.0-1.0, "question": "<plain question naming the specific role/period, e.g. 'Why did your role at Salsita (Nov 2022–Oct 2023) end after 11 months?'>", "target": { "section": "experience", "index": <0-based index into experience[] of the role in question> }, "options": [<2–4 short likely answers grounded in this case, e.g. "Contract ended", "Company restructured / layoff", "Better opportunity", "Relocation">] }. Raise a "clarify" flag for each genuine short-tenure / gap red flag you would otherwise list in analysis.red_flags — this is the onboarding step that lets the user resolve those flags. The user can pick an option or type their own. Keep the options age- and gender-NEUTRAL: never assume the person's gender or life stage — say "Parental / caregiver leave" not "maternity leave", "Health or family reasons" not "illness", and never imply age. Infer NOTHING about gender or age from a name.
-  ALWAYS give the user something to react to, never a bare question: every "single" flag MUST carry a proposed_value, every "clarify" flag MUST carry options, and every "structural" flag MUST carry a merge hint — UNLESS you genuinely lack the data to make even a confident guess, in which case omit that suggestion rather than fabricating one. NEVER invent a flag to look thorough. target.index and child_indexes are positions in the master's experience array exactly as given to you.`;
+// NOTE: the onboarding "open questions" the user settles on the master are no
+// longer produced here. A model reading the master reconciles its gaps/overlaps
+// away and reports "clean", so those questions are computed deterministically
+// from the master's verbatim dates in utils/master-issues.js — NOT by this pass.
 
 // Fields carried verbatim from the teaser — the delta call must NOT re-emit them.
 const CARRIED_FROM_TEASER = [
@@ -101,7 +96,6 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely.
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer adapts this into the requested tone, so make it factual and dense, not stylised.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
-${MASTER_FLAGS_INSTRUCTION}
 
 OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field above):
 {
@@ -144,7 +138,6 @@ OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field a
       "skills_to_highlight": []
     }
   },
-  "master_flags": [],
   "final_thought": ""${hasJobText ? `,
   "job_extraction": {
     "position_title": "",
@@ -229,7 +222,6 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Use plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer will adapt this draft into the requested tone, so make it factual and dense, not stylised.
 - analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
-${MASTER_FLAGS_INSTRUCTION}
 
 JSON OUTPUT SCHEMA:
 {
@@ -286,7 +278,6 @@ JSON OUTPUT SCHEMA:
       "skills_to_highlight": []
     }
   },
-  "master_flags": [],
   "final_thought": ""${hasJobText ? `,
   "job_extraction": {
     "position_title": "",
