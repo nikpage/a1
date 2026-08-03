@@ -100,7 +100,13 @@ export default function StartFreshDbModal({
           </button>
         </div>
       </>
-      {loading && <LoadingModal onClose={onClose} />}
+      {loading && (
+        <LoadingModal
+          title="Analysing your CV"
+          message="Matching your CV against the job ad..."
+          onClose={onClose}
+        />
+      )}
     </StartFreshHeader>
   );
 }

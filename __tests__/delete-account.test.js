@@ -43,9 +43,16 @@ describe('DELETE /api/delete-account', () => {
     expect(mockDeleteUserData).toHaveBeenCalledWith(USER_A);
     expect(res.statusCode).toBe(200);
     expect(res._getJSONData()).toEqual({ deleted: true });
-    const cookie = res.getHeader('Set-Cookie');
-    expect(cookie).toMatch(/auth-token=;/);
-    expect(cookie).toMatch(/Max-Age=0/);
+    // Sign-out must kill BOTH cookie identities: the host-only session cookie
+    // and its domain-scoped twin. Clearing only one leaves the other being sent
+    // on every request, which shadows the next login for good.
+    const cookies = [].concat(res.getHeader('Set-Cookie'));
+    const hostOnly = cookies.filter(c => /^auth-token=;/.test(c) && !/Domain=/i.test(c));
+    const domainScoped = cookies.filter(c => /^auth-token=;/.test(c) && /Domain=/i.test(c));
+    expect(hostOnly).toHaveLength(1);
+    expect(hostOnly[0]).toMatch(/Max-Age=0/);
+    expect(domainScoped.length).toBeGreaterThan(0);
+    domainScoped.forEach(c => expect(c).toMatch(/Max-Age=0/));
   });
 
   test('deleteUserData throws → error propagates', async () => {

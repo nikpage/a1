@@ -56,6 +56,29 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [loadingModalMessage, setLoadingModalMessage] = useState('');
   const [loadingModalTitle, setLoadingModalTitle] = useState('');
   const [panelMode, setPanelMode] = useState("tokens");
+  // Download-token balance handed to TokenPurchasePanel. The panel picks its
+  // content from this number, so opening the panel without it renders an empty
+  // box — always open via openBuyPanel(), never by setting showBuyPanel directly.
+  const [tokensRemaining, setTokensRemaining] = useState(null);
+
+  // Single entry point for the buy panel: resolves the token balance first so
+  // the panel always has the number it needs. `knownTokens` skips the fetch
+  // when the caller has just read it.
+  const openBuyPanel = async (mode, knownTokens) => {
+    let tokens = knownTokens;
+    if (typeof tokens !== 'number') {
+      try {
+        const res = await fetch(`/api/tokens?user_id=${user_id}`);
+        const data = await res.json();
+        tokens = res.ok && typeof data.tokens === 'number' ? data.tokens : 0;
+      } catch {
+        tokens = 0;
+      }
+    }
+    setTokensRemaining(tokens);
+    setPanelMode(mode);
+    setShowBuyPanel(true);
+  };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -143,8 +166,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       const tokensData = await tokensRes.json();
       if (!tokensRes.ok || tokensData.generations_left < selected.length) {
         setShowModal(false);
-        setPanelMode("generations");
-        setShowBuyPanel(true);
+        await openBuyPanel("generations", tokensData.tokens);
         setShowLoadingModal(false);
         return;
       }
@@ -161,13 +183,11 @@ export default function TabbedViewer({ user_id, analysisText }) {
           if (!res.ok) {
             if (data.detail) console.error('[Generation detail]', JSON.stringify(data.detail, null, 2));
             if (data.error === "NO_GENERATIONS_LEFT") {
-              setPanelMode("generations");
-              setShowBuyPanel(true);
+              await openBuyPanel("generations");
               throw new Error("Stopped: Out of generations");
             }
             if (data.error === "NO_TOKENS_LEFT") {
-              setPanelMode("tokens");
-              setShowBuyPanel(true);
+              await openBuyPanel("tokens");
               throw new Error("Stopped: Out of tokens");
             }
             throw new Error(data.error || `Generation failed for ${docType}`);
@@ -220,13 +240,11 @@ export default function TabbedViewer({ user_id, analysisText }) {
       if (data.gemini_usage) logGemini(data.gemini_usage);
       if (!res.ok) {
         if (data.error === "NO_GENERATIONS_LEFT") {
-          setPanelMode("generations");
-          setShowBuyPanel(true);
+          await openBuyPanel("generations");
           return;
         }
         if (data.error === "NO_TOKENS_LEFT") {
-          setPanelMode("tokens");
-          setShowBuyPanel(true);
+          await openBuyPanel("tokens");
           return;
         }
         alert(data.error || t('regenFailed'));
@@ -397,7 +415,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     cvText={cvVersions[cvCurrentIndex]}
                     coverText={coverVersions[coverCurrentIndex]}
                     activeTab={activeTab}
-                    onTokenFail={() => setShowBuyPanel(true)}
+                    onTokenFail={() => openBuyPanel("tokens")}
                   />
                 </div>
               </>
@@ -449,7 +467,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     cvText={cvVersions[cvCurrentIndex]}
                     coverText={coverVersions[coverCurrentIndex]}
                     activeTab={activeTab}
-                    onTokenFail={() => setShowBuyPanel(true)}
+                    onTokenFail={() => openBuyPanel("tokens")}
                   />
                 </div>
               </>
@@ -482,6 +500,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
             onClose={() => setShowBuyPanel(false)}
             user_id={user_id}
             mode={panelMode}
+            tokensRemaining={tokensRemaining ?? 0}
           />
         </BaseModal>
       )}

@@ -227,11 +227,25 @@ export async function getGenDataByAnalysisId(user_id, analysis_id) {
   return data;
 }
 
-// Get user by email
+// Get user by email — the ORIGINAL account, oldest first.
+//
+// Never demand exactly one row here. `users.email` has no unique constraint and
+// uploads mint an anonymous account before login knows who the visitor is, so an
+// email can legitimately be on several rows. A single-row request errors out on
+// duplicates (PGRST116) and, if that error is swallowed, reads as "no such user"
+// — which makes login adopt the throwaway upload account, stamp the email onto
+// it, and create yet another duplicate on every attempt. Oldest wins so the
+// established account (with the user's tokens and history) is the one returned,
+// and the error is surfaced rather than discarded.
 export async function getUserByEmail(email) {
-  const { data } = await getAdminSupabase()
-    .from('users').select('user_id, email').eq('email', email).maybeSingle();
-  return data;
+  const { data, error } = await getAdminSupabase()
+    .from('users')
+    .select('user_id, email')
+    .eq('email', email)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] || null;
 }
 
 // Update user email

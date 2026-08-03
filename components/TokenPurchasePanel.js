@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, tokensRemaining }) {
+export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, tokensRemaining = 0 }) {
   const { t } = useTranslation('tokenPurchasePanel');
   const [loading, setLoading] = useState(false);
 
@@ -36,8 +36,11 @@ export default function TokenPurchasePanel({ onClose, mode = "tokens", user_id, 
     { quantity: 30, price: 42, label: '30 Downloads' },
   ];
 
+  // These two must never both be false, or the panel renders an empty box with
+  // no way out. Purchase is the fallback: anything that isn't "generations left
+  // to spend" lands on pricing, including a missing/NaN balance.
   const showGenerationsMsg = mode === "generations" && tokensRemaining > 0;
-  const showPurchasePanel = mode === "tokens" || tokensRemaining === 0;
+  const showPurchasePanel = !showGenerationsMsg;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
