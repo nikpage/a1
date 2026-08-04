@@ -134,9 +134,167 @@ function roleLabel(entry) {
   return `${role}${company}`;
 }
 
+// The stored `gen_data.content` column holds the analysis as a JSON STRING (the
+// background function always JSON.stringify()s before insert — see
+// netlify/functions/analyse-background.mjs). Callers (get-analysis.js,
+// resolve-flag.js) load it via getLatestAnalysis() and must hand computeMasterIssues
+// a parsed object; this helper is the single place that does that parsing so both
+// routes treat "string or already-object" identically. Never throws — a malformed
+// or absent value degrades to null (context-free issues), never a 500.
+export function parseAnalysisContent(content) {
+  if (!content) return null;
+  if (typeof content === 'object') return content;
+  if (typeof content !== 'string') return null;
+  try {
+    const obj = JSON.parse(content);
+    return obj && typeof obj === 'object' ? obj : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Analysis-assisted enrichment (TASK 2): the teaser analysis already noticed the
+// same overlaps/gaps/short-tenures and wrote about them in plain English
+// (analysis.scan_snags, hr_first_seconds, nuance_clarifications, red_flags). We
+// match those sentences to an issue by company/role/date substring — purely
+// textual, no AI, no fabrication. A non-match leaves the issue exactly as it was.
+// ---------------------------------------------------------------------------
+
+// Pull every candidate sentence out of the stored analysis object, most specific
+// first. `analysisContent` is the full parsed gen_data payload (has a nested
+// `.analysis` block); also accept the sub-object directly for callers that
+// already unwrapped it.
+function collectAnalysisSnippets(analysisContent) {
+  try {
+    const a = analysisContent?.analysis && typeof analysisContent.analysis === 'object'
+      ? analysisContent.analysis
+      : analysisContent;
+    if (!a || typeof a !== 'object') return [];
+    const out = [];
+    if (Array.isArray(a.scan_snags)) {
+      for (const s of a.scan_snags) {
+        const t = [s?.point, s?.detail].filter((x) => typeof x === 'string' && x.trim()).join(' — ').trim();
+        if (t) out.push(t);
+      }
+    }
+    if (typeof a.hr_first_seconds === 'string' && a.hr_first_seconds.trim()) {
+      out.push(a.hr_first_seconds.trim());
+    }
+    if (Array.isArray(a.nuance_clarifications)) {
+      for (const t of a.nuance_clarifications) if (typeof t === 'string' && t.trim()) out.push(t.trim());
+    }
+    if (Array.isArray(a.red_flags)) {
+      for (const t of a.red_flags) if (typeof t === 'string' && t.trim()) out.push(t.trim());
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+// All 4-digit years in a verbatim dates string, deduped.
+function yearsOf(dates) {
+  const matches = String(dates || '').match(/\d{4}/g) || [];
+  return [...new Set(matches)];
+}
+
+// Does this sentence talk about THIS experience entry? Company/role substring,
+// or every year in the entry's dates appearing in the sentence.
+function snippetMatchesEntry(snippetLower, entry) {
+  const company = String(entry?.company || '').trim();
+  const role = String(entry?.role || '').trim();
+  if (company.length > 2 && snippetLower.includes(company.toLowerCase())) return true;
+  if (role.length > 2 && snippetLower.includes(role.toLowerCase())) return true;
+  const yrs = yearsOf(entry?.dates);
+  if (yrs.length > 0 && yrs.every((y) => snippetLower.includes(y))) return true;
+  return false;
+}
+
+// A sentence that explicitly says the ambiguity is ALREADY settled (not merely
+// described) — conservative on purpose: only drop the question on an unambiguous
+// "this isn't actually an issue" cue.
+const RESOLVED_CUE = /already explain|not a (?:real |genuine )?(?:gap|concern|issue|red flag)|no (?:real |genuine )?gap|non-issue/i;
+
+// Does the sentence propose "delivered under the umbrella" (merge) or "held
+// separately" (separate) for an overlap issue?
+function suggestForOverlap(text) {
+  // Merge cues checked FIRST: a sentence can say "...delivered under X rather
+  // than held separately" — the affirmative clause is the actual proposal, and
+  // a bare "separat(e/ely)" can show up inside its own negation.
+  if (/delivered under|held under|contracts? under|worked under/i.test(text)) return 'merge';
+  if (/\bunder\b/i.test(text) && /(consultanc|engagement|umbrella|own business|own company)/i.test(text)) return 'merge';
+  if (/separat/i.test(text)) return 'separate';
+  return null;
+}
+
+// Does the sentence contain one of the deterministic reason options verbatim?
+// If so, that's the confident suggestion — never a paraphrase, never invented.
+function suggestForClarify(text, options) {
+  const low = text.toLowerCase();
+  for (const opt of options) {
+    if (low.includes(opt.toLowerCase())) return opt;
+  }
+  return null;
+}
+
+// Attach { context, suggestion } to issues from the analysis text, and drop any
+// issue an unambiguous cue says is already settled. Never throws: any failure
+// here leaves `issues` completely unchanged.
+function enrichWithAnalysis(issues, experience, analysisContent) {
+  const snippets = collectAnalysisSnippets(analysisContent);
+  if (snippets.length === 0) return issues;
+
+  const out = [];
+  for (const issue of issues) {
+    try {
+      const indexes = issue.kind === 'overlap'
+        ? [issue.target.index, ...(issue.merge?.child_indexes || [])]
+        : [issue.target.index];
+      const entries = indexes.map((i) => experience[i]).filter(Boolean);
+      if (entries.length === 0) {
+        out.push(issue);
+        continue;
+      }
+
+      const matched = snippets.find((sn) => {
+        const low = sn.toLowerCase();
+        return entries.some((e) => snippetMatchesEntry(low, e));
+      });
+
+      if (!matched) {
+        out.push(issue);
+        continue;
+      }
+      if (RESOLVED_CUE.test(matched)) {
+        continue; // dropped — the analysis already settled this one
+      }
+
+      const next = { ...issue, context: matched };
+      const suggestion = issue.kind === 'overlap'
+        ? suggestForOverlap(matched)
+        : suggestForClarify(matched, issue.kind === 'short_tenure' ? TENURE_OPTIONS : GAP_OPTIONS);
+      if (suggestion) next.suggestion = suggestion;
+      out.push(next);
+    } catch {
+      out.push(issue); // never let a matching failure drop or corrupt an issue
+    }
+  }
+  return out;
+}
+
 // Compute the open clarify questions for a master. Pure: no network, no AI, no
 // clock dependency beyond `now` (injected for testability; defaults to today).
-export function computeMasterIssues(master, now = new Date()) {
+//
+// Second arg accepts either a Date (legacy call shape, still used by every
+// existing caller/test) or an options object { now, analysis }. `analysis` is
+// the parsed gen_data analysis payload (see parseAnalysisContent) — when
+// supplied, issues get textually-matched `context`/`suggestion` fields (TASK 2).
+export function computeMasterIssues(master, opts = {}) {
+  const isDateArg = opts instanceof Date;
+  const now = isDateArg ? opts : (opts?.now instanceof Date ? opts.now : new Date());
+  const analysisContent = isDateArg ? null : (opts?.analysis || null);
+
   const experience = Array.isArray(master?.experience) ? master.experience : [];
   const nowIndex = now.getFullYear() * 12 + now.getMonth();
   const cutoff = (now.getFullYear() - RECENT_WINDOW_YEARS) * 12; // older than this: don't ask
@@ -245,5 +403,15 @@ export function computeMasterIssues(master, now = new Date()) {
     });
   }
 
-  return issues;
+  // Rank: overlap (structural, highest-leverage — answering it can remove the
+  // gap/short-tenure questions below it) first, then gap, then short_tenure.
+  const KIND_RANK = { overlap: 0, gap: 1, short_tenure: 2 };
+  const ordered = [...issues].sort((a, b) => (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9));
+
+  if (!analysisContent) return ordered;
+  try {
+    return enrichWithAnalysis(ordered, experience, analysisContent);
+  } catch {
+    return ordered; // a matching failure must never break the base issue list
+  }
 }

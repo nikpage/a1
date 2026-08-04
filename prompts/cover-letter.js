@@ -26,11 +26,13 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '') {
     - Build a short narrative: why this candidate, why this role, what they bring. Use concrete proof from the master CV (real achievements, numbers, scope from \`experience[]\`), not adjectives.
     - **Match the candidate's own voice.** The master CV's \`voice_samples\` are verbatim sentences in the candidate's real writing style — echo their cadence, vocabulary and register so the letter reads as written by them, not by a machine. Use them for tone only; never copy a sample wholesale or treat it as a fact about this role.
     - The cover letter is the right place to address concerns: where relevant, briefly and confidently turn the items in \`analysis.red_flags\` into a strength or a non-issue. Do this with a light touch — explain, don't apologise. Let any such pivot grow naturally out of the surrounding story rather than appearing as an abrupt, bolted-on sentence.
+    - Where a gap or short tenure is genuinely relevant and the matching master \`experience[]\` entry carries a \`clarification\`, you may use the candidate's own words to defuse it in ONE brief clause — confident, factual, never apologetic, never a whole paragraph, and only when it strengthens the letter. Never invent a reason the clarification does not state; if there is no clarification, do not speculate about the gap.
     - Work through the guidance in \`analysis.action_items["Cover Letter"]\` (Points to Address, Narrative Flow, Tone and Style).
 
     ${humanVoiceRules()}
 
     # Rules
+    - LENGTH (hard constraint): the letter body must be 250-350 words total, in 3-4 short paragraphs, comfortably under one page. This word budget does NOT include the date, salutation, or signature block. Use \`generation_framework.target_cover_words\` from the analysis when present (default guidance ~275, allowed range 250-350); if it is absent, stay within the 250-350 default. Before you return the letter, count the body against this ceiling and cut if you're over — a longer letter is not a stronger one.
     - Start with only the date at the top. Do NOT add the applicant's name or contact details above the salutation.
     - Salutation: "Dear [First Name] [Last Name]" if a name is available, otherwise "Dear Hiring Manager". No titles like Mr./Ms.
     - No generic filler, invented claims, or placeholders like [Company Address].

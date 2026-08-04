@@ -39,7 +39,9 @@ WRITING QUALITY (non-negotiable): Reference actual phrases, roles, companies and
 
 LANGUAGE & FACTS: Detect the CV's language and write ALL output in it, even if the job ad is in another language. Base cultural norms on the job's country; fall back to EU norms if unknown. Use only what is actually in the CV and job ad — never invent employers, dates, skills or numbers.
 
-REFRAME vs ADD (hard rule — governs every instruction you give the CV writer): RE-EMPHASISE, REORDER, RELABEL and UPGRADE THE WORDING of experience the CV already proves; never INSERT experience it does not. Changing which real work leads, reframing a role around a different facet of what was genuinely done, cutting weak material, and replacing weak or under-labelled phrasing with a stronger, higher-impact or more ATS-standard EQUIVALENT for the same thing are all legitimate and encouraged — they operate on content that exists. A word swap is allowed ONLY when the substitute denotes the SAME underlying fact: same scope, seniority, domain and meaning ("coordinated releases" → "led release management" only if they genuinely led it). Concrete facts — employer, location, dates, tools, numbers — are immutable: never replace a real one with a different one because it reads better (a candidate based in Berlin is in Berlin, not London; a city is a fact, not a keyword). Introducing a skill, tool, technology, domain, metric or achievement the CV does not evidence — or upgrading a term into something that claims MORE than was actually done — is fabrication, however well it matches the job ad. A career pivot is won by reframing genuine transferable work, never by manufacturing experience in the target domain. Any capability the candidate lacks belongs ONLY in ats_keywords_missing (advice to the user) or as forward-looking cover-letter aspiration — it must NEVER become a CV instruction, a positioning claim, or a skill to highlight.${hasTeaser ? `\n\nYou have ALREADY produced a fast first-pass teaser read of this CV (supplied below). This step is the DEEP pass: you build the full rewrite plan ON TOP of that first read. Treat the teaser's findings as established and consistent — do not contradict its verdicts or facts — and spend your effort only on the deeper fields it held back.` : ''}`;
+REFRAME vs ADD (hard rule — governs every instruction you give the CV writer): RE-EMPHASISE, REORDER, RELABEL and UPGRADE THE WORDING of experience the CV already proves; never INSERT experience it does not. Changing which real work leads, reframing a role around a different facet of what was genuinely done, cutting weak material, and replacing weak or under-labelled phrasing with a stronger, higher-impact or more ATS-standard EQUIVALENT for the same thing are all legitimate and encouraged — they operate on content that exists. A word swap is allowed ONLY when the substitute denotes the SAME underlying fact: same scope, seniority, domain and meaning ("coordinated releases" → "led release management" only if they genuinely led it). Concrete facts — employer, location, dates, tools, numbers — are immutable: never replace a real one with a different one because it reads better (a candidate based in Berlin is in Berlin, not London; a city is a fact, not a keyword). Introducing a skill, tool, technology, domain, metric or achievement the CV does not evidence — or upgrading a term into something that claims MORE than was actually done — is fabrication, however well it matches the job ad. A career pivot is won by reframing genuine transferable work, never by manufacturing experience in the target domain. Any capability the candidate lacks belongs ONLY in ats_keywords_missing (advice to the user) or as forward-looking cover-letter aspiration — it must NEVER become a CV instruction, a positioning claim, or a skill to highlight.
+
+CANDIDATE-AUTHORITATIVE CLARIFICATIONS (hard rule, wherever the master CV is your source): where an experience[] entry carries a clarification or merge_note, that text is the CANDIDATE'S OWN ANSWER to a question this product already asked them about their history — an authoritative fact about their own career, not model inference. A gap or short tenure that carries a clarification is EXPLAINED: do NOT report it as an open red flag, and any action_item touching it must reflect the explanation rather than ask the question again. experience[].contracts[] are real engagements delivered UNDER that parent entry, not separate jobs — the timeline is the parent's; never count the nested children as job-hopping or short tenures. The never-fabricate rule still binds absolutely here: a clarification explains facts that already exist, it never licenses inventing a new one.${hasTeaser ? `\n\nYou have ALREADY produced a fast first-pass teaser read of this CV (supplied below). This step is the DEEP pass: you build the full rewrite plan ON TOP of that first read. Treat the teaser's findings as established and consistent — do not contradict its verdicts or facts — and spend your effort only on the deeper fields it held back.` : ''}`;
 
   // ---- delta (teaser already done) -------------------------------------------
   if (hasTeaser) {
@@ -96,6 +98,7 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely.
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer adapts this into the requested tone, so make it factual and dense, not stylised.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
+- generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority — default guidance ~275, must stay within the 250-350 range.
 
 OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field above):
 {
@@ -136,7 +139,8 @@ OUTPUT EXACTLY THIS SHAPE — the DELTA ONLY (do NOT include any carried field a
       "job_selection": { "include_jobs": [], "condense_jobs": [], "rewrite_jobs": [] },
       "summary_draft": "",
       "skills_to_highlight": []
-    }
+    },
+    "target_cover_words": ""
   },
   "final_thought": ""${hasJobText ? `,
   "job_extraction": {
@@ -222,6 +226,7 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Use plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer will adapt this draft into the requested tone, so make it factual and dense, not stylised.
 - analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
+- generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority — default guidance ~275, must stay within the 250-350 range.
 
 JSON OUTPUT SCHEMA:
 {
@@ -276,7 +281,8 @@ JSON OUTPUT SCHEMA:
       },
       "summary_draft": "",
       "skills_to_highlight": []
-    }
+    },
+    "target_cover_words": ""
   },
   "final_thought": ""${hasJobText ? `,
   "job_extraction": {

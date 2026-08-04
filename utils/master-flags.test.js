@@ -25,6 +25,20 @@ function sampleMaster() {
   };
 }
 
+// An ongoing umbrella role (index 0) spanning two shorter stints — the exact
+// shape the overlap question is asked about.
+function overlapMaster() {
+  return {
+    identity: { country: 'Czechia' },
+    experience: [
+      { company: 'Acme Consulting', role: 'Principal', dates: 'Jan 2019 – Present', location: 'Prague', core_tags: ['consulting'], achievements: [{ text: 'Grew the practice' }] },
+      { company: 'ShortCo', role: 'PM', dates: 'Mar 2022 – Jan 2023', achievements: [{ text: 'Shipped A' }] },
+      { company: 'OtherCo', role: 'PM', dates: 'Feb 2023 – Dec 2023', achievements: [{ text: 'Shipped B' }] },
+    ],
+    voice_samples: ['I build things that ship.'],
+  };
+}
+
 describe('applyClarification', () => {
   it('attaches the answer to the targeted role and leaves others untouched', () => {
     const before = sampleMaster();
@@ -129,6 +143,44 @@ describe('applyStructuralMerge', () => {
     expect(() => applyStructuralMerge(sampleMaster(), { parent: {}, childIndexes: [1] }))
       .toThrow(/parent/);
   });
+
+  // REGRESSION: the merge used to insert a brand-new parent row while leaving the
+  // parent's OWN existing row in place, so every overlap answer duplicated the
+  // umbrella role — one copy holding the real achievements, the other holding the
+  // contracts. Two rows for one employer, and the fuller one with nothing nested.
+  it('folds into the parent\'s existing row instead of duplicating it', () => {
+    const before = overlapMaster();
+    const after = applyStructuralMerge(before, {
+      parent: { company: 'Acme Consulting', role: 'Principal', dates: 'Jan 2019 – Present' },
+      parentIndex: 0,
+      childIndexes: [1, 2],
+      note: 'Both delivered under Acme.',
+    });
+
+    const acme = after.experience.filter((e) => e.company === 'Acme Consulting');
+    expect(acme).toHaveLength(1);                        // not two
+    expect(acme[0].achievements).toEqual([{ text: 'Grew the practice' }]); // its own content kept
+    expect(acme[0].core_tags).toEqual(['consulting']);
+    expect(acme[0].contracts.map((c) => c.company)).toEqual(['ShortCo', 'OtherCo']);
+    expect(acme[0].merge_note).toBe('Both delivered under Acme.');
+    expect(after.experience).toHaveLength(1);
+  });
+
+  it('throws if the parent index is also listed as a child', () => {
+    expect(() => applyStructuralMerge(overlapMaster(), {
+      parent: { company: 'Acme Consulting' },
+      parentIndex: 1,
+      childIndexes: [1, 2],
+    })).toThrow(/cannot also be a child/);
+  });
+
+  it('throws on an out-of-range parent index', () => {
+    expect(() => applyStructuralMerge(overlapMaster(), {
+      parent: { company: 'Acme Consulting' },
+      parentIndex: 9,
+      childIndexes: [1],
+    })).toThrow(/parent index 9 out of range/);
+  });
 });
 
 describe('resolveFlag', () => {
@@ -160,6 +212,25 @@ describe('resolveFlag', () => {
     const parent = after.experience.find((e) => e.company === 'Independent Consulting');
     expect(parent.contracts).toHaveLength(2);
     expect(parent.merge_note).toBe('My consulting practice.');
+  });
+
+  // REGRESSION: resolveFlag must hand the parent's own row position through, or
+  // the merge duplicates the umbrella role. This is the shape computeMasterIssues
+  // actually emits — target.index is the ongoing role, child_indexes are the others.
+  it('merge passes the flag target index through so the umbrella role is not duplicated', () => {
+    const flag = {
+      type: 'structural',
+      target: { section: 'experience', index: 0 },
+      merge: {
+        parent: { company: 'Acme Consulting', role: 'Principal', dates: 'Jan 2019 – Present' },
+        child_indexes: [1, 2],
+      },
+    };
+    const after = resolveFlag(overlapMaster(), flag, { decision: 'merge', value: 'Delivered under Acme.' });
+    expect(after.experience).toHaveLength(1);
+    expect(after.experience[0].company).toBe('Acme Consulting');
+    expect(after.experience[0].achievements).toEqual([{ text: 'Grew the practice' }]);
+    expect(after.experience[0].contracts).toHaveLength(2);
   });
 
   it('separate on a structural flag records a clarification on the ongoing role (no merge)', () => {

@@ -84,7 +84,15 @@ export function applySingleFix(master, target, value) {
 // as `contracts` (their full original detail survives). `note` is the user's
 // free-text clarification, stored on the parent as `merge_note` so the generator
 // understands why the grouping exists.
-export function applyStructuralMerge(master, { parent, childIndexes, note = '' }) {
+//
+// `parentIndex` is the position of the parent's OWN existing entry in
+// experience[] (the ongoing role the overlap question was asked about). When it
+// is supplied, that row is merged IN PLACE — it keeps its achievements, core_tags
+// and every other field it already had, and simply gains the nested contracts.
+// Without it we would insert a second, near-empty copy of the parent alongside
+// the original: one row holding the real content, another holding the children.
+// Omit it only for callers that genuinely have no existing parent row.
+export function applyStructuralMerge(master, { parent, parentIndex, childIndexes, note = '' }) {
   if (!master || typeof master !== 'object') {
     throw new Error('applyStructuralMerge: master is required');
   }
@@ -108,27 +116,48 @@ export function applyStructuralMerge(master, { parent, childIndexes, note = '' }
     }
   }
 
+  // The parent's own existing row, when the caller told us where it is. It must
+  // not also be one of the children — a role cannot be nested under itself.
+  let basePos = null;
+  if (typeof parentIndex === 'number') {
+    if (parentIndex < 0 || parentIndex >= list.length) {
+      throw new Error(`applyStructuralMerge: parent index ${parentIndex} out of range`);
+    }
+    if (sorted.includes(parentIndex)) {
+      throw new Error('applyStructuralMerge: parent index cannot also be a child index');
+    }
+    basePos = parentIndex;
+  }
+
   // Pull the children out, preserving their full detail as nested contracts.
   const children = sorted.map((i) => list[i]);
   const firstPos = sorted[0];
 
+  // Build the canonical parent ON TOP of its existing row so nothing it already
+  // held (achievements, core_tags, clarification, …) is dropped. The flag's
+  // parent fields describe the same role, so they only fill blanks.
+  const base = basePos === null ? {} : clone(list[basePos]);
   const parentEntry = {
+    ...base,
     company: parent.company,
-    role: parent.role || '',
-    dates: parent.dates || '',
-    location: parent.location || '',
-    core_tags: parent.core_tags || [],
-    achievements: parent.achievements || [],
+    role: parent.role || base.role || '',
+    dates: parent.dates || base.dates || '',
+    location: parent.location || base.location || '',
+    core_tags: base.core_tags || parent.core_tags || [],
+    achievements: base.achievements || parent.achievements || [],
     merge_note: note,
     // The originals, untouched, nested under the canonical parent. Nothing lost.
     contracts: children.map((c) => clone(c)),
   };
 
-  // Remove children (highest index first so positions stay valid), then insert
-  // the parent where the first child used to sit.
-  const remaining = list.filter((_, i) => !sorted.includes(i));
+  // Remove the children AND the parent's old row, then reinsert the merged
+  // parent at the earliest position any of them occupied so the timeline order
+  // is preserved.
+  const removed = basePos === null ? sorted : [...sorted, basePos];
+  const anchor = basePos === null ? firstPos : Math.min(firstPos, basePos);
+  const remaining = list.filter((_, i) => !removed.includes(i));
   const insertAt = remaining.length === 0 ? 0
-    : Math.min(firstPos, remaining.length);
+    : Math.min(anchor, remaining.length);
   remaining.splice(insertAt, 0, parentEntry);
   next.experience = remaining;
 
@@ -202,8 +231,12 @@ export function resolveFlag(master, flag, resolution) {
       return applyClarification(master, { index, note });
     }
     if (!flag.merge) throw new Error('resolveFlag: structural flag is missing its merge hint');
+    // flag.target.index is the parent's own row (the ongoing role the overlap
+    // question was asked about) — pass it so the merge folds into that row
+    // instead of adding a second copy of it.
     return applyStructuralMerge(master, {
       parent: flag.merge.parent,
+      parentIndex: flag.target?.index,
       childIndexes: flag.merge.child_indexes,
       note: resolution.value || '',
     });
