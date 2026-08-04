@@ -8,7 +8,7 @@ vi.hoisted(() => {
 });
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { verifyToken } from '../lib/auth.js';
+import { verifyToken, mintSessionToken } from '../lib/auth.js';
 import { createRequest, createResponse } from 'node-mocks-http';
 
 // ── Mock formidable ──────────────────────────────────────────────────────────
@@ -123,5 +123,77 @@ describe('upload-cv — session cookie minted on successful upload', () => {
     const decoded = await verifyToken(tokenMatch[1]);
     expect(decoded).not.toBeNull();
     expect(decoded.user_id).toBe(body.user_id);
+  });
+});
+
+// Drives the handler's formidable callback to completion, exactly as the test
+// above does. Shared so the session cases below cannot drift from it.
+async function runHandler(req, res) {
+  await new Promise((resolve) => {
+    handler(req, res);
+    const interval = setInterval(() => {
+      if (res.statusCode !== 200 || res._isEndCalled()) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 10);
+    setTimeout(() => { clearInterval(interval); resolve(); }, 1000);
+  });
+}
+
+// REGRESSION: the route used to call genSessionId() unconditionally — the comment
+// claimed "mint from cookie if present" but the cookie was never read. Every
+// upload therefore created a NEW account and overwrote the signed-in visitor's
+// session cookie with it, orphaning their real profile (tokens, master CV,
+// analyses) and logging them out. These pin the identity rule in both directions.
+describe('upload-cv — identity comes from the session when there is one', () => {
+  beforeEach(() => {
+    mockUpsertUser.mockClear();
+    mockUpsertCV.mockClear();
+  });
+
+  test('a signed-in visitor keeps their user_id — no new account, no logout', async () => {
+    const existingId = 'existing-user-id-abc123';
+    const token = mintSessionToken({ user_id: existingId, email: 'marta@example.com' });
+    const req = createRequest({ method: 'POST', headers: { cookie: `auth-token=${token}` } });
+    req.cookies = { 'auth-token': token };
+    const res = createResponse();
+
+    await runHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    // The SAME id is returned, written to the DB, and re-issued in the cookie.
+    expect(res._getJSONData().user_id).toBe(existingId);
+    expect(mockUpsertUser.mock.calls[0][0]).toBe(existingId);
+    expect(mockUpsertCV.mock.calls[0][0]).toBe(existingId);
+
+    const cookieStr = [].concat(res.getHeader('Set-Cookie'))[0];
+    const decoded = await verifyToken(cookieStr.match(/auth-token=([^;]+)/)[1]);
+    expect(decoded.user_id).toBe(existingId);
+    // The email must survive the re-mint, or the session is silently downgraded.
+    expect(decoded.email).toBe('marta@example.com');
+  });
+
+  test('a forged / expired cookie is ignored and a fresh id is minted', async () => {
+    const req = createRequest({ method: 'POST', headers: { cookie: 'auth-token=not.a.real.jwt' } });
+    req.cookies = { 'auth-token': 'not.a.real.jwt' };
+    const res = createResponse();
+
+    await runHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    const { user_id } = res._getJSONData();
+    expect(user_id).not.toBe('not.a.real.jwt');
+    expect(user_id).toMatch(/^[0-9a-f-]{36}$/); // a freshly generated uuid
+  });
+
+  test('an anonymous visitor still gets a brand-new id', async () => {
+    const req = createRequest({ method: 'POST' });
+    const res = createResponse();
+
+    await runHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().user_id).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

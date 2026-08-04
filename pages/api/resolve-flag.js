@@ -11,8 +11,9 @@
 // (voice_samples, achievements). The user is authoritative over their own facts.
 
 import requireAuth from '../../lib/requireAuth';
-import { getMasterCv, saveMasterCv } from '../../utils/database';
+import { getMasterCv, saveMasterCv, getLatestAnalysis } from '../../utils/database';
 import { resolveFlag } from '../../utils/master-flags';
+import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -54,7 +55,25 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'Could not save your record' });
   }
 
-  return res.status(200).json({ ok: true, master: updated });
+  // Recompute the open questions against the UPDATED master — no extra DB write,
+  // no AI call, the updated master is already in memory. This is what makes the
+  // question list hierarchical: answering a structural overlap can remove the
+  // short-tenure/gap questions it was suppressing or that it made moot.
+  //
+  // The analysis load is best-effort only — its sole purpose is to attach
+  // context/suggestion text to the recomputed flags. A failure here must never
+  // break the resolve itself, so it degrades to context-free flags.
+  let analysisContent = null;
+  try {
+    const data = await getLatestAnalysis(user_id);
+    analysisContent = parseAnalysisContent(data?.content);
+  } catch {
+    analysisContent = null;
+  }
+
+  const flags = computeMasterIssues(updated, { analysis: analysisContent });
+
+  return res.status(200).json({ ok: true, master: updated, flags });
 }
 
 export default requireAuth(handler);

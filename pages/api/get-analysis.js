@@ -1,7 +1,7 @@
 // pages/api/get-analysis.js
 import { logger } from '../../lib/logger';
 import { getLatestAnalysis, getMasterCv } from '../../utils/database';
-import { computeMasterIssues } from '../../utils/master-issues';
+import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
 import requireAuth from '../../lib/requireAuth';
 
 async function handler(req, res) {
@@ -24,7 +24,11 @@ async function handler(req, res) {
     try {
       const master = await getMasterCv(user_id);
       if (master && Array.isArray(master.experience)) experience = master.experience;
-      if (master) flags = computeMasterIssues(master);
+      // data.content is the stored gen_data payload — a JSON STRING today (the
+      // background function always JSON.stringify()s before insert), but handled
+      // defensively either way. Feeding it in lets issues carry the teaser's own
+      // sentences about the same overlap/gap as `context`/`suggestion` (TASK 2).
+      if (master) flags = computeMasterIssues(master, { analysis: parseAnalysisContent(data.content) });
     } catch (e) {
       logger.error('get-analysis: master load failed:', e.message);
     }

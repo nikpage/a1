@@ -25,14 +25,40 @@
 import { useState } from 'react';
 import MasterProgressTracker from './MasterProgressTracker';
 
-// A flag carries a "confident suggestion" only when the AI proposed a concrete
-// value the user can accept blind — i.e. a single-field fix with a proposed_value.
-// clarify (the reason for a gap) and structural (is this one consultancy?) need
-// the user's own knowledge, so they are NEVER auto-applied. Single fixes are also
-// index-stable (they edit a field in place, never reorder experience[]), which is
-// what makes a sequential bulk "accept all" safe.
+// How many open questions render at once. As answers collapse the cascade
+// (utils/master-issues), the next-ranked ones surface into this window on their
+// own — no pagination UI needed.
+const OPEN_QUESTION_CAP = 4;
+
+// A flag carries a "confident suggestion" when:
+//   - single     : the AI proposed a concrete value (proposed_value) the user can
+//                  accept blind. Index-stable (edits a field in place, never
+//                  reorders experience[]), which is what makes a sequential bulk
+//                  "accept all" safe.
+//   - structural : utils/master-issues textually matched the stored analysis to a
+//                  clear "delivered under"/"held separately" cue and set
+//                  flag.suggestion to 'merge' | 'separate'.
+//   - clarify    : utils/master-issues matched the analysis text to one of the
+//                  deterministic reason options verbatim and set flag.suggestion
+//                  to that option string.
+// clarify/structural flags with NO matched suggestion still need the user's own
+// knowledge and are never auto-applied.
 function hasSuggestion(flag) {
-  return flag.type === 'single' && !!(flag.proposed_value && flag.proposed_value.trim());
+  if (flag.type === 'single') return !!(flag.proposed_value && flag.proposed_value.trim());
+  if (flag.type === 'structural' || flag.type === 'clarify') {
+    return !!(flag.suggestion && String(flag.suggestion).trim());
+  }
+  return false;
+}
+
+// The { decision, value } body /api/resolve-flag needs to silently apply a
+// flag's matched suggestion — mirrors exactly what the corresponding manual
+// button in FlagCard sends.
+function suggestionResolution(flag) {
+  if (flag.type === 'single') return { decision: 'accept' };
+  if (flag.type === 'structural') return { decision: flag.suggestion }; // 'merge' | 'separate'
+  if (flag.type === 'clarify') return { decision: 'option', value: flag.suggestion };
+  return null;
 }
 
 // Which experience[] block (if any) a flag concerns — used to slot its action
@@ -69,7 +95,7 @@ function FlagCard({ flag, onResolved }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not save');
-      onResolved(flag.id, decision, data.master);
+      onResolved(flag.id, decision, data.master, data.flags);
     } catch (e) {
       setError(e.message);
       setBusy(false);
@@ -79,6 +105,9 @@ function FlagCard({ flag, onResolved }) {
   return (
     <div className="border border-amber-200 bg-amber-50/60 rounded-lg p-4">
       <p className="font-medium text-gray-800">{flag.question}</p>
+      {flag.context && (
+        <p className="mt-1 text-xs text-gray-500 italic">{flag.context}</p>
+      )}
 
       {flag.type === 'single' && !editing && (
         <>
@@ -240,21 +269,46 @@ function SkeletonBlock({ entry, openFlags, doneFlags, onResolved }) {
 }
 
 export default function MasterFlagFixer({ flags = [], experience = [], onComplete }) {
+  // The LIVE open-issue list — recomputed server-side (utils/master-issues) after
+  // every resolve and swapped in wholesale here. This is what makes the cascade
+  // work: answering a structural overlap removes the short-tenure/gap questions
+  // it was suppressing or made moot, because the server literally stops emitting
+  // them — we just need to keep displaying whatever it hands back, not a snapshot
+  // frozen at page load.
+  const [flagList, setFlagList] = useState(Array.isArray(flags) ? flags : []);
+  // Which flag ids the user personally answered (any decision, including
+  // reject/skip) — drives the "done" section. A flag that disappears from
+  // flagList WITHOUT the user answering it (a child question made moot by a
+  // sibling's merge) is not in here, so it's simply gone, not shown as settled.
   const [resolved, setResolved] = useState({}); // id -> decision
+  // Snapshots of the flags the user actually answered, in answer order — needed
+  // because a settled flag drops out of flagList (the server never re-emits an
+  // answered question), so the "done" UI can't read it from there any more.
+  const [history, setHistory] = useState([]);
   const [exp, setExp] = useState(Array.isArray(experience) ? experience : []);
   const [mode, setMode] = useState('list'); // 'list' | 'wizard'
-  const [wizardFlags, setWizardFlags] = useState([]); // snapshot of open flags when wizard opened
   const [wizardIdx, setWizardIdx] = useState(0);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState('');
 
-  function handleResolved(id, decision, master) {
+  function handleResolved(id, decision, master, newFlags) {
     setResolved((r) => ({ ...r, [id]: decision }));
+    setHistory((h) => {
+      if (h.some((f) => f.id === id)) return h;
+      const snapshot = flagList.find((f) => f.id === id) || flags.find((f) => f.id === id);
+      return snapshot ? [...h, snapshot] : h;
+    });
     if (master && Array.isArray(master.experience)) setExp(master.experience);
+    if (Array.isArray(newFlags)) setFlagList(newFlags);
   }
 
-  const open = flags.filter((f) => !resolved[f.id]);
-  const done = flags.filter((f) => resolved[f.id]);
+  // Every currently-open question (server truth, minus anything the user already
+  // answered this session), ranked overlap-first by the server. Only the top
+  // OPEN_QUESTION_CAP are actually rendered — the rest surface on their own as
+  // answers collapse the ones ahead of them.
+  const openAll = flagList.filter((f) => !resolved[f.id]);
+  const open = openAll.slice(0, OPEN_QUESTION_CAP);
+  const done = history;
   const suggestedOpen = open.filter(hasSuggestion);
   const inputOpen = open.filter((f) => !hasSuggestion(f));
 
@@ -262,28 +316,31 @@ export default function MasterFlagFixer({ flags = [], experience = [], onComplet
   // confidently auto-suggestible (nothing needs the user to type anything).
   const allSuggested = open.length > 0 && inputOpen.length === 0;
 
-  // Apply every confident single-field fix in sequence. Sequential (not parallel)
-  // because each resolve-flag call reads-modifies-writes the whole master; single
-  // fixes touch distinct fields and never reorder experience[], so the order is
-  // safe and the indexes stay valid throughout.
+  // Apply every confident suggestion in sequence. Sequential (not parallel)
+  // because each resolve-flag call reads-modifies-writes the whole master.
+  // Single fixes are index-stable (never reorder experience[]); a structural
+  // merge DOES reorder it, but each iteration re-fetches flagList/exp from the
+  // server's response before the next call, so later indexes are always current.
   async function applyAllSuggested() {
     setBulkBusy(true);
     setBulkError('');
-    let master = null;
     try {
       for (const f of suggestedOpen) {
+        const resolution = suggestionResolution(f);
+        if (!resolution) continue;
         const res = await fetch('/api/resolve-flag', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ flag: f, decision: 'accept' }),
+          body: JSON.stringify({ flag: f, ...resolution }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Could not save');
-        master = data.master;
-        setResolved((r) => ({ ...r, [f.id]: 'accept' }));
+        setResolved((r) => ({ ...r, [f.id]: resolution.decision }));
+        setHistory((h) => (h.some((x) => x.id === f.id) ? h : [...h, f]));
+        if (data.master && Array.isArray(data.master.experience)) setExp(data.master.experience);
+        if (Array.isArray(data.flags)) setFlagList(data.flags);
       }
-      if (master && Array.isArray(master.experience)) setExp(master.experience);
     } catch (e) {
       setBulkError(e.message);
     }
@@ -291,34 +348,45 @@ export default function MasterFlagFixer({ flags = [], experience = [], onComplet
   }
 
   function openWizard() {
-    setWizardFlags(open);
     setWizardIdx(0);
     setMode('wizard');
   }
 
-  // Map experience index -> { open, done } flags concerning that block.
+  // Map experience index -> { open, done } flags concerning that block. `done`
+  // draws from `history` (snapshots), `open` from the capped, live list.
   const byBlock = new Map();
   const profileFlags = { open: [], done: [] };
-  for (const f of flags) {
+  for (const f of open) {
     const idx = flagExpIndex(f);
-    const bucket = resolved[f.id] ? 'done' : 'open';
     if (idx === null || idx < 0 || idx >= exp.length) {
-      profileFlags[bucket].push(f);
+      profileFlags.open.push(f);
       continue;
     }
     if (!byBlock.has(idx)) byBlock.set(idx, { open: [], done: [] });
-    byBlock.get(idx)[bucket].push(f);
+    byBlock.get(idx).open.push(f);
+  }
+  for (const f of done) {
+    const idx = flagExpIndex(f);
+    if (idx === null || idx < 0 || idx >= exp.length) {
+      profileFlags.done.push(f);
+      continue;
+    }
+    if (!byBlock.has(idx)) byBlock.set(idx, { open: [], done: [] });
+    byBlock.get(idx).done.push(f);
   }
 
   const states = { addcv: 'done', master: 'active', job: 'locked', create: 'locked' };
 
   // ---- Wizard mode: one focused question at a time ---------------------------
   if (mode === 'wizard') {
-    const total = wizardFlags.length;
-    const current = wizardFlags[wizardIdx];
+    // Recomputed every render from the live `open` list — never a frozen
+    // snapshot — and clamped so an answer that collapses several later
+    // questions can never leave the index pointing past the end.
+    const total = open.length;
+    const clampedIdx = total === 0 ? 0 : Math.max(0, Math.min(wizardIdx, total - 1));
+    const current = open[clampedIdx];
     const idx = current ? flagExpIndex(current) : null;
     const ctx = current && idx !== null && idx >= 0 && idx < exp.length ? exp[idx] : null;
-    const isResolved = current && !!resolved[current.id];
 
     return (
       <div>
@@ -332,7 +400,7 @@ export default function MasterFlagFixer({ flags = [], experience = [], onComplet
         </div>
 
         <p className="text-sm text-gray-500 mb-4">
-          Question {Math.min(wizardIdx + 1, total)} of {total}
+          Question {total === 0 ? 0 : clampedIdx + 1} of {total}
         </p>
 
         {current ? (
@@ -344,28 +412,26 @@ export default function MasterFlagFixer({ flags = [], experience = [], onComplet
                 {ctx.dates ? <span className="text-gray-500"> · {ctx.dates}</span> : null}
               </div>
             )}
-            {isResolved ? (
-              <div className="border border-green-200 bg-green-50 rounded-lg p-4 text-sm text-green-700">
-                ✓ Settled — <span className="line-through decoration-green-300">{current.question}</span>
-              </div>
-            ) : (
-              <FlagCard flag={current} onResolved={handleResolved} />
-            )}
+            {/* `current` is always drawn from the live `open` list, so it is by
+                definition not yet answered — resolving it removes it from `open`
+                (and any question it made moot along with it) and the next
+                question in rank order slides into this same clamped index. */}
+            <FlagCard key={current.id} flag={current} onResolved={handleResolved} />
 
             <div className="mt-6 flex items-center justify-between">
               <button
-                disabled={wizardIdx === 0}
-                onClick={() => setWizardIdx((i) => Math.max(0, i - 1))}
+                disabled={clampedIdx === 0}
+                onClick={() => setWizardIdx((i) => Math.max(0, Math.min(i, total - 1) - 1))}
                 className="px-4 py-2 text-sm rounded border border-gray-300 disabled:opacity-40"
               >
                 Back
               </button>
-              {wizardIdx < total - 1 ? (
+              {clampedIdx < total - 1 ? (
                 <button
-                  onClick={() => setWizardIdx((i) => Math.min(total - 1, i + 1))}
+                  onClick={() => setWizardIdx((i) => Math.min(total - 1, Math.min(i, total - 1) + 1))}
                   className="px-4 py-2 text-sm rounded bg-blue-600 text-white"
                 >
-                  {isResolved ? 'Next' : 'Skip for now'}
+                  Skip for now
                 </button>
               ) : (
                 <button
@@ -397,9 +463,9 @@ export default function MasterFlagFixer({ flags = [], experience = [], onComplet
         </p>
       </div>
 
-      {open.length > 0 ? (
+      {openAll.length > 0 ? (
         <p className="text-sm text-gray-500 mb-3">
-          {open.length} open {open.length === 1 ? 'question' : 'questions'} — your CVs are sharper once settled.
+          {openAll.length} open {openAll.length === 1 ? 'question' : 'questions'} — your CVs are sharper once settled.
         </p>
       ) : (
         <p className="text-sm text-green-700 mb-3">
@@ -502,7 +568,7 @@ export default function MasterFlagFixer({ flags = [], experience = [], onComplet
           onClick={onComplete}
           className="px-5 py-2.5 rounded bg-blue-600 text-white font-medium"
         >
-          {open.length > 0 ? `Continue (${open.length} left)` : 'Continue'}
+          {openAll.length > 0 ? `Continue (${openAll.length} left)` : 'Continue'}
         </button>
       </div>
     </div>

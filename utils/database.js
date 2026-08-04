@@ -18,10 +18,19 @@ function getAdminSupabase() {
 }
 
 // Upsert user
+// Ensure a users row exists for `user_id`, WITHOUT destroying what is already
+// on it. An upsert sends every column in the payload, so passing an omitted
+// field as null overwrites the stored value with null — that is how a CV upload
+// used to wipe the signed-in user's email off their account. Only fields the
+// caller actually supplied are written; the rest are left untouched.
 export async function upsertUser(user_id, phone_hash = null, email = null) {
-    const { data, error } = await supabase
+    const row = { user_id };
+    if (phone_hash != null) row.phone_hash = phone_hash;
+    if (email != null) row.email = String(email).toLowerCase().trim();
+
+    const { data, error } = await getAdminSupabase()
         .from('users')
-        .upsert([{ user_id, phone_hash, email }], { onConflict: ['user_id'] })
+        .upsert([row], { onConflict: 'user_id' })
         .select();
     if (error) {
         logger.error('UpsertUser error:', error.message, error.details);
@@ -248,11 +257,26 @@ export async function getUserByEmail(email) {
   return data?.[0] || null;
 }
 
-// Update user email
+// Attach an email to an existing user_id (the anonymous-upload session signing
+// up). A bare UPDATE is not enough: Supabase reports no error when it matches
+// zero rows, so a user_id with no users row silently lost its email and the
+// account never appeared. Insert the row in that case, and return it either way
+// so the caller can trust the write landed.
 export async function updateUserEmail(user_id, email) {
-  const { error } = await getAdminSupabase()
-    .from('users').update({ email }).eq('user_id', user_id);
+  const emailNorm = String(email).toLowerCase().trim();
+  const admin = getAdminSupabase();
+
+  const { data, error } = await admin
+    .from('users').update({ email: emailNorm }).eq('user_id', user_id)
+    .select('user_id, email');
   if (error) throw error;
+  if (data?.length) return data[0];
+
+  const { data: created, error: insertErr } = await admin
+    .from('users').insert([{ user_id, email: emailNorm }])
+    .select('user_id, email').maybeSingle();
+  if (insertErr) throw new Error(`updateUserEmail failed: ${insertErr.message}`);
+  return created;
 }
 
 // Atomically spend a download credit: a free download first, else a paid token.
@@ -313,11 +337,22 @@ export async function updateCandidateCore(user_id, core) {
 }
 
 // Create a new user with email
+// One account per email. The unique index added in migration 006 is the real
+// guarantee; this handles the race where two concurrent signups for the same
+// address both pass the getUserByEmail check — the loser adopts the winner's
+// account instead of erroring or minting a duplicate.
 export async function createUserWithEmail(email) {
+  const emailNorm = String(email).toLowerCase().trim();
   const { data, error } = await getAdminSupabase()
-    .from('users').insert([{ email, user_id: crypto.randomUUID() }])
+    .from('users').insert([{ email: emailNorm, user_id: crypto.randomUUID() }])
     .select('user_id').maybeSingle();
-  if (error) throw new Error(`createUserWithEmail failed: ${error.message}`);
+  if (error) {
+    if (error.code === '23505') {
+      const existing = await getUserByEmail(emailNorm);
+      if (existing?.user_id) return { user_id: existing.user_id };
+    }
+    throw new Error(`createUserWithEmail failed: ${error.message}`);
+  }
   return data;
 }
 

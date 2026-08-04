@@ -190,7 +190,8 @@ export const handler = async (event) => {
         const deep = await analyzeCvJob(deepCv, jobText, file_name || 'cv.pdf', content);
         if (deep?.output) {
           content = deep.output;
-          analysisUsages.push(deep.gemini_usage);
+          // The deep pass is two calls (blueprint + review) — log both.
+          analysisUsages.push(...(deep.gemini_usages || [deep.gemini_usage]));
         }
       } catch (e) {
         // A deep-pass failure must not sink the analysis — the teaser already
