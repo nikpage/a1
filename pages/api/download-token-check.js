@@ -1,6 +1,5 @@
 // pages/api/download-token-check.js
-import { consumeDownloadCredit } from '../../utils/database';
-import { supabase } from '../../utils/database';
+import { consumeDownloadCredit, resetFreeGenerations } from '../../utils/database';
 import { LIMITS } from '../../config/limits';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import requireAuth from '../../lib/requireAuth';
@@ -36,10 +35,7 @@ async function handler(req, res) {
 
   try {
     // Refill the free generation allowance on every successful download.
-    await supabase
-      .from('users')
-      .update({ generations_left: LIMITS.FREE_GENERATIONS })
-      .eq('user_id', user_id);
+    await resetFreeGenerations(user_id, LIMITS.FREE_GENERATIONS);
   } catch {
     return res.status(500).json({ error: 'Database update failed.' });
   }

@@ -22,7 +22,9 @@ vi.mock('@supabase/supabase-js', () => ({
         return {
           eq: (col, val) => {
             calls.eq.push({ col, val });
-            return { select: () => results.update };
+            // Awaited directly by callers that don't .select(), so it must
+            // carry { error } itself as the real client does.
+            return { select: () => results.update, error: results.update?.error ?? null };
           },
         };
       },
@@ -42,7 +44,7 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { upsertUser, updateUserEmail, createUserWithEmail } from './database.js';
+import { upsertUser, updateUserEmail, createUserWithEmail, resetFreeGenerations } from './database.js';
 
 beforeEach(() => {
   calls.upsert.length = 0;
@@ -109,6 +111,26 @@ describe('updateUserEmail — the write must actually land', () => {
   test('a real update error is surfaced, not swallowed', async () => {
     results.update = { data: null, error: { message: 'boom' } };
     await expect(updateUserEmail('user-1', 'a@b.com')).rejects.toBeTruthy();
+  });
+});
+
+describe('resetFreeGenerations — a blocked refill must not pass silently', () => {
+  test('writes the allowance for that user', async () => {
+    results.update = { data: [{ user_id: 'user-1' }], error: null };
+
+    await resetFreeGenerations('user-1', 3);
+
+    expect(calls.update[0]).toEqual({ generations_left: 3 });
+    expect(calls.eq[0]).toEqual({ col: 'user_id', val: 'user-1' });
+  });
+
+  test('throws when the write is rejected', async () => {
+    // The old call site wrapped an anon-client update in try/catch, but Supabase
+    // RESOLVES with { error } rather than throwing — so the catch never ran and
+    // the user silently never got their generations back.
+    results.update = { data: null, error: { message: 'permission denied' } };
+
+    await expect(resetFreeGenerations('user-1', 3)).rejects.toThrow(/permission denied/);
   });
 });
 

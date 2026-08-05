@@ -329,6 +329,17 @@ export async function setCandidateCoreIfEmpty(user_id, core) {
   return Array.isArray(data) && data.length > 0;
 }
 
+// Refill the free generation allowance (called after a successful download).
+// Goes through the service-role client and checks the returned error: this was
+// an anon-client update wrapped in try/catch, and since Supabase RESOLVES with
+// { error } instead of throwing, a blocked write was swallowed and the user
+// silently never got their generations back.
+export async function resetFreeGenerations(user_id, amount) {
+  const { error } = await getAdminSupabase()
+    .from('users').update({ generations_left: amount }).eq('user_id', user_id);
+  if (error) throw new Error(`resetFreeGenerations failed: ${error.message}`);
+}
+
 // Overwrite candidate_core with the user's own edit.
 export async function updateCandidateCore(user_id, core) {
   const { error } = await getAdminSupabase()

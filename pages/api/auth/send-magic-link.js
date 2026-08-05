@@ -6,6 +6,7 @@ import { Redis } from "@upstash/redis";
 import nodemailer from 'nodemailer';
 import crypto from "crypto";
 import { getBaseUrl, isValidOrigin } from "../../../utils/originCheck";
+import { getTokenFromReq, verifyToken } from "../../../lib/auth";
 import {
   getUserByEmail,
   updateUserEmail,
@@ -40,11 +41,21 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Invalid origin" });
   }
 
-  let { email, user_id, rememberMe } = req.body;
+  let { email, rememberMe } = req.body;
   if (!email || !email.includes("@")) {
     return res.status(400).json({ error: "Valid email required" });
   }
   const emailNorm = email.toLowerCase().trim();
+
+  // Identity NEVER comes from the request body. This route is unauthenticated
+  // by necessity (you ask for a login link before you have a session), and a
+  // body-supplied user_id let anyone POST {email: victim, user_id: mine} to
+  // stamp someone else's address onto an account they control — the victim's
+  // later signup then resolves to it. The only claim we honour is the visitor's
+  // own signed session cookie, which is how an anonymous upload carries its CV
+  // into the account being created.
+  const session = await verifyToken(getTokenFromReq(req));
+  const sessionUserId = session?.user_id || null;
 
   // Always resolve to a valid user_id with email stored
   let effectiveUserId = null;
@@ -54,9 +65,9 @@ export default async function handler(req, res) {
 
   if (existingUser?.user_id) {
     effectiveUserId = existingUser.user_id;
-  } else if (user_id) {
-    effectiveUserId = user_id;
-    await updateUserEmail(user_id, emailNorm);
+  } else if (sessionUserId) {
+    effectiveUserId = sessionUserId;
+    await updateUserEmail(sessionUserId, emailNorm);
   } else {
     try {
       const created = await createUserWithEmail(emailNorm);
