@@ -63,6 +63,77 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
   "conflicts": []                       // contradictions AND structural open questions to surface, not silently resolve. BUILD: internal disagreements in the input + any overlapping roles as a "role_overlap" item (see SELF-CONSISTENCY — never decide whether overlapping roles are one consultancy yourself). MERGE: see MERGE rules. Each { "field": "", "old_value": "", "new_value": "", "where": "" }. [] if none.
 }`;
 
+// AUGMENT — the user types loose text about work that never made it onto their
+// CV ("also did 6 months contracting at Acme in 2023, cut checkout drop-off 20%")
+// and it is folded into the existing master. Unlike 'merge' (a second CV) the
+// input here is the CANDIDATE SPEAKING: trusted for what it says, still bound by
+// NEVER-FABRICATE for everything it doesn't. Untouched content is copied through
+// byte-identical — this is an addition, never a re-derivation, so the record
+// never churns under the user. Questions are the exception, not the flow: asked
+// ONLY when the fact cannot be placed without the answer.
+export function buildMasterAugmentPrompt({ master, text, answers = [] } = {}) {
+  const system = `You are a meticulous career archivist maintaining ONE person's durable master career record. The person is telling you, in their own loose words, about work that is not on their CV. Your job is to fold what they say into the existing record — accurately, additively, and without disturbing anything else.
+
+${NEVER_FABRICATE}
+
+${SELF_CONSISTENCY}`;
+
+  const answersBlock = answers.length
+    ? `\n\nTHE USER HAS ALREADY ANSWERED THESE (authoritative — use them, and do NOT ask them again):\n${answers
+        .map((a) => `- Q: ${a.question}\n  A: ${a.answer}`)
+        .join('\n')}`
+    : '';
+
+  const task = `TASK — ADD the user's new information below INTO the existing master record. This is an ADDITION, not a rebuild.
+
+PLACEMENT — decide where each fact belongs:
+- An existing role it elaborates → add achievements / skills_utilized / a metric to THAT entry.
+- A role the record does not have → a new experience entry, in date order.
+- Study, a qualification, a certification → education / certifications.
+- A side project, volunteering, teaching, speaking → parallel_experience.
+- A genuine strength the text evidences → transferable_notes (with its real evidence).
+- A language, a link, a contact detail → identity.
+
+PRESERVE EVERYTHING ELSE — absolute:
+- Copy every existing field the new text does not speak to through UNCHANGED, character for character: existing roles, dates, locations, achievements, metrics, education, candidate_core, transferable_notes, voice_samples. Do not re-word, re-order, re-derive, "improve", summarise or tidy anything.
+- Only ADD. Never delete or overwrite an existing fact. If the new text CONTRADICTS a stored fact (different dates for the same role, a different title), do NOT overwrite it — record it in "conflicts" as { "field", "old_value", "new_value", "where" } and leave the stored value in place.
+- candidate_core changes ONLY if the new information genuinely changes the durable through-line; otherwise copy it verbatim.
+- voice_samples: you may ADD a sentence from the new text if it is the user's own prose, copied EXACTLY as they wrote it. Never paraphrase, never drop an existing sample.
+- gaps: drop any gap the new text just filled; never add a gap about the new text (ask a question instead, if and only if the bar below is met).
+- NO STRUCTURAL INFERENCE (see SELF-CONSISTENCY): if a new role's dates overlap an existing one, keep both separate and record a "role_overlap" conflict. Never decide they are one engagement or consultancy.
+
+QUESTIONS — ask ONLY when you cannot place the fact without the answer:
+- Legitimate: no employer/organisation named and it can't be matched to an existing entry; no usable time period at all, so the role cannot be placed in the timeline; genuinely ambiguous which existing role it belongs to.
+- NOT legitimate: anything you would merely LIKE to know. A missing metric, a missing tool, a vague responsibility, a missing location — record what the text actually says and move on. Never ask for detail to enrich; only to place.
+- Maximum 2 questions, one short plain-English line each, no jargon.
+- If you ask anything, still return your best "master" — the caller will not save it until the questions are answered.
+- If nothing needs asking (the normal case), return "questions": [].
+
+CHANGES — list what you added, one short plain-English line each, addressed to the user (e.g. "Added Acme — Contractor, 2023" / "Added a metric to your Beta Ltd role"). One line per real change; [] if nothing changed.
+
+EXISTING MASTER RECORD:
+${master ? JSON.stringify(master) : '{}'}${answersBlock}`;
+
+  const user = `${task}
+
+${SCHEMA}
+
+OUTPUT ENVELOPE — emit EXACTLY this JSON (valid JSON only, no markdown, no comments):
+{
+  "master": { ...the full master record in the schema above, with your additions applied... },
+  "questions": [],   // 0-2 strings; ONLY blocking placement questions (see above)
+  "changes": []      // plain-English lines describing what you added
+}
+
+THE USER'S NEW INFORMATION:
+${text}`.trim();
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
 // Targeted verify pass — runs after every build/merge as a safety net for the
 // classes of error a cheap model slips on: a wrong most-recent-role country,
 // gaps that contradict the extracted entries, and skills/metrics not supported

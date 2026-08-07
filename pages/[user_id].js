@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
 import MasterFlagFixer from '../components/MasterFlagFixer';
+import AddInfoPanel from '../components/AddInfoPanel';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
 import { getUserStats } from '../utils/database';
@@ -61,9 +62,19 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
             <MasterFlagFixer flags={flags} experience={experience} onComplete={() => setOnboardingDone(true)} />
           </div>
         ) : analysis ? (
-          <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
-            <TabbedViewer user_id={user_id} analysisText={analysis} />
-          </div>
+          <>
+            <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
+              <TabbedViewer user_id={user_id} analysisText={analysis} />
+            </div>
+            {/* Past onboarding the record is never closed: anything the CV missed
+                can still be typed in here and reaches every future generation. */}
+            <div className="mt-6">
+              <AddInfoPanel onUpdated={(master, newFlags) => {
+                if (master && Array.isArray(master.experience)) setExperience(master.experience);
+                if (Array.isArray(newFlags)) setFlags(newFlags);
+              }} />
+            </div>
+          </>
         ) : (
           <div className="text-center text-muted-foreground">
             {t('user.analysis.none')}

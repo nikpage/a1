@@ -8,7 +8,7 @@ import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
-import { buildMasterCvPrompt, buildMasterVerifyPrompt } from '../prompts/master-cv.js';
+import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
@@ -438,6 +438,65 @@ export async function buildOrMergeMaster(rawInput, existingMaster = null, overri
 
   const usages = [...attemptUsages, verifyUsage].filter(Boolean);
   return { output, usage: lastData.usage, gemini_usage, usages };
+}
+
+// AUGMENT the master CV from the user's own loose text about work that isn't on
+// their CV. Additive only — see prompts/master-cv.js buildMasterAugmentPrompt.
+//
+// Returns { output (the augmented master), questions, changes, usages }. When
+// `questions` is non-empty the caller must NOT save: the model could not place
+// the fact, so it needs an answer first (the API route enforces this).
+//
+// The verify pass runs against the existing master's JSON PLUS the new text as
+// its source. That combination is deliberate: verifyMaster's deterministic
+// grounding checks every stored fact against the source it is handed, so passing
+// the loose text alone would strip the entire pre-existing record. The prior
+// master is also passed as `trustedMaster` so the AI pass treats its facts as
+// already verified and only scrutinises what the new text just added.
+export async function augmentMaster(master, text, answers = []) {
+  if (!master || typeof master !== 'object') throw new Error('augmentMaster requires an existing master');
+  const messages = buildMasterAugmentPrompt({ master, text, answers });
+
+  // Same tolerance as the build: a 200 carrying malformed JSON must not throw
+  // away a paid call. Every paid attempt is cost-logged via `usages`.
+  const MAX_PARSE_ATTEMPTS = 3;
+  const attemptUsages = [];
+  let envelope;
+  let parseErr;
+  for (let attempt = 1; attempt <= MAX_PARSE_ATTEMPTS; attempt++) {
+    const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
+    const gu = geminiUsage('master-cv augment', data, GEMINI_MASTER_MODEL);
+    attemptUsages.push(gu);
+    trackDailySpend(gu.costUsd);
+    try {
+      envelope = parseJsonLoose(data.choices?.[0]?.message?.content || '');
+      parseErr = null;
+      break;
+    } catch (e) {
+      parseErr = e;
+      logger.error(`Invalid JSON from master-cv augment (attempt ${attempt}/${MAX_PARSE_ATTEMPTS}):`, e.message);
+    }
+  }
+  if (parseErr) throw new Error('Master CV augment returned invalid JSON');
+
+  const output = envelope?.master;
+  if (!output || typeof output !== 'object' || !Array.isArray(output.experience)) {
+    throw new Error('Master CV augment returned no usable master');
+  }
+
+  const questions = (Array.isArray(envelope.questions) ? envelope.questions : [])
+    .map((q) => String(q || '').trim())
+    .filter(Boolean)
+    .slice(0, 2);
+  const changes = (Array.isArray(envelope.changes) ? envelope.changes : [])
+    .map((c) => String(c || '').trim())
+    .filter(Boolean);
+
+  const source = `${JSON.stringify(master)}\n\n${text}`;
+  const { gemini_usage: verifyUsage } = await verifyMaster(output, source, master);
+
+  const usages = [...attemptUsages, verifyUsage].filter(Boolean);
+  return { output, questions, changes, usages };
 }
 
 // Landing-page TEASER analysis — small, high-impact output on the strong model
