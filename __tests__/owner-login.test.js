@@ -2,7 +2,8 @@
 //
 // This route hands out a real session, so the negative cases are the point:
 // a wrong key, a missing key, or a key that merely shares a prefix must get
-// nothing — no cookie, no redirect, no hint that the route exists.
+// nothing — no cookie, no session, no hint that the route exists. It also pins
+// the door to POST, so the key can never be pushed into a URL again.
 
 vi.hoisted(() => {
   process.env.JWT_SECRET = 'test-owner-secret-jwt';
@@ -48,9 +49,10 @@ describe('owner login door', () => {
 
   test('the right key mints a real session for the resolved account and lands on /me', async () => {
     const res = makeRes();
-    await handler({ method: 'GET', query: { key: 'the-real-shared-secret', email: 'Owner@Example.com' } }, res);
+    await handler({ method: 'POST', body: { key: 'the-real-shared-secret', email: 'Owner@Example.com' } }, res);
 
-    expect(res.redirectedTo).toBe('/me');
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ ok: true });
     expect(mockGetUserByEmail).toHaveBeenCalledWith('owner@example.com');
 
     const token = cookieHeader(res).match(/auth-token=([^;]+)/)[1];
@@ -61,7 +63,7 @@ describe('owner login door', () => {
 
   test('a wrong key gets a bare 404 — no cookie, no redirect, no database lookup', async () => {
     const res = makeRes();
-    await handler({ method: 'GET', query: { key: 'wrong-secret', email: 'owner@example.com' } }, res);
+    await handler({ method: 'POST', body: { key: 'wrong-secret', email: 'owner@example.com' } }, res);
 
     expect(res.statusCode).toBe(404);
     expect(res.redirectedTo).toBeNull();
@@ -71,7 +73,7 @@ describe('owner login door', () => {
 
   test('a prefix of the real key is rejected — no length or prefix leak', async () => {
     const res = makeRes();
-    await handler({ method: 'GET', query: { key: 'the-real-shared-secre', email: 'owner@example.com' } }, res);
+    await handler({ method: 'POST', body: { key: 'the-real-shared-secre', email: 'owner@example.com' } }, res);
 
     expect(res.statusCode).toBe(404);
     expect(cookieHeader(res)).toBe('');
@@ -79,7 +81,7 @@ describe('owner login door', () => {
 
   test('no key at all is rejected exactly like a wrong one', async () => {
     const res = makeRes();
-    await handler({ method: 'GET', query: { email: 'owner@example.com' } }, res);
+    await handler({ method: 'POST', body: { email: 'owner@example.com' } }, res);
 
     expect(res.statusCode).toBe(404);
     expect(cookieHeader(res)).toBe('');
@@ -88,7 +90,7 @@ describe('owner login door', () => {
   test('an address with no account gets 404 and no session', async () => {
     mockGetUserByEmail.mockResolvedValue(null);
     const res = makeRes();
-    await handler({ method: 'GET', query: { key: 'the-real-shared-secret', email: 'ghost@example.com' } }, res);
+    await handler({ method: 'POST', body: { key: 'the-real-shared-secret', email: 'ghost@example.com' } }, res);
 
     expect(res.statusCode).toBe(404);
     expect(cookieHeader(res)).toBe('');
@@ -98,7 +100,7 @@ describe('owner login door', () => {
     const saved = process.env.API_SHARED_SECRET;
     delete process.env.API_SHARED_SECRET;
     const res = makeRes();
-    await handler({ method: 'GET', query: { key: 'anything', email: 'owner@example.com' } }, res);
+    await handler({ method: 'POST', body: { key: 'anything', email: 'owner@example.com' } }, res);
     process.env.API_SHARED_SECRET = saved;
 
     expect(res.statusCode).toBe(503);
@@ -106,9 +108,9 @@ describe('owner login door', () => {
     expect(cookieHeader(res)).toBe('');
   });
 
-  test('POST is refused — this door is GET only', async () => {
+  test('GET is refused — the key must travel in a body, never a URL', async () => {
     const res = makeRes();
-    await handler({ method: 'POST', query: { key: 'the-real-shared-secret' } }, res);
+    await handler({ method: 'GET', query: { key: 'the-real-shared-secret' } }, res);
 
     expect(res.statusCode).toBe(405);
     expect(cookieHeader(res)).toBe('');

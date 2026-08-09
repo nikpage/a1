@@ -3,7 +3,11 @@
 // Owner door — a shared-secret login for the site owner, bypassing the magic-link
 // email round-trip entirely:
 //
-//   GET /api/auth/owner?key=<API_SHARED_SECRET>&email=<address>   → /me
+//   POST /api/auth/owner  { key, email }   → { ok: true }, session cookie set
+//
+// POST with the key in the BODY, never the query string: URLs are written to
+// browser history and to every proxy/CDN/host access log, so a GET door leaked
+// the secret on every single login. The form at /owner-login posts here.
 //
 // The key is compared in constant time against API_SHARED_SECRET. On success it
 // resolves the address to its canonical account (oldest wins — the same rule as
@@ -30,11 +34,11 @@ function secretMatches(given, expected) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { key, email } = req.query;
+  const { key, email } = req.body || {};
 
   // An unset secret would make every key wrong and look identical to a typo.
   // Say so plainly — it names the missing variable and leaks no value.
@@ -59,7 +63,9 @@ export default async function handler(req, res) {
     }
 
     setSessionCookie(res, { user_id: user.user_id, email: address.trim().toLowerCase() });
-    res.redirect(302, '/me');
+    // The form navigates on success; answering with JSON keeps the key out of
+    // any redirect URL the host might echo it into.
+    return res.status(200).json({ ok: true });
   } catch (err) {
     logger.error('Owner login error:', err.message);
     return res.status(500).json({ error: 'Login failed' });
