@@ -27,8 +27,11 @@ async function handler(req, res) {
     // EMPTY record from a genuinely clean one — and told the user "came through
     // clean" over a record that did not exist.
     let master_missing = true;
+    // The full master record, for callers that show/edit the whole thing (the
+    // personal workbench at /me) rather than just the onboarding skeleton.
+    let master = null;
     try {
-      const master = await getMasterCv(user_id);
+      master = await getMasterCv(user_id);
       master_missing = !master;
       if (master && Array.isArray(master.experience)) experience = master.experience;
       // data.content is the stored gen_data payload — a JSON STRING today (the
@@ -39,7 +42,7 @@ async function handler(req, res) {
     } catch (e) {
       logger.error('get-analysis: master load failed:', e.message);
     }
-    return res.status(200).json({ analysis: data.content, experience, flags, master_missing });
+    return res.status(200).json({ analysis: data.content, experience, flags, master_missing, master });
   } catch (error) {
     logger.error('Supabase query error:', error.message);
     return res.status(500).json({ analysis: '', error: 'Error fetching data from database.' });
