@@ -14,8 +14,8 @@
 // paying for two augment calls.
 
 import requireAuth from '../../lib/requireAuth';
-import { getMasterCv, saveMasterCv, getLatestAnalysis, logAiTransaction } from '../../utils/database';
-import { augmentMaster } from '../../utils/openai';
+import { getCV, getMasterCv, saveMasterCv, getLatestAnalysis, logAiTransaction } from '../../utils/database';
+import { augmentMaster, buildOrMergeMaster } from '../../utils/openai';
 import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
 import { logger } from '../../lib/logger';
 import { Redis } from '@upstash/redis';
@@ -72,8 +72,31 @@ async function handler(req, res) {
     } catch {
       return res.status(500).json({ error: 'Could not load your record' });
     }
+    // A missing master is recoverable, not a dead end. The master build runs once
+    // in the background analysis, and if that call failed the column is simply
+    // null — the user still has their uploaded CV text, and refusing here would
+    // strand them with a record that can never be added to. Build it now from
+    // that text (the same builder the background worker uses), then augment.
+    const buildUsages = [];
     if (!master) {
-      return res.status(409).json({ error: 'No master record yet — upload your CV first' });
+      let cvRecord = null;
+      try {
+        cvRecord = await getCV(user_id);
+      } catch {
+        cvRecord = null;
+      }
+      if (!cvRecord?.cv_data) {
+        return res.status(409).json({ error: 'No CV on file yet — upload your CV first' });
+      }
+      try {
+        const built = await buildOrMergeMaster(cvRecord.cv_data);
+        master = built.output;
+        buildUsages.push(...built.usages);
+        await saveMasterCv(user_id, master);
+      } catch (e) {
+        logger.error('master-add-info: on-demand master build failed:', e.message);
+        return res.status(502).json({ error: 'Could not read your CV record — try again' });
+      }
     }
 
     let result;
@@ -86,7 +109,7 @@ async function handler(req, res) {
 
     // Every paid call is cost-logged (augment attempts + verify), whether or not
     // the result is saved — the user was charged for it either way.
-    for (const mu of result.usages) {
+    for (const mu of [...buildUsages, ...result.usages]) {
       await logAiTransaction({
         user_id,
         model: mu.model,
@@ -102,7 +125,7 @@ async function handler(req, res) {
     // NOTHING — a half-placed role in the canonical record is worse than none —
     // and hand the questions back for a second round.
     if (result.questions.length) {
-      return res.status(200).json({ ok: false, questions: result.questions, _gemini_usage: result.usages });
+      return res.status(200).json({ ok: false, questions: result.questions, _gemini_usage: [...buildUsages, ...result.usages] });
     }
 
     try {
@@ -129,7 +152,7 @@ async function handler(req, res) {
       master: result.output,
       flags,
       changes: result.changes,
-      _gemini_usage: result.usages,
+      _gemini_usage: [...buildUsages, ...result.usages],
     });
   } finally {
     if (lockHeld) {

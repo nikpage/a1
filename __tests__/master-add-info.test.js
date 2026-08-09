@@ -25,6 +25,8 @@ vi.mock('@upstash/redis', () => ({
 }));
 
 const mockGetMasterCv       = vi.hoisted(() => vi.fn());
+const mockGetCV             = vi.hoisted(() => vi.fn());
+const mockBuildOrMergeMaster = vi.hoisted(() => vi.fn());
 const mockSaveMasterCv      = vi.hoisted(() => vi.fn());
 const mockGetLatestAnalysis = vi.hoisted(() => vi.fn());
 const mockLogAiTransaction  = vi.hoisted(() => vi.fn());
@@ -32,11 +34,12 @@ const mockAugmentMaster     = vi.hoisted(() => vi.fn());
 
 vi.mock('../utils/database', () => ({
   getMasterCv: mockGetMasterCv,
+  getCV: mockGetCV,
   saveMasterCv: mockSaveMasterCv,
   getLatestAnalysis: mockGetLatestAnalysis,
   logAiTransaction: mockLogAiTransaction,
 }));
-vi.mock('../utils/openai', () => ({ augmentMaster: mockAugmentMaster }));
+vi.mock('../utils/openai', () => ({ augmentMaster: mockAugmentMaster, buildOrMergeMaster: mockBuildOrMergeMaster }));
 vi.mock('../lib/requireAuth', () => ({ default: (handler) => handler }));
 
 import handler from '../pages/api/master-add-info.js';
@@ -58,6 +61,8 @@ beforeEach(() => {
   mockRedisSet.mockResolvedValue('OK');
   mockRedisDel.mockResolvedValue(1);
   mockGetMasterCv.mockResolvedValue(MASTER);
+  mockGetCV.mockResolvedValue({ cv_data: 'Jane Roe — Product Manager, Beta Ltd 2019-2022' });
+  mockBuildOrMergeMaster.mockResolvedValue({ output: MASTER, usages: [USAGE] });
   mockSaveMasterCv.mockResolvedValue({});
   mockGetLatestAnalysis.mockResolvedValue(null);
   mockLogAiTransaction.mockResolvedValue(undefined);
@@ -155,13 +160,35 @@ describe('POST /api/master-add-info', () => {
     expect(mockAugmentMaster).not.toHaveBeenCalled();
   });
 
-  test('409s instead of building one when the user has no master yet', async () => {
+  // A null master_cv is recoverable: the background build can fail (leaving the
+  // column null while the user's CV text is safely on file), and refusing here
+  // stranded the user with a record nothing could ever be added to.
+  test('builds the master on the spot when it is missing, then augments it', async () => {
     mockGetMasterCv.mockResolvedValue(null);
+    mockAugmentMaster.mockResolvedValue({ output: UPDATED, questions: [], changes: ['Added Acme'], usages: [USAGE] });
+
+    const { res, done } = await call({ text: 'Six months contracting at Acme in 2023.' });
+    await done;
+
+    expect(res.statusCode).toBe(200);
+    expect(mockBuildOrMergeMaster).toHaveBeenCalledWith('Jane Roe — Product Manager, Beta Ltd 2019-2022');
+    // The freshly built master is persisted, then the augmented one on top.
+    expect(mockSaveMasterCv).toHaveBeenNthCalledWith(1, SESSION_USER, MASTER);
+    expect(mockAugmentMaster).toHaveBeenCalledWith(MASTER, 'Six months contracting at Acme in 2023.', []);
+    expect(mockSaveMasterCv).toHaveBeenNthCalledWith(2, SESSION_USER, UPDATED);
+    // The build's calls are cost-logged too, not just the augment's.
+    expect(mockLogAiTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  test('409s only when there is no CV on file at all', async () => {
+    mockGetMasterCv.mockResolvedValue(null);
+    mockGetCV.mockResolvedValue(null);
 
     const { res, done } = await call({ text: 'Six months contracting at Acme in 2023.' });
     await done;
 
     expect(res.statusCode).toBe(409);
+    expect(mockBuildOrMergeMaster).not.toHaveBeenCalled();
     expect(mockAugmentMaster).not.toHaveBeenCalled();
     expect(mockSaveMasterCv).not.toHaveBeenCalled();
   });
