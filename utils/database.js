@@ -329,15 +329,22 @@ export async function setCandidateCoreIfEmpty(user_id, core) {
   return Array.isArray(data) && data.length > 0;
 }
 
-// Refill the free generation allowance (called after a successful download).
-// Goes through the service-role client and checks the returned error: this was
-// an anon-client update wrapped in try/catch, and since Supabase RESOLVES with
-// { error } instead of throwing, a blocked write was swallowed and the user
-// silently never got their generations back.
-export async function resetFreeGenerations(user_id, amount) {
+// Top the free generation allowance back up after a successful download.
+//
+// This SETS the balance before: `update({ generations_left: amount })`. A user on
+// the DB default of 10 who downloaded one document had their balance overwritten
+// with 2 — the "refill" silently destroyed 8 generations they had already been
+// given, and looked from the outside like generating cost five times what it
+// does. The top_up_generations RPC uses greatest(generations_left, amount), so a
+// download can only ever raise the balance to the allowance, never lower it.
+//
+// Errors are checked rather than try/caught at the call site: Supabase RESOLVES
+// with { error } instead of throwing, so a blocked write used to pass silently
+// and the user never got their generations back.
+export async function topUpFreeGenerations(user_id, amount) {
   const { error } = await getAdminSupabase()
-    .from('users').update({ generations_left: amount }).eq('user_id', user_id);
-  if (error) throw new Error(`resetFreeGenerations failed: ${error.message}`);
+    .rpc('top_up_generations', { user_id, amount });
+  if (error) throw new Error(`topUpFreeGenerations failed: ${error.message}`);
 }
 
 // Overwrite candidate_core with the user's own edit.

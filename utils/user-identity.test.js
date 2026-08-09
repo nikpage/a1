@@ -7,11 +7,15 @@
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 
-const calls = vi.hoisted(() => ({ upsert: [], update: [], insert: [], eq: [] }));
-const results = vi.hoisted(() => ({ update: null, insert: null, select: null }));
+const calls = vi.hoisted(() => ({ upsert: [], update: [], insert: [], eq: [], rpc: [] }));
+const results = vi.hoisted(() => ({ update: null, insert: null, select: null, rpc: null }));
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
+    rpc: (fn, args) => {
+      calls.rpc.push({ fn, args });
+      return results.rpc;
+    },
     from: () => ({
       upsert: (rows, opts) => {
         calls.upsert.push({ rows, opts });
@@ -44,7 +48,7 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { upsertUser, updateUserEmail, createUserWithEmail, resetFreeGenerations } from './database.js';
+import { upsertUser, updateUserEmail, createUserWithEmail, topUpFreeGenerations } from './database.js';
 
 beforeEach(() => {
   calls.upsert.length = 0;
@@ -54,6 +58,8 @@ beforeEach(() => {
   results.update = { data: [], error: null };
   results.insert = { data: null, error: null };
   results.select = { data: [], error: null };
+  calls.rpc.length = 0;
+  results.rpc = { data: null, error: null };
 });
 
 describe('upsertUser — never blanks an existing account', () => {
@@ -114,23 +120,29 @@ describe('updateUserEmail — the write must actually land', () => {
   });
 });
 
-describe('resetFreeGenerations — a blocked refill must not pass silently', () => {
-  test('writes the allowance for that user', async () => {
-    results.update = { data: [{ user_id: 'user-1' }], error: null };
+describe('topUpFreeGenerations — a download must never COST generations', () => {
+  // The regression: this used to be `update({ generations_left: amount })`, a
+  // plain SET. A user on the DB default of 10 downloaded one document and had
+  // their balance overwritten with the allowance of 2 — eight generations gone,
+  // which read as "generating burns 5 each". The refill now goes through the
+  // top_up_generations RPC, whose greatest(generations_left, amount) can only
+  // ever raise the balance. Red on the old code: it issued a bare update and
+  // never called an RPC at all.
+  test('goes through the top_up RPC and never writes generations_left directly', async () => {
+    await topUpFreeGenerations('user-1', 2);
 
-    await resetFreeGenerations('user-1', 3);
-
-    expect(calls.update[0]).toEqual({ generations_left: 3 });
-    expect(calls.eq[0]).toEqual({ col: 'user_id', val: 'user-1' });
+    expect(calls.rpc).toEqual([{ fn: 'top_up_generations', args: { user_id: 'user-1', amount: 2 } }]);
+    // The destructive path is gone: no plain SET of the balance.
+    expect(calls.update.some((payload) => 'generations_left' in payload)).toBe(false);
   });
 
   test('throws when the write is rejected', async () => {
-    // The old call site wrapped an anon-client update in try/catch, but Supabase
-    // RESOLVES with { error } rather than throwing — so the catch never ran and
-    // the user silently never got their generations back.
-    results.update = { data: null, error: { message: 'permission denied' } };
+    // Supabase RESOLVES with { error } rather than throwing, so the old
+    // try/catch at the call site never ran and the user silently never got
+    // their generations back.
+    results.rpc = { data: null, error: { message: 'permission denied' } };
 
-    await expect(resetFreeGenerations('user-1', 3)).rejects.toThrow(/permission denied/);
+    await expect(topUpFreeGenerations('user-1', 2)).rejects.toThrow(/permission denied/);
   });
 });
 

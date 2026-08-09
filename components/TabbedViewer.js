@@ -39,6 +39,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const { t } = useTranslation('tabbedViewer');
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
   const [activeTab, setActiveTab] = useState('analysis');
+  // Output language chosen for the most recent generation — reused by regenerate.
+  const [lastLanguage, setLastLanguage] = useState('auto');
   const [docs, setDocs] = useState({ cv: null, cover: null });
   const [showBuilder, setShowBuilder] = useState(false);
   const [showBuyPanel, setShowBuyPanel] = useState(false);
@@ -143,7 +145,10 @@ export default function TabbedViewer({ user_id, analysisText }) {
       .catch(() => {});
   }, [user_id]);
 
-  const handleSubmit = async ({ tone, selected, jobText, tweak = '' }) => {
+  const handleSubmit = async ({ tone, selected, jobText, tweak = '', language = 'auto' }) => {
+    // Remember it so a regenerate stays in the language the pair was written in
+    // instead of silently reverting to the master CV's language.
+    setLastLanguage(language);
     setShowLoadingModal(true);
     setLoadingModalTitle(t('generatingDocsTitle'));
     setLoadingModalMessage(t('generatingDocsMsg'));
@@ -167,50 +172,49 @@ export default function TabbedViewer({ user_id, analysisText }) {
         return;
       }
 
-      const generationPromises = selected.map(docType => {
-        return fetch('/api/generate-cv-cover', {
+      // SEQUENTIAL, not parallel. The route holds a per-user Redis `gen_lock`
+      // (NX, 30s) to stop double-submissions, so firing CV and cover at the same
+      // time meant the second request lost the race and came back 429 — the
+      // cover letter silently never arrived while the CV succeeded. One at a
+      // time: the lock is released before the next call asks for it.
+      for (const docType of selected) {
+        const res = await fetch('/api/generate-cv-cover', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType, tweak }),
-        })
-        .then(async (res) => {
-          const data = await res.json();
-          if (data.gemini_usage) logGemini(data.gemini_usage);
-          if (!res.ok) {
-            if (data.detail) console.error('[Generation detail]', JSON.stringify(data.detail, null, 2));
-            if (data.error === "NO_GENERATIONS_LEFT") {
-              await openBuyPanel("generations");
-              throw new Error("Stopped: Out of generations");
-            }
-            if (data.error === "NO_TOKENS_LEFT") {
-              await openBuyPanel("tokens");
-              throw new Error("Stopped: Out of tokens");
-            }
-            throw new Error(data.error || `Generation failed for ${docType}`);
-          }
-          return data;
-        })
-        .then(data => {
-          if (data.cv) {
-            setCvVersions(prev => {
-              const newVersions = [...prev, data.cv];
-              setCvCurrentIndex(newVersions.length - 1);
-              return newVersions;
-            });
-            setActiveTab('cv');
-          }
-          if (data.cover) {
-            setCoverVersions(prev => {
-              const newCovers = [...prev, data.cover];
-              setCoverCurrentIndex(newCovers.length - 1);
-              return newCovers;
-            });
-            setActiveTab('cover');
-          }
+          body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType, tweak, language }),
         });
-      });
+        const data = await res.json();
+        if (data.gemini_usage) logGemini(data.gemini_usage);
+        if (!res.ok) {
+          if (data.detail) console.error('[Generation detail]', JSON.stringify(data.detail, null, 2));
+          if (data.error === "NO_GENERATIONS_LEFT") {
+            await openBuyPanel("generations");
+            throw new Error("Stopped: Out of generations");
+          }
+          if (data.error === "NO_TOKENS_LEFT") {
+            await openBuyPanel("tokens");
+            throw new Error("Stopped: Out of tokens");
+          }
+          throw new Error(data.error || `Generation failed for ${docType}`);
+        }
+        if (data.cv) {
+          setCvVersions(prev => {
+            const newVersions = [...prev, data.cv];
+            setCvCurrentIndex(newVersions.length - 1);
+            return newVersions;
+          });
+          setActiveTab('cv');
+        }
+        if (data.cover) {
+          setCoverVersions(prev => {
+            const newCovers = [...prev, data.cover];
+            setCoverCurrentIndex(newCovers.length - 1);
+            return newCovers;
+          });
+          setActiveTab('cover');
+        }
+      }
 
-      await Promise.all(generationPromises);
       setShowModal(false);
       window.dispatchEvent(new Event('header-stats-updated'));
 
@@ -230,7 +234,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       const res = await fetch('/api/generate-cv-cover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, analysis: analysisTextState, tone, type: docType }),
+        body: JSON.stringify({ user_id, analysis: analysisTextState, tone, type: docType, language: lastLanguage }),
       });
       const data = await res.json();
       if (data.gemini_usage) logGemini(data.gemini_usage);

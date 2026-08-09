@@ -610,8 +610,8 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
   }
 }
 
-export async function generateCV({ cv, analysis, tone, tweak = '', core = '' }) {
-  const messages = buildCvPrompt(cv, analysis, tone, tweak, core);
+export async function generateCV({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
+  const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language);
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low' });
   const gemini_usage = geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL);
   trackDailySpend(gemini_usage.costUsd);
@@ -622,8 +622,8 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '' }) 
   };
 }
 
-export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '' }) {
-  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core);
+export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
+  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language);
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low' });
 
   const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);

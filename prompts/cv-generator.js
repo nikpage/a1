@@ -3,8 +3,9 @@
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 import { scenarioGenerationRules } from './scenarios.js';
+import { languageInstruction } from './language.js';
 
-export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '') {
+export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto') {
   const scenarioBlock = scenarioGenerationRules(analysis?.analysis?.scenario_tags);
   const coreBlock = core && core.trim()
     ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`
@@ -52,7 +53,7 @@ Write the Professional Summary by adapting \`generation_framework.cv_blueprint.s
 - Never fabricate dates or create artificial gaps.
 
 # Task & constraints
-Generate a new CV in the "${tone}" tone, based ONLY on the provided master CV and analysis. Do NOT invent facts, roles, skills or numbers. Output must match the master CV's detected language (fall back to English if unclear); if the job ad is in another language, the master CV's language wins.
+Generate a new CV in the "${tone}" tone, based ONLY on the provided master CV and analysis. Do NOT invent facts, roles, skills or numbers. ${languageInstruction(language)}
 
 Tone — "${tone}": ${toneInstructions(tone)}
 

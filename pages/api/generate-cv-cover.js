@@ -7,6 +7,7 @@ import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import requireAuth from '../../lib/requireAuth';
+import { GENERATION_LANGUAGES } from '../../prompts/language';
 
 let _redis;
 function getRedis() {
@@ -20,7 +21,11 @@ async function handler(req, res) {
   }
 
   const user_id = req.user.user_id;
-  const { analysis: analysisRaw, tone = 'Formal', type = 'both', tweak = '' } = req.body;
+  const { analysis: analysisRaw, tone = 'Formal', type = 'both', tweak = '', language: languageRaw = 'auto' } = req.body;
+  // Explicit output language for this application ('en' / 'cs'); 'auto' keeps the
+  // historic behaviour (write in the master CV's own language). Anything else is
+  // coerced to 'auto' rather than reaching the prompt unchecked.
+  const language = GENERATION_LANGUAGES[languageRaw] ? languageRaw : 'auto';
   if (!analysisRaw || !type) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -93,12 +98,12 @@ async function handler(req, res) {
 
     try {
       if (type === 'cv' || type === 'both') {
-        cvRes = await generateCV({ cv: source, analysis, tone, tweak, core });
+        cvRes = await generateCV({ cv: source, analysis, tone, tweak, core, language });
         cv = cvRes.content;
       }
 
       if (type === 'cover' || type === 'both') {
-        coverRes = await generateCoverLetter({ cv: source, analysis, tone, tweak, core });
+        coverRes = await generateCoverLetter({ cv: source, analysis, tone, tweak, core, language });
         cover = coverRes.content;
       }
 

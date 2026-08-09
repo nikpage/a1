@@ -8,6 +8,10 @@ export default function ToneDocModal({ onClose, onSubmit }) {
   const [tone, setTone] = useState('formal');
   const [types, setTypes] = useState({ cv: true, coverLetter: true });
   const [tweak, setTweak] = useState('');
+  // Output language for THIS application. 'auto' keeps the historic behaviour
+  // (write in the master CV's own language); an explicit choice lets an English
+  // master CV produce a Czech application, which is the whole point.
+  const [language, setLanguage] = useState('auto');
 
   // The server expects 'cv' / 'cover'; the UI state uses 'coverLetter' as its key.
   const keyToType = { cv: 'cv', coverLetter: 'cover' };
@@ -22,10 +26,13 @@ export default function ToneDocModal({ onClose, onSubmit }) {
       return;
     }
 
-    onSubmit({ tone, selected, tweak });
+    onSubmit({ tone, selected, tweak, language });
   };
 
   const toneOptions = ['formal', 'friendly', 'enthusiastic', 'cocky'];
+  // Values match prompts/language.js GENERATION_LANGUAGES; the server coerces
+  // anything it doesn't recognise back to 'auto'.
+  const languageOptions = [['auto', 'langAuto'], ['en', 'langEn'], ['cs', 'langCs']];
 
   return (
     <BaseModal onClose={onClose}>
@@ -68,6 +75,31 @@ export default function ToneDocModal({ onClose, onSubmit }) {
               />
               {t(doc)}
             </label>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+          {t('chooseLanguage')}
+        </h2>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {languageOptions.map(([value, labelKey]) => (
+            <button
+              key={value}
+              type="button"
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+                backgroundColor: language === value ? '#3b82f6' : '#fff',
+                color: language === value ? 'white' : 'black',
+                cursor: 'pointer'
+              }}
+              onClick={() => setLanguage(value)}
+            >
+              {t(labelKey)}
+            </button>
           ))}
         </div>
       </div>

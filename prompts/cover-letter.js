@@ -2,8 +2,9 @@
 
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
+import { languageInstruction } from './language.js';
 
-export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '') {
+export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto') {
   const coreBlock = core && core.trim()
     ? `    # Who this candidate is (steering)\n    The candidate describes the durable value they bring to any role as: "${core.trim()}"\n    Let it guide what you foreground and how you frame the story — never state anything the CV doesn't actually prove.\n`
     : '';
@@ -19,7 +20,7 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '') {
     role: 'user',
     content: `${tweakBlock}${coreBlock}
     # Task
-    Write a cover letter in the "${tone}" tone, using only real facts from the master CV and analysis. Do NOT invent information. Output must match the master CV's detected language (fall back to English if unclear). If the job ad is in another language, the master CV's language takes precedence.
+    Write a cover letter in the "${tone}" tone, using only real facts from the master CV and analysis. Do NOT invent information. ${languageInstruction(language)}
 
     # What makes it land
     - Open with a specific hook tied to this candidate and this role — never a generic "I am writing to apply for...". Keep the opening to one or two short, punchy sentences; do NOT cram the whole pitch into a single dense, multi-clause first sentence.
