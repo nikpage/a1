@@ -269,7 +269,7 @@ function SkeletonBlock({ entry, openFlags, doneFlags, onResolved }) {
   );
 }
 
-export default function MasterFlagFixer({ flags = [], experience = [], onComplete }) {
+export default function MasterFlagFixer({ flags = [], experience = [], rebuilding = false, onComplete }) {
   // The LIVE open-issue list — recomputed server-side (utils/master-issues) after
   // every resolve and swapped in wholesale here. This is what makes the cascade
   // work: answering a structural overlap removes the short-tenure/gap questions
@@ -472,7 +472,19 @@ export default function MasterFlagFixer({ flags = [], experience = [], onComplet
         </p>
       </div>
 
-      {openAll.length > 0 ? (
+      {/* An EMPTY record is not a CLEAN one. With no experience at all there is
+          nothing to have come through clean — saying so hid a failed build
+          behind a reassuring green line. */}
+      {rebuilding ? (
+        <p className="text-sm text-blue-700 mb-3">
+          Reading your CV — this takes up to a minute…
+        </p>
+      ) : exp.length === 0 ? (
+        <p className="text-sm text-amber-700 mb-3">
+          We couldn’t read your career record from your CV. Add your experience in the box
+          below, or upload your CV again.
+        </p>
+      ) : openAll.length > 0 ? (
         <p className="text-sm text-gray-500 mb-3">
           {openAll.length} open {openAll.length === 1 ? 'question' : 'questions'} — your CVs are sharper once settled.
         </p>

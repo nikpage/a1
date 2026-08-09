@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
 import MasterFlagFixer from '../components/MasterFlagFixer';
 import AddInfoPanel from '../components/AddInfoPanel';
+import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
 import { getUserStats } from '../utils/database';
@@ -13,6 +14,8 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
   const [flags, setFlags] = useState([]);
   const [experience, setExperience] = useState([]);
   const [onboardingDone, setOnboardingDone] = useState(false);
+  // The master record is missing (its build failed) and is being rebuilt now.
+  const [rebuilding, setRebuilding] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -29,10 +32,38 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
           }
           return res.json();
         })
-        .then(data => {
+        .then(async data => {
           setAnalysis(data.analysis || '');
           setFlags(Array.isArray(data.flags) ? data.flags : []);
           setExperience(Array.isArray(data.experience) ? data.experience : []);
+
+          // No master record: its build failed at analysis time, leaving the
+          // column null while the CV text is safely on file. Rebuild it here
+          // rather than showing an empty skeleton the user cannot fix — the
+          // background function is the only place with the budget to run the
+          // build (a Pages route has 10s; the build needs longer), and it
+          // builds the master whenever it is absent.
+          if (data.master_missing) {
+            setRebuilding(true);
+            try {
+              await uploadAndAnalyze({ user_id, deep: true });
+              const res = await fetch('/api/get-analysis', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id }),
+              });
+              if (res.ok) {
+                const fresh = await res.json();
+                setAnalysis(fresh.analysis || '');
+                setFlags(Array.isArray(fresh.flags) ? fresh.flags : []);
+                setExperience(Array.isArray(fresh.experience) ? fresh.experience : []);
+              }
+            } catch (e) {
+              console.error('Master rebuild failed:', e.message);
+            }
+            setRebuilding(false);
+          }
         })
         .catch(() => {
           setAnalysis('');
@@ -59,7 +90,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
       <main className="max-w-4xl mx-auto px-4 py-10">
         {showOnboarding ? (
           <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
-            <MasterFlagFixer flags={flags} experience={experience} onComplete={() => setOnboardingDone(true)} />
+            <MasterFlagFixer flags={flags} experience={experience} rebuilding={rebuilding} onComplete={() => setOnboardingDone(true)} />
           </div>
         ) : analysis ? (
           <>

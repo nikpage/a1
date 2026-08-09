@@ -21,8 +21,15 @@ async function handler(req, res) {
     // the timeline or questions.
     let experience = [];
     let flags = [];
+    // Whether the per-user master record actually exists. The build runs once in
+    // the background analysis; when that call fails the column is left null while
+    // the CV text sits safely on file. Without this flag the page cannot tell an
+    // EMPTY record from a genuinely clean one — and told the user "came through
+    // clean" over a record that did not exist.
+    let master_missing = true;
     try {
       const master = await getMasterCv(user_id);
+      master_missing = !master;
       if (master && Array.isArray(master.experience)) experience = master.experience;
       // data.content is the stored gen_data payload — a JSON STRING today (the
       // background function always JSON.stringify()s before insert), but handled
@@ -32,7 +39,7 @@ async function handler(req, res) {
     } catch (e) {
       logger.error('get-analysis: master load failed:', e.message);
     }
-    return res.status(200).json({ analysis: data.content, experience, flags });
+    return res.status(200).json({ analysis: data.content, experience, flags, master_missing });
   } catch (error) {
     logger.error('Supabase query error:', error.message);
     return res.status(500).json({ analysis: '', error: 'Error fetching data from database.' });
