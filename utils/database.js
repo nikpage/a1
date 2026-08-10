@@ -220,7 +220,7 @@ export async function getCvList(user_id) {
 // Get user stats (generations_left, tokens, email)
 export async function getUserStats(user_id) {
   const { data, error } = await getAdminSupabase()
-    .from('users').select('generations_left, tokens, email')
+    .from('users').select('generations_left, tokens, free_downloads_left, email')
     .eq('user_id', user_id).single();
   if (error) throw error;
   return data;
