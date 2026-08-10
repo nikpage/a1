@@ -12,6 +12,14 @@ import { mockReqRes, authCookieFor } from './helpers.js';
 import { setSessionCookie } from '../lib/session.js';
 import { verifyToken } from '../lib/auth.js';
 
+// The header carries the legacy domain-scoped clears as well as the live
+// session, so pick the one that is actually setting a value rather than
+// trusting a position in the array.
+function sessionCookie(raw) {
+  const all = Array.isArray(raw) ? raw : [raw];
+  return all.find((c) => !/Max-Age=0/.test(c));
+}
+
 describe('setSessionCookie', () => {
   test('sets an HttpOnly auth-token cookie that verifyToken decodes back to the user_id', async () => {
     const { req, res } = mockReqRes();
@@ -21,7 +29,7 @@ describe('setSessionCookie', () => {
 
     const setCookie = res.getHeader('Set-Cookie');
     expect(setCookie).toBeDefined();
-    const cookieStr = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    const cookieStr = sessionCookie(setCookie);
     expect(cookieStr).toMatch(/auth-token=/);
     expect(cookieStr).toMatch(/HttpOnly/);
 
@@ -34,6 +42,36 @@ describe('setSessionCookie', () => {
     expect(decoded.user_id).toBe(user_id);
   });
 
+  // Regression: the domain-scoped clears used to be emitted AFTER the session
+  // cookie. A cookie's identity is name + domain + path, and a host-only cookie
+  // on mysuper.cv is stored under the same domain string as `Domain=mysuper.cv`
+  // — so the trailing clear deleted the session that had just been set and every
+  // login landed back on /?error=unauthorized. Red on the old order, green now.
+  test('the domain-scoped clears are emitted BEFORE the session cookie, never after', async () => {
+    const savedUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://mysuper.cv';
+
+    const { res } = mockReqRes();
+    setSessionCookie(res, { user_id: 'user-order-1' });
+
+    const cookies = res.getHeader('Set-Cookie');
+    process.env.NEXT_PUBLIC_SITE_URL = savedUrl;
+
+    // Both legacy identities are still evicted...
+    expect(cookies.some((c) => /Domain=\.mysuper\.cv/.test(c) && /Max-Age=0/.test(c))).toBe(true);
+    expect(cookies.some((c) => /Domain=mysuper\.cv/.test(c) && /Max-Age=0/.test(c))).toBe(true);
+
+    // ...but the LAST word on `auth-token` must be the live session, not a clear.
+    const last = cookies[cookies.length - 1];
+    expect(last).not.toMatch(/Max-Age=0/);
+    const token = last.match(/auth-token=([^;]+)/)[1];
+    expect((await verifyToken(token)).user_id).toBe('user-order-1');
+
+    // And no clear may follow the session cookie in the array.
+    const sessionIndex = cookies.findIndex((c) => !/Max-Age=0/.test(c));
+    expect(cookies.slice(sessionIndex + 1)).toEqual([]);
+  });
+
   test('cookie uses SameSite=None; Secure in production', () => {
     const savedEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
@@ -42,7 +80,7 @@ describe('setSessionCookie', () => {
     setSessionCookie(res, { user_id: 'u1' });
 
     const raw = res.getHeader('Set-Cookie');
-    const cookieStr = Array.isArray(raw) ? raw[0] : raw;
+    const cookieStr = sessionCookie(raw);
     expect(cookieStr).toMatch(/SameSite=None/);
     expect(cookieStr).toMatch(/Secure/);
 
