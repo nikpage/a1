@@ -21,6 +21,14 @@ export function formatLongDate(now = new Date()) {
   return `${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 }
 
+// A one-line restatement to sit IMMEDIATELY beside the dated text itself. The
+// full block can sit thousands of words above the CV, and attention to a rule
+// decays with distance — this puts the date where the dates are being read.
+export function currentDateReminder(now = new Date()) {
+  const today = formatLongDate(now);
+  return `(Reminder: today is ${today}. Every date at or before ${today} has already happened — never call it future or "not yet started".)`;
+}
+
 export function currentDateBlock(now = new Date()) {
   const today = formatLongDate(now);
   return `TODAY'S DATE IS ${today}. This is the real present moment — do NOT assume any other "now".

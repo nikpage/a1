@@ -12,7 +12,7 @@
 // Same never-fabricate law as the full analysis: only what the CV evidences.
 
 import { scenarioList } from './scenarios.js';
-import { currentDateBlock } from './current-date.js';
+import { currentDateBlock, currentDateReminder } from './current-date.js';
 
 const NEVER_FABRICATE = `Use ONLY what the CV (and job ad, if given) actually proves. Never invent employers, dates, titles, skills, numbers or achievements. Reference THIS candidate's real phrases, roles and companies — every line must be impossible to paste onto someone else's CV. Detect the CV's language and write ALL output in it.`;
 
@@ -20,7 +20,9 @@ export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText, layoutNot
   return [
     {
       role: 'system',
-      content: `You are a top-tier HR strategist and sharp CV writer doing a fast, incisive first read of a candidate's CV${hasJobText ? ' against a specific job ad' : ''}. You produce a short, high-impact TEASER: enough genuine insight to make the candidate think "they really get me", while holding back the full rewrite plan. ${NEVER_FABRICATE}`,
+      content: `${currentDateBlock(now)}
+
+You are a top-tier HR strategist and sharp CV writer doing a fast, incisive first read of a candidate's CV${hasJobText ? ' against a specific job ad' : ''}. You produce a short, high-impact TEASER: enough genuine insight to make the candidate think "they really get me", while holding back the full rewrite plan. ${NEVER_FABRICATE}`,
     },
     {
       role: 'user',
@@ -67,6 +69,7 @@ OUTPUT EXACTLY THIS SHAPE:
 }
 
 CV (the candidate's raw CV text, in its ORIGINAL ORDER — read it the way a recruiter skims on a 7-second pass: top-down, the eye landing on whatever sits highest first. Judge ALL data from it: dates, gaps, tenures, role overlaps, seniority, buried names. Do NOT reconcile away a problem the page actually presents — two short most-recent stints sitting ABOVE a longer engagement are a real first-impression signal, even if a line further down would explain them):
+${currentDateReminder(now)}
 ${cvText}
 ${layoutNote ? `\n${layoutNote}\n` : ''}
 ${hasJobText ? `JOB DESCRIPTION:\n${jobText}` : 'No job ad provided — assess the CV on its own merits against the norms of its own country; do NOT invent a target role or market.'}

@@ -11,7 +11,7 @@
 // keeps its original behaviour and emits the complete schema.
 
 import { scenarioList, scenarioHandling } from './scenarios.js';
-import { currentDateBlock } from './current-date.js';
+import { currentDateBlock, currentDateReminder } from './current-date.js';
 
 // NOTE: the onboarding "open questions" the user settles on the master are no
 // longer produced here. A model reading the master reconciles its gaps/overlaps
@@ -158,6 +158,7 @@ OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field abo
 }
 
 CV CONTENT:
+${currentDateReminder(now)}
 ${cvText}
 
 ${hasJobText ? `JOB DESCRIPTION:\n${jobText}` : ''}
@@ -212,6 +213,7 @@ OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field abo
 }
 
 CV CONTENT:
+${currentDateReminder(now)}
 ${cvText}
 
 ${hasJobText ? `JOB DESCRIPTION:\n${jobText}` : ''}
@@ -354,6 +356,7 @@ JSON OUTPUT SCHEMA:
 }
 
 CV CONTENT:
+${currentDateReminder(now)}
 ${cvText}
 
 ${hasJobText ? `JOB DESCRIPTION:\n${jobText}` : ''}

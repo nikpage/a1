@@ -15,7 +15,7 @@
 // never-fabricate guardrail is identical to analysis.js's REFRAME-vs-ADD rule —
 // the master records only what the input proves; gaps stay gaps.
 
-import { currentDateBlock } from './current-date.js';
+import { currentDateBlock, currentDateReminder } from './current-date.js';
 
 const NEVER_FABRICATE = `NEVER-FABRICATE (absolute, governs every field): Record ONLY what the input actually evidences. Never invent or infer an employer, date, title, tool, skill, metric, location or achievement that is not in the input. Concrete facts — employer, location, dates, tools, numbers — are immutable and copied verbatim. If something is absent, ambiguous, or unreadable, mark it missing or flag it — NEVER fill the gap with a plausible guess. A relabel is allowed ONLY when the substitute denotes the SAME underlying fact ("coordinated releases" → "led release management" only if they genuinely led it); upgrading a term into a claim of MORE than was done is fabrication. The master must be 100% true so that everything generated from it is safe to put on a real CV.`;
 
@@ -116,6 +116,7 @@ QUESTIONS — ask ONLY when you cannot place the fact without the answer:
 CHANGES — list what you added, one short plain-English line each, addressed to the user (e.g. "Added Acme — Contractor, 2023" / "Added a metric to your Beta Ltd role"). One line per real change; [] if nothing changed.
 
 EXISTING MASTER RECORD:
+${currentDateReminder(now)}
 ${master ? JSON.stringify(master) : '{}'}${answersBlock}`;
 
   const user = `${task}
@@ -177,9 +178,11 @@ Return VALID JSON only, exactly this shape — empty arrays / empty string where
 }`;
 
   const user = `MASTER:
+${currentDateReminder(now)}
 ${JSON.stringify(master)}
 ${trustedMaster ? `\nTRUSTED PRIOR RECORD (already verified — do not flag its facts):\n${JSON.stringify(trustedMaster)}\n` : ''}
 SOURCE:
+${currentDateReminder(now)}
 ${sourceText}`;
 
   return [
@@ -233,6 +236,7 @@ ${existingMaster ? JSON.stringify(existingMaster) : '{}'}`;
 ${SCHEMA}
 
 ${isMerge ? 'NEW INPUT TO MERGE IN' : 'INPUT'}:
+${currentDateReminder(now)}
 ${rawInput}`.trim();
 
   return [

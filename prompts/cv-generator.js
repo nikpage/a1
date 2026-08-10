@@ -4,7 +4,7 @@ import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 import { scenarioGenerationRules } from './scenarios.js';
 import { languageInstruction } from './language.js';
-import { currentDateBlock } from './current-date.js';
+import { currentDateBlock, currentDateReminder } from './current-date.js';
 
 export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   const scenarioBlock = scenarioGenerationRules(analysis?.analysis?.scenario_tags);
@@ -144,6 +144,7 @@ Output in Markdown with this exact structure:
 
 # Inputs
 ## Master CV (the candidate's complete, structured career record — your sole factual source):
+${currentDateReminder(now)}
 ${cv}
 
 ## Analysis:

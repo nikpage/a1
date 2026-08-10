@@ -3,7 +3,7 @@
 import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 import { languageInstruction } from './language.js';
-import { currentDateBlock } from './current-date.js';
+import { currentDateBlock, currentDateReminder } from './current-date.js';
 
 export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   const coreBlock = core && core.trim()
@@ -54,6 +54,7 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
 
     # Inputs
     ## Master CV (the candidate's complete, structured career record — your sole factual source; includes \`voice_samples\` for the candidate's writing voice):
+    ${currentDateReminder(now)}
     ${cv}
 
     ## Analysis:

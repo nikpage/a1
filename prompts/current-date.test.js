@@ -6,7 +6,7 @@
 // assertions pin an exact string and are capable of failing.
 
 import { describe, test, expect } from 'vitest';
-import { currentDateBlock, formatLongDate } from './current-date.js';
+import { currentDateBlock, currentDateReminder, formatLongDate } from './current-date.js';
 import { buildAnalysisTeaserPrompt } from './analysis-teaser.js';
 import { buildAnalysisPrompt } from './analysis.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from './master-cv.js';
@@ -14,9 +14,13 @@ import { buildCvPrompt } from './cv-generator.js';
 import { buildCoverPrompt } from './cover-letter.js';
 
 // Local-time constructor: the helper reads local calendar fields, so this is
-// 10 August 2026 regardless of the machine's timezone.
-const FIXED = new Date(2026, 7, 10, 12, 0, 0);
-const TODAY = '10 August 2026';
+// 5 March 2024 regardless of the machine's timezone.
+//
+// The injected clock is deliberately NOT the real today. Pinning it to the real
+// current date would let every wiring assertion pass even if the `now` parameter
+// were ignored entirely and the default clock used — a test incapable of failing.
+const FIXED = new Date(2024, 2, 5, 12, 0, 0);
+const TODAY = '5 March 2024';
 
 const CV_TEXT = 'Jane Doe — Product Manager, Acme Corp, Jan 2022 - Jan 2026, Berlin, Germany.';
 const JOB_TEXT = 'Senior Product Manager: 5+ years, Berlin.';
@@ -62,7 +66,7 @@ describe('currentDateBlock / formatLongDate', () => {
 
   test('a different injected date produces a different block (the clock is really used)', () => {
     expect(currentDateBlock(new Date(2024, 2, 5))).toContain('5 March 2024');
-    expect(currentDateBlock(new Date(2024, 2, 5))).not.toContain(TODAY);
+    expect(currentDateBlock(new Date(2026, 7, 10))).not.toContain(TODAY);
   });
 });
 
@@ -100,8 +104,8 @@ describe('every time-reasoning prompt carries the injected current date', () => 
     expect(augment).toMatch(/is in the PAST/);
 
     // A different injected clock really changes the output — the date is not a constant.
-    const other = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: new Date(2024, 2, 5) }));
-    expect(other).toContain("TODAY'S DATE IS 5 March 2024");
+    const other = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: new Date(2026, 7, 10) }));
+    expect(other).toContain("TODAY'S DATE IS 10 August 2026");
     expect(other).not.toContain(TODAY);
   });
 
@@ -203,5 +207,43 @@ describe('existing key rules survive the date insertion (guard against accidenta
     expect(user).toMatch(/250-350 words/);
     expect(user).toContain('Start with only the date at the top');
     expect(user).toContain('voice_samples');
+  });
+});
+
+// The full date block can sit thousands of words above the CV text. These pin the
+// SHORT restatement that sits immediately beside the dates being read, so the
+// hardening cannot be silently dropped from a prompt later.
+describe('currentDateReminder sits next to the dated text', () => {
+  const FIXED2 = FIXED;
+
+  it('renders the injected date, and a different clock changes it', () => {
+    expect(currentDateReminder(FIXED2)).toContain('today is 5 March 2024');
+    expect(currentDateReminder(new Date(2026, 7, 10))).toContain('today is 10 August 2026');
+    expect(currentDateReminder(new Date(2026, 7, 10))).not.toContain('5 March 2024');
+  });
+
+  it('states that a past date is not the future', () => {
+    expect(currentDateReminder(FIXED2)).toMatch(/already happened/i);
+    expect(currentDateReminder(FIXED2)).toMatch(/never call it future/i);
+  });
+
+  // NOTE: the injected clock here is deliberately NOT today. Today is 10 August
+  // 2026, so asserting on today's date would pass even if the parameter were
+  // ignored and the default clock used — a test that cannot fail.
+  it('every prompt that carries dated text also carries the reminder', () => {
+    const PAST = new Date(2024, 2, 5);
+    const has = (msgs) => JSON.stringify(msgs).includes('Reminder: today is 5 March 2024');
+    expect(has(buildAnalysisTeaserPrompt('CV', '', false, '', PAST))).toBe(true);
+    expect(has(buildAnalysisPrompt('CV', '', false, null, 'blueprint', PAST))).toBe(true);
+    expect(has(buildCvPrompt('CV', {}, 'direct', '', '', 'auto', PAST))).toBe(true);
+    expect(has(buildCoverPrompt('CV', {}, 'direct', '', '', 'auto', PAST))).toBe(true);
+    expect(has(buildMasterCvPrompt({ mode: 'build', rawInput: 'raw cv', now: PAST }))).toBe(true);
+    expect(has(buildMasterVerifyPrompt({ master: {}, sourceText: 'x', now: PAST }))).toBe(true);
+    expect(has(buildMasterAugmentPrompt({ master: {}, text: 'x', now: PAST }))).toBe(true);
+  });
+
+  it('the teaser states the date in the SYSTEM message too, not only the instructions', () => {
+    const sys = buildAnalysisTeaserPrompt('CV', '', false, '', FIXED2).find((m) => m.role === 'system');
+    expect(sys.content).toContain(`TODAY'S DATE IS ${TODAY}`);
   });
 });
