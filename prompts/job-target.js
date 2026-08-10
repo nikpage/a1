@@ -1,0 +1,61 @@
+// prompts/job-target.js
+//
+// The TARGET JOB block — the job ad itself, in front of the generators.
+//
+// Both generators used to see the job only second-hand, through whatever the
+// analysis blueprint happened to carry (summary_draft, skills_to_highlight,
+// inferred_keywords). The ad's own requirements never reached the prompt, so
+// the CV defaulted to generic-impressive instead of answering THIS job.
+//
+// The confirmed extraction is already stored on the analysis as
+// `job_extraction` (written by netlify/functions/analyse-background.mjs), so
+// this block needs no new plumbing: it lifts that object out of the JSON blob
+// and states it plainly, where the model will actually act on it.
+//
+// Standalone reviews (no job ad) get an empty string — nothing to target.
+
+// Render one labelled list, or '' when the ad was silent on it.
+function labelledList(label, items) {
+  if (!Array.isArray(items) || items.length === 0) return '';
+  const lines = items
+    .map((i) => (typeof i === 'string' ? i.trim() : ''))
+    .filter(Boolean)
+    .map((i) => `- ${i}`);
+  return lines.length ? `\n${label}:\n${lines.join('\n')}` : '';
+}
+
+function labelledValue(label, value) {
+  return value && String(value).trim() ? `\n${label}: ${String(value).trim()}` : '';
+}
+
+// The job the documents are being written FOR, as the ad itself stated it.
+export function targetJobBlock(analysis) {
+  const job = analysis?.job_extraction;
+  if (!job || typeof job !== 'object') return '';
+
+  const facts =
+    labelledValue('Position', job.position_title) +
+    labelledValue('Company', job.company) +
+    labelledValue('Location', job.location) +
+    labelledValue('Seniority', job.seniority) +
+    labelledList('Must-have requirements', job.must_have_requirements) +
+    labelledList('Required skills', job.required_skills) +
+    labelledList('Responsibilities', job.responsibilities) +
+    labelledList('Desired / nice-to-have', [...(job.desired_skills || []), ...(job.nice_to_have || [])]) +
+    labelledList('Language requirements', job.language_requirements);
+
+  if (!facts.trim()) return '';
+
+  return `
+# The target job (what this document is written FOR)
+This is the ad, as the employer wrote it. It is the TARGET, never evidence about the candidate — nothing here is a fact about them until the master CV proves it.
+${facts}
+
+## How to use it
+- Work requirement by requirement. For each must-have and required skill above, find the REAL evidence in the master CV's \`experience[]\` that answers it, and make that evidence visible and early — the strongest proof belongs where the reader hits it first, not buried at the bottom.
+- Evidence the job asks for gets promoted; experience the job has no use for gets condensed or cut. That reordering IS the tailoring.
+- **A requirement with no evidence stays unanswered.** Say nothing about it. Do NOT imply, hint at, adjacent-skill it, or borrow the ad's phrasing to cover a hole — an unclaimed gap is honest, a papered-over one is a lie.
+- Never upgrade what the evidence says to make it fit better: "contributed to" does not become "led", a team of 3 does not become a department, exposure does not become expertise, and no number moves.
+- Use the ad's own vocabulary ONLY over experience the candidate genuinely has — matching their real work to the employer's words, never their words to work that isn't there.
+`;
+}

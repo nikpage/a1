@@ -8,6 +8,7 @@ import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
 import { buildCvPrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
+import { buildGenerationVerifyPrompt } from '../prompts/generation-verify.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
@@ -610,21 +611,93 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
   }
 }
 
+// Apply the verify pass's findings to a generated document — deterministically,
+// by EXACT string match. A reported span that isn't literally in the document is
+// discarded, so a checker that hallucinates a quote changes nothing. An empty
+// replacement deletes the span, and a line left empty (or a bullet left with no
+// content) goes with it rather than leaving a stray dash behind.
+export function applyGenerationCorrections(document, corrections) {
+  let out = document;
+  const applied = [];
+
+  for (const c of Array.isArray(corrections) ? corrections : []) {
+    const quote = typeof c?.quote === 'string' ? c.quote.trim() : '';
+    if (!quote || !out.includes(quote)) continue;
+    const replacement = typeof c?.replacement === 'string' ? c.replacement.trim() : '';
+    out = out.split(quote).join(replacement);
+    applied.push({ quote, replacement, reason: c?.reason || '' });
+  }
+
+  if (applied.length) {
+    // Drop lines the deletions emptied: a bare bullet ("-", "*", "•") or blank
+    // markdown list item left behind by removing all of its text.
+    out = out
+      .split('\n')
+      .filter((line, i, arr) => {
+        const t = line.trim();
+        if (/^([-*•]|\d+\.)$/.test(t)) return false;
+        // collapse a run of blank lines the deletions created
+        return !(t === '' && i > 0 && arr[i - 1].trim() === '' && arr[i - 2]?.trim() === '');
+      })
+      .join('\n');
+  }
+
+  return { content: out, applied };
+}
+
+// Verify a GENERATED document against the master record and strip/downgrade the
+// claims the master does not support. Non-fatal: any failure returns the
+// document untouched, because an unverified CV still beats no CV.
+export async function verifyGeneratedDoc({ document, master, docType = 'cv' }) {
+  try {
+    if (!document || !master) return { content: document, gemini_usage: null, applied: [] };
+    const messages = buildGenerationVerifyPrompt({ docType, document, master });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
+    const gemini_usage = geminiUsage(`verify ${docType}`, data, GEMINI_VERIFY_MODEL);
+    const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+    const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
+    if (applied.length) {
+      logger.info(`[verify ${docType}] ${applied.length} unsupported claim(s) corrected:`, applied.map((a) => a.reason).join('; '));
+    }
+    trackDailySpend(gemini_usage.costUsd);
+    return { content, gemini_usage, applied };
+  } catch (e) {
+    logger.error(`generation verify failed (${docType}, using unverified document):`, e.message);
+    return { content: document, gemini_usage: null, applied: [] };
+  }
+}
+
 export async function generateCV({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
   const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language);
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low' });
+  // medium effort: 'low' is exactly where a writing model drops the constraints
+  // that keep it honest (don't upgrade the verb, don't invent a number); the
+  // low temperature holds it to the record's own wording rather than a
+  // more-impressive paraphrase of it.
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
   const gemini_usage = geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL);
   trackDailySpend(gemini_usage.costUsd);
+
+  // Safety net over the prose: strip anything the master doesn't evidence.
+  const verified = await verifyGeneratedDoc({
+    document: data.choices?.[0]?.message?.content || '',
+    master: cv,
+    docType: 'cv',
+  });
+
   return {
-    content: data.choices?.[0]?.message?.content || '',
+    content: verified.content,
     usage: data.usage,
     gemini_usage,
+    // Both calls, for the cost-logging rule (DB row + console line each).
+    gemini_usages: [gemini_usage, ...(verified.gemini_usage ? [verified.gemini_usage] : [])],
   };
 }
 
 export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
   const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language);
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low' });
+  // See generateCV: medium effort + low temperature keep the letter tied to the
+  // record instead of drifting into a better-sounding version of it.
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
 
   const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
 
@@ -658,9 +731,19 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   processedContent = `${todayString}\n\n${processedContent}`;
 
   trackDailySpend(gemini_usage.costUsd);
+
+  // Verify AFTER the date/placeholder cleanup, so the checker sees exactly the
+  // text the candidate will send.
+  const verified = await verifyGeneratedDoc({
+    document: processedContent.trim(),
+    master: cv,
+    docType: 'cover',
+  });
+
   return {
-    content: processedContent.trim(),
+    content: verified.content,
     usage: data.usage,
-    gemini_usage
+    gemini_usage,
+    gemini_usages: [gemini_usage, ...(verified.gemini_usage ? [verified.gemini_usage] : [])],
   };
 }

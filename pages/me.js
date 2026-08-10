@@ -22,6 +22,7 @@ import Head from 'next/head';
 import Header from '../components/Header';
 import MasterFlagFixer from '../components/MasterFlagFixer';
 import AddInfoPanel from '../components/AddInfoPanel';
+import MasterRecordPanel from '../components/MasterRecordPanel';
 import DocumentDownloadButtons from '../components/DocumentDownloadButtons';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { logGemini } from '../utils/log-gemini.js';
@@ -49,7 +50,6 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
   const [flags, setFlags] = useState([]);
   const [experience, setExperience] = useState([]);
   const [master, setMaster] = useState(null);
-  const [showMasterJson, setShowMasterJson] = useState(false);
   const [loadingRecord, setLoadingRecord] = useState(true);
 
   const [uploading, setUploading] = useState(false);
@@ -183,20 +183,12 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
               {uploading ? 'Building…' : master ? 'Replace base CV' : 'Upload base CV'}
               <input type="file" accept=".pdf,.doc,.docx" className="hidden" disabled={uploading} onChange={handleUpload} />
             </label>
-            {master && (
-              <button
-                onClick={() => setShowMasterJson((v) => !v)}
-                className="text-sm text-blue-700 underline"
-              >
-                {showMasterJson ? 'Hide raw record' : 'Show raw record'}
-              </button>
-            )}
           </div>
 
-          {showMasterJson && master && (
-            <pre className="mt-3 max-h-96 overflow-auto rounded bg-gray-50 border border-gray-200 p-3 text-xs whitespace-pre-wrap">
-              {JSON.stringify(master, null, 2)}
-            </pre>
+          {master && (
+            <div className="mt-4">
+              <MasterRecordPanel master={master} />
+            </div>
           )}
 
           {!loadingRecord && (experience.length > 0 || flags.length > 0) && (

@@ -4,8 +4,11 @@ import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 import { languageInstruction } from './language.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
+import { targetJobBlock } from './job-target.js';
 
 export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
+  // The ad itself — the letter is addressed to THIS job, so it reads it directly.
+  const jobBlock = targetJobBlock(analysis);
   const coreBlock = core && core.trim()
     ? `    # Who this candidate is (steering)\n    The candidate describes the durable value they bring to any role as: "${core.trim()}"\n    Let it guide what you foreground and how you frame the story — never state anything the CV doesn't actually prove.\n`
     : '';
@@ -21,7 +24,7 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
     role: 'user',
     content: `${tweakBlock}${coreBlock}
     ${currentDateBlock(now)}
-
+${jobBlock}
     # Task
     Write a cover letter in the "${tone}" tone, using only real facts from the master CV and analysis. Do NOT invent information. ${languageInstruction(language)}
 

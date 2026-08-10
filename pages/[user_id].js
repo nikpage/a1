@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
 import MasterFlagFixer from '../components/MasterFlagFixer';
 import AddInfoPanel from '../components/AddInfoPanel';
+import MasterRecordPanel from '../components/MasterRecordPanel';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
@@ -13,6 +14,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
   const [analysis, setAnalysis] = useState('');
   const [flags, setFlags] = useState([]);
   const [experience, setExperience] = useState([]);
+  const [master, setMaster] = useState(null);
   const [onboardingDone, setOnboardingDone] = useState(false);
   // The master record is missing (its build failed) and is being rebuilt now.
   const [rebuilding, setRebuilding] = useState(false);
@@ -36,6 +38,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
           setAnalysis(data.analysis || '');
           setFlags(Array.isArray(data.flags) ? data.flags : []);
           setExperience(Array.isArray(data.experience) ? data.experience : []);
+          setMaster(data.master || null);
 
           // No master record: its build failed at analysis time, leaving the
           // column null while the CV text is safely on file. Rebuild it here
@@ -58,6 +61,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
                 setAnalysis(fresh.analysis || '');
                 setFlags(Array.isArray(fresh.flags) ? fresh.flags : []);
                 setExperience(Array.isArray(fresh.experience) ? fresh.experience : []);
+                setMaster(fresh.master || null);
               }
             } catch (e) {
               console.error('Master rebuild failed:', e.message);
@@ -100,11 +104,22 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
             {/* Past onboarding the record is never closed: anything the CV missed
                 can still be typed in here and reaches every future generation. */}
             <div className="mt-6">
-              <AddInfoPanel onUpdated={(master, newFlags) => {
-                if (master && Array.isArray(master.experience)) setExperience(master.experience);
+              <AddInfoPanel onUpdated={(updated, newFlags) => {
+                if (updated) {
+                  setMaster(updated);
+                  if (Array.isArray(updated.experience)) setExperience(updated.experience);
+                }
                 if (Array.isArray(newFlags)) setFlags(newFlags);
               }} />
             </div>
+            {/* The record itself, read-only: what every CV and cover letter is
+                written from, so it can be checked without leaving the page. */}
+            {master && (
+              <div className="mt-6 border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
+                <h2 className="text-sm font-semibold text-gray-900">My master record</h2>
+                <MasterRecordPanel master={master} />
+              </div>
+            )}
           </>
         ) : (
           <div className="text-center text-muted-foreground">

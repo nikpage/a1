@@ -132,37 +132,32 @@ async function handler(req, res) {
         });
       }
 
-      if (type === 'cv' || type === 'both') {
-        const gu = cvRes.gemini_usage;
-        await logAiTransaction({
-          user_id,
-          source_gen_id: crypto.randomUUID(),
-          model: gu.model,
-          cache_hit_tokens: 0,
-          cache_miss_tokens: gu.inputTokens,
-          completion_tokens: gu.outputTokens + gu.thinkingTokens,
-          thinking_tokens: gu.thinkingTokens,
-          detail: { tone, type: 'cv' },
-        });
-      }
-      if (type === 'cover' || type === 'both') {
-        const gu = coverRes.gemini_usage;
-        await logAiTransaction({
-          user_id,
-          source_gen_id: crypto.randomUUID(),
-          model: gu.model,
-          cache_hit_tokens: 0,
-          cache_miss_tokens: gu.inputTokens,
-          completion_tokens: gu.outputTokens + gu.thinkingTokens,
-          thinking_tokens: gu.thinkingTokens,
-          detail: { tone, type: 'cover' },
-        });
-      }
+      // Every Gemini call this run made — the writing call AND its verify pass
+      // — gets its own transactions row and its own console line. Each result
+      // exposes them as `gemini_usages` (falling back to the single usage for
+      // safety), so adding a call can never silently escape cost logging.
+      const usagesOf = (result) =>
+        result?.gemini_usages || (result?.gemini_usage ? [result.gemini_usage] : []);
 
-      const gemini_usage = [
-        ...(cvRes?.gemini_usage ? [cvRes.gemini_usage] : []),
-        ...(coverRes?.gemini_usage ? [coverRes.gemini_usage] : []),
-      ];
+      const logUsages = async (result, docType) => {
+        for (const gu of usagesOf(result)) {
+          await logAiTransaction({
+            user_id,
+            source_gen_id: crypto.randomUUID(),
+            model: gu.model,
+            cache_hit_tokens: 0,
+            cache_miss_tokens: gu.inputTokens,
+            completion_tokens: gu.outputTokens + gu.thinkingTokens,
+            thinking_tokens: gu.thinkingTokens,
+            detail: { tone, type: docType, step: gu.label },
+          });
+        }
+      };
+
+      if (type === 'cv' || type === 'both') await logUsages(cvRes, 'cv');
+      if (type === 'cover' || type === 'both') await logUsages(coverRes, 'cover');
+
+      const gemini_usage = [...usagesOf(cvRes), ...usagesOf(coverRes)];
       return res.status(200).json({
         ...(cv && { cv }),
         ...(cover && { cover }),

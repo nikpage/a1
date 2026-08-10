@@ -49,29 +49,49 @@ function make500Error() {
   return err;
 }
 
+// generateCV makes TWO Gemini calls: the writing call, then the verify pass
+// that strips claims the master doesn't support. Key rotation is what these
+// tests are about, so they count the WRITING calls only — the verify call runs
+// on its own model and must not be mistaken for a retry.
+const writingCalls = () =>
+  mockAxiosPost.mock.calls.filter(([, body]) => body?.model === 'gemini-2.5-flash').length;
+
+// A clean verify verdict: nothing unsupported, document passes through as-is.
+const CLEAN_VERIFY_RESPONSE = {
+  data: {
+    choices: [{ message: { content: '{"unsupported":[]}' } }],
+    usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    model: 'gemini-2.5-flash-lite',
+  },
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe('2.3 — callGemini 429 key rotation', () => {
   test('happy path: first key succeeds → result returned without error', async () => {
-    mockAxiosPost.mockResolvedValue(SUCCESS_RESPONSE);
+    mockAxiosPost
+      .mockResolvedValueOnce(SUCCESS_RESPONSE)
+      .mockResolvedValueOnce(CLEAN_VERIFY_RESPONSE);
 
     const result = await generateCV({ cv: 'cv text', analysis: {}, tone: 'Formal' });
 
     expect(result.content).toBe('Great CV content');
-    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+    expect(writingCalls()).toBe(1);
   });
 
   test('first key returns 429, second key succeeds → result returned', async () => {
     mockAxiosPost
       .mockRejectedValueOnce(make429Error())
-      .mockResolvedValueOnce(SUCCESS_RESPONSE);
+      .mockResolvedValueOnce(SUCCESS_RESPONSE)
+      .mockResolvedValueOnce(CLEAN_VERIFY_RESPONSE);
 
     const result = await generateCV({ cv: 'cv text', analysis: {}, tone: 'Formal' });
 
     expect(result.content).toBe('Great CV content');
-    expect(mockAxiosPost).toHaveBeenCalledTimes(2);
+    // the 429'd attempt plus the successful one, both on the writing model
+    expect(writingCalls()).toBe(2);
   });
 
   test('both keys return 429 → error thrown with .isRateLimit === true', async () => {

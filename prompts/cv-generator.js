@@ -4,10 +4,13 @@ import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 import { scenarioGenerationRules } from './scenarios.js';
 import { languageInstruction } from './language.js';
+import { targetJobBlock } from './job-target.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 
 export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   const scenarioBlock = scenarioGenerationRules(analysis?.analysis?.scenario_tags);
+  // The ad itself — stated plainly rather than left buried in the analysis JSON.
+  const jobBlock = targetJobBlock(analysis);
   const coreBlock = core && core.trim()
     ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`
     : '';
@@ -24,7 +27,7 @@ export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', languag
     role: 'user',
     content: `${tweakBlock}${coreBlock}
 ${currentDateBlock(now)}
-
+${jobBlock}
 # How to work
 The provided analysis is your strategic brief — treat its generation_framework blueprint as the plan and execute it. Read these before writing:
 - Target length: generation_framework.cv_blueprint.target_length_pages
@@ -37,6 +40,7 @@ The provided analysis is your strategic brief — treat its generation_framework
 # What makes this CV impressive
 - **Achievements, not duties.** Every bullet should show impact, not list responsibilities. Source bullets from the real roles in the master CV's \`experience[]\` (each achievement carries its own \`metric\` and \`skills_utilized\`), reframed as accomplishments. Lead with the result, then the action.
 - **Quantify with what's there.** Where the master CV gives numbers, scope or scale (team size, budget, %, volume, timeframe — in \`experience[].achievements[].metric\` or the achievement text), put them up front. NEVER invent a number or a fact that isn't in the master CV.
+- **Every bullet traces to one achievement.** Before you write a bullet, fix in mind the specific \`experience[].achievements[]\` entry it comes from; the bullet may reframe, sharpen or shorten that entry, but everything it asserts — the verb, the scope, the number, the tools — must be in that entry (or elsewhere in the master CV). A bullet you cannot trace to a specific entry does not go on the CV. Two entries do not merge into one bigger-sounding claim.
 - **Emphasis follows strategy.** Let \`analysis.scenario_tags\` and \`job_match.positioning_strategy\` decide what to foreground and what to play down. Use \`analysis.transferable_skills\` to choose which strengths to spotlight. The strategy, \`quick_wins\` and \`action_items\` steer EMPHASIS and FRAMING only — they tell you what real experience to lead with, not new facts to add. If any of them say to "add", "mention", "introduce" or "highlight" a skill, tool or achievement, do it ONLY when the master CV already proves it; otherwise ignore that instruction entirely. The target job's requirements are NEVER evidence about this candidate.
 - **Red flags are handled, not advertised.** For each item in \`analysis.red_flags\`, neutralise it through smart framing and selection (de-emphasise, reframe, or simply don't draw the eye to it). Do NOT call attention to gaps or weaknesses on the CV itself — that work belongs in the cover letter.
 - **Clarifications steer selection and framing, never print.** Where a master \`experience[]\` entry carries a \`clarification\` or \`merge_note\`, use it ONLY to decide what to show and how to frame it (e.g. it's safe to keep a short role visible once you know why it was short). NEVER print the clarification or merge_note text itself on the CV — a CV never explains a gap; that stays the cover letter's job, reinforcing the rule above.
@@ -151,6 +155,8 @@ ${cv}
 ${JSON.stringify(analysis, null, 2)}
 
 # Before you finish — check:
+- Every must-have from the target job that the master CV genuinely evidences is visibly answered — and no requirement the master CV does NOT evidence has been hinted at, softened in, or covered with the ad's own wording.
+- No claim was upgraded to fit the job: every scope, verb and number still matches what the master CV states.
 - Summary reads in the "${tone}" voice and reflects analysis.career_arc.
 - Bullets show impact and results, not duties; numbers from the CV are up front.
 - The scenario from analysis.scenario_tags is reflected in what's emphasised.
