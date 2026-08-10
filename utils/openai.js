@@ -242,14 +242,14 @@ function applyVerifyCorrections(master, corr) {
   const badRoles = new Set(
     (corr.unsupported_roles || [])
       .filter((r) => r && typeof r === 'object')
-      .map((r) => `${normWs(r.company)} ${normWs(r.role)}`)
+      .map(roleKey)
   );
 
   if (Array.isArray(master.experience)) {
     // Drop wholly-fabricated roles first (company + role both absent from source).
     if (badRoles.size) {
       master.experience = master.experience.filter(
-        (role) => !badRoles.has(`${normWs(role.company)} ${normWs(role.role)}`)
+        (role) => !badRoles.has(roleKey(role))
       );
     }
     for (const role of master.experience) {
