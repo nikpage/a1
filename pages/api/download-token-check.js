@@ -3,6 +3,7 @@ import { consumeDownloadCredit, topUpFreeGenerations } from '../../utils/databas
 import { LIMITS } from '../../config/limits';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import requireAuth from '../../lib/requireAuth';
+import { logger } from '../../lib/logger';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,6 +22,22 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields: type or content.' });
   }
 
+  // Build the file FIRST — a failure here must cost the user nothing.
+  let buffer;
+  try {
+    const doc = new Document({
+      sections: [
+        {
+          children: [new Paragraph({ children: [new TextRun(content)] })],
+        },
+      ],
+    });
+
+    buffer = await Packer.toBuffer(doc);
+  } catch {
+    return res.status(500).json({ error: 'File generation failed.' });
+  }
+
   // Spend a free download first (card-on-file grant), otherwise a paid token.
   let credit;
   try {
@@ -37,28 +54,15 @@ async function handler(req, res) {
     // Top the free generation allowance back up on every successful download.
     // Never downward: a user who already has more keeps what they have.
     await topUpFreeGenerations(user_id, LIMITS.FREE_GENERATIONS);
-  } catch {
-    return res.status(500).json({ error: 'Database update failed.' });
+  } catch (err) {
+    // Non-fatal: the credit is already spent, so the user gets their file.
+    logger.error('download-token-check: generation top-up failed:', err.message);
   }
 
-  try {
-    const doc = new Document({
-      sections: [
-        {
-          children: [new Paragraph({ children: [new TextRun(content)] })],
-        },
-      ],
-    });
-
-    const buffer = await Packer.toBuffer(doc);
-    const filename = `${type === 'cv' ? 'CV' : 'CoverLetter'}.docx`;
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.status(200).send(buffer);
-  } catch {
-    return res.status(500).json({ error: 'File generation failed.' });
-  }
+  const filename = `${type === 'cv' ? 'CV' : 'CoverLetter'}.docx`;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(buffer);
 }
 
 export default requireAuth(handler);
