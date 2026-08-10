@@ -161,7 +161,9 @@ describe('verify — the email resolves the account, not the token snapshot', ()
     const { req, res } = mockReqRes({ method: 'GET', query: { token: 't3' } });
     await verify(req, res);
 
-    const setCookie = String(res.getHeader('Set-Cookie'));
+    // The live session is the cookie setting a value — the others are the
+    // legacy domain-scoped clears that precede it.
+    const setCookie = [].concat(res.getHeader('Set-Cookie')).find((c) => !/Max-Age=0/.test(c));
     const jwt = decodeURIComponent(setCookie.split('auth-token=')[1].split(';')[0]);
     const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
     expect(payload.user_id).toBe('canonical-account');

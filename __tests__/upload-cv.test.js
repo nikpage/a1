@@ -113,7 +113,9 @@ describe('upload-cv — session cookie minted on successful upload', () => {
     // Cookie must be present
     const setCookie = res.getHeader('Set-Cookie');
     expect(setCookie).toBeDefined();
-    const cookieStr = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    // The header also carries the legacy domain-scoped clears; the live session
+    // is the one that actually sets a value.
+    const cookieStr = [].concat(setCookie).find((c) => !/Max-Age=0/.test(c));
     expect(cookieStr).toMatch(/auth-token=/);
     expect(cookieStr).toMatch(/HttpOnly/);
 
@@ -167,7 +169,7 @@ describe('upload-cv — identity comes from the session when there is one', () =
     expect(mockUpsertUser.mock.calls[0][0]).toBe(existingId);
     expect(mockUpsertCV.mock.calls[0][0]).toBe(existingId);
 
-    const cookieStr = [].concat(res.getHeader('Set-Cookie'))[0];
+    const cookieStr = [].concat(res.getHeader('Set-Cookie')).find((c) => !/Max-Age=0/.test(c));
     const decoded = await verifyToken(cookieStr.match(/auth-token=([^;]+)/)[1]);
     expect(decoded.user_id).toBe(existingId);
     // The email must survive the re-mint, or the session is silently downgraded.
