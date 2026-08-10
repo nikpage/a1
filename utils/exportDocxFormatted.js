@@ -96,6 +96,12 @@ const docParagraphs = [];
 let currentSectionTitle = '';
 let inCenterBlock = false;
 let inJobBlock = false;
+// A cover letter's sign-off is a tight block: "Sincerely," then the name and
+// contact lines stacked directly under it. Rendered as ordinary body text they
+// came out double-spaced and adrift, so everything from the sign-off down gets
+// single-spacing, the name in bold, and the contact lines in the contact style.
+let inSignature = false;
+const SIGN_OFF = /^(sincerely|yours sincerely|yours faithfully|kind regards|best regards|warm regards|regards|best)\s*,?$/i;
 
 for (let i = 0; i < lines.length; i++) {
 const raw = lines[i].trim();
@@ -106,6 +112,32 @@ if (raw.startsWith('<!--')) continue;
 if (/^<\/?(div|ul|ol)\b/i.test(raw)) continue;
 // Skip any line that is purely an HTML tag (e.g. stray <p>, <br/>, <span ...>)
 if (/^<[^>]+>$/.test(raw)) continue;
+
+// From the sign-off to the end of the letter, everything is signature block.
+if (!inSignature && SIGN_OFF.test(raw.replace(/\*/g, '').trim())) {
+  inSignature = true;
+  docParagraphs.push(new Paragraph({
+    children: [new TextRun({ text: raw.replace(/\*/g, '').trim(), ...styles.bodyText })],
+    spacing: { before: 200, after: 200 },
+    keepLines: true,
+    keepNext: true,
+  }));
+  continue;
+}
+
+if (inSignature) {
+  const sigText = raw.replace(/<[^>]+>/g, '').replace(/\*/g, '').replace(/^- /, '').trim();
+  if (!sigText) continue;
+  // First line after the sign-off is the name; the rest are contact details.
+  const isName = !/[@|]/.test(sigText) && !/linkedin|www\.|https?:|^\+?[\d ()-]{7,}$/i.test(sigText);
+  docParagraphs.push(new Paragraph({
+    children: [new TextRun({ text: sigText, ...(isName ? { ...styles.bodyText, bold: true } : styles.contact) })],
+    spacing: { after: 0 },
+    keepLines: true,
+    keepNext: true,
+  }));
+  continue;
+}
 
 if (raw.includes('<center>')) { inCenterBlock = true; continue; }
 if (raw.includes('</center>')) {

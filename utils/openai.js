@@ -731,8 +731,20 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
 
   const rawContent = data.choices?.[0]?.message?.content || '';
 
-  // Regex to detect lines that are *just* a date (e.g. "August 12, 2023" or "12/08/2023")
-  const leadingDateRegex = /^\s*(January|February|March|April|May|June|July|August|September|October|November|December|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},\s*\d{4})\s*$/i;
+  // A line that is JUST a date, in any of the forms the model actually emits.
+  // The old pattern missed the day-first form ("10 August 2026"), so that line
+  // survived and the real date was prepended above it — two dates on the letter.
+  const MONTH = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  const leadingDateRegex = new RegExp(
+    '^\\s*(?:'
+      + '\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4}'          // 12/08/2023, 12.08.2023
+      + '|\\d{4}-\\d{1,2}-\\d{1,2}'                    // 2023-08-12
+      + `|\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH}\\.?\\,?\\s+\\d{4}` // 10 August 2026
+      + `|${MONTH}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?\\,?\\s+\\d{4}` // August 12, 2023
+      + `|${MONTH}\\.?\\s+\\d{4}`                      // August 2023
+    + ')[.,]?\\s*$',
+    'i'
+  );
 
   // Split into lines and remove only leading date lines (not any line anywhere)
   let lines = rawContent.split('\n');
