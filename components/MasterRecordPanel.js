@@ -5,10 +5,13 @@
 // page (/[user_id]) so there is exactly ONE renderer for the master: a readable
 // section view plus the raw-JSON toggle that /me used to inline.
 //
-// Read-only by design: the master is mutated only through the flag fixer
-// (/api/resolve-flag) and the add-info panel (/api/master-add-info).
+// "Edit record" swaps in MasterRecordEditor, which writes the whole record back
+// through /api/update-master — the direct-correction path the flag fixer
+// (/api/resolve-flag) and the additive add-info panel (/api/master-add-info)
+// never provided.
 
 import { useState } from 'react';
+import MasterRecordEditor from './MasterRecordEditor';
 
 function Field({ label, children }) {
   if (!children) return null;
@@ -34,10 +37,24 @@ function joinParts(parts) {
   return parts.filter((p) => p && String(p).trim()).join(' | ');
 }
 
-export default function MasterRecordPanel({ master }) {
+export default function MasterRecordPanel({ master, onUpdated }) {
   const [showJson, setShowJson] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   if (!master) return null;
+
+  if (editing) {
+    return (
+      <MasterRecordEditor
+        master={master}
+        onCancel={() => setEditing(false)}
+        onSaved={(saved, flags) => {
+          setEditing(false);
+          if (typeof onUpdated === 'function') onUpdated(saved, flags);
+        }}
+      />
+    );
+  }
 
   const identity = master.identity || {};
   const contact = identity.contact || {};
@@ -56,12 +73,14 @@ export default function MasterRecordPanel({ master }) {
         <div className="text-sm text-gray-600">
           {joinParts([identity.name, identity.country]) || 'Master record'}
         </div>
-        <button
-          onClick={() => setShowJson((v) => !v)}
-          className="text-sm text-blue-700 underline shrink-0"
-        >
-          {showJson ? 'Hide raw record' : 'Show raw record'}
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button onClick={() => setEditing(true)} className="text-sm text-blue-700 underline">
+            Edit record
+          </button>
+          <button onClick={() => setShowJson((v) => !v)} className="text-sm text-blue-700 underline">
+            {showJson ? 'Hide raw record' : 'Show raw record'}
+          </button>
+        </div>
       </div>
 
       {showJson ? (

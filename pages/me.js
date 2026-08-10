@@ -187,7 +187,14 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
 
           {master && (
             <div className="mt-4">
-              <MasterRecordPanel master={master} />
+              <MasterRecordPanel
+                master={master}
+                onUpdated={(saved, newFlags) => {
+                  setMaster(saved);
+                  if (Array.isArray(saved?.experience)) setExperience(saved.experience);
+                  if (Array.isArray(newFlags)) setFlags(newFlags);
+                }}
+              />
             </div>
           )}
 

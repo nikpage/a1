@@ -117,7 +117,14 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
             {master && (
               <div className="mt-6 border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
                 <h2 className="text-sm font-semibold text-gray-900">My master record</h2>
-                <MasterRecordPanel master={master} />
+                <MasterRecordPanel
+                  master={master}
+                  onUpdated={(saved, newFlags) => {
+                    setMaster(saved);
+                    if (Array.isArray(saved?.experience)) setExperience(saved.experience);
+                    if (Array.isArray(newFlags)) setFlags(newFlags);
+                  }}
+                />
               </div>
             )}
           </>
