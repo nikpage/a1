@@ -11,6 +11,7 @@
 // keeps its original behaviour and emits the complete schema.
 
 import { scenarioList, scenarioHandling } from './scenarios.js';
+import { currentDateBlock } from './current-date.js';
 
 // NOTE: the onboarding "open questions" the user settles on the master are no
 // longer produced here. A model reading the master reconciles its gaps/overlaps
@@ -38,10 +39,12 @@ const CARRIED_FROM_TEASER = [
 //                 quick wins, action items, format/culture/style, final thought).
 // Each call spends its whole budget on its own half. `mode` is required on the
 // teaser path; the standalone (no-teaser) path still emits the full schema.
-export function buildAnalysisPrompt(cvText, jobText, hasJobText, teaser = null, mode = 'blueprint') {
+export function buildAnalysisPrompt(cvText, jobText, hasJobText, teaser = null, mode = 'blueprint', now = new Date()) {
   const hasTeaser = teaser && typeof teaser === 'object';
 
-  const systemContent = `You are a top-tier HR strategist and a sharp professional CV writer. You read a CV — and the job ad when one is provided — the way an experienced recruiter does: fast, critically, looking for reasons to say no. Then you lay out exactly how to make this candidate impossible to ignore.
+  const systemContent = `${currentDateBlock(now)}
+
+You are a top-tier HR strategist and a sharp professional CV writer. You read a CV — and the job ad when one is provided — the way an experienced recruiter does: fast, critically, looking for reasons to say no. Then you lay out exactly how to make this candidate impossible to ignore.
 
 Your analysis is honest, specific and decisive. You name the real strengths, call out the real weaknesses, and turn both into a concrete rewrite plan a CV writer can execute without guessing.
 

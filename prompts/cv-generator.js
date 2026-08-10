@@ -4,8 +4,9 @@ import { toneInstructions } from './tone.js';
 import { humanVoiceRules } from './voice.js';
 import { scenarioGenerationRules } from './scenarios.js';
 import { languageInstruction } from './language.js';
+import { currentDateBlock } from './current-date.js';
 
-export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto') {
+export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   const scenarioBlock = scenarioGenerationRules(analysis?.analysis?.scenario_tags);
   const coreBlock = core && core.trim()
     ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`
@@ -22,6 +23,8 @@ export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', languag
   const userMessage = {
     role: 'user',
     content: `${tweakBlock}${coreBlock}
+${currentDateBlock(now)}
+
 # How to work
 The provided analysis is your strategic brief — treat its generation_framework blueprint as the plan and execute it. Read these before writing:
 - Target length: generation_framework.cv_blueprint.target_length_pages

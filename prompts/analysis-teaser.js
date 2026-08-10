@@ -12,10 +12,11 @@
 // Same never-fabricate law as the full analysis: only what the CV evidences.
 
 import { scenarioList } from './scenarios.js';
+import { currentDateBlock } from './current-date.js';
 
 const NEVER_FABRICATE = `Use ONLY what the CV (and job ad, if given) actually proves. Never invent employers, dates, titles, skills, numbers or achievements. Reference THIS candidate's real phrases, roles and companies — every line must be impossible to paste onto someone else's CV. Detect the CV's language and write ALL output in it.`;
 
-export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText, layoutNote = '') {
+export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText, layoutNote = '', now = new Date()) {
   return [
     {
       role: 'system',
@@ -23,7 +24,9 @@ export function buildAnalysisTeaserPrompt(cvText, jobText, hasJobText, layoutNot
     },
     {
       role: 'user',
-      content: `Produce a TEASER analysis as VALID JSON only — no markdown, no comments, no trailing commas. Be specific and concrete; generic advice is failure.
+      content: `${currentDateBlock(now)}
+
+Produce a TEASER analysis as VALID JSON only — no markdown, no comments, no trailing commas. Be specific and concrete; generic advice is failure.
 
 TONE LAW — write like a sharp, plain-spoken human who actually read THIS CV. The reader should feel precisely seen, not flattered. HARD BAN on praise adjectives and hype: never use rare, elite, exceptional, world-class, stellar, prestigious, impressive, sought-after, tier-one, pedigree, mastery, pioneer, or any synonym. Never use exclamation or salesman warmth. Every positive must be a CONCRETE FACT lifted from the CV (a named role, a thing built, a number) — if you cannot point to the fact, delete the sentence. State problems plainly as fixable. Specificity is the value; enthusiasm is not.
 

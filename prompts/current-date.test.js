@@ -1,0 +1,207 @@
+// prompts/current-date.test.js
+//
+// Proves the real current date actually reaches every time-reasoning prompt.
+// Without it the model anchors "now" to its training cutoff and reads real past
+// dates as future. The clock is INJECTED here — never the ambient one — so the
+// assertions pin an exact string and are capable of failing.
+
+import { describe, test, expect } from 'vitest';
+import { currentDateBlock, formatLongDate } from './current-date.js';
+import { buildAnalysisTeaserPrompt } from './analysis-teaser.js';
+import { buildAnalysisPrompt } from './analysis.js';
+import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from './master-cv.js';
+import { buildCvPrompt } from './cv-generator.js';
+import { buildCoverPrompt } from './cover-letter.js';
+
+// Local-time constructor: the helper reads local calendar fields, so this is
+// 10 August 2026 regardless of the machine's timezone.
+const FIXED = new Date(2026, 7, 10, 12, 0, 0);
+const TODAY = '10 August 2026';
+
+const CV_TEXT = 'Jane Doe — Product Manager, Acme Corp, Jan 2022 - Jan 2026, Berlin, Germany.';
+const JOB_TEXT = 'Senior Product Manager: 5+ years, Berlin.';
+const MASTER = {
+  identity: { name: 'Jane Doe', country: 'Germany' },
+  experience: [
+    { company: 'Acme Corp', role: 'Product Manager', dates: 'Jan 2022 - Jan 2026', location: 'Berlin, Germany' },
+  ],
+};
+const MASTER_JSON = JSON.stringify(MASTER);
+const TEASER = {
+  cv_data: { Name: 'Jane Doe', Seniority: 'Senior', Industry: 'Product', Country: 'Germany' },
+  analysis: { scenario_tags: [], scan_verdict: 'pass', red_flags: [] },
+  job_match: { positioning_strategy: 'Lead with the Acme scope.' },
+};
+const ANALYSIS = {
+  analysis: { scenario_tags: [], red_flags: [], ats_keywords_present: '', ats_keywords_missing: '' },
+  job_match: { positioning_strategy: '' },
+  generation_framework: { cv_blueprint: {} },
+};
+
+const joined = (msgs) => msgs.map((m) => m.content).join('\n');
+
+describe('currentDateBlock / formatLongDate', () => {
+  test('renders the injected date in unambiguous long form', () => {
+    expect(formatLongDate(FIXED)).toBe(TODAY);
+    expect(formatLongDate(new Date(2026, 0, 1))).toBe('1 January 2026');
+    expect(formatLongDate(new Date(2025, 11, 31))).toBe('31 December 2025');
+  });
+
+  test('states today and binds recency/gap/tenure/current judgments to it', () => {
+    const b = currentDateBlock(FIXED);
+    expect(b).toContain(`TODAY'S DATE IS ${TODAY}`);
+    expect(b).toMatch(/recency, gaps, tenure length/i);
+    expect(b).toMatch(/current.*ongoing/i);
+    expect(b).toMatch(/is in the PAST/);
+    expect(b).toMatch(/never describe or flag it as future/i);
+  });
+
+  test('defaults to the real clock when no date is injected', () => {
+    expect(currentDateBlock()).toContain(formatLongDate(new Date()));
+  });
+
+  test('a different injected date produces a different block (the clock is really used)', () => {
+    expect(currentDateBlock(new Date(2024, 2, 5))).toContain('5 March 2024');
+    expect(currentDateBlock(new Date(2024, 2, 5))).not.toContain(TODAY);
+  });
+});
+
+describe('every time-reasoning prompt carries the injected current date', () => {
+  test('teaser (with and without a job ad)', () => {
+    expect(joined(buildAnalysisTeaserPrompt(CV_TEXT, JOB_TEXT, true, '', FIXED))).toContain(`TODAY'S DATE IS ${TODAY}`);
+    expect(joined(buildAnalysisTeaserPrompt(CV_TEXT, '', false, '', FIXED))).toContain(`TODAY'S DATE IS ${TODAY}`);
+  });
+
+  test('deep analysis — teaser-fed delta (blueprint and review) and standalone paths', () => {
+    const blueprint = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'blueprint', FIXED);
+    const review = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'review', FIXED);
+    const standalone = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, null, 'blueprint', FIXED);
+    for (const msgs of [blueprint, review, standalone]) {
+      expect(joined(msgs)).toContain(`TODAY'S DATE IS ${TODAY}`);
+      expect(joined(msgs)).toMatch(/is in the PAST/);
+    }
+  });
+
+  test('master CV build and merge prompts', () => {
+    expect(joined(buildMasterCvPrompt({ mode: 'build', rawInput: CV_TEXT, now: FIXED })))
+      .toContain(`TODAY'S DATE IS ${TODAY}`);
+    expect(joined(buildMasterCvPrompt({ mode: 'merge', rawInput: CV_TEXT, existingMaster: MASTER, now: FIXED })))
+      .toContain(`TODAY'S DATE IS ${TODAY}`);
+  });
+
+  test('master CV verify prompt (it judges gaps, so it must know today)', () => {
+    expect(joined(buildMasterVerifyPrompt({ master: MASTER, sourceText: CV_TEXT, now: FIXED })))
+      .toContain(`TODAY'S DATE IS ${TODAY}`);
+  });
+
+  test('master CV augment prompt (it places loose user text on the timeline)', () => {
+    const augment = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: FIXED }));
+    expect(augment).toContain(`TODAY'S DATE IS ${TODAY}`);
+    expect(augment).toMatch(/is in the PAST/);
+
+    // A different injected clock really changes the output — the date is not a constant.
+    const other = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: new Date(2024, 2, 5) }));
+    expect(other).toContain("TODAY'S DATE IS 5 March 2024");
+    expect(other).not.toContain(TODAY);
+  });
+
+  test('CV generator', () => {
+    expect(joined(buildCvPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)))
+      .toContain(`TODAY'S DATE IS ${TODAY}`);
+  });
+
+  test('cover letter (it dates the letter and reasons about gaps)', () => {
+    expect(joined(buildCoverPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)))
+      .toContain(`TODAY'S DATE IS ${TODAY}`);
+  });
+
+  test('prompts fall back to the real clock when no date is passed (production call shape)', () => {
+    const today = formatLongDate(new Date());
+    expect(joined(buildAnalysisTeaserPrompt(CV_TEXT, '', false))).toContain(today);
+    expect(joined(buildAnalysisPrompt(MASTER_JSON, '', false))).toContain(today);
+    expect(joined(buildMasterCvPrompt({ mode: 'build', rawInput: CV_TEXT }))).toContain(today);
+    expect(joined(buildMasterVerifyPrompt({ master: MASTER, sourceText: CV_TEXT }))).toContain(today);
+    expect(joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.' }))).toContain(today);
+    expect(joined(buildCvPrompt(MASTER_JSON, ANALYSIS, 'professional'))).toContain(today);
+    expect(joined(buildCoverPrompt(MASTER_JSON, ANALYSIS, 'professional'))).toContain(today);
+  });
+});
+
+// Guard: the date insertion must not have displaced any existing rule in the
+// sacred prompt files (same pattern as onboarding-fields.test.js).
+describe('existing key rules survive the date insertion (guard against accidental deletion)', () => {
+  test('analysis.js keeps its governing rules and both output skeletons', () => {
+    const delta = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'blueprint', FIXED);
+    const sys = delta.find((m) => m.role === 'system').content;
+    expect(sys).toContain('REFRAME vs ADD');
+    expect(sys).toContain('never INSERT experience it does not');
+    expect(sys).toContain("CANDIDATE'S OWN ANSWER");
+    expect(sys).toMatch(/WRITING QUALITY \(non-negotiable\)/);
+    expect(sys).toMatch(/LANGUAGE & FACTS/);
+
+    expect(delta.find((m) => m.role === 'user').content).toContain('"target_cover_words"');
+    const review = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'review', FIXED)
+      .find((m) => m.role === 'user').content;
+    expect(review).toContain('"overall_score"');
+    expect(review).toContain('DO NOT RECOMPUTE OR RE-EMIT these');
+    const standalone = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, null, 'blueprint', FIXED)
+      .find((m) => m.role === 'user').content;
+    expect(standalone).toContain('STRICT SCENARIO LIST');
+    expect(standalone).toContain('JSON OUTPUT SCHEMA');
+  });
+
+  test('analysis-teaser.js keeps its tone law, two-stage scan and output shape', () => {
+    const user = buildAnalysisTeaserPrompt(CV_TEXT, JOB_TEXT, true, '', FIXED)
+      .find((m) => m.role === 'user').content;
+    expect(user).toContain('TONE LAW');
+    expect(user).toContain('THE TWO-STAGE SCAN');
+    expect(user).toContain('NO REPETITION');
+    expect(user).toContain('"hr_first_seconds"');
+    expect(user).toContain('SCENARIO LIST:');
+    expect(user).toContain(CV_TEXT);
+  });
+
+  test('master-cv.js keeps never-fabricate, self-consistency, the schema and the verify checks', () => {
+    const build = joined(buildMasterCvPrompt({ mode: 'build', rawInput: CV_TEXT, now: FIXED }));
+    expect(build).toContain('NEVER-FABRICATE');
+    expect(build).toContain('SELF-CONSISTENCY');
+    expect(build).toContain('NO STRUCTURAL INFERENCE');
+    expect(build).toContain('role_overlap');
+    expect(build).toContain('MASTER CV JSON SCHEMA');
+    expect(build).toContain('"voice_samples"');
+
+    const merge = joined(buildMasterCvPrompt({ mode: 'merge', rawInput: CV_TEXT, existingMaster: MASTER, now: FIXED }));
+    expect(merge).toContain('TASK — MERGE');
+    expect(merge).toContain('EXISTING MASTER:');
+
+    const verify = joined(buildMasterVerifyPrompt({ master: MASTER, sourceText: CV_TEXT, now: FIXED }));
+    expect(verify).toContain('BAD GAPS');
+    expect(verify).toContain('UNSUPPORTED SKILLS');
+    expect(verify).toContain('INVENTED DATES');
+    expect(verify).toContain('"remove_gaps"');
+
+    const augment = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: FIXED }));
+    expect(augment).toContain('NEVER-FABRICATE');
+    expect(augment).toContain('SELF-CONSISTENCY');
+    expect(augment).toContain('TASK — ADD');
+    expect(augment).toContain('PRESERVE EVERYTHING ELSE');
+  });
+
+  test('cv-generator.js keeps its red-flag, blueprint and no-fabrication rules', () => {
+    const user = buildCvPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)
+      .find((m) => m.role === 'user').content;
+    expect(user).toContain('# How to work');
+    expect(user).toContain('Red flags are handled, not advertised');
+    expect(user).toMatch(/NEVER invent a number or a fact that isn.t in the master CV/);
+    expect(user).toContain('Never fabricate dates or create artificial gaps');
+  });
+
+  test('cover-letter.js keeps its length budget and date/salutation format rules', () => {
+    const user = buildCoverPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)
+      .find((m) => m.role === 'user').content;
+    expect(user).toContain('# Task');
+    expect(user).toMatch(/250-350 words/);
+    expect(user).toContain('Start with only the date at the top');
+    expect(user).toContain('voice_samples');
+  });
+});

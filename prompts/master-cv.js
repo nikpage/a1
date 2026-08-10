@@ -15,6 +15,8 @@
 // never-fabricate guardrail is identical to analysis.js's REFRAME-vs-ADD rule —
 // the master records only what the input proves; gaps stay gaps.
 
+import { currentDateBlock } from './current-date.js';
+
 const NEVER_FABRICATE = `NEVER-FABRICATE (absolute, governs every field): Record ONLY what the input actually evidences. Never invent or infer an employer, date, title, tool, skill, metric, location or achievement that is not in the input. Concrete facts — employer, location, dates, tools, numbers — are immutable and copied verbatim. If something is absent, ambiguous, or unreadable, mark it missing or flag it — NEVER fill the gap with a plausible guess. A relabel is allowed ONLY when the substitute denotes the SAME underlying fact ("coordinated releases" → "led release management" only if they genuinely led it); upgrading a term into a claim of MORE than was done is fabrication. The master must be 100% true so that everything generated from it is safe to put on a real CV.`;
 
 // Applies to EVERY profile, however messy. Cheap models tend to (a) write gaps
@@ -71,8 +73,10 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
 // byte-identical — this is an addition, never a re-derivation, so the record
 // never churns under the user. Questions are the exception, not the flow: asked
 // ONLY when the fact cannot be placed without the answer.
-export function buildMasterAugmentPrompt({ master, text, answers = [] } = {}) {
-  const system = `You are a meticulous career archivist maintaining ONE person's durable master career record. The person is telling you, in their own loose words, about work that is not on their CV. Your job is to fold what they say into the existing record — accurately, additively, and without disturbing anything else.
+export function buildMasterAugmentPrompt({ master, text, answers = [], now = new Date() } = {}) {
+  const system = `${currentDateBlock(now)}
+
+You are a meticulous career archivist maintaining ONE person's durable master career record. The person is telling you, in their own loose words, about work that is not on their CV. Your job is to fold what they say into the existing record — accurately, additively, and without disturbing anything else.
 
 ${NEVER_FABRICATE}
 
@@ -143,8 +147,10 @@ ${text}`.trim();
 // here. `trustedMaster` (merge only) carries already-verified prior facts so
 // legacy content isn't flagged as unsupported just because it isn't in the new
 // source text.
-export function buildMasterVerifyPrompt({ master, sourceText, trustedMaster = null }) {
-  const system = `You are a strict, literal fact-checker for a career master record. You are given the SOURCE text a record was built from and the MASTER JSON derived from it. Your ONLY job is to catch a few specific defects and report corrections — never rewrite, re-derive, rephrase, reorder or "improve" anything. Be conservative: when in doubt, do NOT flag.
+export function buildMasterVerifyPrompt({ master, sourceText, trustedMaster = null, now = new Date() }) {
+  const system = `${currentDateBlock(now)}
+
+You are a strict, literal fact-checker for a career master record. You are given the SOURCE text a record was built from and the MASTER JSON derived from it. Your ONLY job is to catch a few specific defects and report corrections — never rewrite, re-derive, rephrase, reorder or "improve" anything. Be conservative: when in doubt, do NOT flag.
 
 Find only these:
 1. COUNTRY: the country of the candidate's MOST-RECENT role (from that role's location). If master.identity.country disagrees with it, report the correct value.
@@ -182,10 +188,12 @@ ${sourceText}`;
   ];
 }
 
-export function buildMasterCvPrompt({ mode = 'build', rawInput = '', existingMaster = null, overrides = [] } = {}) {
+export function buildMasterCvPrompt({ mode = 'build', rawInput = '', existingMaster = null, overrides = [], now = new Date() } = {}) {
   const isMerge = mode === 'merge';
 
-  const system = `You are a meticulous career archivist. You read whatever a person gives you about their working life — a polished CV, a messy LinkedIn paste, half a Word doc, unstructured notes — and distil it into ONE structured, durable master record of their real career.
+  const system = `${currentDateBlock(now)}
+
+You are a meticulous career archivist. You read whatever a person gives you about their working life — a polished CV, a messy LinkedIn paste, half a Word doc, unstructured notes — and distil it into ONE structured, durable master record of their real career.
 
 You read for MEANING, not layout: inconsistent headings, missing headings, bullet soup and pasted profile text are all normal input and you handle them without complaint. You are not writing a CV here and you are not tailoring to any job — you are building the true, reusable source-of-truth that future tailored CVs and cover letters will be generated from. Its only job is to be COMPLETE and TRUE.
 
