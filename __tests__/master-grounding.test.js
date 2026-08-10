@@ -93,3 +93,91 @@ describe('verifyMaster — per-role grounding', () => {
     expect(nc.some((e) => e.field === 'location' && e.value === 'San Francisco' && e.role === 'Product Manager')).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: the block used to start AT the company name, so anything printed
+// to its LEFT — the job title on the header line, the date range on the line
+// above — fell into the PREVIOUS role's block and was blanked as ungrounded.
+// On the most ordinary CV layouts that wiped every title and every date from
+// the record. Red on the old boundaries, green on line-based ones.
+// ---------------------------------------------------------------------------
+describe('verifyMaster — grounding on ordinary CV layouts', () => {
+  test('keeps titles printed before the employer and dates printed above it', async () => {
+    const source = [
+      '2019 - 2022',
+      'Product Lead, Acme Corporation, Prague',
+      'Led the checkout redesign.',
+      '',
+      '2015 - 2019',
+      'Analyst, Beta Ltd, Brno',
+      'Built reporting.',
+    ].join('\n');
+
+    const master = {
+      experience: [
+        { company: 'Acme Corporation', role: 'Product Lead', dates: '2019 - 2022', location: 'Prague', achievements: [] },
+        { company: 'Beta Ltd', role: 'Analyst', dates: '2015 - 2019', location: 'Brno', achievements: [] },
+      ],
+      voice_samples: [],
+    };
+
+    mockAxiosPost.mockResolvedValueOnce(geminiResp('{}'));
+    const { master: out } = await verifyMaster(master, source);
+
+    expect(out.experience.map((r) => r.role)).toEqual(['Product Lead', 'Analyst']);
+    expect(out.experience.map((r) => r.dates)).toEqual(['2019 - 2022', '2015 - 2019']);
+    expect(out.experience.map((r) => r.location)).toEqual(['Prague', 'Brno']);
+    expect(out.needs_confirmation || []).toEqual([]);
+  });
+
+  test('an employer name wrapped across two lines still anchors its role', async () => {
+    const source = [
+      'Senior Engineer, Northwind Trading',
+      'Company, Prague',
+      '2020 - 2024. Owned the deployment pipeline.',
+    ].join('\n');
+
+    const master = {
+      experience: [
+        { company: 'Northwind Trading Company', role: 'Senior Engineer', dates: '2020 - 2024', location: 'Prague', achievements: [] },
+      ],
+      voice_samples: [],
+    };
+
+    mockAxiosPost.mockResolvedValueOnce(geminiResp('{}'));
+    const { master: out } = await verifyMaster(master, source);
+
+    // The role survives — a line break inside the employer name is not evidence
+    // that the job was invented.
+    expect(out.experience).toHaveLength(1);
+    expect(out.experience[0].role).toBe('Senior Engineer');
+    expect(out.experience[0].dates).toBe('2020 - 2024');
+  });
+
+  test('the widened date window still does not reach into an earlier role', async () => {
+    const source = [
+      'Acme Corp - Product Lead, Prague',
+      '2019 - 2021. Led the checkout redesign.',
+      'More detail about the Acme years.',
+      'Beta Ltd - Analyst, Brno',
+      'Built reporting.',
+    ].join('\n');
+
+    const master = {
+      experience: [
+        { company: 'Acme Corp', role: 'Product Lead', dates: '2019 - 2021', location: 'Prague', achievements: [] },
+        // Beta has no dates anywhere in its own block; 2019-2021 belongs to Acme
+        // and sits three lines up, so it must NOT ground Beta.
+        { company: 'Beta Ltd', role: 'Analyst', dates: '2019 - 2021', location: 'Brno', achievements: [] },
+      ],
+      voice_samples: [],
+    };
+
+    mockAxiosPost.mockResolvedValueOnce(geminiResp('{}'));
+    const { master: out } = await verifyMaster(master, source);
+
+    expect(out.experience[0].dates).toBe('2019 - 2021');
+    expect(out.experience[1].dates).toBe('');
+    expect((out.needs_confirmation || []).some((e) => e.field === 'dates' && e.company === 'Beta Ltd')).toBe(true);
+  });
+});

@@ -292,9 +292,22 @@ function applyVerifyCorrections(master, corr) {
 function groundAtomicFactsPerRole(master, sourceText) {
   if (!master || !Array.isArray(master.experience) || !master.experience.length) return master;
 
-  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  // Normalise for matching, but KEEP line breaks: a role's header line is the
+  // unit that carries its title and dates, and collapsing newlines made every
+  // role's block start mid-line — see the block boundaries below.
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\n]+/g, ' ').replace(/ *\n */g, '\n').trim();
+  // Values coming from the master are single-line; compare them without breaks.
+  const flat = (s) => norm(s).replace(/\n/g, ' ').trim();
   const hay = norm(sourceText);
   if (!hay) return master;
+  // Same string with breaks as spaces — SAME LENGTH, so offsets are shared.
+  // Searching and containment run on this one, so a value that wraps across a
+  // line still matches; `hay` is used only to find line boundaries.
+  const flatHay = hay.replace(/\n/g, ' ');
+
+  // Start of the line containing `pos`, and of the line before it.
+  const lineStart = (pos) => hay.lastIndexOf('\n', Math.max(0, pos - 1)) + 1;
+  const prevLineStart = (pos) => lineStart(Math.max(0, lineStart(pos) - 1));
 
   const flag = (entry) => {
     if (!Array.isArray(master.needs_confirmation)) master.needs_confirmation = [];
@@ -308,7 +321,7 @@ function groundAtomicFactsPerRole(master, sourceText) {
   const anchored = [];
   const kept = [];
   for (const role of master.experience) {
-    const company = norm(role.company);
+    const company = flat(role.company);
     if (!company) {
       // No company to anchor on — keep the role but surface it; we can't verify it.
       flag({ kind: 'role', company: role.company || '', role: role.role || '', reason: 'no_company_to_verify' });
@@ -316,8 +329,8 @@ function groundAtomicFactsPerRole(master, sourceText) {
       continue;
     }
     const from = cursorByCompany.get(company) || 0;
-    let pos = hay.indexOf(company, from);
-    if (pos === -1 && from > 0) pos = hay.indexOf(company); // reuse first occurrence if exhausted
+    let pos = flatHay.indexOf(company, from);
+    if (pos === -1 && from > 0) pos = flatHay.indexOf(company); // reuse first occurrence if exhausted
     if (pos === -1) {
       // Company appears NOWHERE in the CV → invented job. Pull it for confirmation.
       flag({ kind: 'role', company: role.company || '', role: role.role || '', reason: 'company_not_in_source' });
@@ -328,13 +341,26 @@ function groundAtomicFactsPerRole(master, sourceText) {
     kept.push(role);
   }
 
-  // 2. Block boundaries: each anchored role owns the source text from its company
-  //    up to the next anchored role's company.
+  // 2. Block boundaries. A role owns the source from the START OF ITS HEADER
+  //    LINE (not from the company name itself) up to the next role's header
+  //    line. Starting at the company name was a real bug: on the ordinary CV
+  //    layout "Product Lead, Acme Corp, Prague" the title sits to the LEFT of
+  //    the anchor, so it fell in the PREVIOUS role's block and was blanked as
+  //    ungrounded — every job title and every date wiped from the record.
+  //
+  //    Dates get one extra line of lookbehind, because the equally ordinary
+  //    layout puts the date range on its own line ABOVE the employer line.
   const sorted = [...anchored].sort((a, b) => a.pos - b.pos);
   const blockOf = new Map();
+  const dateBlockOf = new Map();
   for (let i = 0; i < sorted.length; i++) {
-    const end = i + 1 < sorted.length ? sorted[i + 1].pos : hay.length;
-    blockOf.set(sorted[i].role, hay.slice(sorted[i].pos, end));
+    const start = lineStart(sorted[i].pos);
+    const end = i + 1 < sorted.length ? lineStart(sorted[i + 1].pos) : hay.length;
+    // Never reach back past the previous role's own header line.
+    const prevStart = i > 0 ? lineStart(sorted[i - 1].pos) : 0;
+    const dateStart = Math.max(prevStart, prevLineStart(sorted[i].pos));
+    blockOf.set(sorted[i].role, flatHay.slice(start, end));
+    dateBlockOf.set(sorted[i].role, flatHay.slice(dateStart, end));
   }
 
   // 3. Ground each fact against its OWN block only. Ungrounded → blank + park.
@@ -344,7 +370,7 @@ function groundAtomicFactsPerRole(master, sourceText) {
     // role still names it even after its own title has been stripped.
     const label = { company: role.company || '', role: role.role || '' };
     const checkField = (field) => {
-      const val = norm(role[field]);
+      const val = flat(role[field]);
       if (val && !block.includes(val)) {
         flag({ kind: 'field', ...label, field, value: role[field] });
         role[field] = '';
@@ -353,10 +379,12 @@ function groundAtomicFactsPerRole(master, sourceText) {
     checkField('role');
     checkField('location');
 
-    // dates: every 4-digit year in the value must appear in this role's block.
+    // dates: every 4-digit year in the value must appear in this role's block,
+    // widened by one line to cover a date range printed above the employer.
     if (role.dates) {
+      const dateBlock = dateBlockOf.get(role) || block;
       const years = String(role.dates).match(/\d{4}/g) || [];
-      if (years.length && years.some((y) => !block.includes(y))) {
+      if (years.length && years.some((y) => !dateBlock.includes(y))) {
         flag({ kind: 'field', ...label, field: 'dates', value: role.dates });
         role.dates = '';
       }
@@ -364,7 +392,7 @@ function groundAtomicFactsPerRole(master, sourceText) {
 
     // metric: each achievement's quantified result must appear in this block.
     for (const a of role.achievements || []) {
-      const m = norm(a.metric);
+      const m = flat(a.metric);
       if (m && !block.includes(m)) {
         flag({ kind: 'field', ...label, field: 'metric', value: a.metric });
         a.metric = '';
