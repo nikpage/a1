@@ -7,10 +7,15 @@
 |---|---|---|---|
 | `user_id` | text | — | PK |
 | `email` | text | — | |
-| `tokens` | integer | 3 | Paid token balance |
-| `generations_left` | integer | 10 | Free generation allowance |
+| `tokens` | integer | 0 | Paid token balance (default lowered from 3 by `002_monetization.sql`) |
+| `generations_left` | integer | 2 | Free generation allowance (`002_monetization.sql` set 1, `004_free_generations_2.sql` set 2 — one CV + one cover) |
 | `auth_id` | uuid | — | Unique; links to Supabase Auth |
 | `phone_hash` | text | — | |
+| `candidate_core` | text | — | AI-drafted, user-tunable "who I am" profile (`002_monetization.sql`) |
+| `card_on_file` | boolean | false | NOT NULL. Stripe SetupIntent verified (card captured, never charged) |
+| `card_verified_at` | timestamptz | — | When the card was verified |
+| `stripe_customer_id` | text | — | Stripe customer for the captured card |
+| `free_downloads_left` | integer | 0 | NOT NULL. Per-account free-download allowance, seeded from `config/limits.js` FREE_DOWNLOADS once a card is verified |
 | `created_at` | timestamp | now() | |
 
 ### `cv_data`
@@ -99,6 +104,8 @@ Rows:
 | `decrement_token(user_id)` | Safely decrements `users.tokens` |
 | `decrement_generations(user_id, amount)` | Decrements `users.generations_left` |
 | `reset_generations(user_id)` | Resets `users.generations_left` |
+| `consume_download_credit(p_user_id)` | Atomically spends one download credit: a `free_downloads_left` credit first, else a paid token. Returns text: `'free'`, `'token'`, or `'none'` (nothing available — caller must block the download). `003_download_credit_rpc.sql` |
+| `top_up_generations(user_id, amount)` | Refills `users.generations_left` to `greatest(generations_left, amount)` after a download — can only raise, never lower. Returns void. `008_top_up_generations.sql` |
 | `claim_account(...)` | Links temp user to authenticated account |
 | `handle_new_user` | Trigger: runs on auth.users insert |
 | `set_magic_token_expiration` | Trigger: sets expires_at on magic_tokens insert |
@@ -125,4 +132,4 @@ The authenticated `DELETE /api/delete-account` route runs this same cascade via 
 
 ## Migrations
 
-`scripts/migrations/` holds SQL applied manually in the Supabase SQL editor. `001_fix_transactions_user_id.sql` converts `transactions.user_id` from `uuid` to `text`; after it runs, drop the `::text` casts above. `005_master_cv.sql` adds the `cv_data.master_cv` JSONB column.
+`scripts/migrations/` holds SQL applied manually in the Supabase SQL editor. `001_fix_transactions_user_id.sql` converts `transactions.user_id` from `uuid` to `text`; after it runs, drop the `::text` casts above. `005_master_cv.sql` adds the `cv_data.master_cv` JSONB column. `008_top_up_generations.sql` defines the `top_up_generations` RPC that `topUpFreeGenerations()` calls (missing until then, which 500'd every download after the credit was already spent).
