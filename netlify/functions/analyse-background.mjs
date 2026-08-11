@@ -185,6 +185,17 @@ export const handler = async (event) => {
     // page. analyzeCvJob is handed the teaser and generates only the delta, merged
     // back so scenario/scores/verdicts carry forward instead of being recomputed.
     // The landing teaser stays a single cheap call.
+    // Deep requested but no verified session: the gate closes and the user gets a
+    // teaser-shaped analysis with no assessment, red flags, quick wins or action
+    // items. That used to happen in total silence — nothing logged, nothing in
+    // the saved record — so a missing cookie looked identical to a model that
+    // simply returned less. Record it both ways.
+    let deepSkipped = null;
+    if (body.deep === true && !verified?.user_id) {
+      deepSkipped = 'unauthenticated';
+      logger.error('[analyse-bg] deep analysis requested but the session is not verified — teaser only');
+    }
+
     if (body.deep === true && verified?.user_id) {
       try {
         const deep = await analyzeCvJob(deepCv, jobText, file_name || 'cv.pdf', content);
@@ -196,6 +207,7 @@ export const handler = async (event) => {
       } catch (e) {
         // A deep-pass failure must not sink the analysis — the teaser already
         // saved value. Surface it, keep the teaser content.
+        deepSkipped = `failed: ${e.message}`;
         logger.error('[analyse-bg] deep analysis failed, keeping teaser:', e.message);
         Sentry.captureException(e);
       }
@@ -216,6 +228,8 @@ export const handler = async (event) => {
       // Surface EVERY Gemini call this run made (master build + verify + teaser +
       // deep) so the browser console matches what the transactions table records.
       obj._gemini_usage = [...masterUsages, ...analysisUsages];
+      // Why the record is teaser-shaped, saved alongside it. Absent on a good run.
+      if (deepSkipped) obj._deep_skipped = deepSkipped;
       if (confirmedJob && typeof confirmedJob === 'object') {
         obj.job_extraction = confirmedJob;
       }

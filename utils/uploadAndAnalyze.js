@@ -141,6 +141,11 @@ export async function uploadAndAnalyze({
     const payload = await statusRes.json().catch(() => ({}));
     if (payload.status === 'done') {
       logGemini(payload.gemini_usage);
+      // A teaser-shaped analysis is not a quiet outcome — say why it is short.
+      try {
+        const skipped = JSON.parse(payload.analysis)?._deep_skipped;
+        if (skipped) logger.error(`[analysis] deep pass did not run: ${skipped}`);
+      } catch { /* unparseable content is handled by the caller */ }
       return { user_id: finalUserId, analysis_id, analysis: payload.analysis, gemini_usage: payload.gemini_usage };
     }
     if (payload.status === 'error') {
