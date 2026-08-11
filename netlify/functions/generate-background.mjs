@@ -12,7 +12,7 @@ import * as Sentry from '@sentry/node';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { runGeneration, GenerationError } from '../../utils/run-generation.js';
-import { publishGenerationStatus } from '../../utils/generation-status.js';
+import { saveGenerationStatus } from '../../utils/database.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
 
@@ -75,7 +75,7 @@ export const handler = async (event) => {
     }
 
     const result = await runGeneration({ user_id, analysis, tone, type, tweak, language });
-    await publishGenerationStatus(user_id, generation_id, { status: 'done', ...result });
+    await saveGenerationStatus(user_id, generation_id, { status: 'done', ...result });
   } catch (e) {
     if (!(e instanceof GenerationError)) {
       Sentry.captureException(e);
@@ -85,9 +85,9 @@ export const handler = async (event) => {
       ? { status: 'error', error: e.code, httpStatus: e.status, ...(e.detail !== undefined && { detail: e.detail }) }
       : { status: 'error', error: e.message || 'Generation failed', httpStatus: 500 };
     try {
-      await publishGenerationStatus(user_id, generation_id, payload);
+      await saveGenerationStatus(user_id, generation_id, payload);
     } catch (pubErr) {
-      logger.error('[generate-bg] could not publish error status:', pubErr.message);
+      logger.error('[generate-bg] could not save error status:', pubErr.message);
     }
   }
 

@@ -247,6 +247,37 @@ export async function getUserStats(user_id) {
   return data;
 }
 
+// Background-generation run status, keyed by the client-minted generation_id.
+//
+// Deliberately the DATABASE and not Redis: the poll endpoint is the one place a
+// Redis outage would be fatal rather than degraded (the gen_lock fails open, a
+// missing status does not — the browser just spins). gen_data already carries
+// the run id in analysis_id, and every other reader filters on `type`, so a
+// 'generation_status' row is invisible to them.
+const GENERATION_STATUS_TYPE = 'generation_status';
+
+export async function saveGenerationStatus(user_id, generation_id, payload) {
+  return saveGeneratedDoc({
+    user_id,
+    source_cv_id: user_id,
+    type: GENERATION_STATUS_TYPE,
+    tone: null,
+    content: JSON.stringify(payload),
+    analysis_id: generation_id,
+  });
+}
+
+export async function getGenerationStatus(user_id, generation_id) {
+  const { data, error } = await getAdminSupabase()
+    .from('gen_data').select('content')
+    .eq('user_id', user_id).eq('analysis_id', generation_id).eq('type', GENERATION_STATUS_TYPE)
+    .order('created_at', { ascending: false }).limit(1);
+  if (error) throw error;
+  const content = data?.[0]?.content;
+  if (!content) return null;
+  try { return JSON.parse(content); } catch { return null; }
+}
+
 // Get gen_data row by analysis_id (for polling)
 export async function getGenDataByAnalysisId(user_id, analysis_id) {
   const { data, error } = await getAdminSupabase()

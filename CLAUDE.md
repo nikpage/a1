@@ -124,7 +124,7 @@ A generation run is up to six Gemini calls (write → verify → validate → on
 
 - The run itself lives in `utils/run-generation.js` (lock, allowance, source, both AI calls, deferred decrement, saves, cost logging). It is transport-agnostic and throws `GenerationError { code, status, detail }`.
 - Browser → `POST /.netlify/functions/generate-background` (relative URL, client-minted `generation_id`), which answers 202 and always publishes a terminal status.
-- Status is transient run state in Redis (`gen_status:<user_id>:<generation_id>`, 30-min TTL) via `utils/generation-status.js`; the documents themselves still land in `gen_data`. Browser polls `POST /api/get-generation-status`.
+- Status is a `gen_data` row of type `generation_status`, keyed by `analysis_id = generation_id` (`saveGenerationStatus()` / `getGenerationStatus()` in `utils/database.js`); the documents land in `gen_data` as before. Browser polls `POST /api/get-generation-status`. **Not Redis:** Upstash is not reachable from the Next server runtime — the `gen_lock` has always failed open there, silently — so a Redis-backed poll 500s on every call.
 - Every call site goes through `utils/generateDocuments.js` — keep them on that single helper.
 - `user_id` comes from the verified session cookie in the background function, never the body. Middleware cannot see `/.netlify/functions/*`, so the 10/min `rl_generate` limiter runs inside the function, keyed by user.
 

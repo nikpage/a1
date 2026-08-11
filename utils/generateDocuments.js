@@ -35,6 +35,10 @@ export async function generateDocuments({ analysis, tone, type, tweak = '', lang
   }
 
   const deadline = Date.now() + POLL_TIMEOUT_MS;
+  // A poll that keeps failing is a broken poll, not a slow generation. Tolerate a
+  // blip, then surface the reason — spinning silently through 200 x HTTP 500 and
+  // calling it "timed out" hides the actual fault.
+  let consecutiveFailures = 0;
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
 
@@ -44,7 +48,18 @@ export async function generateDocuments({ analysis, tone, type, tweak = '', lang
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ generation_id }),
     });
-    if (!statusRes.ok) continue; // transient — keep polling
+    if (!statusRes.ok) {
+      if (++consecutiveFailures >= 3) {
+        const body = await statusRes.json().catch(() => ({}));
+        return {
+          ok: false,
+          error: body.error || `Could not read generation status (${statusRes.status})`,
+          detail: body.detail,
+        };
+      }
+      continue; // transient — keep polling
+    }
+    consecutiveFailures = 0;
 
     const payload = await statusRes.json().catch(() => ({}));
     if (payload.status === 'done') {
