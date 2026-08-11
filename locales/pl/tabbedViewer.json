@@ -26,5 +26,11 @@
   "headlineRemove": "Usuń",
   "headlineHint": "Wiersz pod Twoim imieniem i nazwiskiem. Edytuj go, wygeneruj nowy lub usuń — za darmo i bez zmiany reszty CV.",
   "headlineWorking": "Aktualizuję nagłówek...",
-  "headlineFailed": "Nie udało się zaktualizować nagłówka"
+  "headlineFailed": "Nie udało się zaktualizować nagłówka",
+  "editDocument": "Edytuj dokument",
+  "editSave": "Zapisz zmiany",
+  "editCancel": "Anuluj",
+  "editHint": "Edytuj tekst bezpośrednio. Formatowanie używa markdown — za darmo i zastępuje tę wersję.",
+  "editWorking": "Zapisuję zmiany...",
+  "editFailed": "Nie udało się zapisać zmian"
 }

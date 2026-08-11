@@ -26,5 +26,11 @@
   "headlineRemove": "Odebrat",
   "headlineHint": "Řádek pod vaším jménem. Upravte jej, nechte vygenerovat nový, nebo jej odeberte — zdarma a beze změny zbytku CV.",
   "headlineWorking": "Aktualizuji titulek...",
-  "headlineFailed": "Titulek se nepodařilo aktualizovat"
+  "headlineFailed": "Titulek se nepodařilo aktualizovat",
+  "editDocument": "Upravit dokument",
+  "editSave": "Uložit změny",
+  "editCancel": "Zrušit",
+  "editHint": "Upravte text přímo. Formátování používá markdown — zdarma a nahradí tuto verzi.",
+  "editWorking": "Ukládám změny...",
+  "editFailed": "Změny se nepodařilo uložit"
 }

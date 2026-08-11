@@ -65,6 +65,11 @@ export default function TabbedViewer({ user_id, analysisText }) {
   // Inline headline editing on the CV tab.
   const [headlineDraft, setHeadlineDraft] = useState('');
   const [headlineBusy, setHeadlineBusy] = useState(false);
+  // Hand-editing the generated document before download. `editing` is the tab
+  // whose document is open in the editor ('cv' | 'cover' | null).
+  const [editing, setEditing] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
 
   // Single entry point for the buy panel: resolves the token balance first so
   // the panel always has the number it needs. `knownTokens` skips the fetch
@@ -154,6 +159,12 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
   const currentCv = cvVersions[cvCurrentIndex] || '';
 
+  // An open editor belongs to one version of one document — leaving that view
+  // closes it, so a save can never land on the document the user moved to.
+  useEffect(() => {
+    setEditing(null);
+  }, [activeTab, cvCurrentIndex, coverCurrentIndex]);
+
   // Keep the editable headline field in step with whichever CV version is shown.
   useEffect(() => {
     setHeadlineDraft(readHeadline(currentCv));
@@ -192,6 +203,43 @@ export default function TabbedViewer({ user_id, analysisText }) {
       alert(t('headlineFailed'));
     } finally {
       setHeadlineBusy(false);
+    }
+  };
+
+  // Open the plain-markdown editor on whichever version is currently shown.
+  const startEditing = (docType) => {
+    setEditDraft(docType === 'cv' ? currentCv : coverVersions[coverCurrentIndex] || '');
+    setEditing(docType);
+  };
+
+  // Save the user's edits. Like a headline change, this is an edit OF this
+  // version, not a new one, so the version on screen is replaced in place.
+  const saveEdit = async () => {
+    const docType = editing;
+    if (!docType || editBusy || !editDraft.trim()) return;
+    setEditBusy(true);
+    try {
+      const res = await fetch('/api/save-doc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: docType, content: editDraft, tone: lastTone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || t('editFailed'));
+        return;
+      }
+      if (docType === 'cv') {
+        setCvVersions((prev) => prev.map((v, i) => (i === cvCurrentIndex ? data.content : v)));
+      } else {
+        setCoverVersions((prev) => prev.map((v, i) => (i === coverCurrentIndex ? data.content : v)));
+      }
+      setEditing(null);
+    } catch (error) {
+      console.error('Edit save error:', error);
+      alert(t('editFailed'));
+    } finally {
+      setEditBusy(false);
     }
   };
 
@@ -318,6 +366,53 @@ export default function TabbedViewer({ user_id, analysisText }) {
       setShowLoadingModal(false);
     }
   };
+
+  // The document body: either the rendered markdown or, in edit mode, the raw
+  // markdown in a textarea. Shared by the CV and cover tabs — one behaviour.
+  const renderDocument = (docType, content) => (
+    editing === docType ? (
+      <div className="mx-auto max-w-4xl border border-accent rounded-lg p-3 sm:p-4">
+        <textarea
+          value={editDraft}
+          disabled={editBusy}
+          onChange={(e) => setEditDraft(e.target.value)}
+          rows={28}
+          className="w-full p-3 border border-gray-300 rounded bg-white font-mono text-sm disabled:opacity-50"
+        />
+        <div className="flex flex-wrap gap-2 mt-3">
+          <button
+            onClick={saveEdit}
+            disabled={editBusy || !editDraft.trim() || editDraft === content}
+            className="action-btn px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t('editSave')}
+          </button>
+          <button
+            onClick={() => setEditing(null)}
+            disabled={editBusy}
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t('editCancel')}
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-gray-500">
+          {editBusy ? t('editWorking') : t('editHint')}
+        </p>
+      </div>
+    ) : (
+      <>
+        <div className="text-center mb-4">
+          <button
+            onClick={() => startEditing(docType)}
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+          >
+            {t('editDocument')}
+          </button>
+        </div>
+        <CV_Cover_Display content={content} />
+      </>
+    )
+  );
 
   const tabs = [
     { id: 'analysis', label: t('analysis') },
@@ -508,7 +603,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                   </p>
                 </div>
 
-                <CV_Cover_Display content={cvVersions[cvCurrentIndex]} />
+                {renderDocument('cv', cvVersions[cvCurrentIndex])}
 
                 <div className="mt-6 sm:mt-8">
                   <DocumentDownloadButtons
@@ -560,7 +655,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                   </div>
                 </div>
 
-                <CV_Cover_Display content={coverVersions[coverCurrentIndex]} />
+                {renderDocument('cover', coverVersions[coverCurrentIndex])}
 
                 <div className="mt-6 sm:mt-8">
                   <DocumentDownloadButtons
