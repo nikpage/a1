@@ -12,6 +12,14 @@
 // Every check is skipped rather than guessed when its input is missing (e.g. no
 // parseable master, no blueprint section_order). A check that cannot see its
 // evidence reports nothing — it never invents a failure.
+//
+// LANGUAGE: hard failures are English strings, and their only readers are the
+// log and the generator itself on the retry. WARNINGS are read by the candidate,
+// who may be working in any language, so each is a { code, params } pair the UI
+// translates — never a pre-built sentence. Section names and the bullet-length
+// band come from prompts/cv-sections.js, which holds them per language.
+
+import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js';
 
 // ---- small parsing helpers --------------------------------------------------
 
@@ -74,7 +82,12 @@ function parseRoles(section) {
   return roles;
 }
 
-const EARLIER_CAREER = /earlier career/i;
+// "Earlier Career" is a Layer 1 slot with a name in every supported language —
+// matching it in English only would treat a Czech CV's collapsed-roles line as
+// an ordinary role and fail it for being undated and unmatched.
+function isEarlierCareer(heading) {
+  return isSlot('earlierCareer', heading);
+}
 
 // The master as searchable text, plus its parsed form when it is JSON.
 function readMaster(master) {
@@ -146,7 +159,7 @@ function checkRolesReal(document, master, hard) {
   const sections = splitSections(document);
   for (const s of sections) {
     for (const role of parseRoles(s)) {
-      if (EARLIER_CAREER.test(role.title)) continue;
+      if (isEarlierCareer(role.title)) continue;
       const title = role.title.toLowerCase();
       if (title && !master.lower.includes(title)) {
         // The employer is the harder signal — a title may legitimately be
@@ -169,15 +182,19 @@ function checkStructure(document, analysis, hard) {
     hard.push(`CV contains layout HTML (${[...new Set(banned.map((b) => b.replace(/[<\s]/g, '')))].join(', ')}) — single column, no tables or columns.`);
   }
 
-  // Section names: measured against the blueprint's own section_order when the
-  // analysis supplied one, so a non-English CV is judged in its own language.
+  // Section names: a heading passes if it is one of the standard names in ANY
+  // supported language, or if the blueprint's own section_order names it. Both
+  // are needed. The document's language is not reliably known here — 'auto'
+  // resolves inside the model — and the blueprint is written in the CV's
+  // language while the document may be generated in another, so neither source
+  // alone can judge a Czech CV built from an English record. A creative heading
+  // still fails, because it is in neither.
   const allowed = analysis?.generation_framework?.cv_blueprint?.section_order;
-  if (Array.isArray(allowed) && allowed.length) {
-    const set = new Set(allowed.map((a) => plain(a).toLowerCase()));
-    for (const s of splitSections(doc)) {
-      if (!set.has(s.heading.toLowerCase())) {
-        hard.push(`Section "${s.heading}" is not one of the standard sections the blueprint allows.`);
-      }
+  const blueprintNames = Array.isArray(allowed) ? allowed.map((a) => plain(a).toLowerCase()) : [];
+  const permitted = new Set([...standardHeadings(), ...blueprintNames]);
+  for (const s of splitSections(doc)) {
+    if (!permitted.has(s.heading.toLowerCase())) {
+      hard.push(`Section "${s.heading}" is not a standard section name in any supported language, and the blueprint does not name it.`);
     }
   }
 }
@@ -189,35 +206,38 @@ function checkImpactZone(document, warnings) {
   const sections = splitSections(document);
   const summary = sections[0];
   if (!summary) {
-    warnings.push('No sections found — the impact zone could not be checked.');
+    warnings.push({ code: 'noSections' });
     return;
   }
   const bullets = summary.lines.filter((l) => /^\s*[-*•]\s+/.test(l));
   if (bullets.length < 3) {
-    warnings.push(`Summary carries ${bullets.length} achievement bullet(s); the impact zone needs three.`);
+    warnings.push({ code: 'impactZoneBullets', params: { count: bullets.length } });
   }
   const upToThird = bullets.slice(0, 3).pop();
   const idx = upToThird ? document.indexOf(upToThird) + upToThird.length : -1;
   const zone = idx > 0 ? document.slice(0, idx) : document;
   const count = words(zone).length;
-  if (count > 120) warnings.push(`Impact zone runs to ${count} words; the ceiling is ~120.`);
+  if (count > 120) warnings.push({ code: 'impactZoneWords', params: { count } });
 }
 
 // 6. Bullet ceilings, and the metric-fallback share where metrics exist.
-function checkBullets(document, master, warnings) {
+function checkBullets(document, master, language, warnings) {
+  const [minWords, maxWords] = bulletBand(language);
   const sections = splitSections(document);
   const exp = sections.find((s) => parseRoles(s).length > 0);
   if (!exp) return;
   const roles = parseRoles(exp);
   roles.forEach((role, i) => {
-    if (EARLIER_CAREER.test(role.title)) return;
+    if (isEarlierCareer(role.title)) return;
     const ceiling = i < 2 ? 5 : 3;
     if (role.bullets.length > ceiling) {
-      warnings.push(`"${role.title}" has ${role.bullets.length} bullets; the ceiling for this position is ${ceiling}.`);
+      warnings.push({ code: 'bulletCeiling', params: { role: role.title, count: role.bullets.length, ceiling } });
     }
     for (const b of role.bullets) {
       const n = words(b).length;
-      if (n < 15 || n > 25) warnings.push(`Bullet under "${role.title}" is ${n} words; the band is 15-25.`);
+      if (n < minWords || n > maxWords) {
+        warnings.push({ code: 'bulletBand', params: { role: role.title, count: n, min: minWords, max: maxWords } });
+      }
     }
     // Fallback share: only meaningful when the master actually holds metrics
     // for this role, which needs the master in parsed form.
@@ -229,7 +249,7 @@ function checkBullets(document, master, warnings) {
     if (!/\d/.test(JSON.stringify(achievements))) return; // no metrics exist — fallbacks are unlimited
     const noMetric = role.bullets.filter((b) => !/\d/.test(b)).length;
     if (noMetric > role.bullets.length / 3) {
-      warnings.push(`"${role.title}": ${noMetric} of ${role.bullets.length} bullets carry no metric, though the master records metrics for this role.`);
+      warnings.push({ code: 'metricFallback', params: { role: role.title, count: noMetric, total: role.bullets.length } });
     }
   });
 }
@@ -249,14 +269,14 @@ function findMasterEntry(master, role) {
 // 7. Market rules: nothing personal was invented.
 function checkMarket(document, master, warnings) {
   const doc = String(document || '');
-  if (/!\[[^\]]*\]\(/.test(doc)) warnings.push('CV contains an image — no photo may be generated.');
+  if (/!\[[^\]]*\]\(/.test(doc)) warnings.push({ code: 'photoInvented' });
   const invented = [
-    [/\b(date of birth|born on|d\.o\.b\.)\b/i, 'a date of birth'],
-    [/\b(consent to the processing|zpracování osobních údajů|przetwarzanie danych osobowych|GDPR consent)\b/i, 'a data-processing consent line'],
+    [/\b(date of birth|datum narození|data urodzenia|born on|d\.o\.b\.)\b/i, 'dobInvented'],
+    [/\b(consent to the processing|zpracování osobních údajů|przetwarzanie danych osobowych|GDPR consent)\b/i, 'consentInvented'],
   ];
-  for (const [re, label] of invented) {
+  for (const [re, code] of invented) {
     if (re.test(doc) && !(master.lower && re.test(master.text))) {
-      warnings.push(`CV states ${label} the master record does not supply.`);
+      warnings.push({ code });
     }
   }
 }
@@ -270,24 +290,24 @@ function checkGaps(analysis, warnings) {
       ? [missing.trim()]
       : [];
   if (list.length) {
-    warnings.push(`Job requirements the record does not evidence (left off the CV as gaps): ${list.join('; ')}`);
+    warnings.push({ code: 'gaps', params: { list: list.join('; ') } });
   }
 }
 
 // 9. A Projects section requires a qualifying override.
 function checkProjects(document, analysis, warnings) {
   const sections = splitSections(document);
-  const hasProjects = sections.some((s) => /^(projects|projekty|projekt)/i.test(s.heading));
+  const hasProjects = sections.some((s) => isSlot('projects', s.heading));
   if (!hasProjects) return;
   const tags = scenarioTags(analysis);
   if (!tags.includes('Under-qualified') && !tags.includes('Career Pivot')) {
-    warnings.push('A Projects section is present without an Under-qualified or Career Pivot override.');
+    warnings.push({ code: 'projectsNoOverride' });
   }
 }
 
 // ---- the validator ----------------------------------------------------------
 
-export function validateCv(document, { master = '', analysis = null } = {}) {
+export function validateCv(document, { master = '', analysis = null, language = 'auto' } = {}) {
   const hard = [];
   const warnings = [];
   const m = readMaster(master);
@@ -298,7 +318,7 @@ export function validateCv(document, { master = '', analysis = null } = {}) {
   checkStructure(document, analysis, hard);
 
   checkImpactZone(document, warnings);
-  checkBullets(document, m, warnings);
+  checkBullets(document, m, language, warnings);
   checkMarket(document, m, warnings);
   checkGaps(analysis, warnings);
   checkProjects(document, analysis, warnings);

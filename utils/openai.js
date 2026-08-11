@@ -718,7 +718,7 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
   // Layer 6 — deterministic output validation. Checks 1-4 are hard blocks, so a
   // failing draft is regenerated ONCE with the exact failures fed back; checks
   // 5-9 are warnings that ride out to the caller for the user to see.
-  let validation = validateCv(verified.content, { master: cv, analysis });
+  let validation = validateCv(verified.content, { master: cv, analysis, language });
   if (!validation.ok) {
     logger.info(`[validate cv] hard failures, regenerating once: ${validation.hard.join(' | ')}`);
     const retryMessages = [...messages, { role: 'user', content: validationFeedback(validation.hard) }];
@@ -734,7 +734,7 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
     });
     if (reVerified.gemini_usage) usages.push(reVerified.gemini_usage);
 
-    const revalidated = validateCv(reVerified.content, { master: cv, analysis });
+    const revalidated = validateCv(reVerified.content, { master: cv, analysis, language });
     // Keep the retry only if it actually improved on the draft it replaced.
     if (revalidated.hard.length <= validation.hard.length) {
       verified = reVerified;

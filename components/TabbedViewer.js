@@ -563,7 +563,9 @@ export default function TabbedViewer({ user_id, analysisText }) {
                   <div className="mb-4 sm:mb-6 mx-auto max-w-2xl rounded-lg border border-amber-300 bg-amber-50 p-3 sm:p-4">
                     <div className="text-sm font-bold text-amber-900">{t('cvWarningsTitle')}</div>
                     <ul className="mt-2 list-disc pl-5 text-sm text-amber-900">
-                      {cvWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                      {cvWarnings.map((w, i) => (
+                        <li key={i}>{t(`cvWarning.${w.code}`, { ...(w.params || {}), defaultValue: w.code })}</li>
+                      ))}
                     </ul>
                   </div>
                 )}

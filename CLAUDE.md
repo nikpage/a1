@@ -70,6 +70,17 @@ Each user has one persisted **master CV** — a structured career record (facts 
 - **Layer 5** keys off the job's country when there is a job ad, otherwise the candidate's own (`targetCountry()`). An unrecognised country falls back to the neutral default. It never generates a photo, date of birth or consent line the candidate did not supply.
 - Unit tests: `prompts/cv-rules.test.js` (all layers, both prompts), `utils/cv-validate.test.js`.
 
+### Languages (this is an EU product — nothing here is English-only)
+
+`prompts/cv-sections.js` is the registry of standard section names per language (`en`, `cs`, `pl`), plus the per-language bullet-length band. **Adding a language is one entry in that file and nothing else.** Each slot holds an array: the first value is canonical (what the generator is told to write), the rest are accepted market variants the validator treats as equally valid.
+
+- `sectionNameBlock(language)` gives the generator the exact headings for a known output language; on `auto` it states the rule without picking a language, because the model resolves that from the master CV.
+- The validator accepts a heading that is standard in **any** registered language **or** named by the blueprint's `section_order`. Both sources are needed: `section_order` is written in the CV's language while the document may be generated in another (`prompts/language.js` lets the candidate pick), so neither alone can judge a Czech CV built from an English record. A creative heading is in neither and still hard-fails.
+- `isSlot()` recognises the "Earlier Career" line and the Projects section in every registered language, so a Czech CV's collapsed-roles line is not mistaken for an ordinary undated role.
+- `BULLET_BAND` is per language because Czech and Polish carry the same content in fewer words — no articles, heavy inflection. An unregistered language falls back to the default band rather than being judged on English assumptions.
+- **Warnings are `{ code, params }`, never sentences.** `TabbedViewer.js` renders them through `t('cvWarning.<code>', params)`, with strings in `locales/{en,cs,pl}/tabbedViewer.json`. Hard failures stay English: their only readers are the log and the generator itself on the retry.
+- `GENERATION_LANGUAGES` in `prompts/language.js` is what the candidate can explicitly pick (currently `auto`, `en`, `cs`). The section registry is deliberately wider — a Polish master CV generates in Polish through `auto`.
+
 ## Truth enforcement (three stages, in order)
 
 The never-fabricate rule is enforced at three points, not one. Each catches what the previous cannot.
@@ -83,10 +94,10 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 
 `validateCv(document, { master, analysis })` in `utils/cv-validate.js` is code, not a prompt, so it cannot hallucinate a violation. It returns `{ ok, hard, warnings }`.
 
-- **Hard (checks 1–4):** every number in the document traces to the master; dates match the master and are MM/YYYY throughout Work Experience; no Work Experience entry that is not a real role; single column, no layout HTML, section names confined to the blueprint's `section_order`.
+- **Hard (checks 1–4):** every number in the document traces to the master; dates match the master and are MM/YYYY throughout Work Experience; no Work Experience entry that is not a real role; single column, no layout HTML, section names standard in some registered language or named by the blueprint.
 - **Warnings (checks 5–9):** impact zone within ~120 words with its three bullets; bullet ceilings and the metric-fallback share; no invented photo/DOB/consent; unevidenced job requirements listed as gaps; a Projects section only under an Under-qualified or Career Pivot override.
 - `generateCV()` runs it after the AI verify pass. A hard failure triggers **one** regeneration with `validationFeedback(hard)` appended to the messages; the retry is kept only if it has no more hard failures than the draft it replaces. Every call it makes lands in `gemini_usages`, so the cost-logging rule is satisfied.
-- Warnings ride out as `cv_warnings` from `/api/generate-cv-cover` and render as a banner on the CV tab in `TabbedViewer.js`. They are English regardless of the CV's language.
+- Warnings ride out as `cv_warnings` from `/api/generate-cv-cover` and render as a banner on the CV tab in `TabbedViewer.js`, translated from their `{ code, params }` form.
 - A check whose evidence is missing (no parseable master, no `section_order`) reports nothing rather than guessing.
 
 ## Career-scenario layer
@@ -127,6 +138,7 @@ prompts/cover-letter.js
 prompts/master-cv.js
 prompts/cv-rules.js
 prompts/generation-verify.js
+prompts/cv-sections.js
 ```
 
 These are the product IP. Import them; never copy-paste their content into handlers.

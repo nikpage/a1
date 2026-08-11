@@ -33,5 +33,18 @@
   "editHint": "Edytuj tekst bezpośrednio. Formatowanie używa markdown — za darmo i zastępuje tę wersję.",
   "editWorking": "Zapisuję zmiany...",
   "editFailed": "Nie udało się zapisać zmian",
-  "cvWarningsTitle": "Warto sprawdzić przed wysłaniem"
+  "cvWarningsTitle": "Warto sprawdzić przed wysłaniem",
+  "cvWarning": {
+    "noSections": "CV nie ma rozpoznawalnych sekcji, więc nie dało się sprawdzić początku.",
+    "impactZoneBullets": "Podsumowanie zawiera {{count}} punktów z osiągnięciami — najlepiej działają trzy.",
+    "impactZoneWords": "Początek ma {{count}} słów; rekruter decyduje mniej więcej do 120.",
+    "bulletCeiling": "„{{role}}” ma {{count}} punktów; {{ceiling}} brzmi mocniej.",
+    "bulletBand": "Punkt przy „{{role}}” ma {{count}} słów; najlepiej czyta się {{min}}–{{max}}.",
+    "metricFallback": "„{{role}}”: {{count}} z {{total}} punktów nie zawiera liczby, choć w Twoich danych liczby są.",
+    "photoInvented": "CV zawiera obraz. Usuń go, jeśli nie dodałeś go samodzielnie.",
+    "dobInvented": "CV podaje datę urodzenia, której nie ma w Twoich danych.",
+    "consentInvented": "CV zawiera klauzulę zgody na przetwarzanie danych, której nie ma w Twoich danych.",
+    "gaps": "Tego wymaga ogłoszenie, a Twoje dane tego nie potwierdzają — pominęliśmy to zamiast zmyślać: {{list}}",
+    "projectsNoOverride": "Sekcja Projekty pojawia się bez powodu, by jej użyć."
+  }
 }

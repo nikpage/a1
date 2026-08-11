@@ -5,6 +5,7 @@ import { marketConventions, targetCountry } from './market.js';
 import { scenarioGenerationRules, SCENARIOS } from './scenarios.js';
 import { buildCvPrompt } from './cv-generator.js';
 import { buildCoverPrompt } from './cover-letter.js';
+import { SECTION_NAMES, isSlot, bulletBand } from './cv-sections.js';
 
 describe('the invariants', () => {
   it('states all four, unoverridable', () => {
@@ -146,5 +147,44 @@ describe('cvRulesBlock', () => {
     expect(b.indexOf('Invariants')).toBeLessThan(b.indexOf('Layer 1'));
     expect(b.indexOf('Layer 1')).toBeLessThan(b.indexOf('Layer 2'));
     expect(b.indexOf('Layer 2')).toBeLessThan(b.indexOf('Layer 3'));
+  });
+});
+
+describe('section names per language', () => {
+  it('gives the generator the exact Czech headings when Czech is chosen', () => {
+    const [, user] = buildCvPrompt('MASTER', { analysis: { scenario_tags: [] } }, 'confident', '', '', 'cs');
+    expect(user.content).toContain('Pracovní zkušenosti');
+    expect(user.content).toContain('Shrnutí');
+    expect(user.content).toContain('Dřívější kariéra');
+  });
+
+  it('states the rule without naming a language on auto', () => {
+    const [, user] = buildCvPrompt('MASTER', { analysis: { scenario_tags: [] } }, 'confident', '', '', 'auto');
+    expect(user.content).toMatch(/standard, ATS-recognised names in the document's own language/);
+    expect(user.content).not.toContain('Pracovní zkušenosti');
+  });
+
+  it('covers every slot in every registered language', () => {
+    const slots = Object.keys(SECTION_NAMES.en);
+    for (const [lang, names] of Object.entries(SECTION_NAMES)) {
+      expect(Object.keys(names).sort(), `${lang} is missing a slot`).toEqual(slots.sort());
+      for (const slot of slots) {
+        expect(names[slot].length, `${lang}.${slot} is empty`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('recognises a slot by any language variant', () => {
+    expect(isSlot('experience', 'Doświadczenie zawodowe')).toBe(true);
+    expect(isSlot('experience', 'Pracovní zkušenosti')).toBe(true);
+    expect(isSlot('earlierCareer', 'Wcześniejsza kariera')).toBe(true);
+    expect(isSlot('experience', 'Where I Made Waves')).toBe(false);
+  });
+
+  it('bands bullets per language, with a default for the unregistered', () => {
+    expect(bulletBand('en')).toEqual([15, 25]);
+    expect(bulletBand('cs')).toEqual([12, 22]);
+    expect(bulletBand('auto')).toEqual([15, 25]);
+    expect(bulletBand('hu')).toEqual([15, 25]);
   });
 });

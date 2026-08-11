@@ -33,5 +33,18 @@
   "editHint": "Upravte text přímo. Formátování používá markdown — zdarma a nahradí tuto verzi.",
   "editWorking": "Ukládám změny...",
   "editFailed": "Změny se nepodařilo uložit",
-  "cvWarningsTitle": "Před odesláním se na to podívejte"
+  "cvWarningsTitle": "Před odesláním se na to podívejte",
+  "cvWarning": {
+    "noSections": "Životopis nemá rozpoznatelné sekce, úvod proto nešlo zkontrolovat.",
+    "impactZoneBullets": "Shrnutí obsahuje {{count}} odrážek s úspěchy — nejlépe fungují tři.",
+    "impactZoneWords": "Úvod má {{count}} slov; personalista se rozhoduje zhruba do 120.",
+    "bulletCeiling": "„{{role}}“ má {{count}} odrážek; {{ceiling}} působí údernější.",
+    "bulletBand": "Odrážka u „{{role}}“ má {{count}} slov; nejlépe čte {{min}}–{{max}}.",
+    "metricFallback": "„{{role}}“: {{count}} z {{total}} odrážek nemá číslo, přestože ve vašich podkladech čísla jsou.",
+    "photoInvented": "Životopis obsahuje obrázek. Pokud jste ho nepřidali sami, odstraňte ho.",
+    "dobInvented": "Životopis uvádí datum narození, které ve vašich podkladech není.",
+    "consentInvented": "Životopis uvádí souhlas se zpracováním údajů, který ve vašich podkladech není.",
+    "gaps": "Tohle inzerát požaduje a vaše podklady to nedokládají — raději jsme to vynechali, než vymýšleli: {{list}}",
+    "projectsNoOverride": "Sekce Projekty se objevila bez důvodu ji použít."
+  }
 }

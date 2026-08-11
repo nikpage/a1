@@ -8,6 +8,7 @@ import { targetJobBlock } from './job-target.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { cvRulesBlock } from './cv-rules.js';
 import { marketConventions } from './market.js';
+import { sectionNameBlock } from './cv-sections.js';
 
 export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   const tags = analysis?.analysis?.scenario_tags;
@@ -107,7 +108,11 @@ Output in Markdown with this exact structure:
 
 ---
 
-## LEFT-ALIGNED SECTIONS (order them per blueprint.section_order, but use ONLY these standard section names — Layer 1 permits no others):
+## LEFT-ALIGNED SECTIONS (order them per blueprint.section_order, but use ONLY the standard section names — Layer 1 permits no others):
+
+${sectionNameBlock(language)}
+
+The English names in the template below identify WHICH section is which; write each heading in the document's own language using the names above.
 
 ### **Summary**
 [The 2-3 sentence value proposition you wrote — adapted from summary_draft into the "${tone}" tone, impact-first]

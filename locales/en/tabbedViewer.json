@@ -33,5 +33,18 @@
   "editHint": "Edit the text directly. Formatting uses markdown — free, and it replaces this version.",
   "editWorking": "Saving your changes...",
   "editFailed": "Could not save your changes",
-  "cvWarningsTitle": "Worth a look before you send this"
+  "cvWarningsTitle": "Worth a look before you send this",
+  "cvWarning": {
+    "noSections": "The CV has no recognisable sections, so the opening could not be checked.",
+    "impactZoneBullets": "The summary carries {{count}} achievement bullet(s) — three land hardest.",
+    "impactZoneWords": "The opening runs to {{count}} words; a recruiter reads about 120 before deciding.",
+    "bulletCeiling": "\"{{role}}\" has {{count}} bullets; {{ceiling}} keeps it sharp.",
+    "bulletBand": "A bullet under \"{{role}}\" is {{count}} words; {{min}}–{{max}} reads best.",
+    "metricFallback": "\"{{role}}\": {{count}} of {{total}} bullets carry no number, though your record has some.",
+    "photoInvented": "The CV contains an image. Remove it unless you added it yourself.",
+    "dobInvented": "The CV states a date of birth that is not in your record.",
+    "consentInvented": "The CV states a data-processing consent line that is not in your record.",
+    "gaps": "The job asks for these, and your record does not evidence them — they were left off rather than faked: {{list}}",
+    "projectsNoOverride": "A Projects section appears without a reason to use one."
+  }
 }

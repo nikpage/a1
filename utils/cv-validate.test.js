@@ -7,6 +7,11 @@
 import { describe, it, expect } from 'vitest';
 import { validateCv, validationFeedback, splitSections } from './cv-validate.js';
 
+// Warnings are { code, params } pairs so the UI can translate them; these
+// helpers keep the assertions about WHICH warning fired, not about wording.
+const codes = (r) => r.warnings.map((w) => w.code);
+const paramsFor = (r, code) => r.warnings.find((w) => w.code === code)?.params || {};
+
 const MASTER = JSON.stringify({
   identity: { name: 'Jane Roe' },
   experience: [
@@ -120,10 +125,32 @@ describe('hard blocks (checks 1-4)', () => {
     expect(r.hard.join(' ')).toContain('Where I Made Waves');
   });
 
-  it('skips the section-name check when the blueprint gives no section_order', () => {
+  it('still catches a creative section name with no blueprint section_order', () => {
     const doc = GOOD.replace('### **Work Experience**', '### **Where I Made Waves**');
     const r = validateCv(doc, { master: MASTER, analysis: { analysis: { scenario_tags: [] } } });
-    expect(r.hard.join(' ')).not.toContain('Where I Made Waves');
+    expect(r.hard.join(' ')).toContain('Where I Made Waves');
+  });
+
+  it('accepts Czech section names against an English blueprint', () => {
+    const doc = GOOD
+      .replace('### **Summary**', '### **Shrnutí**')
+      .replace('### **Work Experience**', '### **Pracovní zkušenosti**');
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard).toEqual([]);
+  });
+
+  it('accepts Polish section names against an English blueprint', () => {
+    const doc = GOOD
+      .replace('### **Summary**', '### **Podsumowanie**')
+      .replace('### **Work Experience**', '### **Doświadczenie zawodowe**');
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard).toEqual([]);
+  });
+
+  it('treats the Czech Earlier Career line as the undated exception', () => {
+    const doc = GOOD + '\n#### **Dřívější kariéra**\n**Various delivery roles**\n';
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard).toEqual([]);
   });
 });
 
@@ -132,40 +159,44 @@ describe('warnings (checks 5-9)', () => {
     const doc = GOOD.replace('- As Delivery Manager at Borealis, introduced CI pipelines using Jenkins\n', '');
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
     expect(r.ok).toBe(true);
-    expect(r.warnings.join(' ')).toContain('impact zone needs three');
+    expect(codes(r)).toContain('impactZoneBullets');
+    expect(paramsFor(r, 'impactZoneBullets').count).toBe(2);
   });
 
   it('warns when the impact zone runs past 120 words', () => {
     const filler = ' padding words that push the impact zone well past its ceiling'.repeat(12);
     const doc = GOOD.replace('Works close to the code and the customer.', `Works close to the code.${filler}`);
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
-    expect(r.warnings.join(' ')).toMatch(/Impact zone runs to \d+ words/);
+    expect(codes(r)).toContain('impactZoneWords');
+    expect(paramsFor(r, 'impactZoneWords').count).toBeGreaterThan(120);
   });
 
   it('warns when a third-or-later role exceeds its three-bullet ceiling', () => {
     const bullet = '- Introduced continuous integration pipelines using Jenkins across every product team in the group\n';
     const doc = `${GOOD}\n#### **Earlier Delivery Manager**\n**Borealis** | 01/2015 - 02/2019 | London, United Kingdom\n${bullet.repeat(4)}`;
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
-    expect(r.warnings.join(' ')).toContain('ceiling for this position is 3');
+    expect(codes(r)).toContain('bulletCeiling');
+    expect(paramsFor(r, 'bulletCeiling').ceiling).toBe(3);
   });
 
   it('leaves the two most recent roles their five-bullet ceiling', () => {
     const bullet = '- Introduced continuous integration pipelines using Jenkins across every product team in the group\n';
     const doc = GOOD + bullet.repeat(2);
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
-    expect(r.warnings.join(' ')).not.toContain('ceiling for this position is');
+    expect(codes(r)).not.toContain('bulletCeiling');
   });
 
   it('warns about a date of birth the master never supplied', () => {
     const doc = GOOD + '\nDate of birth: 12/1981\n';
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
-    expect(r.warnings.join(' ')).toContain('a date of birth');
+    expect(codes(r)).toContain('dobInvented');
   });
 
   it('reports unevidenced job requirements as gaps', () => {
     const analysis = { ...ANALYSIS, analysis: { ...ANALYSIS.analysis, ats_keywords_missing: ['Kubernetes', 'Terraform'] } };
     const r = validateCv(GOOD, { master: MASTER, analysis });
-    expect(r.warnings.join(' ')).toContain('Kubernetes');
+    expect(codes(r)).toContain('gaps');
+    expect(paramsFor(r, 'gaps').list).toContain('Kubernetes');
   });
 
   it('warns when a Projects section appears with no qualifying override', () => {
@@ -175,7 +206,7 @@ describe('warnings (checks 5-9)', () => {
     };
     const doc = GOOD + '\n### **Projects**\n- Something\n';
     const r = validateCv(doc, { master: MASTER, analysis });
-    expect(r.warnings.join(' ')).toContain('Projects section is present without');
+    expect(codes(r)).toContain('projectsNoOverride');
   });
 
   it('accepts a Projects section under a Career Pivot override', () => {
@@ -185,7 +216,7 @@ describe('warnings (checks 5-9)', () => {
     };
     const doc = GOOD + '\n### **Projects**\n- Something\n';
     const r = validateCv(doc, { master: MASTER, analysis });
-    expect(r.warnings.join(' ')).not.toContain('Projects section is present without');
+    expect(codes(r)).not.toContain('projectsNoOverride');
   });
 });
 
@@ -199,5 +230,30 @@ describe('helpers', () => {
     const note = validationFeedback(['Number "80" appears in the CV but not in the master record.']);
     expect(note).toContain('Number "80"');
     expect(note).toContain('WITHOUT inventing anything');
+  });
+});
+
+describe('language', () => {
+  // Czech and Polish carry the same content in fewer words, so an English band
+  // would flag good bullets as too short.
+  const shortBullet = '- Zavedl kontinuální integraci napříč všemi produktovými týmy skupiny a zkrátil dobu nasazení výrazně\n';
+  const doc = `### **Pracovní zkušenosti**\n\n#### **Head of Delivery**\n**Acme Ltd** | 03/2019 - 08/2022 | Praha, Czech Republic\n${shortBullet}`;
+
+  it('uses the Czech bullet band, not the English one', () => {
+    const en = validateCv(doc, { master: MASTER, analysis: ANALYSIS, language: 'en' });
+    const cs = validateCv(doc, { master: MASTER, analysis: ANALYSIS, language: 'cs' });
+    expect(en.warnings.map((w) => w.code)).toContain('bulletBand');
+    expect(cs.warnings.map((w) => w.code)).not.toContain('bulletBand');
+  });
+
+  it('reports the band it actually applied', () => {
+    const cs = validateCv(doc.replace(shortBullet, '- Krátká\n'), { master: MASTER, analysis: ANALYSIS, language: 'cs' });
+    const band = cs.warnings.find((w) => w.code === 'bulletBand').params;
+    expect([band.min, band.max]).toEqual([12, 22]);
+  });
+
+  it('falls back to the default band for an unregistered language', () => {
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS, language: 'hu' });
+    expect(r.warnings.find((w) => w.code === 'bulletBand').params.min).toBe(15);
   });
 });
