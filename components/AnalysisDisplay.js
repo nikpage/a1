@@ -85,7 +85,7 @@ export default function AnalysisDisplay({ analysis }) {
   const hasFit = hasJobMatch
     ? any(a.cultural_fit, a.overall_commentary)
     : any(a.cultural_fit, a.overall_commentary, a.suitable_positions, a.career_arc, a.parallel_experience, a.transferable_skills);
-  const hasScores = any(a.overall_score, a.ats_score, a.scenario_tags);
+  const hasScores = any(a.overall_score, a.ats_score);
   const hasActionItems = a.action_items && Object.values(a.action_items).some(
     (cats) => cats && Object.values(cats).some((items) => Array.isArray(items) && items.filter((x) => !isEmpty(x)).length > 0)
   );
@@ -170,7 +170,6 @@ export default function AnalysisDisplay({ analysis }) {
                   <Field label={hasJobMatch ? t('overallMatchScore') : t('overallScore')} value={`${a.overall_score}/10`} />
                 )}
                 {!isEmpty(a.ats_score) && <Field label={t('atsScore')} value={`${a.ats_score}/10`} />}
-                <Field label={t('scenarios')} value={a.scenario_tags} />
                 {hasJobMatch && (
                   <div style={{ marginTop: '1rem' }}>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t('keywordSkills')}</h4>
