@@ -1,0 +1,16 @@
+{
+  "name": "a1",
+  "spend_project_key": "thecvpro",
+  "client": null,
+  "status": "active",
+  "railway_project_id": null,
+  "gcp_project_id": "gen-lang-client-0498446948",
+  "supabase_project_id": null,
+  "vendors": ["gemini"],
+  "gemini_models": {
+    "gemini-2.5-flash-lite": "extraction, master-CV build/merge, verify (utils/openai.js)",
+    "gemini-2.5-flash": "CV/cover generation (utils/openai.js)",
+    "gemini-3.5-flash": "analysis / strategic brain (utils/openai.js)"
+  },
+  "notes": "Owner's product, TheCV Pro (formerly mysuper.cv — domain lost). Stale Vercel artifacts to clean up."
+}

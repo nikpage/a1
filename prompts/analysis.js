@@ -108,6 +108,7 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - generation_framework.cv_blueprint.job_selection.include_jobs: job titles+company to include with full detail. For EACH, add a one-line note naming which real achievement to lead that role with.
 - generation_framework.cv_blueprint.job_selection.condense_jobs: job titles+company to summarise in 1-2 lines.
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely. For EACH, name the facet of the real work to reframe it around and the phrasing to move away from.
+- generation_framework.cv_blueprint.headline_draft: the target-role HEADLINE that sits under the candidate's name — max ~8 words, tone-neutral, no full sentence, no punctuation at the end. It names WHAT THIS PERSON IS (role/discipline, optionally one domain or specialism the record proves), e.g. "Senior Backend Engineer | Payments Platforms".${hasJobText ? ' Make it job-aware: point it at the advertised role, but ONLY using a label the CV genuinely earns — never borrow the ad\'s title if the record does not support it.' : ' With no job ad, name the role the record itself proves.'} HARD RULES: never a duration ("12+ years", "a decade of"), never a title, seniority, domain or specialism the CV does not evidence, never a slogan or adjective soup ("results-driven professional"). If the record does not support a distinct headline, use the candidate's own most-recent real job title.
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer adapts this into the requested tone, so make it factual and dense, not stylised.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
 - generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority — default guidance ~275, must stay within the 250-350 range.
@@ -135,6 +136,7 @@ OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field abo
       "target_length_pages": "",
       "section_order": [],
       "job_selection": { "include_jobs": [], "condense_jobs": [], "rewrite_jobs": [] },
+      "headline_draft": "",
       "summary_draft": "",
       "skills_to_highlight": []
     },
@@ -276,6 +278,7 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 - generation_framework.cv_blueprint.job_selection.include_jobs: job titles+company to include with full detail.
 - generation_framework.cv_blueprint.job_selection.condense_jobs: job titles+company to summarise in 1-2 lines.
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely.
+- generation_framework.cv_blueprint.headline_draft: the target-role HEADLINE that sits under the candidate's name — max ~8 words, tone-neutral, no full sentence, no punctuation at the end. It names WHAT THIS PERSON IS (role/discipline, optionally one domain or specialism the record proves), e.g. "Senior Backend Engineer | Payments Platforms".${hasJobText ? ' Make it job-aware: point it at the advertised role, but ONLY using a label the CV genuinely earns — never borrow the ad\'s title if the record does not support it.' : ' With no job ad, name the role the record itself proves.'} HARD RULES: never a duration ("12+ years", "a decade of"), never a title, seniority, domain or specialism the CV does not evidence, never a slogan or adjective soup ("results-driven professional"). If the record does not support a distinct headline, use the candidate's own most-recent real job title.
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Use plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer will adapt this draft into the requested tone, so make it factual and dense, not stylised.
 - analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
@@ -332,6 +335,7 @@ JSON OUTPUT SCHEMA:
         "condense_jobs": [],
         "rewrite_jobs": []
       },
+      "headline_draft": "",
       "summary_draft": "",
       "skills_to_highlight": []
     },

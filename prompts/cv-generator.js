@@ -33,6 +33,7 @@ The provided analysis is your strategic brief — treat its generation_framework
 - Target length: generation_framework.cv_blueprint.target_length_pages
 - Section order: generation_framework.cv_blueprint.section_order
 - Job selection: generation_framework.cv_blueprint.job_selection (include_jobs / condense_jobs / rewrite_jobs)
+- Headline draft: generation_framework.cv_blueprint.headline_draft
 - Summary draft: generation_framework.cv_blueprint.summary_draft
 - Skills to highlight: generation_framework.cv_blueprint.skills_to_highlight
 - Scenario: analysis.scenario_tags (this drives which experience to emphasise)
@@ -50,6 +51,9 @@ The provided analysis is your strategic brief — treat its generation_framework
 
 ${scenarioBlock}
 ${humanVoiceRules()}
+
+# The headline
+Every CV carries a headline: one short line directly under the name, before the contact line. Build it from \`generation_framework.cv_blueprint.headline_draft\`, adapted to the "${tone}" voice — keep the role label it names, change only the register. Max ~8 words, no full sentence, no closing punctuation. It states what this candidate IS (role/discipline, optionally one domain the master CV proves) — never a duration ("X+ years", "a decade of"), never a title or seniority the master CV does not evidence, never a slogan ("results-driven professional"). If headline_draft is absent or empty, use the candidate's most recent real job title from \`experience[]\`.
 
 # The summary
 Write the Professional Summary by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register to match the tone. 2-4 sentences, impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
@@ -79,7 +83,7 @@ Output in Markdown with this exact structure:
 <center>
 
 # [Full Name]
-**[Optional tagline/headline if present in original CV]**
+**[REQUIRED headline — the one you wrote from blueprint.headline_draft, adapted to the "${tone}" tone. Bold, on its own line, max ~8 words, no duration, no closing punctuation]**
 [Phone] | [Email] | [LinkedIn/Portfolio URLs]
 
 </center>
@@ -156,6 +160,7 @@ ${cv}
 ${JSON.stringify(analysis, null, 2)}
 
 # Before you finish — check:
+- The headline is present under the name, in the "${tone}" voice, and asserts no title, seniority, domain or duration the master CV does not prove.
 - Every must-have from the target job that the master CV genuinely evidences is visibly answered — and no requirement the master CV does NOT evidence has been hinted at, softened in, or covered with the ad's own wording.
 - No claim was upgraded to fit the job: every scope, verb and number still matches what the master CV states.
 - Summary reads in the "${tone}" voice and reflects analysis.career_arc.
@@ -171,4 +176,40 @@ Return only the formatted CV in the exact Markdown structure above. No commentar
   };
 
   return [systemMessage, userMessage];
+}
+
+// Headline-only regeneration: the same headline rules as the full CV prompt,
+// asked in isolation so the user can re-roll the tagline without paying for a
+// whole document. Returns ONE line of plain text, never markdown.
+export function buildHeadlinePrompt(cv, analysis, tone, current = '', language = 'auto') {
+  const draft = analysis?.generation_framework?.cv_blueprint?.headline_draft || '';
+  const jobBlock = targetJobBlock(analysis);
+
+  return [
+    {
+      role: 'system',
+      content: `You are an elite professional CV writer. You write the single headline that sits under a candidate's name on their CV. You output that line and nothing else — no quotes, no markdown, no commentary.`
+    },
+    {
+      role: 'user',
+      content: `${jobBlock}
+# Task
+Write ONE headline for this candidate's CV, in the "${tone}" tone.
+
+Tone — "${tone}": ${toneInstructions(tone)}
+
+# Rules (absolute)
+- Max ~8 words. Not a sentence. No closing punctuation.
+- It states what this candidate IS — role/discipline, optionally one domain or specialism the master CV proves (e.g. "Senior Backend Engineer | Payments Platforms").
+- NEVER a duration: no "X+ years", no "a decade of", no career total. Durations are facts and belong nowhere but the dated roles.
+- NEVER a title, seniority, domain, tool or specialism the master CV does not evidence. The target job's requirements are NEVER evidence about this candidate.
+- No slogans or adjective soup ("results-driven professional", "passionate about", "dynamic").
+- ${languageInstruction(language)}
+${draft ? `\n# The strategist's draft (adapt to the "${tone}" voice — keep the role label, change the register)\n${draft}\n` : ''}${current && current.trim() ? `\n# The headline currently on the CV (the candidate asked for a DIFFERENT one — do not repeat it)\n${current.trim()}\n` : ''}
+# Master CV (your sole factual source)
+${cv}
+
+Return only the headline line.`
+    }
+  ];
 }

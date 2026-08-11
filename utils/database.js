@@ -77,6 +77,27 @@ export async function getMasterCv(user_id) {
   return data?.[0]?.master_cv || null;
 }
 
+// The factual SOURCE every generation writes from: the MASTER CV, serialised.
+// Falls back to the raw CV text only for users whose master hasn't been built
+// (older accounts / a failed build). Returns null when the user has no CV at
+// all. One definition, so every generation path reads the same source.
+export async function getGenerationSource(user_id) {
+  let cvRecord = null;
+  try {
+    cvRecord = await getCV(user_id);
+  } catch (dbErr) {
+    logger.error('CV fetch error:', dbErr.message);
+    throw dbErr;
+  }
+  let master = null;
+  try {
+    master = await getMasterCv(user_id);
+  } catch (masterErr) {
+    logger.error('Master CV fetch error:', masterErr.message);
+  }
+  return master ? JSON.stringify(master) : (cvRecord?.cv_data || null);
+}
+
 // Persist the per-user MASTER CV (service-role write). Stored as JSONB.
 //
 // Uses UPSERT on the user_id PK, not a bare `.update().eq()`. An update whose

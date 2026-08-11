@@ -38,3 +38,6 @@ coverage/
 
 # Local prompt-test harness outputs
 scripts/out/
+
+# Local Netlify folder
+.netlify

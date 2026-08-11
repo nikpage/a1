@@ -1,5 +1,6 @@
 // components/TabbedViewer.js
 import { logGemini } from '../utils/log-gemini.js';
+import { readHeadline } from '../utils/cv-headline.js';
 
 function logBlueprint(analysisJson) {
   try {
@@ -58,6 +59,12 @@ export default function TabbedViewer({ user_id, analysisText }) {
   // content from this number, so opening the panel without it renders an empty
   // box — always open via openBuyPanel(), never by setting showBuyPanel directly.
   const [tokensRemaining, setTokensRemaining] = useState(null);
+  // Tone the current pair was written in — reused by the headline controls so a
+  // re-rolled headline stays in the same voice as the document around it.
+  const [lastTone, setLastTone] = useState('Formal');
+  // Inline headline editing on the CV tab.
+  const [headlineDraft, setHeadlineDraft] = useState('');
+  const [headlineBusy, setHeadlineBusy] = useState(false);
 
   // Single entry point for the buy panel: resolves the token balance first so
   // the panel always has the number it needs. `knownTokens` skips the fetch
@@ -145,10 +152,54 @@ export default function TabbedViewer({ user_id, analysisText }) {
       .catch(() => {});
   }, [user_id]);
 
+  const currentCv = cvVersions[cvCurrentIndex] || '';
+
+  // Keep the editable headline field in step with whichever CV version is shown.
+  useEffect(() => {
+    setHeadlineDraft(readHeadline(currentCv));
+  }, [currentCv]);
+
+  // One entry point for all three headline actions. The route returns the full
+  // updated CV (and persists it the same way a generated CV is persisted), so
+  // the version on screen is replaced IN PLACE — a headline tweak is an edit of
+  // this version, not a new one.
+  const changeHeadline = async (action, headline = '') => {
+    if (!currentCv || headlineBusy) return;
+    setHeadlineBusy(true);
+    try {
+      const res = await fetch('/api/cv-headline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          headline,
+          content: currentCv,
+          analysis: analysisTextState,
+          tone: lastTone,
+          language: lastLanguage,
+        }),
+      });
+      const data = await res.json();
+      if (data.gemini_usage) logGemini(data.gemini_usage);
+      if (!res.ok) {
+        alert(data.error || t('headlineFailed'));
+        return;
+      }
+      setCvVersions((prev) => prev.map((v, i) => (i === cvCurrentIndex ? data.cv : v)));
+      setHeadlineDraft(data.headline || '');
+    } catch (error) {
+      console.error('Headline error:', error);
+      alert(t('headlineFailed'));
+    } finally {
+      setHeadlineBusy(false);
+    }
+  };
+
   const handleSubmit = async ({ tone, selected, jobText, tweak = '', language = 'auto' }) => {
     // Remember it so a regenerate stays in the language the pair was written in
     // instead of silently reverting to the master CV's language.
     setLastLanguage(language);
+    setLastTone(tone);
     setShowLoadingModal(true);
     setLoadingModalTitle(t('generatingDocsTitle'));
     setLoadingModalMessage(t('generatingDocsMsg'));
@@ -226,6 +277,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
   };
 
   const handleRegen = async (docType, tone) => {
+    setLastTone(tone);
     setShowLoadingModal(true);
     setLoadingModalTitle(docType === 'cv' ? t('regeneratingCvTitle') : t('regeneratingCoverTitle'));
     setLoadingModalMessage(t('regenMsg'));
@@ -405,6 +457,55 @@ export default function TabbedViewer({ user_id, analysisText }) {
                       &rarr;
                     </button>
                   </div>
+                </div>
+
+                <div className="mb-4 sm:mb-6 mx-auto max-w-2xl border border-accent rounded-lg p-3 sm:p-4">
+                  <label htmlFor="cv-headline" className="block mb-2 text-sm font-bold text-gray-800">
+                    {t('headlineLabel')}
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      id="cv-headline"
+                      type="text"
+                      value={headlineDraft}
+                      disabled={headlineBusy}
+                      placeholder={t('headlinePlaceholder')}
+                      onChange={(e) => setHeadlineDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (headlineDraft.trim()) changeHeadline('set', headlineDraft);
+                        }
+                      }}
+                      className="flex-1 p-2 border border-gray-300 rounded bg-white text-sm sm:text-base disabled:opacity-50"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => changeHeadline('set', headlineDraft)}
+                        disabled={headlineBusy || !headlineDraft.trim() || headlineDraft.trim() === readHeadline(currentCv)}
+                        className="action-btn px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {t('headlineSave')}
+                      </button>
+                      <button
+                        onClick={() => changeHeadline('regenerate')}
+                        disabled={headlineBusy}
+                        className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {t('headlineRegenerate')}
+                      </button>
+                      <button
+                        onClick={() => changeHeadline('remove')}
+                        disabled={headlineBusy || !readHeadline(currentCv)}
+                        className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {t('headlineRemove')}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    {headlineBusy ? t('headlineWorking') : t('headlineHint')}
+                  </p>
                 </div>
 
                 <CV_Cover_Display content={cvVersions[cvCurrentIndex]} />

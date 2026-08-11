@@ -1,7 +1,7 @@
 // pages/api/generate-cv-cover.js
 
 import { logger } from '../../lib/logger';
-import { getCV, getMasterCv, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
+import { getGenerationSource, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
 import { getUserById, decrementGenerations } from '../../utils/generation-utils';
 import { generateCV, generateCoverLetter } from '../../utils/openai';
 import { Redis } from '@upstash/redis';
@@ -73,20 +73,12 @@ async function handler(req, res) {
     // The MASTER CV is the source generation builds from — the complete,
     // structured source-of-truth. Fall back to the raw CV text only for users
     // whose master hasn't been built (older accounts / a failed build).
-    let cvRecord;
+    let source;
     try {
-      cvRecord = await getCV(user_id);
-    } catch (dbErr) {
-      logger.error('CV fetch error:', dbErr.message);
+      source = await getGenerationSource(user_id);
+    } catch {
       return res.status(500).json({ error: 'Error fetching CV data' });
     }
-    let master = null;
-    try {
-      master = await getMasterCv(user_id);
-    } catch (masterErr) {
-      logger.error('Master CV fetch error:', masterErr.message);
-    }
-    const source = master ? JSON.stringify(master) : cvRecord?.cv_data;
     if (!source) {
       return res.status(404).json({ error: 'CV not found for user' });
     }

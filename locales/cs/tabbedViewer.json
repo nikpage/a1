@@ -18,5 +18,13 @@
   "prevVersion": "Předchozí verze",
   "nextVersion": "Další verze",
   "noAvailableAlert": "Žádný {{label}} není k dispozici",
-  "regenFailed": "Obnovení se nezdařilo"
+  "regenFailed": "Obnovení se nezdařilo",
+  "headlineLabel": "Titulek",
+  "headlinePlaceholder": "např. Senior Backend Engineer | Platební systémy",
+  "headlineSave": "Uložit",
+  "headlineRegenerate": "Nový titulek",
+  "headlineRemove": "Odebrat",
+  "headlineHint": "Řádek pod vaším jménem. Upravte jej, nechte vygenerovat nový, nebo jej odeberte — zdarma a beze změny zbytku CV.",
+  "headlineWorking": "Aktualizuji titulek...",
+  "headlineFailed": "Titulek se nepodařilo aktualizovat"
 }

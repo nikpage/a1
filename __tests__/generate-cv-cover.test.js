@@ -29,7 +29,7 @@ const mockGenerateCV           = vi.hoisted(() => vi.fn());
 const mockGenerateCoverLetter  = vi.hoisted(() => vi.fn());
 const mockDecrementGenerations = vi.hoisted(() => vi.fn());
 const mockGetUserById          = vi.hoisted(() => vi.fn());
-const mockGetCV                = vi.hoisted(() => vi.fn());
+const mockGetSource            = vi.hoisted(() => vi.fn());
 const mockSaveGeneratedDoc     = vi.hoisted(() => vi.fn());
 const mockLogAiTransaction     = vi.hoisted(() => vi.fn());
 
@@ -44,7 +44,7 @@ vi.mock('../utils/generation-utils', () => ({
 }));
 
 vi.mock('../utils/database', () => ({
-  getCV: mockGetCV,
+  getGenerationSource: mockGetSource,
   saveGeneratedDoc: mockSaveGeneratedDoc,
   logAiTransaction: mockLogAiTransaction,
 }));
@@ -72,7 +72,7 @@ beforeEach(() => {
   mockRedisSet.mockResolvedValue('OK');
   mockRedisDel.mockResolvedValue(1);
   mockGetUserById.mockResolvedValue(FAKE_USER);
-  mockGetCV.mockResolvedValue(FAKE_CV);
+  mockGetSource.mockResolvedValue(FAKE_CV.cv_data);
   mockGenerateCV.mockResolvedValue(CV_RESULT);
   mockGenerateCoverLetter.mockResolvedValue(COVER_RESULT);
   mockDecrementGenerations.mockResolvedValue();

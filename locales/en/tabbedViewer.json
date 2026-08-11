@@ -18,5 +18,13 @@
   "prevVersion": "Previous Version",
   "nextVersion": "Next Version",
   "noAvailableAlert": "No {{label}} available",
-  "regenFailed": "Regeneration failed"
+  "regenFailed": "Regeneration failed",
+  "headlineLabel": "Headline",
+  "headlinePlaceholder": "e.g. Senior Backend Engineer | Payments Platforms",
+  "headlineSave": "Save",
+  "headlineRegenerate": "New headline",
+  "headlineRemove": "Remove",
+  "headlineHint": "The line under your name. Edit it, re-roll it, or take it off — free, and it doesn't touch the rest of the CV.",
+  "headlineWorking": "Updating the headline...",
+  "headlineFailed": "Could not update the headline"
 }

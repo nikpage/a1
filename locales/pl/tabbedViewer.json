@@ -18,5 +18,13 @@
   "prevVersion": "Poprzednia wersja",
   "nextVersion": "Następna wersja",
   "noAvailableAlert": "Brak {{label}}",
-  "regenFailed": "Nie udało się wygenerować ponownie"
+  "regenFailed": "Nie udało się wygenerować ponownie",
+  "headlineLabel": "Nagłówek",
+  "headlinePlaceholder": "np. Senior Backend Engineer | Systemy płatności",
+  "headlineSave": "Zapisz",
+  "headlineRegenerate": "Nowy nagłówek",
+  "headlineRemove": "Usuń",
+  "headlineHint": "Wiersz pod Twoim imieniem i nazwiskiem. Edytuj go, wygeneruj nowy lub usuń — za darmo i bez zmiany reszty CV.",
+  "headlineWorking": "Aktualizuję nagłówek...",
+  "headlineFailed": "Nie udało się zaktualizować nagłówka"
 }

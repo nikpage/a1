@@ -5,7 +5,7 @@ import { Redis } from '@upstash/redis';
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
-import { buildCvPrompt } from '../prompts/cv-generator.js';
+import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { buildGenerationVerifyPrompt } from '../prompts/generation-verify.js';
@@ -718,6 +718,27 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
     gemini_usage,
     // Both calls, for the cost-logging rule (DB row + console line each).
     gemini_usages: [gemini_usage, ...(verified.gemini_usage ? [verified.gemini_usage] : [])],
+  };
+}
+
+// Headline-only regeneration — one short call on the generation model, so the
+// re-rolled tagline is written by the same model (and to the same rules) as the
+// headline the full CV pass produced.
+export async function generateHeadline({ cv, analysis, tone, current = '', language = 'auto' }) {
+  const messages = buildHeadlinePrompt(cv, analysis, tone, current, language);
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low', temperature: 0.6 });
+  const gemini_usage = geminiUsage('generate headline', data, GEMINI_GENERATION_MODEL);
+  trackDailySpend(gemini_usage.costUsd);
+
+  // The model is told to return the bare line; strip any markdown or quoting it
+  // adds anyway so the caller always gets plain headline text.
+  const headline = (data.choices?.[0]?.message?.content || '')
+    .split('\n').map((l) => l.trim()).find((l) => l !== '') || '';
+
+  return {
+    content: headline.replace(/^\*+|\*+$/g, '').replace(/^["'“”]|["'“”]$/g, '').replace(/[.]$/, '').trim(),
+    gemini_usage,
+    gemini_usages: [gemini_usage],
   };
 }
 
