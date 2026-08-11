@@ -97,7 +97,7 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 - **Hard (checks 1–4):** every number in the document traces to the master; dates match the master and are MM/YYYY throughout Work Experience; no Work Experience entry that is not a real role; single column, no layout HTML, section names standard in some registered language or named by the blueprint.
 - **Warnings (checks 5–9):** impact zone within ~120 words with its three bullets; bullet ceilings and the metric-fallback share; no invented photo/DOB/consent; unevidenced job requirements listed as gaps; a Projects section only under an Under-qualified or Career Pivot override.
 - `generateCV()` runs it after the AI verify pass. A hard failure triggers **one** regeneration with `validationFeedback(hard)` appended to the messages; the retry is kept only if it has no more hard failures than the draft it replaces. Every call it makes lands in `gemini_usages`, so the cost-logging rule is satisfied.
-- Warnings ride out as `cv_warnings` from `/api/generate-cv-cover` and render as a banner on the CV tab in `TabbedViewer.js`, translated from their `{ code, params }` form.
+- Warnings ride out as `cv_warnings` from the background generation run and render as a banner on the CV tab in `TabbedViewer.js`, translated from their `{ code, params }` form.
 - A check whose evidence is missing (no parseable master, no `section_order`) reports nothing rather than guessing.
 
 ## Career-scenario layer
@@ -116,7 +116,17 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 Every AI call writes a row to `transactions` (`type = 'ai_cost'`) via `logAiTransaction()` in `utils/database.js`. It looks up per-token rates from the `model_pricing` table and inserts directly using the service-role client — no HTTP self-call.
 
 - **Analysis**: logged in `netlify/functions/analyse-background.mjs` after `saveGeneratedDoc` succeeds.
-- **Generation**: logged in `pages/api/generate-cv-cover.js` after each document is saved. The generation counter is decremented only after both AI calls succeed — a failed call leaves the user's balance untouched.
+- **Generation**: logged in `utils/run-generation.js` after each document is saved. The generation counter is decremented only after both AI calls succeed — a failed call leaves the user's balance untouched.
+
+## Generation flow (async — do not make it synchronous)
+
+A generation run is up to six Gemini calls (write → verify → validate → one retry → re-verify, per document), far past Netlify's 10s synchronous limit — as a Next API route it returned 502 HTML pages. It is a **background function**, same shape as analysis:
+
+- The run itself lives in `utils/run-generation.js` (lock, allowance, source, both AI calls, deferred decrement, saves, cost logging). It is transport-agnostic and throws `GenerationError { code, status, detail }`.
+- Browser → `POST /.netlify/functions/generate-background` (relative URL, client-minted `generation_id`), which answers 202 and always publishes a terminal status.
+- Status is transient run state in Redis (`gen_status:<user_id>:<generation_id>`, 30-min TTL) via `utils/generation-status.js`; the documents themselves still land in `gen_data`. Browser polls `POST /api/get-generation-status`.
+- Every call site goes through `utils/generateDocuments.js` — keep them on that single helper.
+- `user_id` comes from the verified session cookie in the background function, never the body. Middleware cannot see `/.netlify/functions/*`, so the 10/min `rl_generate` limiter runs inside the function, keyed by user.
 
 ## Analysis flow (async — do not make it synchronous)
 
@@ -179,7 +189,7 @@ Every API route that touches state or PII is wrapped in `requireAuth` (`lib/requ
 2. No unauthenticated routes touch tokens, DB writes, or AI calls.
 3. One Redis client: `@upstash/redis` only.
 4. Token mutations go through Supabase RPCs (`add_tokens`, `decrement_token`, `decrement_generations`) — never read-modify-write.
-5. The Stripe webhook dedupes on `event.id` via Redis `NX`; `generate-cv-cover` holds a per-user `gen_lock` (Redis `NX`, 30s, released in `finally`) to block double-submissions.
+5. The Stripe webhook dedupes on `event.id` via Redis `NX`; `runGeneration()` holds a per-user `gen_lock` (Redis `NX`, 600s, released in `finally`) to block double-submissions.
 6. All DB access goes through `utils/database.js`. Writes use the service-role client (`getAdminSupabase()`); the anon client is for reads only. No `createClient` calls in route files.
 7. Magic-link email uses Resend (`RESEND_FROM_EMAIL`). Users delete their own account and all data via `DELETE /api/delete-account` → `deleteUserData()`.
 

@@ -1,6 +1,7 @@
 // path: components/DocumentGenerator.js
 import { useState } from 'react';
 import { logGemini } from '../utils/log-gemini.js';
+import { generateDocuments } from '../utils/generateDocuments.js';
 import ToneDocModal from './ToneDocModal';
 import TokenPurchasePanel from './TokenPurchasePanel';
 import BaseModal from './BaseModal';
@@ -33,16 +34,10 @@ export default function DocumentGenerator({ user_id, analysis }) {
         return;
       }
 
-      const res = await fetch('/api/generate-cv-cover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, analysis, tone, type }),
-      });
-
-      const data = await res.json();
+      const data = await generateDocuments({ analysis, tone, type });
       if (data.gemini_usage) logGemini(data.gemini_usage);
 
-      if (!res.ok || data.error) {
+      if (!data.ok) {
         setError(data.error || 'Generation failed');
       } else {
         setDocs(data.docs);

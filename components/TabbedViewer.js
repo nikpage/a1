@@ -1,5 +1,6 @@
 // components/TabbedViewer.js
 import { logGemini } from '../utils/log-gemini.js';
+import { generateDocuments } from '../utils/generateDocuments.js';
 import { readHeadline } from '../utils/cv-headline.js';
 
 function logBlueprint(analysisJson) {
@@ -274,20 +275,15 @@ export default function TabbedViewer({ user_id, analysisText }) {
         return;
       }
 
-      // SEQUENTIAL, not parallel. The route holds a per-user Redis `gen_lock`
-      // (NX, 30s) to stop double-submissions, so firing CV and cover at the same
-      // time meant the second request lost the race and came back 429 — the
-      // cover letter silently never arrived while the CV succeeded. One at a
-      // time: the lock is released before the next call asks for it.
+      // SEQUENTIAL, not parallel. The run holds a per-user Redis `gen_lock`
+      // to stop double-submissions, so firing CV and cover at the same time
+      // meant the second request lost the race and came back 429 — the cover
+      // letter silently never arrived while the CV succeeded. One at a time:
+      // the lock is released before the next call asks for it.
       for (const docType of selected) {
-        const res = await fetch('/api/generate-cv-cover', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, analysis: jobText || analysisTextState, tone, type: docType, tweak, language }),
-        });
-        const data = await res.json();
+        const data = await generateDocuments({ analysis: jobText || analysisTextState, tone, type: docType, tweak, language });
         if (data.gemini_usage) logGemini(data.gemini_usage);
-        if (!res.ok) {
+        if (!data.ok) {
           if (data.detail) console.error('[Generation detail]', JSON.stringify(data.detail, null, 2));
           if (data.error === "NO_GENERATIONS_LEFT") {
             await openBuyPanel("generations");
@@ -336,14 +332,9 @@ export default function TabbedViewer({ user_id, analysisText }) {
     setLoadingModalMessage(t('regenMsg'));
 
     try {
-      const res = await fetch('/api/generate-cv-cover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, analysis: analysisTextState, tone, type: docType, language: lastLanguage }),
-      });
-      const data = await res.json();
+      const data = await generateDocuments({ analysis: analysisTextState, tone, type: docType, language: lastLanguage });
       if (data.gemini_usage) logGemini(data.gemini_usage);
-      if (!res.ok) {
+      if (!data.ok) {
         if (data.error === "NO_GENERATIONS_LEFT") {
           await openBuyPanel("generations");
           return;

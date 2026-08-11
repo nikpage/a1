@@ -13,21 +13,17 @@ const uploadLimiter = new Ratelimit({
   prefix: 'rl_upload',
 });
 
-const generateLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, '1 m'),
-  prefix: 'rl_generate',
-});
-
 const magicLinkLimiter = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(5, '1 m'),
   prefix: 'rl_magic_link',
 });
 
+// Generation is no longer a Next API route — it runs as a Netlify background
+// function, which middleware cannot see. Its 10/min `rl_generate` limiter now
+// lives in netlify/functions/generate-background.mjs, keyed by the verified user.
 const LIMITERS = {
   '/api/upload-cv': uploadLimiter,
-  '/api/generate-cv-cover': generateLimiter,
   '/api/auth/send-magic-link': magicLinkLimiter,
 };
 
@@ -35,7 +31,6 @@ const LIMITERS = {
 // above. Used only by the in-memory fallback when Upstash is unreachable.
 const FALLBACK_MAX = {
   '/api/upload-cv': 10,
-  '/api/generate-cv-cover': 10,
   '/api/auth/send-magic-link': 5,
 };
 const FALLBACK_WINDOW_MS = 60_000;
@@ -62,7 +57,7 @@ function fallbackAllow(key, max, now) {
 }
 
 export const config = {
-  matcher: ['/api/upload-cv', '/api/generate-cv-cover', '/api/auth/send-magic-link'],
+  matcher: ['/api/upload-cv', '/api/auth/send-magic-link'],
 };
 
 export async function middleware(request) {

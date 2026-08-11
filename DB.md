@@ -65,7 +65,7 @@ One row per user (upserted on upload).
 | `key_index` | integer | — | Which API key was used |
 | `created_at` | timestamp | now() | |
 
-Inserted by `logAiTransaction()` in `utils/database.js` (service-role client), called from `netlify/functions/analyse-background.mjs` (analysis) and `pages/api/generate-cv-cover.js` (generation).
+Inserted by `logAiTransaction()` in `utils/database.js` (service-role client), called from `netlify/functions/analyse-background.mjs` (analysis) and `utils/run-generation.js` (generation).
 
 ### `model_pricing`
 | Column | Type | Notes |

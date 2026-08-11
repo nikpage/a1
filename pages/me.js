@@ -13,7 +13,7 @@
 //                 paying for a second analysis, download.
 //
 // Every call goes through the existing shared paths (uploadAndAnalyze,
-// /api/master-add-info, /api/resolve-flag, /api/generate-cv-cover) — this page
+// /api/master-add-info, /api/resolve-flag, generate-background) — this page
 // adds UI and the steering composition, nothing else. The session cookie decides
 // whose record this is, so /me is always the signed-in user's own workbench.
 
@@ -26,6 +26,7 @@ import MasterRecordPanel from '../components/MasterRecordPanel';
 import DocumentDownloadButtons from '../components/DocumentDownloadButtons';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { logGemini } from '../utils/log-gemini.js';
+import { generateDocuments } from '../utils/generateDocuments';
 import { composeTweak } from '../utils/steering';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
 import { getUserStats } from '../utils/database';
@@ -132,20 +133,14 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
     setError('');
     setGenerating(true);
     try {
-      const res = await fetch('/api/generate-cv-cover', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          analysis,
-          tone,
-          type: 'both',
-          language,
-          tweak: composeTweak({ emphasise, playDown, freeform }),
-        }),
+      const data = await generateDocuments({
+        analysis,
+        tone,
+        type: 'both',
+        language,
+        tweak: composeTweak({ emphasise, playDown, freeform }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Generation failed');
+      if (!data.ok) throw new Error(data.error || 'Generation failed');
       (data.gemini_usage || []).forEach(logGemini);
       setCv(data.cv || '');
       setCover(data.cover || '');

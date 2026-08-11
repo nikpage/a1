@@ -37,19 +37,21 @@ vi.mock('@upstash/redis', () => ({
   },
 }));
 
-// Importing middleware triggers the three Ratelimit constructor calls at module load time.
+// Importing middleware triggers the two Ratelimit constructor calls at module load time.
+// Generation moved to a Netlify background function, which middleware cannot see —
+// its rl_generate limiter now lives in netlify/functions/generate-background.mjs.
 import * as middlewareMod from '../middleware.js';
 
 describe('2.4 — middleware rate limiter configuration', () => {
-  test('creates exactly three Ratelimit instances', () => {
-    expect(ratelimitCtorCalls).toHaveLength(3);
+  test('creates exactly two Ratelimit instances', () => {
+    expect(ratelimitCtorCalls).toHaveLength(2);
   });
 
-  test('uses slidingWindow with 10 req/min for upload-cv and generate-cv-cover', () => {
+  test('uses slidingWindow with 10 req/min for upload-cv', () => {
     const tenPerMin = mockSlidingWindow.mock.calls.filter(
       ([n, t]) => n === 10 && t === '1 m'
     );
-    expect(tenPerMin).toHaveLength(2);
+    expect(tenPerMin).toHaveLength(1);
   });
 
   test('uses slidingWindow with 5 req/min for send-magic-link', () => {
@@ -59,10 +61,9 @@ describe('2.4 — middleware rate limiter configuration', () => {
     expect(fivePerMin).toHaveLength(1);
   });
 
-  test('matcher targets exactly the three rate-limited routes', () => {
+  test('matcher targets exactly the rate-limited routes', () => {
     expect(middlewareMod.config.matcher).toEqual([
       '/api/upload-cv',
-      '/api/generate-cv-cover',
       '/api/auth/send-magic-link',
     ]);
   });
