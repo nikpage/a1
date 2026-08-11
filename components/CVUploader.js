@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze'
 import { resolveJobText } from '../utils/resolveJobText'
 import JobExtractionModal from './JobExtractionModal'
+import { CV_ACCEPT_ATTR, isValidCvFile } from '../utils/cvFileTypes'
 
 
 export default function CVUploader({ user_id, onUpload, selectedCv }) {
@@ -20,8 +21,8 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
   const jobExtractionCallbackRef = useRef(null)
   const handleFileChange = (f) => {
     setError('')
-    if (!f || f.type !== 'application/pdf' || f.size > 200 * 1024) {
-      setError('PDF only, max 200KB')
+    if (!isValidCvFile(f)) {
+      setError('PDF or Word (.docx) only, max 200KB')
       setFile(null)
       setFileName('')
       return
@@ -101,10 +102,10 @@ export default function CVUploader({ user_id, onUpload, selectedCv }) {
       }}
     >
       <div className="flex flex-col">
-        <span className="font-semibold mb-1">Select your CV (PDF, max 200KB)</span>
+        <span className="font-semibold mb-1">Select your CV (PDF or Word, max 200KB)</span>
         <input
           type="file"
-          accept="application/pdf"
+          accept={CV_ACCEPT_ATTR}
           ref={inputRef}
           className="hidden real-file-input"
           onChange={e => handleFileChange(e.target.files[0])}

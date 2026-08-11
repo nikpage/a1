@@ -10,6 +10,7 @@ import JobExtractionModal from '../components/JobExtractionModal';
 import { useTranslation } from 'react-i18next';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { resolveJobText } from '../utils/resolveJobText';
+import { CV_ACCEPT_ATTR } from '../utils/cvFileTypes';
 
 export default function IndexPage() {
   const { t } = useTranslation();  const router = useRouter();
@@ -151,7 +152,7 @@ export default function IndexPage() {
               <input
                 id="file-input"
                 type="file"
-                accept="application/pdf"
+                accept={CV_ACCEPT_ATTR}
                 onChange={(e) => setFile(e.target.files[0])}
                 className="hidden"
               />
