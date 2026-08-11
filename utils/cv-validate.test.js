@@ -154,13 +154,47 @@ describe('hard blocks (checks 1-4)', () => {
   });
 });
 
-describe('warnings (checks 5-9)', () => {
-  it('warns when the Summary carries fewer than three achievement bullets', () => {
-    const doc = GOOD.replace('- As Delivery Manager at Borealis, introduced CI pipelines using Jenkins\n', '');
+describe('hard block: heading depth', () => {
+  // The delivered .docx printed "## Client Engagement: ..." literally, because
+  // the exporter parses only ### and ####. A sub-heading inside a role is a hard
+  // failure, not a matter of taste.
+  it('rejects a ## sub-heading invented inside a role', () => {
+    const doc = GOOD.replace(
+      '#### **Head of Delivery**',
+      '#### **Head of Delivery**\n\n## Client Engagement: Enterprise Discovery'
+    );
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.ok).toBe(false);
+    expect(r.hard.some((h) => h.includes('hash marks'))).toBe(true);
+  });
+
+  it('rejects a # sub-heading inside a role', () => {
+    const doc = GOOD.replace('#### **Head of Delivery**', '# Head of Delivery');
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.ok).toBe(false);
+    expect(r.hard.some((h) => h.includes('hash marks'))).toBe(true);
+  });
+
+  it('leaves the name block above the first section alone', () => {
+    const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard).toEqual([]);
+  });
+});
+
+describe('warnings (checks 5-9)', () => {
+  // The Summary is prose. Bullets there repeat Work Experience at the top of the
+  // page — the exact defect a real generated CV shipped with.
+  it('warns when the Summary carries bullets at all', () => {
+    const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
     expect(r.ok).toBe(true);
-    expect(codes(r)).toContain('impactZoneBullets');
-    expect(paramsFor(r, 'impactZoneBullets').count).toBe(2);
+    expect(codes(r)).toContain('summaryBullets');
+    expect(paramsFor(r, 'summaryBullets').count).toBe(3);
+  });
+
+  it('stays silent when the Summary is prose only', () => {
+    const doc = GOOD.split('\n').filter((l) => !l.startsWith('- As ')).join('\n');
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).not.toContain('summaryBullets');
   });
 
   it('warns when the impact zone runs past 120 words', () => {

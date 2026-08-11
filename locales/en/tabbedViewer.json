@@ -36,7 +36,7 @@
   "cvWarningsTitle": "Worth a look before you send this",
   "cvWarning": {
     "noSections": "The CV has no recognisable sections, so the opening could not be checked.",
-    "impactZoneBullets": "The summary carries {{count}} achievement bullet(s) — three land hardest.",
+    "summaryBullets": "The summary uses {{count}} bullet(s) — a summary reads as prose; achievements belong under their role.",
     "impactZoneWords": "The opening runs to {{count}} words; a recruiter reads about 120 before deciding.",
     "bulletCeiling": "\"{{role}}\" has {{count}} bullets; {{ceiling}} keeps it sharp.",
     "bulletBand": "A bullet under \"{{role}}\" is {{count}} words; {{min}}–{{max}} reads best.",

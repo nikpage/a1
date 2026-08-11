@@ -182,6 +182,23 @@ function checkStructure(document, analysis, hard) {
     hard.push(`CV contains layout HTML (${[...new Set(banned.map((b) => b.replace(/[<\s]/g, '')))].join(', ')}) — single column, no tables or columns.`);
   }
 
+  // Heading depth: the document uses exactly two heading levels — ### for a
+  // section and #### for a role. Anything else is a sub-heading invented inside
+  // a role (client engagements, project groupings). The DOCX exporter does not
+  // parse those, so they print literally as "## Client Engagement: ..." in the
+  // delivered file, and they break the single flat structure an ATS expects.
+  // The name block above the first section legitimately uses "# Name"; the rule
+  // applies from the first ### section onwards, which is where roles live.
+  let inSections = false;
+  for (const line of doc.split('\n')) {
+    const h = line.match(/^\s*(#{1,6})\s+\S/);
+    if (!h) continue;
+    if (h[1].length === 3) inSections = true;
+    if (inSections && h[1].length !== 3 && h[1].length !== 4) {
+      hard.push(`Heading "${line.trim().slice(0, 60)}" uses ${h[1].length} hash marks — only ### (section) and #### (role) are allowed. Client engagements and projects are bullets, not sub-headings.`);
+    }
+  }
+
   // Section names: a heading passes if it is one of the standard names in ANY
   // supported language, or if the blueprint's own section_order names it. Both
   // are needed. The document's language is not reliably known here — 'auto'
@@ -201,7 +218,7 @@ function checkStructure(document, analysis, hard) {
 
 // ---- checks 5-9: warnings ---------------------------------------------------
 
-// 5. Impact zone: first ~120 words carry headline + proposition + 3 achievements.
+// 5. Impact zone: the Summary is prose within ~120 words — headline + proposition.
 function checkImpactZone(document, warnings) {
   const sections = splitSections(document);
   const summary = sections[0];
@@ -209,14 +226,13 @@ function checkImpactZone(document, warnings) {
     warnings.push({ code: 'noSections' });
     return;
   }
+  // The Summary is prose. Bullets there duplicate Work Experience and push the
+  // value proposition out of the space a recruiter actually reads.
   const bullets = summary.lines.filter((l) => /^\s*[-*•]\s+/.test(l));
-  if (bullets.length < 3) {
-    warnings.push({ code: 'impactZoneBullets', params: { count: bullets.length } });
+  if (bullets.length > 0) {
+    warnings.push({ code: 'summaryBullets', params: { count: bullets.length } });
   }
-  const upToThird = bullets.slice(0, 3).pop();
-  const idx = upToThird ? document.indexOf(upToThird) + upToThird.length : -1;
-  const zone = idx > 0 ? document.slice(0, idx) : document;
-  const count = words(zone).length;
+  const count = words(summary.lines.join(' ')).length;
   if (count > 120) warnings.push({ code: 'impactZoneWords', params: { count } });
 }
 

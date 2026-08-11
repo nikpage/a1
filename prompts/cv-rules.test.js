@@ -39,6 +39,21 @@ describe('Layer 2', () => {
     expect(t).toMatch(/Counted by words from the top/);
   });
 
+  // The generator shipped a CV whose Summary repeated three Work Experience
+  // bullets at the top of page one. Layer 2 now forbids that outright.
+  it('forbids bullets in the Summary', () => {
+    const t = humanScannability();
+    expect(t).toMatch(/Summary contains NO bullets/);
+    expect(t).not.toMatch(/three achievements are three bullets/);
+  });
+
+  it('tells the generator the Summary is prose and where achievements go', () => {
+    const p = buildCvPrompt({ cv: 'x', analysis: {}, tone: 'Formal' });
+    const text = JSON.stringify(p);
+    expect(text).toMatch(/PROSE ONLY/);
+    expect(text).toMatch(/No heading markers/);
+  });
+
   it('states bullet ceilings as ceilings, never quotas', () => {
     const t = humanScannability();
     expect(t).toMatch(/CEILINGS, never quotas/);

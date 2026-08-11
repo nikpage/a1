@@ -36,7 +36,7 @@
   "cvWarningsTitle": "Před odesláním se na to podívejte",
   "cvWarning": {
     "noSections": "Životopis nemá rozpoznatelné sekce, úvod proto nešlo zkontrolovat.",
-    "impactZoneBullets": "Shrnutí obsahuje {{count}} odrážek s úspěchy — nejlépe fungují tři.",
+    "summaryBullets": "Shrnutí obsahuje {{count}} odrážek — shrnutí se píše souvisle; úspěchy patří k dané roli.",
     "impactZoneWords": "Úvod má {{count}} slov; personalista se rozhoduje zhruba do 120.",
     "bulletCeiling": "„{{role}}“ má {{count}} odrážek; {{ceiling}} působí údernější.",
     "bulletBand": "Odrážka u „{{role}}“ má {{count}} slov; nejlépe čte {{min}}–{{max}}.",

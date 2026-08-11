@@ -36,7 +36,7 @@
   "cvWarningsTitle": "Warto sprawdzić przed wysłaniem",
   "cvWarning": {
     "noSections": "CV nie ma rozpoznawalnych sekcji, więc nie dało się sprawdzić początku.",
-    "impactZoneBullets": "Podsumowanie zawiera {{count}} punktów z osiągnięciami — najlepiej działają trzy.",
+    "summaryBullets": "Podsumowanie zawiera {{count}} punktów — podsumowanie pisze się ciągłym tekstem; osiągnięcia należą do roli.",
     "impactZoneWords": "Początek ma {{count}} słów; rekruter decyduje mniej więcej do 120.",
     "bulletCeiling": "„{{role}}” ma {{count}} punktów; {{ceiling}} brzmi mocniej.",
     "bulletBand": "Punkt przy „{{role}}” ma {{count}} słów; najlepiej czyta się {{min}}–{{max}}.",

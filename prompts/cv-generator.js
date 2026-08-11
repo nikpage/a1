@@ -70,10 +70,10 @@ Every CV carries a headline: one short line directly under the name, before the 
 
 # The summary — and the impact zone inside it
 The Summary section IS the impact zone (Layer 2). It has two parts:
-1. **Value proposition** — 2-3 sentences, written by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register. Impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
-2. **Three achievement bullets** immediately beneath that prose, still inside the Summary block — take them from \`generation_framework.cv_blueprint.top_three_achievements\`, sharpened into the "${tone}" voice, each naming the role it came from. If that array is absent or short, pick the strongest remaining achievements yourself from the master's \`experience[].achievements[]\`. They may restate a Work Experience bullet; that duplication is deliberate.
+1. **Value proposition** — 2-4 sentences, written by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register. Impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
+2. **No bullets.** The Summary is prose only. Do NOT list achievements here — they belong under the role that produced them, where the reader sees their context. A bulleted summary duplicates the Work Experience section and wastes the most valuable space on the page.
 
-The headline, those 2-3 sentences and those three bullets together must fit inside the first ~120 words of the document. Count the words before you move on; if you are over, tighten the prose — never drop a bullet.
+The headline and those 2-4 sentences together must fit inside the first ~120 words of the document. Count the words before you move on; if you are over, tighten the prose.
 
 # Job history rules
 - Use the master CV's \`experience[]\` as the definitive source for all employment (roles, companies, dates, locations, achievements) — this includes any nested \`contracts[]\` inside a merged parent entry, which carry real detail that must not be lost; follow the blueprint's job_selection exactly.
@@ -115,12 +115,7 @@ ${sectionNameBlock(language)}
 The English names in the template below identify WHICH section is which; write each heading in the document's own language using the names above.
 
 ### **Summary**
-[The 2-3 sentence value proposition you wrote — adapted from summary_draft into the "${tone}" tone, impact-first]
-<!-- BLOCK:START -->
-- [Strongest evidenced achievement, naming the role it came from]
-- [Second strongest evidenced achievement, naming the role it came from]
-- [Third strongest evidenced achievement, naming the role it came from]
-<!-- BLOCK:END -->
+[The 2-4 sentence value proposition you wrote — adapted from summary_draft into the "${tone}" tone, impact-first. PROSE ONLY — no bullets in this section.]
 
 ---
 
@@ -188,7 +183,8 @@ ${JSON.stringify(analysis, null, 2)}
 - Every hard noun on the page (skill, tool, employer, title, certification, number) traces to the master CV, and every date matches the master exactly.
 - Nothing sits in Work Experience that was not a real role; gaps are left as gaps.
 - Single column throughout, standard section names only, one date format (MM/YYYY) across every dated experience entry — the "Earlier Career" line, if present, is the only undated one.
-- The first ~120 words carry the headline, the 2-3 sentence value proposition and the three role-tagged achievement bullets.
+- The first ~120 words carry the headline and the 2-4 sentence value proposition, as prose. The Summary has no bullets.
+- No heading markers (#, ##, ###) appear anywhere inside a role's bullets. A role has one heading — its job title. Client work, engagements and projects under one employer are plain bullets, never sub-headings.
 - No role exceeds its bullet ceiling (3-5 for the two most recent, 2-3 for the rest), and bullets sit in the 15-25 word band.
 - Market rules are satisfied; no photo, date of birth or consent line was invented.
 - A Projects section appears only if the Under-qualified or Career Pivot override is active; a Core Competencies block only if Career Pivot is.
