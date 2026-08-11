@@ -5,6 +5,7 @@ import MasterFlagFixer from '../components/MasterFlagFixer';
 import AddInfoPanel from '../components/AddInfoPanel';
 import MasterRecordPanel from '../components/MasterRecordPanel';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
+import { isTeaserShaped } from '../utils/formatAnalysis';
 import Head from 'next/head';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
 import { getUserStats } from '../utils/database';
@@ -46,7 +47,11 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
           // background function is the only place with the budget to run the
           // build (a Pages route has 10s; the build needs longer), and it
           // builds the master whenever it is absent.
-          if (data.master_missing) {
+          // Teaser-shaped record: the analysis on file came from the anonymous
+          // landing-page run (deep:false), so it has no scores, red flags,
+          // quick wins or action items. This page is past the wall — the user
+          // is entitled to the deep pass, and nothing else re-runs it.
+          if (data.master_missing || isTeaserShaped(data.analysis || '')) {
             setRebuilding(true);
             try {
               await uploadAndAnalyze({ user_id, deep: true });

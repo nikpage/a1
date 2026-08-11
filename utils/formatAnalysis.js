@@ -170,6 +170,19 @@ function applySchema(schema, data) {
   return data !== undefined ? deepNormalize(data) : schema;
 }
 
+// A teaser-only record: the landing page runs the cheap single-call teaser
+// (deep:false), which emits verdicts and cv_data but none of the deep pass's
+// delta — no scores, no action items. Signed-in users must never be left on
+// one, so the user page uses this to decide whether to re-run with deep:true.
+// The schema fill in formatAnalysis substitutes the literal "0-10" placeholder
+// for a missing score, so that value counts as absent too.
+export function isTeaserShaped(rawJson) {
+  let parsed;
+  try { parsed = safeParse(rawJson); } catch { return false; }
+  const score = parsed?.analysis?.overall_score;
+  return score === undefined || score === null || score === '' || score === '0-10';
+}
+
 export function formatAnalysis(rawJson) {
   const parsed = safeParse(rawJson);
   const remapped = remapFields(parsed);
