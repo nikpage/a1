@@ -1,0 +1,317 @@
+// utils/cv-validate.js
+//
+// LAYER 6 — output validation. Deterministic code, not a prompt: the CV rules
+// in prompts/cv-rules.js tell the writer what to do, and this checks whether it
+// actually did. Nothing here calls an AI, so it cannot hallucinate a violation.
+//
+// Two severities, exactly as the rules define them:
+//   hard[]     — checks 1-4. A hard failure means the document must not ship as
+//                is; the caller regenerates once with the failures fed back.
+//   warnings[] — checks 5-9. Surfaced to the user, never blocking.
+//
+// Every check is skipped rather than guessed when its input is missing (e.g. no
+// parseable master, no blueprint section_order). A check that cannot see its
+// evidence reports nothing — it never invents a failure.
+
+// ---- small parsing helpers --------------------------------------------------
+
+// Strip markdown/HTML decoration so word counts and substring checks see prose.
+function plain(text) {
+  return String(text || '')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[*_`#|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function words(text) {
+  const t = plain(text);
+  return t ? t.split(' ') : [];
+}
+
+// Digit runs, with thousand separators normalised away so "1,200" in the CV
+// matches "1200" in the master and vice versa.
+function digitRuns(text) {
+  return (String(text || '').replace(/(\d)[.,\s](?=\d{3}\b)/g, '$1').match(/\d+/g) || []);
+}
+
+// The document split into its `###` sections, each with its heading and body.
+export function splitSections(document) {
+  const lines = String(document || '').split('\n');
+  const sections = [];
+  let current = null;
+  for (const line of lines) {
+    const m = line.match(/^###\s+(.+?)\s*$/);
+    if (m) {
+      current = { heading: plain(m[1]), lines: [] };
+      sections.push(current);
+    } else if (current) {
+      current.lines.push(line);
+    }
+  }
+  return sections;
+}
+
+// The roles inside the Work Experience section: `#### **Title**` then a bold
+// company line, then bullets.
+function parseRoles(section) {
+  if (!section) return [];
+  const roles = [];
+  let current = null;
+  for (const line of section.lines) {
+    const h = line.match(/^####\s+(.+?)\s*$/);
+    if (h) {
+      current = { title: plain(h[1]), subtitle: '', bullets: [] };
+      roles.push(current);
+      continue;
+    }
+    if (!current) continue;
+    const t = line.trim();
+    if (/^[-*•]\s+/.test(t)) current.bullets.push(t.replace(/^[-*•]\s+/, ''));
+    else if (t && !current.subtitle && !t.startsWith('<') && !t.startsWith('---')) current.subtitle = t;
+  }
+  return roles;
+}
+
+const EARLIER_CAREER = /earlier career/i;
+
+// The master as searchable text, plus its parsed form when it is JSON.
+function readMaster(master) {
+  const text = typeof master === 'string' ? master : JSON.stringify(master || '');
+  let parsed = null;
+  try {
+    parsed = typeof master === 'string' ? JSON.parse(master) : master;
+  } catch {
+    parsed = null;
+  }
+  return { text, lower: text.toLowerCase(), parsed: parsed && typeof parsed === 'object' ? parsed : null };
+}
+
+function scenarioTags(analysis) {
+  const tags = analysis?.analysis?.scenario_tags;
+  return (Array.isArray(tags) ? tags : tags ? [tags] : []).map((t) => String(t).trim());
+}
+
+// ---- checks 1-4: hard blocks ------------------------------------------------
+
+// 1. Every number in the document traces to the master. (The full "every hard
+//    noun" trace is the AI verify pass in utils/openai.js, which strips rather
+//    than blocks; numbers are the part code can settle on its own.)
+function checkNumbersTrace(document, master, hard) {
+  if (!master.text) return;
+  const masterNums = new Set(digitRuns(master.text));
+  const sections = splitSections(document);
+  // Only prose sections — the contact line's phone digits are not claims.
+  const body = sections.map((s) => s.lines.join('\n')).join('\n');
+  const seen = new Set();
+  for (const line of body.split('\n')) {
+    // Dates get their own check; skip them here.
+    const stripped = line.replace(/\b(0[1-9]|1[0-2])\/((19|20)\d{2})\b/g, ' ');
+    for (const n of digitRuns(stripped)) {
+      if (!masterNums.has(n) && !seen.has(n)) {
+        seen.add(n);
+        hard.push(`Number "${n}" appears in the CV but not in the master record.`);
+      }
+    }
+  }
+}
+
+// 2. Dates match the master, and every dated experience entry is MM/YYYY.
+function checkDates(document, master, hard) {
+  const sections = splitSections(document);
+  const exp = sections.find((s) => parseRoles(s).length > 0);
+  if (!exp) return;
+  const text = exp.lines.join('\n');
+
+  // Format: any year in the experience section must be part of an MM/YYYY pair.
+  const yearMatches = text.match(/\b(19|20)\d{2}\b/g) || [];
+  const mmYyyy = text.match(/\b(0[1-9]|1[0-2])\/((19|20)\d{2})\b/g) || [];
+  if (yearMatches.length !== mmYyyy.length) {
+    hard.push('Work Experience contains a date that is not in MM/YYYY form — one date format is required throughout.');
+  }
+
+  if (!master.text) return;
+  const masterYears = new Set(master.text.match(/\b(19|20)\d{2}\b/g) || []);
+  if (!masterYears.size) return;
+  for (const d of new Set(mmYyyy)) {
+    const year = d.split('/')[1];
+    if (!masterYears.has(year)) hard.push(`Date "${d}" does not appear in the master record.`);
+  }
+}
+
+// 3. No Work Experience entry that was not a real role.
+function checkRolesReal(document, master, hard) {
+  if (!master.lower) return;
+  const sections = splitSections(document);
+  for (const s of sections) {
+    for (const role of parseRoles(s)) {
+      if (EARLIER_CAREER.test(role.title)) continue;
+      const title = role.title.toLowerCase();
+      if (title && !master.lower.includes(title)) {
+        // The employer is the harder signal — a title may legitimately be
+        // relabelled in wording only if the master states it, so check both and
+        // fail only when neither is found.
+        const company = plain(role.subtitle).split('|')[0].trim().toLowerCase();
+        if (!company || !master.lower.includes(company)) {
+          hard.push(`Work Experience entry "${role.title}" matches no role in the master record.`);
+        }
+      }
+    }
+  }
+}
+
+// 4. Single column, standard headers, no layout HTML.
+function checkStructure(document, analysis, hard) {
+  const doc = String(document || '');
+  const banned = doc.match(/<\s*(table|tr|td|th|div|ul|ol|li|img|figure)\b/gi);
+  if (banned) {
+    hard.push(`CV contains layout HTML (${[...new Set(banned.map((b) => b.replace(/[<\s]/g, '')))].join(', ')}) — single column, no tables or columns.`);
+  }
+
+  // Section names: measured against the blueprint's own section_order when the
+  // analysis supplied one, so a non-English CV is judged in its own language.
+  const allowed = analysis?.generation_framework?.cv_blueprint?.section_order;
+  if (Array.isArray(allowed) && allowed.length) {
+    const set = new Set(allowed.map((a) => plain(a).toLowerCase()));
+    for (const s of splitSections(doc)) {
+      if (!set.has(s.heading.toLowerCase())) {
+        hard.push(`Section "${s.heading}" is not one of the standard sections the blueprint allows.`);
+      }
+    }
+  }
+}
+
+// ---- checks 5-9: warnings ---------------------------------------------------
+
+// 5. Impact zone: first ~120 words carry headline + proposition + 3 achievements.
+function checkImpactZone(document, warnings) {
+  const sections = splitSections(document);
+  const summary = sections[0];
+  if (!summary) {
+    warnings.push('No sections found — the impact zone could not be checked.');
+    return;
+  }
+  const bullets = summary.lines.filter((l) => /^\s*[-*•]\s+/.test(l));
+  if (bullets.length < 3) {
+    warnings.push(`Summary carries ${bullets.length} achievement bullet(s); the impact zone needs three.`);
+  }
+  const upToThird = bullets.slice(0, 3).pop();
+  const idx = upToThird ? document.indexOf(upToThird) + upToThird.length : -1;
+  const zone = idx > 0 ? document.slice(0, idx) : document;
+  const count = words(zone).length;
+  if (count > 120) warnings.push(`Impact zone runs to ${count} words; the ceiling is ~120.`);
+}
+
+// 6. Bullet ceilings, and the metric-fallback share where metrics exist.
+function checkBullets(document, master, warnings) {
+  const sections = splitSections(document);
+  const exp = sections.find((s) => parseRoles(s).length > 0);
+  if (!exp) return;
+  const roles = parseRoles(exp);
+  roles.forEach((role, i) => {
+    if (EARLIER_CAREER.test(role.title)) return;
+    const ceiling = i < 2 ? 5 : 3;
+    if (role.bullets.length > ceiling) {
+      warnings.push(`"${role.title}" has ${role.bullets.length} bullets; the ceiling for this position is ${ceiling}.`);
+    }
+    for (const b of role.bullets) {
+      const n = words(b).length;
+      if (n < 15 || n > 25) warnings.push(`Bullet under "${role.title}" is ${n} words; the band is 15-25.`);
+    }
+    // Fallback share: only meaningful when the master actually holds metrics
+    // for this role, which needs the master in parsed form.
+    const entry = findMasterEntry(master, role);
+    if (!entry || !role.bullets.length) return;
+    // Only the achievements count as metrics — the entry's own dates are digits
+    // too, and every entry has those.
+    const achievements = Array.isArray(entry.achievements) ? entry.achievements : [];
+    if (!/\d/.test(JSON.stringify(achievements))) return; // no metrics exist — fallbacks are unlimited
+    const noMetric = role.bullets.filter((b) => !/\d/.test(b)).length;
+    if (noMetric > role.bullets.length / 3) {
+      warnings.push(`"${role.title}": ${noMetric} of ${role.bullets.length} bullets carry no metric, though the master records metrics for this role.`);
+    }
+  });
+}
+
+function findMasterEntry(master, role) {
+  const experience = master?.parsed?.experience;
+  if (!Array.isArray(experience)) return null;
+  const company = plain(role.subtitle).split('|')[0].trim().toLowerCase();
+  const title = role.title.toLowerCase();
+  return experience.find((e) => {
+    const c = String(e?.company || '').toLowerCase();
+    const t = String(e?.role || e?.title || '').toLowerCase();
+    return (company && c && c === company) || (title && t && t === title);
+  }) || null;
+}
+
+// 7. Market rules: nothing personal was invented.
+function checkMarket(document, master, warnings) {
+  const doc = String(document || '');
+  if (/!\[[^\]]*\]\(/.test(doc)) warnings.push('CV contains an image — no photo may be generated.');
+  const invented = [
+    [/\b(date of birth|born on|d\.o\.b\.)\b/i, 'a date of birth'],
+    [/\b(consent to the processing|zpracování osobních údajů|przetwarzanie danych osobowych|GDPR consent)\b/i, 'a data-processing consent line'],
+  ];
+  for (const [re, label] of invented) {
+    if (re.test(doc) && !(master.lower && re.test(master.text))) {
+      warnings.push(`CV states ${label} the master record does not supply.`);
+    }
+  }
+}
+
+// 8. With a job ad: unevidenced requirements are reported to the user as gaps.
+function checkGaps(analysis, warnings) {
+  const missing = analysis?.analysis?.ats_keywords_missing;
+  const list = Array.isArray(missing)
+    ? missing
+    : typeof missing === 'string' && missing.trim() && missing.trim() !== 'n/a'
+      ? [missing.trim()]
+      : [];
+  if (list.length) {
+    warnings.push(`Job requirements the record does not evidence (left off the CV as gaps): ${list.join('; ')}`);
+  }
+}
+
+// 9. A Projects section requires a qualifying override.
+function checkProjects(document, analysis, warnings) {
+  const sections = splitSections(document);
+  const hasProjects = sections.some((s) => /^(projects|projekty|projekt)/i.test(s.heading));
+  if (!hasProjects) return;
+  const tags = scenarioTags(analysis);
+  if (!tags.includes('Under-qualified') && !tags.includes('Career Pivot')) {
+    warnings.push('A Projects section is present without an Under-qualified or Career Pivot override.');
+  }
+}
+
+// ---- the validator ----------------------------------------------------------
+
+export function validateCv(document, { master = '', analysis = null } = {}) {
+  const hard = [];
+  const warnings = [];
+  const m = readMaster(master);
+
+  checkNumbersTrace(document, m, hard);
+  checkDates(document, m, hard);
+  checkRolesReal(document, m, hard);
+  checkStructure(document, analysis, hard);
+
+  checkImpactZone(document, warnings);
+  checkBullets(document, m, warnings);
+  checkMarket(document, m, warnings);
+  checkGaps(analysis, warnings);
+  checkProjects(document, analysis, warnings);
+
+  return { ok: hard.length === 0, hard, warnings };
+}
+
+// The correction note fed back to the generator on a hard failure — the same
+// rules, pointed at what the document actually got wrong.
+export function validationFeedback(hard) {
+  return `# Output validation FAILED — fix these before returning the CV
+Your previous draft broke rules that cannot be broken. Regenerate the CV, keeping everything that was right and fixing exactly these:
+${hard.map((h) => `- ${h}`).join('\n')}
+
+Fix them WITHOUT inventing anything: correct a wrong number by using the master's number or cutting the claim, correct a date by copying the master's date, remove any entry that is not a real role, and express any structure with plain single-column markdown.`;
+}

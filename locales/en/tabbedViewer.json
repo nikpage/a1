@@ -32,5 +32,6 @@
   "editCancel": "Cancel",
   "editHint": "Edit the text directly. Formatting uses markdown — free, and it replaces this version.",
   "editWorking": "Saving your changes...",
-  "editFailed": "Could not save your changes"
+  "editFailed": "Could not save your changes",
+  "cvWarningsTitle": "Worth a look before you send this"
 }

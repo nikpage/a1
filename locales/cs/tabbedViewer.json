@@ -32,5 +32,6 @@
   "editCancel": "Zrušit",
   "editHint": "Upravte text přímo. Formátování používá markdown — zdarma a nahradí tuto verzi.",
   "editWorking": "Ukládám změny...",
-  "editFailed": "Změny se nepodařilo uložit"
+  "editFailed": "Změny se nepodařilo uložit",
+  "cvWarningsTitle": "Před odesláním se na to podívejte"
 }

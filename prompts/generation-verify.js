@@ -27,9 +27,17 @@ A claim is UNSUPPORTED when the master record does not evidence it. The four kin
 2a. DERIVED TENURE (a specific, common case of the above — check for it explicitly): any claim about HOW LONG the candidate has done something — "14 years of AI solution design", "a decade in fintech", "X+ years' experience", "over five years leading teams". This is unsupported unless the master record states that span for that exact thing. Adding up roles into a career total is inventing a number, even when the arithmetic is right; so is stretching a domain label across roles that were not in that domain. Report the whole claim, and replace it with the same sentence minus the duration (say what they did, not how long).
 3. UPGRADED CLAIM: real work overstated. Ownership the master does not give ("led", "owned", "founded", "headed" where the master says contributed/supported/worked on), scope inflated (a team becomes a department, a project becomes a programme, a region becomes global), or exposure turned into expertise ("familiar with" → "expert in", "used" → "specialised in").
 4. BORROWED REQUIREMENT: a skill or experience phrased to suggest the candidate has it when the master record shows no evidence — typically lifted from the job ad to cover a gap. Absence of hedging is the tell: "extensive Kubernetes experience" with nothing about Kubernetes in the master.
+5. UNEARNED INTENSIFIER: a word that makes a FACT-SHAPED claim of degree the master does not state. This is NOT a licence to strip adjectives — strong, specific writing is the goal. Flag ONLY these three shapes:
+   (a) TOTALITY or UNIQUENESS — "single-handedly", "completely transformed", "the first", "the only", "revolutionised", "unparalleled", "industry-leading". Each asserts something the master would have to state and usually does not.
+   (b) SELF-ASSESSED EXPERTISE LEVEL — "expert in", "world-class", "renowned", "deep expertise in", "mastery of" — where the master shows ordinary use rather than that standing.
+   (c) MAGNITUDE THAT OUTRUNS AN AVAILABLE NUMBER — "dramatically reduced costs" where the master records an 8% reduction. Only when the master HAS the number and the adjective overshoots it.
+   Replacement is the same span with the offending word removed or the real number put in its place — never a rewrite of the sentence.
 
 NOT defects — do NOT flag these:
 - Reframing, condensing, reordering or relabelling real content, including confident, punchy phrasing of work the master describes.
+- Strong, specific action verbs — led, drove, built, launched, scaled, spearheaded, won, cut, grew. These are good CV writing, not inflation. Only flag a verb under rule 3, where the master gives weaker ownership.
+- Evaluative words with no factual shape — "strong", "significant", "successful", "effective", "complex", "senior", "key", "hands-on". They are judgement, not claims, and rule 5 does NOT reach them.
+- Vocabulary the document's chosen TONE deliberately calls for. A confident or cocky register is a style instruction the writer was given; it is never a defect.
 - Tone, style, adjectives, enthusiasm, or claims of interest/motivation in the cover letter ("I'm drawn to this role") — these are not factual claims about experience.
 - Contact details, dates, employers, locations and qualifications copied from the master record.
 - A reasonable synonym for something the master does state.
@@ -39,7 +47,7 @@ Be conservative: when in doubt, do NOT flag. A false flag costs the candidate a 
 For each unsupported claim, report:
 - "quote": the offending text copied EXACTLY, character for character, from the ${label} — the smallest span that contains the problem (one bullet, one sentence, or one clause). It MUST appear verbatim in the document or your report is discarded.
 - "replacement": the same span rewritten so it says only what the master record supports — same shape, same voice, weaker claim. Use "" when nothing truthful remains, and the span will be deleted.
-- "reason": one short phrase ("invented number", "upgraded to 'led'", "no evidence of Kubernetes").
+- "reason": one short phrase ("invented number", "upgraded to 'led'", "no evidence of Kubernetes", "unearned intensifier").
 
 Return VALID JSON only — no markdown fences, no commentary. Empty array when the document is clean:
 {

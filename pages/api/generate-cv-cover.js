@@ -150,9 +150,13 @@ async function handler(req, res) {
       if (type === 'cover' || type === 'both') await logUsages(coverRes, 'cover');
 
       const gemini_usage = [...usagesOf(cvRes), ...usagesOf(coverRes)];
+      // Layer 6 warnings (checks 5-9) ride out with the document so the user
+      // sees what the validator flagged; hard failures never reach here.
+      const cvWarnings = cvRes?.validation?.warnings || [];
       return res.status(200).json({
         ...(cv && { cv }),
         ...(cover && { cover }),
+        ...(cvWarnings.length && { cv_warnings: cvWarnings }),
         gemini_usage
       });
     } catch (err) {

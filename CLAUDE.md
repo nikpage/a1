@@ -50,14 +50,54 @@ Each user has one persisted **master CV** — a structured career record (facts 
 - **Verify pass (runs after every build/merge, i.e. each time the CV is updated):** `buildOrMergeMaster` automatically follows the build/merge with `verifyMaster()`. It is a safety net for cheap-model slips: (1) a **deterministic code check** drops any `voice_sample` that isn't a real substring of the source (catches paraphrased "verbatim" quotes, no AI); (2) **one targeted AI call** (`buildMasterVerifyPrompt`) flags only a wrong most-recent-role country, gaps that contradict the extracted data, and skills/metrics unsupported by the source — corrections are applied deterministically, so it cannot rewrite `candidate_core` / `transferable_notes` / achievement text (no churn). On merge it gets the existing master as "trusted prior facts" so legacy content isn't flagged. `buildOrMergeMaster` returns `usages: [build/merge, verify]`; **log every entry** (the cost-logging rule covers the verify call too).
 - **Never-fabricate** is absolute here too: the master records only what the input evidences; gaps stay gaps. The build prompt's SELF-CONSISTENCY block + the verify pass are the two layers that keep gaps/country/conflicts honest on a cheap model.
 
+## CV rules (the layer stack)
+
+`prompts/cv-rules.js` is the canonical statement of what a generated CV must be. `cv-generator.js` imports `cvRulesBlock(hasJobText)` for the whole stack; `cover-letter.js` imports `cvInvariants()` and `coverMatchingRule(hasJobText)`. Precedence: **Layer 4 > Layer 3 > Layer 2**, with **Layer 1 as the floor beneath all three** and the invariants above everything.
+
+| Layer | What it governs | Lives in |
+|---|---|---|
+| 0 — Invariants (T1–T4) | never fabricate; never falsify titles/employers/dates; no invented timeline entries; parseability is a floor | `prompts/cv-rules.js` |
+| 1 — Machine parseability | standard section names, single column, official titles, MM/YYYY dates, 10–15 year recency window, education years | `prompts/cv-rules.js` |
+| 2 — Human scannability | the ~120-word impact zone, bullet form, metric fallback, bullet ceilings, no paragraphs in Work Experience | `prompts/cv-rules.js` |
+| 3 — Job matching (job ad only) | bounded keyword coverage, priority alignment, relevance-based selection; three matched pairs in the cover letter | `prompts/cv-rules.js` |
+| 4 — Situational overrides | per-scenario CV mitigations, max two active | `prompts/scenarios.js` |
+| 5 — Market conventions | photo / DOB / consent / page count per target market | `prompts/market.js` |
+| 6 — Output validation | deterministic checks over the finished document | `utils/cv-validate.js` |
+
+- **T2 in practice:** omission is permitted, alteration is not. Normalising a date's FORMAT to MM/YYYY is required; changing a date is forbidden. Year-only dates are never used to soften a gap — the "Earlier Career" line is the only undated entry a CV may carry.
+- **The impact zone** is the Summary section: headline, a 2–3 sentence value proposition, then three achievement bullets that each name the role they came from, all inside the first ~120 words. The three come from `generation_framework.cv_blueprint.top_three_achievements`, which the analysis blueprint emits.
+- **Layer 1 forbids layout HTML.** Skills render as a single-column bullet list; the validator hard-blocks any `div` / `table` / `ul` / `img` in the output. `utils/exportDocxFormatted.js` flattens such tags anyway, so a column grid buys nothing and costs parsing.
+- **Layer 5** keys off the job's country when there is a job ad, otherwise the candidate's own (`targetCountry()`). An unrecognised country falls back to the neutral default. It never generates a photo, date of birth or consent line the candidate did not supply.
+- Unit tests: `prompts/cv-rules.test.js` (all layers, both prompts), `utils/cv-validate.test.js`.
+
+## Truth enforcement (three stages, in order)
+
+The never-fabricate rule is enforced at three points, not one. Each catches what the previous cannot.
+
+1. **Prompt** — REFRAME vs ADD in `prompts/analysis.js` governs every instruction the strategist gives; T1–T3 in `prompts/cv-rules.js` bind both generators. A capability the candidate lacks reaches the user only as `analysis.ats_keywords_missing`, which is barred from `skills_to_highlight` and from the CV.
+2. **AI verify pass** — `prompts/generation-verify.js` + `verifyGeneratedDoc()` in `utils/openai.js`, run over every generated CV and cover letter. It never rewrites: it returns exact spans, and `applyGenerationCorrections()` applies them by literal string match, discarding anything not verbatim in the document. Five categories: invented fact, invented number (incl. **derived tenure** — any "X+ years" the record does not state), upgraded claim (contributed → led, team → department, exposure → expertise), borrowed requirement, and **unearned intensifier**.
+   - Rule 5 is deliberately narrow — it reaches only fact-shaped degree claims: totality/uniqueness ("single-handedly", "revolutionised"), self-assessed expertise ("expert in", "world-class") over ordinary use, and magnitude that overshoots a number the master records. Strong action verbs, evaluative words ("strong", "significant", "effective") and the chosen tone's deliberate vocabulary are explicitly out of its reach. The pass is conservative throughout: when in doubt it does not flag, because a false flag costs a real achievement.
+3. **Deterministic validation** — `utils/cv-validate.js`, described below.
+
+## Output validation (Layer 6)
+
+`validateCv(document, { master, analysis })` in `utils/cv-validate.js` is code, not a prompt, so it cannot hallucinate a violation. It returns `{ ok, hard, warnings }`.
+
+- **Hard (checks 1–4):** every number in the document traces to the master; dates match the master and are MM/YYYY throughout Work Experience; no Work Experience entry that is not a real role; single column, no layout HTML, section names confined to the blueprint's `section_order`.
+- **Warnings (checks 5–9):** impact zone within ~120 words with its three bullets; bullet ceilings and the metric-fallback share; no invented photo/DOB/consent; unevidenced job requirements listed as gaps; a Projects section only under an Under-qualified or Career Pivot override.
+- `generateCV()` runs it after the AI verify pass. A hard failure triggers **one** regeneration with `validationFeedback(hard)` appended to the messages; the retry is kept only if it has no more hard failures than the draft it replaces. Every call it makes lands in `gemini_usages`, so the cost-logging rule is satisfied.
+- Warnings ride out as `cv_warnings` from `/api/generate-cv-cover` and render as a banner on the CV tab in `TabbedViewer.js`. They are English regardless of the CV's language.
+- A check whose evidence is missing (no parseable master, no `section_order`) reports nothing rather than guessing.
+
 ## Career-scenario layer
 
-`prompts/scenarios.js` is the single source of truth for career scenarios — the durable definition module the prompts import (like `tone.js`/`voice.js`), **not** a stored DB field. Scenarios persist only as `analysis.scenario_tags` / `job_match.career_scenario` inside the analysis JSON blob (`gen_data`); there is no scenario table or column, and this layer added no schema change.
+`prompts/scenarios.js` is the single source of truth for career scenarios — the durable definition module the prompts import (like `tone.js`/`voice.js`), **not** a stored DB field. Scenarios persist only as `analysis.scenario_tags` / `job_match.career_scenario` inside the analysis JSON blob (`gen_data`); there is no scenario table or column. This is **Layer 4** of the CV rule stack.
 
 - Each scenario carries three things: `detect` (how to recognise it), `handling` (how the **analysis** frames it — feeds `positioning_strategy` + `generation_framework`), and `generation` (the concrete CV mitigations the **generator** applies).
-- **Base scenarios** (apply with or without a job ad): Recent Grad, Job Returner, Older Applicant, Senior Portfolio / Independent Consultant. **Job-relative** (only when a job ad is present): Overqualified, Under-qualified, Career Pivot, Major Pivot, Standard Career Progression. The model picks **1–2 max**.
+- **Base scenarios** (apply with or without a job ad): Recent Grad, Employment Gap, Job Returner, Older Applicant, Senior Portfolio / Independent Consultant. **Job-relative** (only when a job ad is present): Overqualified, Under-qualified, Career Pivot, Major Pivot, Standard Career Progression. The model picks **1–2 max**, and `scenarioGenerationRules()` caps the rendered block at two regardless of how many tags arrive.
 - Wiring: the **teaser** (`analysis-teaser.js`) classifies the scenario FIRST (it steers scan_verdict / hr_first_seconds / red_flags / positioning) and emits `analysis.scenario_tags` — but **never prints the label** (proving scenario-awareness through the specificity of the read, not jargon; labelling "Older Applicant"/"Job Returner" would surface the very bias being managed). `analysis.js` then carries those tags forward (`CARRIED_FROM_TEASER`) so the deep pass applies the handling without re-choosing, and imports `scenarioList` + `scenarioHandling` (the standalone no-teaser path still classifies from scratch); `cv-generator.js` imports `scenarioGenerationRules(scenario_tags)` so the per-scenario mitigations reach the CV. Gating by `hasJobText` keeps job-relative scenarios out of standalone reviews.
-- **Older Applicant** manages the age signal at *generation* only — cap the visible timeline (~10–15 yrs), collapse early roles into an "Earlier Career" line without years, no "X+ years". The **master CV is never touched**: it keeps every role and date verbatim; age-management is selection of what to show, never falsification.
+- **Older Applicant** manages the age signal at *generation* only — the 10–15 year window applied strictly, early roles collapsed into an undated "Earlier Career" line, graduation years stripped from **every** Education entry (all or none, never selectively), and no "X+ years" anywhere. Trigger: the earliest evidenced role begins more than 15 years before the most recent role's end date. The **master CV is never touched**: it keeps every role and date verbatim; age-management is selection of what to show, never falsification.
+- **Employment Gap and Job Returner** keep MM/YYYY dates so the gap is simply visible. Under 6 months: nothing. Over 6 months: no timeline entry and no summary apology — one neutral line only where the master records what happened, in the candidate's own recorded words. Job Returner adds the same handling plus a summary that opens on current capability rather than history.
 - **REFRAME vs ADD still absolute:** every `generation` rule reframes/reorders/relabels/cuts real content; none inserts a fact. Unit tests: `prompts/scenarios.test.js`.
 
 ## AI cost logging
@@ -85,6 +125,8 @@ prompts/analysis.js
 prompts/cv-generator.js
 prompts/cover-letter.js
 prompts/master-cv.js
+prompts/cv-rules.js
+prompts/generation-verify.js
 ```
 
 These are the product IP. Import them; never copy-paste their content into handlers.

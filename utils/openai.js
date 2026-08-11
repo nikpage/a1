@@ -9,6 +9,7 @@ import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { buildGenerationVerifyPrompt } from '../prompts/generation-verify.js';
+import { validateCv, validationFeedback } from './cv-validate.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
@@ -704,20 +705,53 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
   const gemini_usage = geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL);
   trackDailySpend(gemini_usage.costUsd);
+  const usages = [gemini_usage];
 
   // Safety net over the prose: strip anything the master doesn't evidence.
-  const verified = await verifyGeneratedDoc({
+  let verified = await verifyGeneratedDoc({
     document: data.choices?.[0]?.message?.content || '',
     master: cv,
     docType: 'cv',
   });
+  if (verified.gemini_usage) usages.push(verified.gemini_usage);
+
+  // Layer 6 — deterministic output validation. Checks 1-4 are hard blocks, so a
+  // failing draft is regenerated ONCE with the exact failures fed back; checks
+  // 5-9 are warnings that ride out to the caller for the user to see.
+  let validation = validateCv(verified.content, { master: cv, analysis });
+  if (!validation.ok) {
+    logger.info(`[validate cv] hard failures, regenerating once: ${validation.hard.join(' | ')}`);
+    const retryMessages = [...messages, { role: 'user', content: validationFeedback(validation.hard) }];
+    const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4 });
+    const retryUsage = geminiUsage('generate CV (validation retry)', retry, GEMINI_GENERATION_MODEL);
+    trackDailySpend(retryUsage.costUsd);
+    usages.push(retryUsage);
+
+    const reVerified = await verifyGeneratedDoc({
+      document: retry.choices?.[0]?.message?.content || '',
+      master: cv,
+      docType: 'cv',
+    });
+    if (reVerified.gemini_usage) usages.push(reVerified.gemini_usage);
+
+    const revalidated = validateCv(reVerified.content, { master: cv, analysis });
+    // Keep the retry only if it actually improved on the draft it replaced.
+    if (revalidated.hard.length <= validation.hard.length) {
+      verified = reVerified;
+      validation = revalidated;
+    }
+    if (!validation.ok) {
+      logger.error(`[validate cv] hard failures survived the retry: ${validation.hard.join(' | ')}`);
+    }
+  }
 
   return {
     content: verified.content,
     usage: data.usage,
     gemini_usage,
-    // Both calls, for the cost-logging rule (DB row + console line each).
-    gemini_usages: [gemini_usage, ...(verified.gemini_usage ? [verified.gemini_usage] : [])],
+    validation,
+    // Every call, for the cost-logging rule (DB row + console line each).
+    gemini_usages: usages,
   };
 }
 

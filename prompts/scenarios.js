@@ -23,15 +23,20 @@ const BASE_SCENARIOS = {
     handling: 'Lead with education, internships, projects and demonstrable skills rather than a thin work history. Do not pad or invent experience to fill space.',
     generation: 'Put Education and projects/internships above Professional Experience. Frame coursework and projects as concrete deliverables. Keep to one page.',
   },
+  'Employment Gap': {
+    detect: 'One or more breaks between roles in an otherwise continuous history, where the candidate is not currently returning after a long absence (that is Job Returner).',
+    handling: 'The gap is a visible fact, not a problem to be hidden. Dates stay exact and the break simply shows. A break under 6 months needs no treatment at all. For a longer one, contextualise it ONLY from what the record actually says — never speculate about the reason, and never apologise on the CV.',
+    generation: 'Keep MM/YYYY dates throughout so the gap is simply visible — never switch to year-only dates, never stretch a role to cover it. Under 6 months: do nothing at all. Over 6 months: create NO timeline entry for the gap and write NO apology or explanation in the summary; ONE neutral line is permitted only where the master records what happened (study, caregiving, illness, relocation) and only in the candidate\'s own recorded words. If the master records nothing, stay silent.',
+  },
   'Job Returner': {
     detect: 'A clear multi-month/year gap after a real work history, then a return (or attempt to return).',
-    handling: 'Frame the continuous, real history as the asset and treat the gap as a fact to be contextualised, not hidden by deception. Foreground recent currency (any courses, freelance, volunteering that actually happened).',
-    generation: 'Lead with the strongest relevant experience, not strict reverse-chronology that spotlights the gap. Use year-only dates to reduce the gap\'s visual prominence. Never invent activity to fill the gap; surface real bridging activity if it exists.',
+    handling: 'Frame the continuous, real history as the asset and treat the gap as a fact to be contextualised, not hidden by deception. Lead on what the candidate can do NOW rather than on chronology. Foreground recent currency (any courses, freelance, volunteering that actually happened).',
+    generation: 'Everything in the Employment Gap rule applies unchanged — dates stay MM/YYYY, the gap is simply visible, no timeline entry, no apology, and a neutral line only where the master records the reason in the candidate\'s own words. NEVER use year-only dates to soften the break. In addition: open the summary with current capability rather than history, and lead with the strongest relevant experience rather than strict reverse-chronology that spotlights the gap. Never invent activity to fill the gap; surface real bridging activity if it exists.',
   },
   'Older Applicant': {
-    detect: 'A long career (roughly 20+ years visible) or early dates (1990s/early-2000s) that broadcast age and can trigger bias in the quick human sort.',
-    handling: 'Manage the age signal: the goal is to be judged on the last ~10-15 years of relevant work, not on total elapsed time. Recommend capping the visible timeline and compressing or de-dating early roles — this is selection/reframing of real content, never falsification of dates that remain shown.',
-    generation: 'Cap detailed roles to roughly the last 10-15 years. Collapse older roles into a brief "Earlier Career" line WITHOUT years, or omit pre-cutoff roles entirely. Format that line as its own experience block using the SAME markdown structure as every other role (#### **Earlier Career** heading, then a **[Company/roles summary]** subtitle line) so it renders with identical styling — never as a plain paragraph. Do NOT state "X+ years of experience" or show dates older than the cutoff in the summary. Keep every date that IS shown truthful — compress by selection, never by altering a real date.',
+    detect: 'The earliest evidenced role began more than 15 years before the most recent role\'s end date — a long visible career, or early dates (1990s/early-2000s), that broadcast age and can trigger bias in the quick human sort.',
+    handling: 'Manage the age signal: the goal is to be judged on the last ~10-15 years of relevant work, not on total elapsed time. Recommend capping the visible timeline, collapsing early roles and dropping graduation years — this is selection of what to show, never falsification. The master CV keeps every role and date intact.',
+    generation: 'Apply the 10-15 year window strictly: full detail only for roles inside it. Collapse ALL older roles into one undated "Earlier Career" line — titles and employers only, no bullets. Format that line as its own experience block using the SAME markdown structure as every other role (#### **Earlier Career** heading, then a **[Company/roles summary]** subtitle line) so it renders with identical styling — never as a plain paragraph; it is the only undated entry permitted on the CV. Strip graduation years from EVERY Education entry — all of them or none, never selectively. Never write "X+ years" or any career total anywhere. Keep every date that IS shown exactly as the master records it — compress by selection, never by altering a real date.',
   },
   'Senior Portfolio / Independent Consultant': {
     detect: 'A senior candidate whose recent record mixes a standing independent practice (consulting/advisory/freelance) with one or more shorter corporate roles. Decisive signal: the consultancy\'s date range SPANS or OVERLAPS those corporate roles (e.g. consultancy "2016-Present" while two corporate stints sit inside 2022-2023). The short stints are engagements within a continuous practice, not instability.',
@@ -45,17 +50,17 @@ const JOB_SCENARIOS = {
   'Overqualified': {
     detect: 'Candidate clearly exceeds the role\'s seniority/scope requirements.',
     handling: 'Address the "will they be bored / too expensive / a flight risk" doubt. Emphasise genuine fit and motivation for THIS level of work, drawn only from real evidence.',
-    generation: 'Tune the summary and lead bullets to the target role\'s level — foreground the directly relevant work, de-emphasise (do not delete) scope that screams "too senior". Never downgrade a real title or fabricate.',
+    generation: 'Reframe strategic phrasing toward hands-on delivery — the same real work, described by what was built and shipped rather than by the scope governed. Titles stay exactly as recorded. You MAY drop the most senior-signalling bullets from a role; you may NEVER drop the role itself, downgrade a real title, or fabricate.',
   },
   'Under-qualified': {
     detect: 'Candidate is below the role\'s stated requirements on one or more axes.',
     handling: 'Maximise genuine transferable evidence toward the target; be honest about what is not there. Gaps go to ats_keywords_missing as advice, never onto the CV.',
-    generation: 'Foreground the closest real experience and transferable skills. Never assert a skill/tool/domain the CV does not evidence to close the gap.',
+    generation: 'Weight projects, certifications and rate of progression ABOVE total years: order sections so evidenced Projects and Certifications sit high, and let the bullets show scope growing across roles. A **Projects** section is permitted here, built only from evidenced master entries. Do NOT state years of experience anywhere — not in the summary, not in the headline, not in a bullet. Foreground the closest real experience and transferable skills; never assert a skill, tool or domain the master does not evidence to close the gap.',
   },
   'Career Pivot': {
     detect: 'Candidate is moving to an adjacent domain/function; much experience is transferable.',
     handling: 'Win the pivot by reframing genuine transferable work toward the target, never by manufacturing target-domain experience. Name the real bridge skills.',
-    generation: 'Reframe and relabel real achievements in the target\'s language where the underlying fact is the same. Lead with transferable wins. Domain experience the CV lacks stays off the CV.',
+    generation: 'Put the target-facing headline at the top, and a **Core Competencies** block directly under the Summary — populated ONLY with transferable skills the master evidences, as a single-column bullet list. A **Projects** section is permitted here, built only from evidenced master entries. Past titles stay exactly as recorded; reorder bullets within each role to lead with the transferable work. Reframe and relabel real achievements in the target\'s language where the underlying fact is the same. Domain experience the master lacks stays off the CV.',
   },
   'Major Pivot': {
     detect: 'A large jump in domain/function where little is directly transferable.',
@@ -97,9 +102,12 @@ export function scenarioGenerationRules(tags) {
   const rules = list
     .map((t) => (typeof t === 'string' ? t.trim() : ''))
     .filter((t) => ALL[t])
+    // Layer 4 caps the overrides at two active at once. The analysis is asked
+    // for 1-2, but the cap is enforced here so a third tag cannot leak through.
+    .slice(0, 2)
     .map((t) => `- ${t}: ${ALL[t].generation}`);
   if (!rules.length) return '';
-  return `# Scenario-specific handling (apply these — they reframe/reorder/cut REAL content only, never add facts)\n${rules.join('\n')}\n`;
+  return `# Layer 4 — Situational overrides (maximum two, active for this candidate)\nThese take precedence over Layer 3 job matching and Layer 2 scannability, but never over the invariants or Layer 1 parseability. They reframe/reorder/relabel/cut REAL content only — none of them adds a fact.\n${rules.join('\n')}\n`;
 }
 
 export const SCENARIOS = ALL;

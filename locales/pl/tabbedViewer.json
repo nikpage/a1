@@ -32,5 +32,6 @@
   "editCancel": "Anuluj",
   "editHint": "Edytuj tekst bezpośrednio. Formatowanie używa markdown — za darmo i zastępuje tę wersję.",
   "editWorking": "Zapisuję zmiany...",
-  "editFailed": "Nie udało się zapisać zmian"
+  "editFailed": "Nie udało się zapisać zmian",
+  "cvWarningsTitle": "Warto sprawdzić przed wysłaniem"
 }

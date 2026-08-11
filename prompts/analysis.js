@@ -104,7 +104,8 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - job_match.career_scenario: the chosen scenario(s), or "n/a" with no job ad.
 - job_match.positioning_strategy: 2-3 sentences on how to position this candidate to win — re-emphasising real experience, never claiming what the CV doesn't prove; follow the scenario handling above.
 - generation_framework.cv_blueprint.target_length_pages: e.g. "1 page" or "2 pages" based on seniority.
-- generation_framework.cv_blueprint.section_order: ordered list of section names the CV writer must follow.
+- generation_framework.cv_blueprint.section_order: ordered list of section names the CV writer must follow. Use ONLY these standard, ATS-parseable names — Summary, Core Competencies, Skills, Work Experience, Projects, Education, Certifications — and no others; a creative section name breaks parsing. Include "Core Competencies" only for a Career Pivot, and "Projects" only for a Career Pivot or an Under-qualified candidate with evidenced projects.
+- generation_framework.cv_blueprint.top_three_achievements: ARRAY of exactly the THREE strongest achievements this candidate has, drawn verbatim in substance from the master's experience[].achievements[] and each naming the role and employer it came from. These go in the CV's impact zone (the first ~120 words), so pick for force of evidence — a real number or a concrete shipped deliverable beats a duty. Never write one the record does not prove.
 - generation_framework.cv_blueprint.job_selection.include_jobs: job titles+company to include with full detail. For EACH, add a one-line note naming which real achievement to lead that role with.
 - generation_framework.cv_blueprint.job_selection.condense_jobs: job titles+company to summarise in 1-2 lines.
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely. For EACH, name the facet of the real work to reframe it around and the phrasing to move away from.
@@ -138,6 +139,7 @@ OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field abo
       "job_selection": { "include_jobs": [], "condense_jobs": [], "rewrite_jobs": [] },
       "headline_draft": "",
       "summary_draft": "",
+      "top_three_achievements": [],
       "skills_to_highlight": []
     },
     "target_cover_words": ""
@@ -274,7 +276,8 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 - analysis.action_items.cv_changes (critical / advised / optional): every item must reframe, reorder, relabel, condense or cut content the CV ALREADY contains. NEVER instruct the writer to ADD, MENTION, INTRODUCE or HIGHLIGHT a skill, tool, technology, domain or achievement the CV does not evidence — that is fabrication under the REFRAME vs ADD rule. Skills the candidate is missing for the target job go in ats_keywords_missing only. The critical list MUST include length reduction if the CV is too long.
 - job_match.positioning_strategy: strategy heavily based on the scenario tags. Reposition the candidate ONLY by re-emphasising experience the CV already proves — shift which real work is foregrounded and how it is framed. You may NOT claim or imply skills, tools, domains or seniority the CV does not evidence (see REFRAME vs ADD). Phrase it as what to foreground from the real history, not as new capabilities to assert.
 - generation_framework.cv_blueprint.target_length_pages: e.g. "1 page" or "2 pages" based on seniority.
-- generation_framework.cv_blueprint.section_order: ordered list of section names the CV writer must follow.
+- generation_framework.cv_blueprint.section_order: ordered list of section names the CV writer must follow. Use ONLY these standard, ATS-parseable names — Summary, Core Competencies, Skills, Work Experience, Projects, Education, Certifications — and no others; a creative section name breaks parsing. Include "Core Competencies" only for a Career Pivot, and "Projects" only for a Career Pivot or an Under-qualified candidate with evidenced projects.
+- generation_framework.cv_blueprint.top_three_achievements: ARRAY of exactly the THREE strongest achievements this candidate has, drawn verbatim in substance from the master's experience[].achievements[] and each naming the role and employer it came from. These go in the CV's impact zone (the first ~120 words), so pick for force of evidence — a real number or a concrete shipped deliverable beats a duty. Never write one the record does not prove.
 - generation_framework.cv_blueprint.job_selection.include_jobs: job titles+company to include with full detail.
 - generation_framework.cv_blueprint.job_selection.condense_jobs: job titles+company to summarise in 1-2 lines.
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely.
@@ -337,6 +340,7 @@ JSON OUTPUT SCHEMA:
       },
       "headline_draft": "",
       "summary_draft": "",
+      "top_three_achievements": [],
       "skills_to_highlight": []
     },
     "target_cover_words": ""

@@ -48,6 +48,9 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [showThankYou, setShowThankYou] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [cvVersions, setCvVersions] = useState([]);
+  // Layer 6 output-validation warnings (checks 5-9) for the CV last generated —
+  // hard failures never reach the browser, these are the ones the user decides about.
+  const [cvWarnings, setCvWarnings] = useState([]);
   const [coverVersions, setCoverVersions] = useState([]);
   const [cvCurrentIndex, setCvCurrentIndex] = useState(0);
   const [coverCurrentIndex, setCoverCurrentIndex] = useState(0);
@@ -302,6 +305,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
             setCvCurrentIndex(newVersions.length - 1);
             return newVersions;
           });
+          setCvWarnings(data.cv_warnings || []);
           setActiveTab('cv');
         }
         if (data.cover) {
@@ -355,6 +359,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       if (data.cv) {
         setCvVersions(prev => [...prev, data.cv]);
         setCvCurrentIndex(cvVersions.length);
+        setCvWarnings(data.cv_warnings || []);
       }
       if (data.cover) {
         setCoverVersions(prev => [...prev, data.cover]);
@@ -553,6 +558,15 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     </button>
                   </div>
                 </div>
+
+                {cvWarnings.length > 0 && (
+                  <div className="mb-4 sm:mb-6 mx-auto max-w-2xl rounded-lg border border-amber-300 bg-amber-50 p-3 sm:p-4">
+                    <div className="text-sm font-bold text-amber-900">{t('cvWarningsTitle')}</div>
+                    <ul className="mt-2 list-disc pl-5 text-sm text-amber-900">
+                      {cvWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  </div>
+                )}
 
                 <div className="mb-4 sm:mb-6 mx-auto max-w-2xl border border-accent rounded-lg p-3 sm:p-4">
                   <label htmlFor="cv-headline" className="block mb-2 text-sm font-bold text-gray-800">

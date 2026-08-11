@@ -5,10 +5,14 @@ import { humanVoiceRules } from './voice.js';
 import { languageInstruction } from './language.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock } from './job-target.js';
+import { cvInvariants, coverMatchingRule } from './cv-rules.js';
 
 export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   // The ad itself — the letter is addressed to THIS job, so it reads it directly.
   const jobBlock = targetJobBlock(analysis);
+  // The letter is bound by the same invariants as the CV, plus the Layer 3
+  // matched-pairs rule when there is an ad to match against.
+  const pairsRule = coverMatchingRule(Boolean(jobBlock));
   const coreBlock = core && core.trim()
     ? `    # Who this candidate is (steering)\n    The candidate describes the durable value they bring to any role as: "${core.trim()}"\n    Let it guide what you foreground and how you frame the story — never state anything the CV doesn't actually prove.\n`
     : '';
@@ -25,6 +29,8 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
     content: `${tweakBlock}${coreBlock}
     ${currentDateBlock(now)}
 ${jobBlock}
+${cvInvariants()}
+
     # Task
     Write a cover letter in the "${tone}" tone, using only real facts from the master CV and analysis. Do NOT invent information. ${languageInstruction(language)}
 
@@ -36,6 +42,7 @@ ${jobBlock}
     - The cover letter is the right place to address concerns: where relevant, briefly and confidently turn the items in \`analysis.red_flags\` into a strength or a non-issue. Do this with a light touch — explain, don't apologise. Let any such pivot grow naturally out of the surrounding story rather than appearing as an abrupt, bolted-on sentence.
     - Where a gap or short tenure is genuinely relevant and the matching master \`experience[]\` entry carries a \`clarification\`, you may use the candidate's own words to defuse it in ONE brief clause — confident, factual, never apologetic, never a whole paragraph, and only when it strengthens the letter. Never invent a reason the clarification does not state; if there is no clarification, do not speculate about the gap.
     - Work through the guidance in \`analysis.action_items["Cover Letter"]\` (Points to Address, Narrative Flow, Tone and Style).
+${pairsRule}
 
     ${humanVoiceRules()}
 

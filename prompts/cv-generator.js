@@ -6,11 +6,18 @@ import { scenarioGenerationRules } from './scenarios.js';
 import { languageInstruction } from './language.js';
 import { targetJobBlock } from './job-target.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
+import { cvRulesBlock } from './cv-rules.js';
+import { marketConventions } from './market.js';
 
 export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
-  const scenarioBlock = scenarioGenerationRules(analysis?.analysis?.scenario_tags);
+  const tags = analysis?.analysis?.scenario_tags;
+  const scenarioBlock = scenarioGenerationRules(tags);
   // The ad itself — stated plainly rather than left buried in the analysis JSON.
   const jobBlock = targetJobBlock(analysis);
+  // Layers 0-3 come from the shared rule module; Layer 5 from the target market.
+  const hasJobText = Boolean(jobBlock);
+  const rulesBlock = cvRulesBlock(hasJobText);
+  const marketBlock = marketConventions(analysis);
   const coreBlock = core && core.trim()
     ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`
     : '';
@@ -28,6 +35,8 @@ export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', languag
     content: `${tweakBlock}${coreBlock}
 ${currentDateBlock(now)}
 ${jobBlock}
+${rulesBlock}
+
 # How to work
 The provided analysis is your strategic brief — treat its generation_framework blueprint as the plan and execute it. Read these before writing:
 - Target length: generation_framework.cv_blueprint.target_length_pages
@@ -35,6 +44,7 @@ The provided analysis is your strategic brief — treat its generation_framework
 - Job selection: generation_framework.cv_blueprint.job_selection (include_jobs / condense_jobs / rewrite_jobs)
 - Headline draft: generation_framework.cv_blueprint.headline_draft
 - Summary draft: generation_framework.cv_blueprint.summary_draft
+- Impact-zone achievements: generation_framework.cv_blueprint.top_three_achievements
 - Skills to highlight: generation_framework.cv_blueprint.skills_to_highlight
 - Scenario: analysis.scenario_tags (this drives which experience to emphasise)
 
@@ -50,16 +60,23 @@ The provided analysis is your strategic brief — treat its generation_framework
 - **Varied bullets.** Do not make every bullet the same length. Within each role, mix at least one short, single-line bullet with longer ones — uniform bullet length is a dead giveaway that a machine wrote the CV.
 
 ${scenarioBlock}
+${marketBlock}
+
 ${humanVoiceRules()}
 
 # The headline
 Every CV carries a headline: one short line directly under the name, before the contact line. Build it from \`generation_framework.cv_blueprint.headline_draft\`, adapted to the "${tone}" voice — keep the role label it names, change only the register. Max ~8 words, no full sentence, no closing punctuation. It states what this candidate IS (role/discipline, optionally one domain the master CV proves) — never a duration ("X+ years", "a decade of"), never a title or seniority the master CV does not evidence, never a slogan ("results-driven professional"). If headline_draft is absent or empty, use the candidate's most recent real job title from \`experience[]\`.
 
-# The summary
-Write the Professional Summary by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register to match the tone. 2-4 sentences, impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
+# The summary — and the impact zone inside it
+The Summary section IS the impact zone (Layer 2). It has two parts:
+1. **Value proposition** — 2-3 sentences, written by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register. Impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
+2. **Three achievement bullets** immediately beneath that prose, still inside the Summary block — take them from \`generation_framework.cv_blueprint.top_three_achievements\`, sharpened into the "${tone}" voice, each naming the role it came from. If that array is absent or short, pick the strongest remaining achievements yourself from the master's \`experience[].achievements[]\`. They may restate a Work Experience bullet; that duplication is deliberate.
+
+The headline, those 2-3 sentences and those three bullets together must fit inside the first ~120 words of the document. Count the words before you move on; if you are over, tighten the prose — never drop a bullet.
 
 # Job history rules
 - Use the master CV's \`experience[]\` as the definitive source for all employment (roles, companies, dates, locations, achievements) — this includes any nested \`contracts[]\` inside a merged parent entry, which carry real detail that must not be lost; follow the blueprint's job_selection exactly.
+- Print every date as MM/YYYY (Layer 1), one format across the whole document, ongoing roles as "MM/YYYY - Present". Reproduce the master's real months and years — normalising the FORMAT is required; changing a date is forbidden.
 - A merged parent entry (one with \`contracts[]\`) renders as ONE role on the CV, using the parent's company/role/dates. Its \`contracts[]\` appear as engagements nested beneath that single role (client names / project lines, no separate date lines of their own) — never as separate top-level jobs. This keeps concurrency honest and kills the false job-hopping signal.
 - Show overlapping roles with concurrency clear; show ongoing roles as "[start_date] - Present".
 - Never fabricate dates or create artificial gaps.
@@ -90,50 +107,58 @@ Output in Markdown with this exact structure:
 
 ---
 
-## LEFT-ALIGNED SECTIONS (follow blueprint.section_order):
+## LEFT-ALIGNED SECTIONS (order them per blueprint.section_order, but use ONLY these standard section names — Layer 1 permits no others):
 
-### **Professional Summary**
-[The summary you wrote — adapted from summary_draft into the "${tone}" tone, 2-4 sentences, impact-first]
+### **Summary**
+[The 2-3 sentence value proposition you wrote — adapted from summary_draft into the "${tone}" tone, impact-first]
+<!-- BLOCK:START -->
+- [Strongest evidenced achievement, naming the role it came from]
+- [Second strongest evidenced achievement, naming the role it came from]
+- [Third strongest evidenced achievement, naming the role it came from]
+<!-- BLOCK:END -->
 
 ---
 
-### **Key Skills**
+### **Core Competencies**
+[ONLY when the Career Pivot override is active — otherwise omit this section and its divider entirely. Single-column bullet list of transferable skills the master evidences.]
 <!-- BLOCK:START -->
-[Prioritize blueprint.skills_to_highlight, format as a 2-column bullet list]
+- [Transferable competency]
+<!-- BLOCK:END -->
 
-<div style="display: flex; flex-wrap: wrap;">
-  <div style="width: 50%; padding-right: 10px;">
-    <ul>
-      <li>[Skill 1]</li>
-      <li>[Skill 3]</li>
-      <li>[Skill 5]</li>
-    </ul>
-  </div>
-  <div style="width: 50%;">
-    <ul>
-      <li>[Skill 2]</li>
-      <li>[Skill 4]</li>
-      <li>[Skill 6]</li>
-    </ul>
-  </div>
-</div>
+---
+
+### **Skills**
+[Prioritise blueprint.skills_to_highlight. SINGLE-COLUMN bullet list — one skill per line, no columns, no tables, no HTML.]
+<!-- BLOCK:START -->
+- [Skill 1]
+- [Skill 2]
+- [Skill 3]
 <!-- BLOCK:END -->
 ---
 
-### **Professional Experience**
-[Apply job_selection rules from blueprint. For each role, emphasize job title FIRST]
+### **Work Experience**
+[Apply job_selection rules from blueprint. Reverse-chronological. Job title FIRST. Dates MM/YYYY. Bullets only — no paragraphs.]
 
 <!-- BLOCK:START -->
-#### **[Job Title]**
-**[Company Name]** | [Start Date] - [End Date or Present] | [City, Country]
-- [Achievement, result-first — weave in relevant keywords and the strengths from transferable_skills]
-- [Achievement, result-first — quantify with real numbers from the source CV where available]
+#### **[Job Title — exactly as the master records it]**
+**[Company Name]** | [MM/YYYY] - [MM/YYYY or Present] | [City, Country]
+- [Action verb + scope/context + quantified outcome, 15-25 words]
+- [Next achievement — same form; fall back to action verb + method/tool + concrete deliverable only where the master holds no number]
+<!-- BLOCK:END -->
+
+---
+
+### **Projects**
+[ONLY when the Under-qualified or Career Pivot override is active, and only from evidenced master entries — otherwise omit this section and its divider entirely.]
+<!-- BLOCK:START -->
+#### **[Project Name]**
+- [What was built or delivered, and the outcome]
 <!-- BLOCK:END -->
 
 ---
 
 ### **Education**
-[Education content]
+[Education content. Keep graduation years — strip them from ALL entries only when the Older Applicant override is active.]
 <!-- BLOCK:START -->
 **[Degree/Diploma]** | [Institution] | [Year]
 <!-- BLOCK:END -->
@@ -146,11 +171,6 @@ Output in Markdown with this exact structure:
 - [Certification 2]
 <!-- BLOCK:END -->
 
----
-
-### **[Any Other Sections per blueprint.section_order]**
-[Other content as needed]
-
 # Inputs
 ## Master CV (the candidate's complete, structured career record — your sole factual source):
 ${currentDateReminder(now)}
@@ -160,6 +180,13 @@ ${cv}
 ${JSON.stringify(analysis, null, 2)}
 
 # Before you finish — check:
+- Every hard noun on the page (skill, tool, employer, title, certification, number) traces to the master CV, and every date matches the master exactly.
+- Nothing sits in Work Experience that was not a real role; gaps are left as gaps.
+- Single column throughout, standard section names only, one date format (MM/YYYY) across every dated experience entry — the "Earlier Career" line, if present, is the only undated one.
+- The first ~120 words carry the headline, the 2-3 sentence value proposition and the three role-tagged achievement bullets.
+- No role exceeds its bullet ceiling (3-5 for the two most recent, 2-3 for the rest), and bullets sit in the 15-25 word band.
+- Market rules are satisfied; no photo, date of birth or consent line was invented.
+- A Projects section appears only if the Under-qualified or Career Pivot override is active; a Core Competencies block only if Career Pivot is.
 - The headline is present under the name, in the "${tone}" voice, and asserts no title, seniority, domain or duration the master CV does not prove.
 - Every must-have from the target job that the master CV genuinely evidences is visibly answered — and no requirement the master CV does NOT evidence has been hinted at, softened in, or covered with the ad's own wording.
 - No claim was upgraded to fit the job: every scope, verb and number still matches what the master CV states.
