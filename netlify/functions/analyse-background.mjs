@@ -15,6 +15,7 @@
 
 import * as Sentry from '@sentry/node';
 import { analyzeTeaser, analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
+import { withOlderApplicant } from '../../prompts/scenarios.js';
 import { saveGeneratedDoc, logAiTransaction, setCandidateCoreIfEmpty, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
 import { formatLayoutForPrompt } from '../../utils/cvLayout.js';
 import { verifyToken } from '../../lib/auth.js';
@@ -228,6 +229,13 @@ export const handler = async (event) => {
       // Surface EVERY Gemini call this run made (master build + verify + teaser +
       // deep) so the browser console matches what the transactions table records.
       obj._gemini_usage = [...masterUsages, ...analysisUsages];
+      // The Older Applicant trigger is arithmetic over the master's dates, so the
+      // code decides it rather than competing for one of the model's 1-2 tag slots
+      // (where a co-occurring senior-portfolio read used to crowd it out and the
+      // age mitigations never reached the generator).
+      if (master && obj.analysis) {
+        obj.analysis.scenario_tags = withOlderApplicant(obj.analysis.scenario_tags, master);
+      }
       // Why the record is teaser-shaped, saved alongside it. Absent on a good run.
       if (deepSkipped) obj._deep_skipped = deepSkipped;
       if (confirmedJob && typeof confirmedJob === 'object') {

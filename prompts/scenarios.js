@@ -110,4 +110,61 @@ export function scenarioGenerationRules(tags) {
   return `# Layer 4 — Situational overrides (maximum two, active for this candidate)\nThese take precedence over Layer 3 job matching and Layer 2 scannability, but never over the invariants or Layer 1 parseability. They reframe/reorder/relabel/cut REAL content only — none of them adds a fact.\n${rules.join('\n')}\n`;
 }
 
+export const OLDER_APPLICANT = 'Older Applicant';
+
+// Every year the master writes anywhere in a role's verbatim date string.
+function yearsIn(dates) {
+  if (typeof dates !== 'string') return [];
+  return (dates.match(/\b(19|20)\d{2}\b/g) || []).map(Number);
+}
+
+// Is this candidate an Older Applicant? The trigger is pure arithmetic over the
+// master's dates — the earliest evidenced role starting more than 15 years before
+// the most recent role ends — so it is decided in CODE, not left to the model.
+//
+// It was left to the model, and the model lost it: the teaser picks 1-2 tags, so
+// on a long senior portfolio career "Senior Portfolio / Independent Consultant"
+// (equally true, and the more interesting read) crowded the age signal out and
+// the generator never applied the age mitigations the analysis had just advised.
+// The date test needs no judgement, so nothing is gained by asking for it.
+export function detectOlderApplicant(master, now = new Date()) {
+  const experience = Array.isArray(master?.experience) ? master.experience : [];
+  if (!experience.length) return false;
+
+  const currentYear = now.getFullYear();
+  let earliestStart = null;
+  let latestEnd = null;
+
+  for (const role of experience) {
+    const years = yearsIn(role?.dates);
+    // An ongoing role ends now; "Present" carries no year of its own.
+    const ongoing = typeof role?.dates === 'string' && /present|current|now|dosud|obecnie/i.test(role.dates);
+    if (!years.length) {
+      if (ongoing) latestEnd = Math.max(latestEnd ?? currentYear, currentYear);
+      continue;
+    }
+    const start = Math.min(...years);
+    const end = ongoing ? currentYear : Math.max(...years);
+    earliestStart = earliestStart === null ? start : Math.min(earliestStart, start);
+    latestEnd = latestEnd === null ? end : Math.max(latestEnd, end);
+  }
+
+  if (earliestStart === null || latestEnd === null) return false;
+  return latestEnd - earliestStart > 15;
+}
+
+// Merge the code-decided Older Applicant tag into the tags the analysis chose.
+// It goes in at position 1 rather than the end: Layer 4 caps the active overrides
+// at two, so appending to a full pair would let the cap silently drop the very tag
+// we just proved. The model's leading tag is kept; anything past two is dropped as
+// before.
+export function withOlderApplicant(tags, master, now = new Date()) {
+  const list = (Array.isArray(tags) ? tags : (tags ? [tags] : []))
+    .map((t) => (typeof t === 'string' ? t.trim() : ''))
+    .filter(Boolean);
+  if (!detectOlderApplicant(master, now)) return list;
+  if (list.includes(OLDER_APPLICANT)) return list;
+  return [list[0], OLDER_APPLICANT, ...list.slice(1)].filter(Boolean);
+}
+
 export const SCENARIOS = ALL;
