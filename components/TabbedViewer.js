@@ -323,6 +323,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
 
     } catch (error) {
       console.error("Generation error:", error);
+      alert(error.message || t('regenFailed'));
     } finally {
       setShowLoadingModal(false);
     }
