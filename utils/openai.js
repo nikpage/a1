@@ -324,6 +324,20 @@ function groundAtomicFactsPerRole(master, sourceText) {
   // Start of the line containing `pos`, and of the line before it.
   const lineStart = (pos) => hay.lastIndexOf('\n', Math.max(0, pos - 1)) + 1;
   const prevLineStart = (pos) => lineStart(Math.max(0, lineStart(pos) - 1));
+  // Same, but stepping over BLANK lines: real CVs put a blank line between the
+  // job title and the employer line, so a single step back lands on nothing and
+  // the title stays outside its own block. Bounded, so a header can never eat an
+  // arbitrary amount of the document above it.
+  const headerStart = (pos, maxSteps = 3) => {
+    let start = lineStart(pos);
+    for (let i = 0; i < maxSteps && start > 0; i++) {
+      const prev = prevLineStart(start);
+      const line = hay.slice(prev, Math.max(prev, start - 1)).trim();
+      start = prev;
+      if (line) break; // stop on the first line that carries text
+    }
+    return start;
+  };
 
   const flag = (entry) => {
     if (!Array.isArray(master.needs_confirmation)) master.needs_confirmation = [];
@@ -374,7 +388,7 @@ function groundAtomicFactsPerRole(master, sourceText) {
     const end = i + 1 < sorted.length ? lineStart(sorted[i + 1].pos) : hay.length;
     // Never reach back past the previous role's own header line.
     const prevStart = i > 0 ? lineStart(sorted[i - 1].pos) : 0;
-    const dateStart = Math.max(prevStart, prevLineStart(sorted[i].pos));
+    const dateStart = Math.max(prevStart, headerStart(sorted[i].pos));
     blockOf.set(sorted[i].role, flatHay.slice(start, end));
     dateBlockOf.set(sorted[i].role, flatHay.slice(dateStart, end));
   }

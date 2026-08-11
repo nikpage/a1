@@ -215,6 +215,37 @@ describe('two-line role headers', () => {
     expect(out.experience[1].role).toBe('UX Team Founder');
   });
 
+  // The real CV layout: a BLANK line sits between the title and the employer,
+  // so one step back lands on nothing. Red on the one-line lookbehind.
+  test('keeps a title separated from the employer by a blank line', async () => {
+    const source = [
+      'Product Creator & Fractional Product Leader',
+      '',
+      'Nik Page Experience Strategy & Design | 08/2016 - Present | Prague, Czechia',
+      '- Led the full product lifecycle',
+      '',
+      'Head of Experience Design',
+      '',
+      'Ceska sporitelna | 07/2014 - 08/2016 | Prague, Czechia',
+      '- Built the design team',
+    ].join('\n');
+
+    const master = {
+      identity: { name: 'Nik Page', country: 'Czechia' },
+      experience: [
+        { company: 'Nik Page Experience Strategy & Design', role: 'Product Creator & Fractional Product Leader', dates: '08/2016 - Present', location: 'Prague, Czechia', achievements: [] },
+        { company: 'Ceska sporitelna', role: 'Head of Experience Design', dates: '07/2014 - 08/2016', location: 'Prague, Czechia', achievements: [] },
+      ],
+      gaps: [], transferable_notes: [],
+    };
+
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({})));
+    const { master: out } = await verifyMaster(master, source);
+
+    expect(out.experience[0].role).toBe('Product Creator & Fractional Product Leader');
+    expect(out.experience[1].role).toBe('Head of Experience Design');
+  });
+
   test('still blanks a title that appears nowhere in the source', async () => {
     const source = 'Acme Ltd | 01/2020 - 12/2021 | London, UK\n- Shipped things';
     const master = {
