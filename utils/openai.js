@@ -591,29 +591,40 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
   const teaserObj = typeof teaser === 'string' ? JSON.parse(teaser) : teaser;
 
   if (teaserObj) {
-    let blueprint, review;
-    try {
-      [blueprint, review] = await Promise.all([
-        runDeltaPass(cvText, jobText, hasJobText, teaserObj, 'blueprint'),
-        runDeltaPass(cvText, jobText, hasJobText, teaserObj, 'review'),
-      ]);
-    } catch (e) {
-      logger.error('Deep analysis pass failed:', e.message);
-      throw new Error('API returned invalid JSON');
+    // SETTLED, not all: the two halves are independent products — 'blueprint' is
+    // what the generators execute, 'review' is what the user reads. Promise.all
+    // meant one flaky call (a 503, or output truncated mid-JSON) threw away the
+    // other half's finished, already-paid-for work, and the caller fell all the
+    // way back to the teaser. A failed half now costs only that half.
+    const [bpRes, rvRes] = await Promise.allSettled([
+      runDeltaPass(cvText, jobText, hasJobText, teaserObj, 'blueprint'),
+      runDeltaPass(cvText, jobText, hasJobText, teaserObj, 'review'),
+    ]);
+
+    const blueprint = bpRes.status === 'fulfilled' ? bpRes.value : null;
+    const review = rvRes.status === 'fulfilled' ? rvRes.value : null;
+    if (!blueprint) logger.error('Deep analysis blueprint pass failed:', bpRes.reason?.message);
+    if (!review) logger.error('Deep analysis review pass failed:', rvRes.reason?.message);
+
+    // Only when BOTH halves failed is there no delta at all — then the caller's
+    // teaser fallback is the right answer.
+    if (!blueprint && !review) {
+      throw new Error(bpRes.reason?.message || 'Deep analysis produced nothing');
     }
 
-    const merged = mergeTeaserAndDelta(
-      teaserObj,
-      mergeTeaserAndDelta(blueprint.parsed, review.parsed),
-    );
-    const gemini_usages = [blueprint.gemini_usage, review.gemini_usage];
+    const delta = blueprint && review
+      ? mergeTeaserAndDelta(blueprint.parsed, review.parsed)
+      : (blueprint || review).parsed;
+    const merged = mergeTeaserAndDelta(teaserObj, delta);
+    // Cost-log every call that actually completed — see the AI cost logging rule.
+    const gemini_usages = [blueprint?.gemini_usage, review?.gemini_usage].filter(Boolean);
+    const primary = blueprint || review;
 
     return {
-      choices: blueprint.choices,
+      choices: primary.choices,
       output: JSON.stringify(merged),
-      usage: blueprint.usage,
-      // Both calls must be cost-logged — see the AI cost logging rule.
-      gemini_usage: blueprint.gemini_usage,
+      usage: primary.usage,
+      gemini_usage: primary.gemini_usage,
       gemini_usages,
     };
   }
