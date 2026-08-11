@@ -162,7 +162,8 @@ Find only these:
 6. UNSUPPORTED ROLES: any entry in master.experience whose employer AND role together appear nowhere in the SOURCE — a wholly invented job. Do NOT flag a real role just because some of its detail is thin. Report it as { "company": "", "role": "" } copied verbatim from the master entry.
 7. UNSUPPORTED NOTES: any transferable_notes entry whose "observation" or "evidence" rests on experience the SOURCE never describes — an invented strength or invented evidence. Do NOT flag a fair inference from real evidence; only ones with no basis in the source. Report the exact "observation" string to delete.
 8. INVENTED LOCATION: a REAL role (kept in master.experience) whose "location" names a place the SOURCE nowhere attaches to that role — typically the source gave NO location for it and one was filled in. The role stays; only its invented location is wrong. Report the entry as { "company": "", "role": "" } so its location is blanked. Do NOT flag a location the source states for that role, nor a trivial reformat of one it states.
-9. INVENTED DATES: a REAL role whose "dates" state a period the SOURCE nowhere attaches to that role — usually the source gave no dates and a period was invented. The role stays; only its invented dates are wrong. Report { "company": "", "role": "" } so its dates are blanked. Do NOT flag a reformat of dates the source does state (e.g. "Jan 2020" vs "2020").${trustedMaster ? `\n\nNOTE: this is a MERGE. Treat facts present in the TRUSTED PRIOR RECORD as already verified — do NOT flag them as unsupported even if the new SOURCE text doesn't mention them.` : ''}
+9. MISSING TITLE: a REAL role in master.experience whose "role" is empty ("") while the SOURCE does name a job title for that employer and period — the extraction dropped it. Report { "company": "", "dates": "", "role": "" } with the title copied VERBATIM from the source. If the source names no title for that employer, do NOT invent one — leave it out of this list.
+10. INVENTED DATES: a REAL role whose "dates" state a period the SOURCE nowhere attaches to that role — usually the source gave no dates and a period was invented. The role stays; only its invented dates are wrong. Report { "company": "", "role": "" } so its dates are blanked. Do NOT flag a reformat of dates the source does state (e.g. "Jan 2020" vs "2020").${trustedMaster ? `\n\nNOTE: this is a MERGE. Treat facts present in the TRUSTED PRIOR RECORD as already verified — do NOT flag them as unsupported even if the new SOURCE text doesn't mention them.` : ''}
 
 Return VALID JSON only, exactly this shape — empty arrays / empty string where there is nothing to correct:
 {
@@ -174,7 +175,8 @@ Return VALID JSON only, exactly this shape — empty arrays / empty string where
   "unsupported_roles": [],       // [{ "company": "", "role": "" }] experience entries to delete
   "unsupported_notes": [],       // exact transferable_notes "observation" strings to delete
   "invented_locations": [],      // [{ "company": "", "role": "" }] real roles whose location is invented → blanked
-  "invented_dates": []           // [{ "company": "", "role": "" }] real roles whose dates are invented → blanked
+  "invented_dates": [],          // [{ "company": "", "role": "" }] real roles whose dates are invented → blanked
+  "missing_titles": []           // [{ "company": "", "dates": "", "role": "" }] real roles whose title the source states but the record left empty → filled in verbatim
 }`;
 
   const user = `MASTER:
@@ -205,7 +207,7 @@ ${NEVER_FABRICATE}
 ${SELF_CONSISTENCY}`;
 
   const buildTask = `TASK — BUILD the master record from the input below.
-- Extract every role as its own entry, with dates exactly as written; most-recent first. Do NOT infer structure: never fold overlapping roles into a single consultancy/engagement or decide they are one contract — if two roles' dates overlap, keep them separate verbatim and record the overlap as a "role_overlap" open question in conflicts for the user to resolve (see SELF-CONSISTENCY).
+- Extract every role as its own entry, with dates exactly as written; most-recent first. EVERY entry needs its "role" — the job title as the source writes it. A title is often NOT on the same line as the employer: it can sit on the line above or below it, in a header, inside a sub-heading, or be stated only in the first achievement ("As Head of Delivery, I..."). Look for it in all of those before leaving "role" empty. If the source genuinely never names a title for that employer, leave "role": "" AND record it in gaps as a missing job title for that employer — never guess one, and never leave it silently blank. Do NOT infer structure: never fold overlapping roles into a single consultancy/engagement or decide they are one contract — if two roles' dates overlap, keep them separate verbatim and record the overlap as a "role_overlap" open question in conflicts for the user to resolve (see SELF-CONSISTENCY).
 - For each role, capture achievements with their metric (only if the input states one) and the concrete skills each one demonstrates.
 - Write candidate_core: the honest durable through-line of who this person is — drawn only from real evidence.
 - Fill transferable_notes: surface genuine strengths from one domain that carry into others (e.g. hospitality → reading people; firefighting → calm leadership under pressure). Each note needs real evidence from the input and is a strength the person ACTUALLY demonstrated — never an aspiration.

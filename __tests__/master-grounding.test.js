@@ -181,3 +181,51 @@ describe('verifyMaster — grounding on ordinary CV layouts', () => {
     expect((out.needs_confirmation || []).some((e) => e.field === 'dates' && e.company === 'Beta Ltd')).toBe(true);
   });
 });
+
+// A role's header is routinely TWO lines — title above, employer and dates
+// below. The grounding pass anchored on the employer line and blanked anything
+// outside that single line, so the title was wiped and the record showed a
+// nameless role. Dates already had a one-line lookbehind; the title now has the
+// same. Red on the old code: role came back ''.
+describe('two-line role headers', () => {
+  test('keeps a title printed on the line ABOVE the employer', async () => {
+    const source = [
+      'Head of Experience Design',
+      'Ceska sporitelna | 07/2014 - 08/2016 | Prague, Czechia',
+      '- Built the bank\'s design team',
+      '',
+      'UX Team Founder',
+      'Ceska sporitelna | 10/2012 - 07/2014 | Prague, Czechia',
+      '- Formed the first usability unit',
+    ].join('\n');
+
+    const master = {
+      identity: { name: 'Nik Page', country: 'Czechia' },
+      experience: [
+        { company: 'Ceska sporitelna', role: 'Head of Experience Design', dates: '07/2014 - 08/2016', location: 'Prague, Czechia', achievements: [] },
+        { company: 'Ceska sporitelna', role: 'UX Team Founder', dates: '10/2012 - 07/2014', location: 'Prague, Czechia', achievements: [] },
+      ],
+      gaps: [], transferable_notes: [],
+    };
+
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({})));
+    const { master: out } = await verifyMaster(master, source);
+
+    expect(out.experience[0].role).toBe('Head of Experience Design');
+    expect(out.experience[1].role).toBe('UX Team Founder');
+  });
+
+  test('still blanks a title that appears nowhere in the source', async () => {
+    const source = 'Acme Ltd | 01/2020 - 12/2021 | London, UK\n- Shipped things';
+    const master = {
+      identity: { name: 'A B', country: 'UK' },
+      experience: [{ company: 'Acme Ltd', role: 'Chief Invented Officer', dates: '01/2020 - 12/2021', location: 'London, UK', achievements: [] }],
+      gaps: [], transferable_notes: [],
+    };
+
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({})));
+    const { master: out } = await verifyMaster(master, source);
+
+    expect(out.experience[0].role).toBe('');
+  });
+});

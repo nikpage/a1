@@ -246,6 +246,17 @@ function applyVerifyCorrections(master, corr) {
       .filter((r) => r && typeof r === 'object')
       .map(roleKey)
   );
+  // A title the source states but the extraction dropped. Keyed on company+dates
+  // because the missing field is exactly the one roleKey() would use, and a
+  // record can hold two entries at the same employer (a promotion) that only
+  // their dates tell apart. Applied ONLY to an entry whose role is empty, so it
+  // can never overwrite a title that was extracted.
+  const titleKey = (r) => `${normWs(r && r.company)} ${normWs(r && r.dates)}`;
+  const missingTitles = new Map(
+    (corr.missing_titles || [])
+      .filter((r) => r && typeof r === 'object' && normWs(r.role))
+      .map((r) => [titleKey(r), String(r.role).trim()])
+  );
 
   if (Array.isArray(master.experience)) {
     // Drop wholly-fabricated roles first (company + role both absent from source).
@@ -255,6 +266,10 @@ function applyVerifyCorrections(master, corr) {
       );
     }
     for (const role of master.experience) {
+      if (missingTitles.size && !normWs(role.role)) {
+        const title = missingTitles.get(titleKey(role));
+        if (title) role.role = title;
+      }
       if (inventedLocations.size && inventedLocations.has(roleKey(role))) role.location = '';
       if (inventedDates.size && inventedDates.has(roleKey(role))) role.dates = '';
       if (badAchievements.size && Array.isArray(role.achievements)) {
@@ -367,17 +382,22 @@ function groundAtomicFactsPerRole(master, sourceText) {
   // 3. Ground each fact against its OWN block only. Ungrounded → blank + park.
   for (const { role } of anchored) {
     const block = blockOf.get(role) || '';
+    // The TITLE gets the same one-line lookbehind as dates. A role's header is
+    // routinely two lines — title above, employer/dates below — and anchoring on
+    // the employer line alone put the title outside its own block, so a real
+    // title was blanked as ungrounded and the record showed a nameless role.
+    const titleBlock = dateBlockOf.get(role) || block;
     // Snapshot the role's identity BEFORE any blanking, so every flag for this
     // role still names it even after its own title has been stripped.
     const label = { company: role.company || '', role: role.role || '' };
-    const checkField = (field) => {
+    const checkField = (field, hayBlock = block) => {
       const val = flat(role[field]);
-      if (val && !block.includes(val)) {
+      if (val && !hayBlock.includes(val)) {
         flag({ kind: 'field', ...label, field, value: role[field] });
         role[field] = '';
       }
     };
-    checkField('role');
+    checkField('role', titleBlock);
     checkField('location');
 
     // dates: every 4-digit year in the value must appear in this role's block,

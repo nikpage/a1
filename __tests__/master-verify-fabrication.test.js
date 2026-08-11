@@ -101,3 +101,79 @@ describe('verifyMaster — drops fabricated content the fact-checker flags', () 
     expect(out.transferable_notes.map((n) => n.observation)).toEqual(['Calm under pressure']);
   });
 });
+
+// A job title the CV states but the extraction dropped. The record then shows a
+// dash where the role should be, and every CV generated from it inherits the
+// hole. The verify pass fills it from the source, verbatim — and only into an
+// entry that is actually empty, so it can never overwrite an extracted title.
+describe('verifyMaster — restores a dropped job title', () => {
+  // The source names both titles; the extraction dropped them.
+  const SOURCE = [
+    'Head of Experience Design',
+    'Ceska sporitelna | 07/2014 - 08/2016 | Prague, Czechia',
+    'UX Team Founder',
+    'Ceska sporitelna | 10/2012 - 07/2014 | Prague, Czechia',
+    'Delivery Manager',
+    'Acme Ltd | 01/2010 - 09/2012 | London, UK',
+  ].join('\n');
+
+  const MASTER = {
+    identity: { name: 'Nik Page', country: 'Czechia' },
+    experience: [
+      { company: 'Ceska sporitelna', role: '', dates: '07/2014 - 08/2016', location: 'Prague, Czechia', achievements: [] },
+      { company: 'Ceska sporitelna', role: '', dates: '10/2012 - 07/2014', location: 'Prague, Czechia', achievements: [] },
+      { company: 'Acme Ltd', role: 'Delivery Manager', dates: '01/2010 - 09/2012', location: 'London, UK', achievements: [] },
+    ],
+    gaps: [],
+    transferable_notes: [],
+  };
+
+  test('fills an empty title from the source, matching on company AND dates', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({
+      country: '',
+      remove_gaps: [],
+      unsupported_skills: [],
+      unsupported_metrics: [],
+      unsupported_achievements: [],
+      unsupported_roles: [],
+      unsupported_notes: [],
+      invented_locations: [],
+      invented_dates: [],
+      missing_titles: [
+        { company: 'Ceska sporitelna', dates: '07/2014 - 08/2016', role: 'Head of Experience Design' },
+        { company: 'Ceska sporitelna', dates: '10/2012 - 07/2014', role: 'UX Team Founder' },
+      ],
+    })));
+
+    const { master: output } = await verifyMaster(structuredClone(MASTER), SOURCE);
+
+    // Two entries at the same employer are told apart by their dates.
+    expect(output.experience[0].role).toBe('Head of Experience Design');
+    expect(output.experience[1].role).toBe('UX Team Founder');
+  });
+
+  test('never overwrites a title that was extracted', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({
+      country: '', remove_gaps: [], unsupported_skills: [], unsupported_metrics: [],
+      unsupported_achievements: [], unsupported_roles: [], unsupported_notes: [],
+      invented_locations: [], invented_dates: [],
+      missing_titles: [{ company: 'Acme Ltd', dates: '01/2010 - 09/2012', role: 'Something Else' }],
+    })));
+
+    const { master: output } = await verifyMaster(structuredClone(MASTER), SOURCE);
+
+    expect(output.experience[2].role).toBe('Delivery Manager');
+  });
+
+  test('an empty title stays empty when the checker offers no replacement', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({
+      country: '', remove_gaps: [], unsupported_skills: [], unsupported_metrics: [],
+      unsupported_achievements: [], unsupported_roles: [], unsupported_notes: [],
+      invented_locations: [], invented_dates: [], missing_titles: [],
+    })));
+
+    const { master: output } = await verifyMaster(structuredClone(MASTER), SOURCE);
+
+    expect(output.experience[0].role).toBe('');
+  });
+});
