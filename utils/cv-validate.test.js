@@ -277,6 +277,29 @@ describe('warnings (checks 5-9)', () => {
 
 // Check 10 is HARD because it is pure arithmetic: the override is active or it
 // is not, and a stray graduation year undoes the whole mitigation.
+describe('check 1b — certifications trace to the master (hard)', () => {
+  const MASTER_WITH_CERT = JSON.stringify({
+    ...JSON.parse(MASTER),
+    certifications: ['Certified Scrum Product Owner'],
+  });
+  const withCerts = (entry) => `${GOOD}\n### **Certifications**\n- ${entry}\n`;
+  const ANALYSIS_CERTS = {
+    analysis: { scenario_tags: ['Standard Career Progression'], ats_keywords_missing: [] },
+    generation_framework: { cv_blueprint: { section_order: ['Summary', 'Work Experience', 'Certifications'] } },
+  };
+
+  it('blocks a certification the master does not hold', () => {
+    const r = validateCv(withCerts('AWS Certified Solutions Architect'), { master: MASTER_WITH_CERT, analysis: ANALYSIS_CERTS });
+    expect(r.ok).toBe(false);
+    expect(r.hard.join(' ')).toContain('AWS Certified Solutions Architect');
+  });
+
+  it('passes a certification the master holds', () => {
+    const r = validateCv(withCerts('Certified Scrum Product Owner'), { master: MASTER_WITH_CERT, analysis: ANALYSIS_CERTS });
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe('check 10 — Older Applicant (hard)', () => {
   const OLDER = {
     analysis: { scenario_tags: ['Older Applicant'], ats_keywords_missing: [] },

@@ -130,6 +130,31 @@ function checkNumbersTrace(document, master, hard) {
   }
 }
 
+// 1b. Certifications trace to the master. A certification is the hard noun most
+//     worth faking and the easiest for code to settle: the section is a plain
+//     list, so each entry either appears in the master text or it does not.
+//     (Proper nouns in free prose — an employer named only in the Summary —
+//     remain the AI verify pass's job; code cannot tell a fabricated company
+//     from an unusual real one.)
+function checkCertificationsTrace(document, master, hard) {
+  if (!master.text) return;
+  for (const s of splitSections(document)) {
+    if (!isSlot('certifications', s.heading)) continue;
+    for (const line of s.lines) {
+      const t = plain(line).trim();
+      if (!/^[-*•]\s+/.test(line.trim()) || t.length < 3) continue;
+      const cert = t.replace(/^[-*•]\s+/, '').trim();
+      // Compare on words so punctuation and "(2019)" style suffixes don't decide it.
+      const core = words(cert).filter((w) => w.length > 3).map((w) => w.toLowerCase());
+      if (!core.length) continue;
+      const hit = core.filter((w) => master.lower.includes(w)).length;
+      if (hit / core.length < 0.6) {
+        hard.push(`Certification "${cert}" appears in the CV but not in the master record.`);
+      }
+    }
+  }
+}
+
 // 2. Dates match the master, and every dated experience entry is MM/YYYY.
 function checkDates(document, master, hard) {
   const sections = splitSections(document);
@@ -437,6 +462,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   const m = readMaster(master);
 
   checkNumbersTrace(document, m, hard);
+  checkCertificationsTrace(document, m, hard);
   checkDates(document, m, hard);
   checkRolesReal(document, m, hard);
   checkStructure(document, analysis, hard);
