@@ -722,10 +722,10 @@ export function applyGenerationCorrections(document, corrections) {
 // Verify a GENERATED document against the master record and strip/downgrade the
 // claims the master does not support. Non-fatal: any failure returns the
 // document untouched, because an unverified CV still beats no CV.
-export async function verifyGeneratedDoc({ document, master, docType = 'cv' }) {
+export async function verifyGeneratedDoc({ document, master, docType = 'cv', language = 'auto' }) {
   try {
     if (!document || !master) return { content: document, gemini_usage: null, applied: [] };
-    const messages = buildGenerationVerifyPrompt({ docType, document, master });
+    const messages = buildGenerationVerifyPrompt({ docType, document, master, language });
     const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
     const gemini_usage = geminiUsage(`verify ${docType}`, data, GEMINI_VERIFY_MODEL);
     const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
@@ -757,6 +757,7 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
     document: data.choices?.[0]?.message?.content || '',
     master: cv,
     docType: 'cv',
+    language,
   });
   if (verified.gemini_usage) usages.push(verified.gemini_usage);
 
@@ -776,6 +777,7 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
       document: retry.choices?.[0]?.message?.content || '',
       master: cv,
       docType: 'cv',
+      language,
     });
     if (reVerified.gemini_usage) usages.push(reVerified.gemini_usage);
 
@@ -878,13 +880,14 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     document: processedContent.trim(),
     master: cv,
     docType: 'cover',
+    language,
   });
 
   // Layer 6 for the letter: the banned-phrase and epithet checks, the only two
   // that mean anything on prose with no sections, dates or bullets. The verify
   // pass above already repairs stock phrasing, so anything left here is a miss
   // worth logging — the letter has no regeneration path to hand it to.
-  const validation = validateCoverLetter(verified.content);
+  const validation = validateCoverLetter(verified.content, { language });
   if (validation.hard.length) {
     logger.error(`[validate cover] ${validation.hard.join(' | ')}`);
   }

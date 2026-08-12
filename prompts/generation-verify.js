@@ -13,10 +13,14 @@
 // discarded by the caller, so a hallucinating checker cannot damage the prose.
 
 import { currentDateBlock, currentDateReminder } from './current-date.js';
-import { BANNED_PHRASES } from './voice.js';
+import { bannedPhrases } from './voice.js';
 
-export function buildGenerationVerifyPrompt({ docType = 'cv', document = '', master = '', now = new Date() }) {
+export function buildGenerationVerifyPrompt({ docType = 'cv', document = '', master = '', language = 'auto', now = new Date() }) {
   const label = docType === 'cover' ? 'COVER LETTER' : 'CV';
+  // Scoped to the document's language: Czech tells are their own set, and on
+  // 'auto' every registered list applies because the writer picked the language
+  // from the master, not from us.
+  const phrases = bannedPhrases(language);
 
   const system = `${currentDateBlock(now)}
 
@@ -34,7 +38,7 @@ A claim is UNSUPPORTED when the master record does not evidence it. The kinds th
    (c) MAGNITUDE THAT OUTRUNS AN AVAILABLE NUMBER — "dramatically reduced costs" where the master records an 8% reduction. Only when the master HAS the number and the adjective overshoots it.
    Replacement is the same span with the offending word removed or the real number put in its place — never a rewrite of the sentence.
 6. STOCK PHRASE: a phrase from the CLOSED LIST BELOW. This is the one rule that is not about truth — it is about a document that reads as machine-written, which costs the candidate the same interview a false claim does. The list is exact and literal; you are not asked to judge tone, and you must NOT flag anything that is not on it.
-   THE LIST (match case-insensitively, in any inflection the phrase itself carries): ${BANNED_PHRASES.map((p) => `"${p}"`).join(', ')}.
+   THE LIST (match case-insensitively, in any inflection the phrase itself carries): ${phrases.map((p) => `"${p}"`).join(', ')}.
    Quote the smallest span that CONTAINS the phrase and still reads as a unit — the clause or sentence, not the two words alone, because deleting two words mid-sentence leaves wreckage. Replace it with the same claim said specifically, using ONLY what the master record already supports: "passionate about seamless delivery" becomes what they actually delivered. If the phrase is pure filler carrying no claim at all ("I am writing to express my interest in this role"), replacement is "" and the span is deleted. NEVER invent a fact to fill the space — a shorter, plainer document is the correct outcome when the record has nothing to put there.
 
 NOT defects — do NOT flag these:

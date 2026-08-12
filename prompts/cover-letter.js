@@ -52,7 +52,7 @@ ${cvInvariants()}
 ${pairsRule}
 
 ${scenarioBlock}
-    ${humanVoiceRules()}
+    ${humanVoiceRules(language)}
 
     # Rules
     ${coverLengthRule(analysis)}

@@ -601,3 +601,38 @@ describe('validateCoverLetter', () => {
     expect(res.warnings).toEqual([]);
   });
 });
+
+describe('check 17 is language-scoped', () => {
+  const master = JSON.stringify({
+    experience: [{ title: 'Vedoucí provozu', company: 'Acme', dates: '01/2019 - 12/2024', achievements: ['Snížil náklady o 18 %'] }],
+  });
+
+  it('hard-fails a Czech document on Czech tells', () => {
+    const doc = '### Shrnutí\nProaktivní přístup a komplexní řešení, týmový hráč.';
+    const { ok, hard } = validateCv(doc, { master, language: 'cs' });
+    expect(ok).toBe(false);
+    const f = hard.find((h) => /stock phrasing/i.test(h));
+    expect(f).toContain('proaktivní přístup');
+    expect(f).toContain('komplexní řešení');
+    expect(f).toContain('týmový hráč');
+  });
+
+  it('does not judge a Czech document on English phrases', () => {
+    // English list only; a Czech CV must not be measured against it.
+    const { hard } = validateCv('### Shrnutí\nSnížil náklady o 18 % v Acme.', { master, language: 'cs' });
+    expect(hard.find((h) => /stock phrasing/i.test(h))).toBeUndefined();
+  });
+
+  it('applies every registered language on auto', () => {
+    const { hard } = validateCv('### Summary\nTýmový hráč with a proven track record.', { master, language: 'auto' });
+    const f = hard.find((h) => /stock phrasing/i.test(h));
+    expect(f).toContain('týmový hráč');
+    expect(f).toContain('proven track record');
+  });
+
+  it('checks a Czech cover letter against the Czech list', () => {
+    const { ok, hard } = validateCoverLetter('Vážená paní, s nadšením se ucházím o pozici.', { language: 'cs' });
+    expect(ok).toBe(false);
+    expect(hard[0]).toContain('s nadšením se ucházím');
+  });
+});

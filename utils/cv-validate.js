@@ -25,7 +25,7 @@
 // band come from prompts/cv-sections.js, which holds them per language.
 
 import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js';
-import { BANNED_PHRASES } from '../prompts/voice.js';
+import { bannedPhrases } from '../prompts/voice.js';
 
 // ---- small parsing helpers --------------------------------------------------
 
@@ -649,10 +649,10 @@ function checkEpithets(document, warnings) {
 //     word, and "underscore" must not fire on "underscored the beam" in some
 //     unrelated trade. Every hit is reported, so the candidate sees the actual
 //     phrases rather than a count.
-function phraseHits(document) {
+function phraseHits(document, language) {
   const text = plain(document).toLowerCase();
   const hits = [];
-  for (const phrase of BANNED_PHRASES) {
+  for (const phrase of bannedPhrases(language)) {
     const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const lead = /^\w/.test(phrase) ? '\\b' : '';
     const tail = /\w$/.test(phrase) ? '\\b' : '';
@@ -665,8 +665,8 @@ function phraseHits(document) {
 //     the user is not the right person to hand it to. The verify pass repairs
 //     these first, so a hit here means that correction was missed — the document
 //     is regenerated with the exact phrases named in the feedback.
-function checkBannedPhrases(document, hard) {
-  const hits = phraseHits(document);
+function checkBannedPhrases(document, hard, language) {
+  const hits = phraseHits(document, language);
   if (hits.length) {
     hard.push(`Banned stock phrasing (reads as machine-written). Remove every one of these and say the specific thing the record supports instead: ${hits.map((h) => `"${h}"`).join(', ')}.`);
   }
@@ -696,7 +696,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
   checkEpithets(document, warnings);
-  checkBannedPhrases(document, hard);
+  checkBannedPhrases(document, hard, language);
   checkSkillRecency(document, m, warnings);
   checkRoleMetrics(document, m, warnings);
 
@@ -726,10 +726,10 @@ Fix them WITHOUT inventing anything: correct a wrong number by using the master'
 // boilerplate wrapper ("I am writing to express my interest") lands. Same list,
 // same { code, params } warnings, so the UI renders both documents' findings
 // through the one translation path.
-export function validateCoverLetter(document) {
+export function validateCoverLetter(document, { language = 'auto' } = {}) {
   const hard = [];
   const warnings = [];
-  checkBannedPhrases(document, hard);
+  checkBannedPhrases(document, hard, language);
   checkEpithets(document, warnings);
   return { ok: hard.length === 0, hard, warnings };
 }

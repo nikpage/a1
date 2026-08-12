@@ -64,7 +64,7 @@ The provided analysis is your strategic brief — treat its generation_framework
 ${scenarioBlock}
 ${marketBlock}
 
-${humanVoiceRules()}
+${humanVoiceRules(language)}
 
 # The headline
 Every CV carries a headline: one short line directly under the name, before the contact line. Build it from \`generation_framework.cv_blueprint.headline_draft\`, adapted to the "${tone}" voice — keep the role label it names, change only the register. Max ~8 words, no full sentence, no closing punctuation. It states what this candidate IS (role/discipline, optionally one domain the master CV proves) — never a duration ("X+ years", "a decade of"), never a title or seniority the master CV does not evidence, never a slogan ("results-driven professional"). If headline_draft is absent or empty, use the candidate's most recent real job title from \`experience[]\`.

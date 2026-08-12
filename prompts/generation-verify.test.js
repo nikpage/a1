@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { buildGenerationVerifyPrompt } from './generation-verify.js';
-import { BANNED_PHRASES } from './voice.js';
+import { bannedPhrases } from './voice.js';
 import { applyGenerationCorrections } from '../utils/openai.js';
 
 const messages = buildGenerationVerifyPrompt({
@@ -75,14 +75,29 @@ describe('inputs', () => {
 
 describe('stock phrasing (rule 6)', () => {
   it('hands the checker the same closed list the writer was given', () => {
-    const [system] = buildGenerationVerifyPrompt({ docType: 'cover', document: 'x', master: 'y' });
+    const [system] = buildGenerationVerifyPrompt({ docType: 'cover', document: 'x', master: 'y', language: 'en' });
     expect(system.content).toMatch(/6\. STOCK PHRASE/);
     // Every banned phrase must reach the checker, or it cannot repair it.
-    for (const phrase of BANNED_PHRASES) {
+    for (const phrase of bannedPhrases('en')) {
       expect(system.content, phrase).toContain(`"${phrase}"`);
     }
     expect(system.content).toMatch(/you must NOT flag anything that is not on it/);
     expect(system.content).toMatch(/NEVER invent a fact to fill the space/);
+  });
+
+  it('checks a Czech document against Czech tells, not translated English ones', () => {
+    const [system] = buildGenerationVerifyPrompt({ docType: 'cover', document: 'x', master: 'y', language: 'cs' });
+    expect(system.content).toContain('"v dnešní dynamické době"');
+    expect(system.content).toContain('"s nadšením se ucházím"');
+    // English filler is a different document's problem.
+    expect(system.content).not.toContain('"results-driven"');
+  });
+
+  it('applies every registered language on auto, since the writer picks it', () => {
+    const [system] = buildGenerationVerifyPrompt({ docType: 'cv', document: 'x', master: 'y', language: 'auto' });
+    expect(system.content).toContain('"results-driven"');
+    expect(system.content).toContain('"týmový hráč"');
+    expect(system.content).toContain('"gracz zespołowy"');
   });
 
   it('applies a stock-phrase correction by literal match, like any other', () => {
