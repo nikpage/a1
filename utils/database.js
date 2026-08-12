@@ -108,7 +108,23 @@ export async function getGenerationSource(user_id) {
 // `cv_data` text and other columns are left untouched on the conflict update.
 // We read the row back and throw if nothing came back, so a failed write can
 // never again pass silently.
+// `voice_guide` is the user's own cover-letter style guide: user-authored prose
+// that no AI pass emits. A fresh build from a new CV upload therefore arrives
+// without it, and a bare save would silently delete it. Carry the stored value
+// forward whenever the incoming record doesn't state one — this is the single
+// choke point every master write goes through.
 export async function saveMasterCv(user_id, master) {
+  // The read is best-effort: losing the guide is bad, losing a paid master build
+  // because a read failed is worse, so a failure here never blocks the write.
+  if (master && typeof master === 'object' && !String(master.voice_guide || '').trim()) {
+    try {
+      const stored = await getMasterCv(user_id);
+      const kept = String(stored?.voice_guide || '').trim();
+      if (kept) master = { ...master, voice_guide: kept };
+    } catch (e) {
+      logger.error('saveMasterCv: could not read stored voice_guide:', e.message);
+    }
+  }
   const { data, error } = await getAdminSupabase()
     .from('cv_data')
     .upsert([{ user_id, master_cv: master }], { onConflict: ['user_id'] })

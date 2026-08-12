@@ -19,6 +19,12 @@
 //   conflicts     — the open-questions queue, owned by the flag fixer.
 const PRESERVED = ['voice_samples', 'conflicts'];
 
+// The user's own written style guide for their cover letters. Prose, not a list,
+// and authored by the user (or by the owner on their behalf) — no AI pass writes
+// or rewrites it, so it is carried over from the stored record like PRESERVED,
+// but as a string rather than an array.
+const PRESERVED_STRINGS = ['voice_guide'];
+
 const str = (v) => (typeof v === 'string' ? v.trim() : v == null ? '' : String(v).trim());
 const arr = (v) => (Array.isArray(v) ? v : []);
 const strList = (v) => arr(v).map(str).filter(Boolean);
@@ -104,8 +110,12 @@ export function normaliseMaster(edited, stored = null) {
   for (const key of PRESERVED) {
     out[key] = arr(stored?.[key]);
   }
+  for (const key of PRESERVED_STRINGS) {
+    const kept = str(stored?.[key]);
+    if (kept) out[key] = kept;
+  }
 
   return out;
 }
 
-export { PRESERVED };
+export { PRESERVED, PRESERVED_STRINGS };

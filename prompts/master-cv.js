@@ -99,7 +99,7 @@ PLACEMENT — decide where each fact belongs:
 - A language, a link, a contact detail → identity.
 
 PRESERVE EVERYTHING ELSE — absolute:
-- Copy every existing field the new text does not speak to through UNCHANGED, character for character: existing roles, dates, locations, achievements, metrics, education, candidate_core, transferable_notes, voice_samples. Do not re-word, re-order, re-derive, "improve", summarise or tidy anything.
+- Copy every existing field the new text does not speak to through UNCHANGED, character for character: existing roles, dates, locations, achievements, metrics, education, candidate_core, transferable_notes, voice_samples, voice_guide. Do not re-word, re-order, re-derive, "improve", summarise or tidy anything.
 - Only ADD. Never delete or overwrite an existing fact. If the new text CONTRADICTS a stored fact (different dates for the same role, a different title), do NOT overwrite it — record it in "conflicts" as { "field", "old_value", "new_value", "where" } and leave the stored value in place.
 - candidate_core changes ONLY if the new information genuinely changes the durable through-line; otherwise copy it verbatim.
 - voice_samples: you may ADD a sentence from the new text if it is the user's own prose, copied EXACTLY as they wrote it. Never paraphrase, never drop an existing sample.
@@ -221,6 +221,7 @@ ${SELF_CONSISTENCY}`;
 - AMBIGUOUS identity: if you cannot tell whether a new entry is the same role as an existing one, do NOT force-merge and do NOT duplicate blindly — add it and note the uncertainty in "conflicts" for the user to resolve.
 - Re-derive candidate_core, transferable_notes and voice_samples from the FULLER combined picture.
 - Keep the same schema. Preserve existing voice_samples and add new verbatim ones from the new input.
+- "voice_guide", if the existing master has one, is the user's OWN written style guide: copy it through character for character. Never re-word, summarise, extend or derive it.
 
 EXISTING MASTER:
 ${existingMaster ? JSON.stringify(existingMaster) : '{}'}`;
