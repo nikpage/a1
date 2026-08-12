@@ -63,9 +63,13 @@ A skill whose only evidence lies outside the recency window — in the "Earlier 
 
 **Cover letter.** Three matched pairs — the ad's top three requirements against the candidate's three strongest evidenced achievements. No claim in the letter that is absent from the CV.
 
+**The letter makes one argument.** A cover letter is a single claim about why this candidate and this role belong together, proved in three or four paragraphs. Every paragraph advances that claim or is cut. This is what separates a letter from a list, and it is the rule most easily lost: the letter is fed a strategy, matched pairs, red flags to defuse, an active override and a body of guidance, and a model satisfying each in turn produces one sentence per instruction — a document with no through-line, where the seams between the instructions are visible to any reader. Guidance is raw material, never a running order. Several items may be answered by one paragraph, and an item with nothing to add to the argument is dropped. Nothing that reaches the writer is copy to be transcribed: sentences drafted upstream are rewritten in the candidate's own recorded voice, at the length the letter has room for, or not used. The argument decides what is said and in what order — not the shape of the guidance that informed it.
+
 ## Layer 4 — Situational overrides
 
 Maximum two active at once. Every rule below reframes, reorders, relabels or cuts real content; none inserts a fact.
+
+**The overrides reach the cover letter too.** The scenario that shapes the CV shapes the letter, but not with the same instructions: a letter has no sections to reorder, no dates to format and no bullets to cap, so a CV mitigation transplanted into it is noise. Each override therefore carries a second, letter-specific rule governing what the letter leads on, what it may address in the candidate's own recorded words, and what it must not claim. The same cap of two applies, and the invariants and Layer 3's matched pairs still outrank it. Where an override forbids a fact on the CV — a cumulative career total under Older Applicant, years of experience under Under-qualified — it is forbidden in the letter as well; the letter is not a place to say what the CV was not allowed to.
 
 **Recent grad.** Lead with education, internships, projects and demonstrable skills rather than a thin work history. Never pad or invent experience to fill space.
 
@@ -88,6 +92,8 @@ What is banned is the *cumulative* number — "25+ years' experience", "over two
 What stays legal is duration scoped to one role, project or engagement — "five years running the Prague platform team", "twelve years at Deutsche Bank". Depth does not live in the total; it lives in scope, marquee employers and long tenures inside the visible window. Banning those would strip out the evidence the override exists to protect. Suppressing the total changes the order the fact is learned in, not whether it is known: by the interview the decision to consider the candidate is already made.
 
 Roles that explicitly buy the decades — board, advisory, expert witness, some executive search — are the exception, and that is a judgement the analysis makes case by case, never a default in this override.
+
+The ban binds the analysis, not only the two documents. Any strategy, action item or example sentence the analysis hands the writer is held to it: a total banned on the page cannot be smuggled in as guidance that tells the writer to put it there. The same holds for every restriction an active override imposes.
 
 Trigger: the earliest evidenced role begins more than 15 years before the most recent role's end date. That trigger is computed in code from the master's dates, not chosen by the model, and it is inserted ahead of the two-override cap so a co-occurring scenario cannot displace it. The master keeps every role and date intact — this is selection, not editing.
 

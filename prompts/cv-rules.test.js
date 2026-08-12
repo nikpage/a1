@@ -222,6 +222,27 @@ describe('the prompts actually carry the rules', () => {
     expect(user.content).toMatch(/three matched pairs/i);
   });
 
+  it('tells the letter to make one argument, not to walk the guidance list', () => {
+    const [, user] = buildCoverPrompt('MASTER', analysis, 'confident');
+    expect(user.content).toMatch(/makes ONE argument/);
+    expect(user.content).toMatch(/material, not a running order/i);
+    // The old instruction turned the action items into a checklist.
+    expect(user.content).not.toMatch(/Work through the guidance/);
+  });
+
+  it('carries the active scenario into the cover letter, in its letter form', () => {
+    const [, user] = buildCoverPrompt('MASTER', { analysis: { scenario_tags: ['Older Applicant'] } }, 'confident');
+    expect(user.content).toContain('Layer 4 — Situational overrides');
+    expect(user.content).toContain('Older Applicant:');
+    // The CV mitigation is meaningless in a letter and must not appear.
+    expect(user.content).not.toMatch(/Strip graduation years|markdown structure/);
+  });
+
+  it('omits Layer 4 from the cover letter when no scenario is tagged', () => {
+    const [, user] = buildCoverPrompt('MASTER', { analysis: {} }, 'confident');
+    expect(user.content).not.toContain('Layer 4 — Situational overrides');
+  });
+
   it('leaves the matched-pairs rule out of a letter with no job ad', () => {
     const [, user] = buildCoverPrompt('MASTER', { analysis: {} }, 'confident');
     expect(user.content).not.toMatch(/three matched pairs/i);

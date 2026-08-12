@@ -13,6 +13,17 @@
 import { scenarioList, scenarioHandling } from './scenarios.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 
+// The cover letter's action items are MATERIAL, not copy and not a running order
+// (CV_RULES.md, Layer 3: "The letter makes one argument"). Left unqualified, this
+// field came back as finished sentences in quotes, and the writer — with ~275
+// words and ten bullets — transcribed them one per line, seams and all. Worse,
+// drafted copy is written by a pass that never sees the tone, the voice samples
+// or the word budget, and is bound by no override: a career total the Older
+// Applicant rule bars from the page arrived as an instruction to put it there.
+const COVER_ACTION_ITEMS_RULE = `- analysis.action_items["Cover Letter"]["Points to Address"] / ["Narrative Flow"]: MATERIAL FOR THE WRITER, NOT COPY AND NOT A RUNNING ORDER. Each item names WHAT to prove and WHICH real evidence proves it — the doubt to answer, the achievement that answers it, the angle the story takes — drawn from this candidate's real history and (where present) the job ad. NEVER write the sentences yourself: no drafted opening line, no quoted example prose, no "start with '…'". The writer builds ONE argument from this material at the length it has room for, answering several items in one paragraph and dropping any that does not advance that argument — so an item written as finished copy is either transcribed into a seam or thrown away. Every item is also bound by the ACTIVE SCENARIO's restrictions: never instruct the writer to state something that scenario forbids on the page (for an Older Applicant, a cumulative career total — "25 years of experience", "over two decades"; for an Under-qualified candidate, years of experience at all).
+- analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.`;
+
+
 // NOTE: the onboarding "open questions" the user settles on the master are no
 // longer produced here. A model reading the master reconciles its gaps/overlaps
 // away and reports "clean", so those questions are computed deterministically
@@ -196,8 +207,7 @@ ${noJobBlock}FIELD INSTRUCTIONS:
 - analysis.overall_score / analysis.ats_score: each "0-10", honest; consistent with the teaser's verdicts.
 - analysis.quick_wins: ARRAY of high-impact, low-effort fixes, each naming the exact change (e.g. "Move the AWS certification above the fold"). Every win must operate on content the CV ALREADY contains (move, reorder, relabel, cut, reframe). NEVER an instruction to add, mention, introduce or highlight a skill, tool, technology or achievement the CV does not prove — see the REFRAME vs ADD rule.
 - analysis.action_items.cv_changes (critical / advised / optional): every item must reframe, reorder, relabel, condense or cut content the CV ALREADY contains. NEVER instruct the writer to ADD, MENTION, INTRODUCE or HIGHLIGHT a skill, tool, technology, domain or achievement the CV does not evidence — that is fabrication. The critical list MUST include length reduction if the CV is too long.
-- analysis.action_items["Cover Letter"]["Points to Address"] / ["Narrative Flow"]: concrete, drawn from this candidate's real history and (where present) the job ad.
-- analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.
+${COVER_ACTION_ITEMS_RULE}
 - job_data: the target job's details from the ad${hasJobText ? '' : ' — "n/a" everywhere, no job ad was given'}.
 
 OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field above, and do NOT emit generation_framework, jobs_extracted, candidate_core or job_extraction — another pass owns those):
@@ -276,7 +286,7 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 - generation_framework.cv_blueprint.job_selection.rewrite_jobs: job titles+company to reframe / reposition entirely.
 - generation_framework.cv_blueprint.headline_draft: the target-role HEADLINE that sits under the candidate's name — max ~8 words, tone-neutral, no full sentence, no punctuation at the end. It names WHAT THIS PERSON IS (role/discipline, optionally one domain or specialism the record proves), e.g. "Senior Backend Engineer | Payments Platforms".${hasJobText ? ' Make it job-aware: point it at the advertised role, but ONLY using a label the CV genuinely earns — never borrow the ad\'s title if the record does not support it.' : ' With no job ad, name the role the record itself proves.'} HARD RULES: never a duration ("12+ years", "a decade of"), never a title, seniority, domain or specialism the CV does not evidence, never a slogan or adjective soup ("results-driven professional"). If the record does not support a distinct headline, use the candidate's own most-recent real job title.
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Use plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer will adapt this draft into the requested tone, so make it factual and dense, not stylised.
-- analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.
+${COVER_ACTION_ITEMS_RULE}
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
 - generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority — default guidance ~275, must stay within the 250-350 range.
 

@@ -4,6 +4,7 @@ import {
   scenarioList,
   scenarioHandling,
   scenarioGenerationRules,
+  scenarioCoverRules,
   detectOlderApplicant,
   withOlderApplicant,
   SCENARIOS,
@@ -160,5 +161,48 @@ describe('withOlderApplicant', () => {
 
   it('adds it as the only tag when the analysis chose none', () => {
     expect(withOlderApplicant([], seniorMaster, now)).toEqual(['Older Applicant']);
+  });
+});
+
+describe('scenarioCoverRules', () => {
+  it('every scenario carries a cover rule distinct from its CV rule', () => {
+    for (const [name, s] of Object.entries(SCENARIOS)) {
+      expect(typeof s.cover, name).toBe('string');
+      expect(s.cover.length, name).toBeGreaterThan(40);
+      expect(s.cover, name).not.toBe(s.generation);
+    }
+  });
+
+  it('renders the letter rule, not the CV rule, for the chosen tag', () => {
+    const out = scenarioCoverRules(['Older Applicant']);
+    expect(out).toContain('Older Applicant:');
+    expect(out).toContain(SCENARIOS['Older Applicant'].cover);
+    expect(out).not.toContain(SCENARIOS['Older Applicant'].generation);
+    // CV-only mitigations must not leak into a letter that has no sections.
+    expect(out).not.toMatch(/Strip graduation years|markdown structure/);
+  });
+
+  it('caps at two active overrides', () => {
+    const out = scenarioCoverRules(['Older Applicant', 'Career Pivot', 'Overqualified']);
+    expect(out).toContain('Older Applicant:');
+    expect(out).toContain('Career Pivot:');
+    expect(out).not.toContain('Overqualified:');
+  });
+
+  it('bars the cumulative total and years-of-experience in the letter too', () => {
+    expect(scenarioCoverRules(['Older Applicant'])).toMatch(/25\+ years|cumulative/i);
+    expect(scenarioCoverRules(['Under-qualified'])).toMatch(/NO years of experience/i);
+  });
+
+  it('is empty for unknown, empty or missing tags', () => {
+    expect(scenarioCoverRules(['Not A Real Scenario'])).toBe('');
+    expect(scenarioCoverRules([])).toBe('');
+    expect(scenarioCoverRules(null)).toBe('');
+    expect(scenarioCoverRules(undefined)).toBe('');
+  });
+
+  it('accepts a bare string and trims whitespace, like the CV renderer', () => {
+    expect(scenarioCoverRules('Career Pivot')).toContain('Career Pivot:');
+    expect(scenarioCoverRules(['  Job Returner  '])).toContain('Job Returner:');
   });
 });

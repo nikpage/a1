@@ -126,3 +126,31 @@ describe('deep pass is split into blueprint + review', () => {
     expect(merged.cv_data.Name).toBe('Jane Doe');
   });
 });
+
+describe('cover-letter action items are material, not copy', () => {
+  // The analysis was drafting the letter's sentences; the writer transcribed
+  // them one per bullet. Both prompt bodies must bar drafted copy.
+  // Only the 'review' half owns action_items (blueprint is told not to emit them),
+  // so that is the teaser-seeded body the rule has to reach.
+  test('the review half bars drafted prose and honours the scenario ban', () => {
+    const content = buildAnalysisPrompt(CV, JOB, true, TEASER, 'review')
+      .find((m) => m.role === 'user').content;
+    expect(content).toMatch(/MATERIAL FOR THE WRITER, NOT COPY AND NOT A RUNNING ORDER/);
+    expect(content).toMatch(/NEVER write the sentences yourself/);
+    expect(content).toMatch(/cumulative career total/);
+    // The old, unqualified instruction is what let quoted copy through.
+    expect(content).not.toMatch(/\["Narrative Flow"\]: concrete, drawn from/);
+  });
+
+  test('the blueprint half still does not own action_items at all', () => {
+    const content = buildAnalysisPrompt(CV, JOB, true, TEASER, 'blueprint')
+      .find((m) => m.role === 'user').content;
+    expect(content).toMatch(/do NOT emit scores, commentary, quick_wins or action_items/);
+  });
+
+  test('the standalone (no-teaser) path carries it too', () => {
+    const content = buildAnalysisPrompt(CV, JOB, true, null, 'blueprint')
+      .find((m) => m.role === 'user').content;
+    expect(content).toMatch(/MATERIAL FOR THE WRITER, NOT COPY AND NOT A RUNNING ORDER/);
+  });
+});
