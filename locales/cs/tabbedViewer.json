@@ -53,7 +53,6 @@
     "summaryVerbatimCopy": "{{count}} úspěch(y) ve shrnutí doslova opakují odrážku z praxe. Stejný výsledek řečený jinak působí mnohem lépe.",
     "skillOutsideWindow": "Tyto dovednosti dokládá jen praxe, kterou už životopis neuvádí: {{list}}. Vracejí pozornost ke starší části kariéry.",
     "noMetricsInRecord": "Ve vašich podkladech nejsou žádná čísla u: {{list}}. Doplňte skutečné údaje a odrážky výrazně zesílí — my si je nevymýšlíme.",
-    "missingMonth": "Ve vašem záznamu chybí měsíc u {{list}}, proto je uveden pouze rok — neodhadujeme jej. Pokud měsíc znáte, doplňte ho.",
-    "bannedPhrase": "Frázovité obraty, které působí jako strojově psaný text: {{list}}. Nahraďte je tím, co jste konkrétně udělal(a)."
+    "missingMonth": "Ve vašem záznamu chybí měsíc u {{list}}, proto je uveden pouze rok — neodhadujeme jej. Pokud měsíc znáte, doplňte ho."
   }
 }

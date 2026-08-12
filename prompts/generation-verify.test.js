@@ -7,6 +7,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { buildGenerationVerifyPrompt } from './generation-verify.js';
+import { BANNED_PHRASES } from './voice.js';
+import { applyGenerationCorrections } from '../utils/openai.js';
 
 const messages = buildGenerationVerifyPrompt({
   docType: 'cv',
@@ -68,5 +70,28 @@ describe('inputs', () => {
   it('puts the master and the document in front of the checker', () => {
     expect(user).toContain('{"experience":[]}');
     expect(user).toContain('Single-handedly revolutionised delivery.');
+  });
+});
+
+describe('stock phrasing (rule 6)', () => {
+  it('hands the checker the same closed list the writer was given', () => {
+    const [system] = buildGenerationVerifyPrompt({ docType: 'cover', document: 'x', master: 'y' });
+    expect(system.content).toMatch(/6\. STOCK PHRASE/);
+    // Every banned phrase must reach the checker, or it cannot repair it.
+    for (const phrase of BANNED_PHRASES) {
+      expect(system.content, phrase).toContain(`"${phrase}"`);
+    }
+    expect(system.content).toMatch(/you must NOT flag anything that is not on it/);
+    expect(system.content).toMatch(/NEVER invent a fact to fill the space/);
+  });
+
+  it('applies a stock-phrase correction by literal match, like any other', () => {
+    const doc = 'Dear Hiring Manager,\n\nI am writing to express my interest in this role. I cut fulfilment cost 18% at Acme.\n\nSincerely,';
+    const { content, applied } = applyGenerationCorrections(doc, [
+      { quote: 'I am writing to express my interest in this role. ', replacement: '', reason: 'stock phrase' },
+    ]);
+    expect(content).not.toMatch(/writing to express/);
+    expect(content).toContain('I cut fulfilment cost 18% at Acme.');
+    expect(applied).toHaveLength(1);
   });
 });

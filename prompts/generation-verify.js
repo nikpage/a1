@@ -13,6 +13,7 @@
 // discarded by the caller, so a hallucinating checker cannot damage the prose.
 
 import { currentDateBlock, currentDateReminder } from './current-date.js';
+import { BANNED_PHRASES } from './voice.js';
 
 export function buildGenerationVerifyPrompt({ docType = 'cv', document = '', master = '', now = new Date() }) {
   const label = docType === 'cover' ? 'COVER LETTER' : 'CV';
@@ -21,7 +22,7 @@ export function buildGenerationVerifyPrompt({ docType = 'cv', document = '', mas
 
 You are a strict, literal fact-checker for a generated job-application document. You are given the candidate's MASTER RECORD (their complete, verified career facts) and a ${label} written from it. Your ONLY job is to find claims the master record does not support, and report them. You never rewrite, restyle, shorten or "improve" the document.
 
-A claim is UNSUPPORTED when the master record does not evidence it. The four kinds that matter:
+A claim is UNSUPPORTED when the master record does not evidence it. The kinds that matter — the last of which is not about evidence at all, but about phrasing that marks the page as machine-written:
 1. INVENTED FACT: an employer, role, tool, technology, qualification, client or responsibility that appears nowhere in the master record.
 2. INVENTED NUMBER: any figure — %, headcount, budget, revenue, users, timespan — that the master record does not state. A number the master states is fine wherever it appears; a number the master does not state is never fine.
 2a. DERIVED TENURE (a specific, common case of the above — check for it explicitly): any claim about HOW LONG the candidate has done something — "14 years of AI solution design", "a decade in fintech", "X+ years' experience", "over five years leading teams". This is unsupported unless the master record states that span for that exact thing. Adding up roles into a career total is inventing a number, even when the arithmetic is right; so is stretching a domain label across roles that were not in that domain. Report the whole claim, and replace it with the same sentence minus the duration (say what they did, not how long).
@@ -32,6 +33,9 @@ A claim is UNSUPPORTED when the master record does not evidence it. The four kin
    (b) SELF-ASSESSED EXPERTISE LEVEL — "expert in", "world-class", "renowned", "deep expertise in", "mastery of" — where the master shows ordinary use rather than that standing.
    (c) MAGNITUDE THAT OUTRUNS AN AVAILABLE NUMBER — "dramatically reduced costs" where the master records an 8% reduction. Only when the master HAS the number and the adjective overshoots it.
    Replacement is the same span with the offending word removed or the real number put in its place — never a rewrite of the sentence.
+6. STOCK PHRASE: a phrase from the CLOSED LIST BELOW. This is the one rule that is not about truth — it is about a document that reads as machine-written, which costs the candidate the same interview a false claim does. The list is exact and literal; you are not asked to judge tone, and you must NOT flag anything that is not on it.
+   THE LIST (match case-insensitively, in any inflection the phrase itself carries): ${BANNED_PHRASES.map((p) => `"${p}"`).join(', ')}.
+   Quote the smallest span that CONTAINS the phrase and still reads as a unit — the clause or sentence, not the two words alone, because deleting two words mid-sentence leaves wreckage. Replace it with the same claim said specifically, using ONLY what the master record already supports: "passionate about seamless delivery" becomes what they actually delivered. If the phrase is pure filler carrying no claim at all ("I am writing to express my interest in this role"), replacement is "" and the span is deleted. NEVER invent a fact to fill the space — a shorter, plainer document is the correct outcome when the record has nothing to put there.
 
 NOT defects — do NOT flag these:
 - Reframing, condensing, reordering or relabelling real content, including confident, punchy phrasing of work the master describes.
@@ -47,7 +51,7 @@ Be conservative: when in doubt, do NOT flag. A false flag costs the candidate a 
 For each unsupported claim, report:
 - "quote": the offending text copied EXACTLY, character for character, from the ${label} — the smallest span that contains the problem (one bullet, one sentence, or one clause). It MUST appear verbatim in the document or your report is discarded.
 - "replacement": the same span rewritten so it says only what the master record supports — same shape, same voice, weaker claim. Use "" when nothing truthful remains, and the span will be deleted.
-- "reason": one short phrase ("invented number", "upgraded to 'led'", "no evidence of Kubernetes", "unearned intensifier").
+- "reason": one short phrase ("invented number", "upgraded to 'led'", "no evidence of Kubernetes", "unearned intensifier", "stock phrase").
 
 Return VALID JSON only — no markdown fences, no commentary. Empty array when the document is clean:
 {

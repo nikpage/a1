@@ -53,7 +53,6 @@
     "summaryVerbatimCopy": "{{count}} summary achievement(s) repeat a work-experience bullet word for word. Same result, said differently, reads far better.",
     "skillOutsideWindow": "These skills are only evidenced by work the CV no longer shows: {{list}}. They pull the eye back to an older career.",
     "noMetricsInRecord": "Your record holds no numbers for {{list}}. Add the real figures and these bullets get far stronger — we will not invent them.",
-    "missingMonth": "Your record gives no month for {{list}}, so the year stands alone rather than being guessed. Add the month if you know it.",
-    "bannedPhrase": "Stock phrasing that reads as machine-written: {{list}}. Replace with the specific thing you actually did."
+    "missingMonth": "Your record gives no month for {{list}}, so the year stands alone rather than being guessed. Add the month if you know it."
   }
 }

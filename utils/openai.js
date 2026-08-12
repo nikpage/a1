@@ -881,9 +881,13 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   });
 
   // Layer 6 for the letter: the banned-phrase and epithet checks, the only two
-  // that mean anything on prose with no sections, dates or bullets. Warnings
-  // only — a stock phrase is reported, never a reason to block the document.
+  // that mean anything on prose with no sections, dates or bullets. The verify
+  // pass above already repairs stock phrasing, so anything left here is a miss
+  // worth logging — the letter has no regeneration path to hand it to.
   const validation = validateCoverLetter(verified.content);
+  if (validation.hard.length) {
+    logger.error(`[validate cover] ${validation.hard.join(' | ')}`);
+  }
 
   return {
     content: verified.content,

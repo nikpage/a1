@@ -5,9 +5,14 @@
 // actually did. Nothing here calls an AI, so it cannot hallucinate a violation.
 //
 // Two severities, exactly as the rules define them:
-//   hard[]     — checks 1-4. A hard failure means the document must not ship as
-//                is; the caller regenerates once with the failures fed back.
-//   warnings[] — checks 5-9. Surfaced to the user, never blocking.
+//   hard[]     — checks 1-4, 10, 14 and 17. A hard failure means the document
+//                must not ship as is; the caller regenerates once with the
+//                failures fed back.
+//   warnings[] — checks 5-9 and the rest. Surfaced to the user, never blocking.
+//                A warning is for something the CANDIDATE can act on (a missing
+//                month, an unevidenced requirement). The app's own writing
+//                defects are hard, and fixed — never reported to the user as if
+//                they were theirs to solve.
 //
 // Every check is skipped rather than guessed when its input is missing (e.g. no
 // parseable master, no blueprint section_order). A check that cannot see its
@@ -656,10 +661,14 @@ function phraseHits(document) {
   return hits;
 }
 
-function checkBannedPhrases(document, warnings) {
+//     HARD, not a warning: a stock phrase is the app's own writing failing, and
+//     the user is not the right person to hand it to. The verify pass repairs
+//     these first, so a hit here means that correction was missed — the document
+//     is regenerated with the exact phrases named in the feedback.
+function checkBannedPhrases(document, hard) {
   const hits = phraseHits(document);
   if (hits.length) {
-    warnings.push({ code: 'bannedPhrase', params: { list: hits.join(', '), count: hits.length } });
+    hard.push(`Banned stock phrasing (reads as machine-written). Remove every one of these and say the specific thing the record supports instead: ${hits.map((h) => `"${h}"`).join(', ')}.`);
   }
 }
 
@@ -687,7 +696,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
   checkEpithets(document, warnings);
-  checkBannedPhrases(document, warnings);
+  checkBannedPhrases(document, hard);
   checkSkillRecency(document, m, warnings);
   checkRoleMetrics(document, m, warnings);
 
@@ -718,8 +727,9 @@ Fix them WITHOUT inventing anything: correct a wrong number by using the master'
 // same { code, params } warnings, so the UI renders both documents' findings
 // through the one translation path.
 export function validateCoverLetter(document) {
+  const hard = [];
   const warnings = [];
-  checkBannedPhrases(document, warnings);
+  checkBannedPhrases(document, hard);
   checkEpithets(document, warnings);
-  return { ok: true, hard: [], warnings };
+  return { ok: hard.length === 0, hard, warnings };
 }
