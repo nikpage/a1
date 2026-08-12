@@ -50,6 +50,7 @@
     "summaryAchievementNoRole": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu nie wskazują stanowiska, z którego pochodzą, więc brzmią jak gołosłowna deklaracja.",
     "earlierCareerNoEmployer": "Wiersz Wcześniejsza kariera nie wymienia żadnego prawdziwego pracodawcy — rozpoznawalna nazwa jest tam najcenniejsza.",
     "identityEpithet": "Wstęp opisuje, kim jesteś, zamiast tego, co zrobiłeś/aś: {{list}}. Zacznij od konkretu.",
+    "summaryVerbatimCopy": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu powtarzają słowo w słowo punkt z doświadczenia. Ten sam efekt ujęty inaczej czyta się dużo lepiej.",
     "missingMonth": "Twój zapis nie podaje miesiąca dla {{list}}, więc widnieje sam rok — nie zgadujemy go. Jeśli znasz miesiąc, uzupełnij go."
   }
 }

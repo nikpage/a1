@@ -73,6 +73,15 @@ describe('Layer 2', () => {
     expect(t).not.toMatch(/Summary contains NO bullets/);
   });
 
+  // The repeat is deliberate; repeating the SENTENCE is not — a shipped CV put
+  // the identical wording in both places and read as the same page twice.
+  it('requires the Summary bullet to re-angle, not copy, its role bullet', () => {
+    const t = humanScannability();
+    expect(t).toMatch(/NEVER in the same words/);
+    expect(t).toMatch(/COMPRESSED, RE-ANGLED/);
+    expect(JSON.stringify(buildCvPrompt('x', {}, 'Formal'))).toMatch(/Copying the role's sentence up here word for word is a defect/);
+  });
+
   // "A veteran technology leader" opened a shipped CV — a category asserted in
   // place of evidence, and an age signal under the Older Applicant override.
   it('bans identity epithets in the opening', () => {

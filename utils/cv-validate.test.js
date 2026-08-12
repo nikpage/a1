@@ -226,6 +226,23 @@ describe('warnings (checks 5-9)', () => {
     expect(paramsFor(r, 'impactZoneWords').count).toBeGreaterThan(120);
   });
 
+  // The repeat is deliberate; repeating the SENTENCE is not. This pair is taken
+  // from a shipped CV, where the Summary copied the role bullet word for word.
+  it('warns when a Summary achievement copies its role bullet verbatim', () => {
+    const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('summaryVerbatimCopy');
+    expect(paramsFor(r, 'summaryVerbatimCopy').count).toBe(1);
+  });
+
+  it('stays silent when the Summary re-angles the same achievement', () => {
+    const doc = GOOD.replace(
+      '- As Head of Delivery at Acme Ltd, cut release cycle from 42 days to 9 days',
+      '- Took Acme Ltd from 42-day releases to 9, as Head of Delivery'
+    );
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).not.toContain('summaryVerbatimCopy');
+  });
+
   // The zone is what the recruiter reads first, and the name block plus headline
   // sit above the Summary heading. Counting only the Summary section let a long
   // header spend the budget invisibly.

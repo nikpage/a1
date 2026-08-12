@@ -33,7 +33,7 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 ## Layer 2 — Human scannability
 
-**Impact zone.** The first ~120 words must carry the target-facing headline, a 2–3 sentence value proposition, and up to three of the strongest evidenced achievements. The headline and value proposition are the Summary's opening prose; the achievements are up to three bullets immediately beneath, inside the Summary block. Print only as many as the master genuinely evidences — three is a ceiling, not a quota, exactly as role bullets are. They may restate a Work Experience bullet: the duplication is intentional, and each must carry the role name so it does not read as a floating claim. Checked by word count from the very top of the document — the name/contact block, the headline, the proposition and the bullets all count — not by rendered lines.
+**Impact zone.** The first ~120 words must carry the target-facing headline, a 2–3 sentence value proposition, and up to three of the strongest evidenced achievements. The headline and value proposition are the Summary's opening prose; the achievements are up to three bullets immediately beneath, inside the Summary block. Print only as many as the master genuinely evidences — three is a ceiling, not a quota, exactly as role bullets are. They may restate a Work Experience bullet: the duplication is intentional, and each must carry the role name so it does not read as a floating claim. What is not permitted is restating it in the SAME WORDS. The top block is a compressed, re-angled statement of the achievement — the fact is identical, the sentence is not. A verbatim copy makes the reader feel they are reading the page twice and wastes the impact zone on words already spent. Checked by word count from the very top of the document — the name/contact block, the headline, the proposition and the bullets all count — not by rendered lines.
 
 **Rendering.** The Summary prose is justified. The achievement bullets are standard left-aligned bullets in the same style as Work Experience bullets — never centered, never a distinct visual block.
 
@@ -111,7 +111,7 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 2. Dates in the output match the master exactly.
 3. No Work Experience entry that is not a real role.
 4. Single column, standard headers, one date format across all dated entries (the "Earlier Career" line is exempt, as is a year-only entry permitted by check 13).
-5. Impact zone within 120 words and contains headline + proposition + the evidenced achievements, up to three, each naming its role.
+5. Impact zone within 120 words and contains headline + proposition + the evidenced achievements, up to three, each naming its role, and none of them a word-for-word copy of the Work Experience bullet it restates.
 6. No role exceeds its bullet ceiling; fallback bullets within the one-third limit where metrics exist.
 7. Market rules satisfied; no photo/DOB/consent invented.
 8. With a job ad: unevidenced requirements are listed to the user as gaps.

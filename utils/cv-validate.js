@@ -290,6 +290,19 @@ function checkImpactZone(document, master, warnings) {
     }
   }
 
+  // The duplication is deliberate; copying the SENTENCE is not. The top block is
+  // the compressed, re-angled version, so a Summary bullet that repeats a role
+  // bullet word for word makes the recruiter read the same line twice and spends
+  // the impact zone on words already spent.
+  const roleBullets = [];
+  for (const s of sections) {
+    for (const role of parseRoles(s)) roleBullets.push(...role.bullets);
+  }
+  const copied = bullets.filter((b) => roleBullets.some((rb) => nearVerbatim(b, rb)));
+  if (copied.length) {
+    warnings.push({ code: 'summaryVerbatimCopy', params: { count: copied.length } });
+  }
+
   // Counted from the VERY TOP of the document, not from the Summary heading: the
   // name/contact block and the headline sit above it and are read first, so they
   // spend the recruiter's 120 words exactly as the Summary does.
@@ -297,6 +310,33 @@ function checkImpactZone(document, master, warnings) {
   const head = doc.split(/^###\s+/m)[0] || '';
   const count = words(head).length + words(summary.lines.join(' ')).length;
   if (count > 120) warnings.push({ code: 'impactZoneWords', params: { count } });
+}
+
+// Is one bullet a word-for-word restatement of the other? The Summary version
+// legitimately drops the role prefix ("As Head of Delivery at Acme Ltd, ") and
+// may stop short of the role bullet's tail, so the test is whether what remains
+// runs as an unbroken word sequence inside the other — not whether the two
+// strings match. A genuinely re-angled bullet reorders and rewords, and breaks
+// the run immediately.
+const MIN_RUN = 8;
+
+function bulletWords(text) {
+  return plain(text).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+}
+
+export function nearVerbatim(a, b) {
+  const x = bulletWords(a);
+  const y = bulletWords(b);
+  if (x.length < MIN_RUN || y.length < MIN_RUN) return false;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  const hay = ` ${long.join(' ')} `;
+  // The longest suffix of the shorter bullet that appears verbatim in the other:
+  // walk the start forward, since the role prefix is what differs.
+  for (let i = 0; i + MIN_RUN <= short.length; i++) {
+    const run = short.slice(i);
+    if (hay.includes(` ${run.join(' ')} `)) return true;
+  }
+  return false;
 }
 
 // Every role title and company the master records, lowercased — used to check

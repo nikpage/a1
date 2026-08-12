@@ -50,6 +50,7 @@
     "summaryAchievementNoRole": "{{count}} summary achievement(s) do not name the role they came from, so they read as floating claims.",
     "earlierCareerNoEmployer": "The Earlier Career line names no real employer — a recognisable name there is the strongest thing on that line.",
     "identityEpithet": "The opening describes you rather than what you did: {{list}}. Lead with a fact instead.",
+    "summaryVerbatimCopy": "{{count}} summary achievement(s) repeat a work-experience bullet word for word. Same result, said differently, reads far better.",
     "missingMonth": "Your record gives no month for {{list}}, so the year stands alone rather than being guessed. Add the month if you know it."
   }
 }
