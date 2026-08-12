@@ -1,7 +1,7 @@
 // prompts/cv-rules.test.js
 import { describe, it, expect } from 'vitest';
 import { cvInvariants, machineParseability, humanScannability, jobMatchingRules, coverMatchingRule, cvRulesBlock } from './cv-rules.js';
-import { marketConventions, targetCountry } from './market.js';
+import { marketConventions, targetCountry, coverWordBand, coverLengthRule } from './market.js';
 import { scenarioGenerationRules, SCENARIOS } from './scenarios.js';
 import { buildCvPrompt } from './cv-generator.js';
 import { buildCoverPrompt } from './cover-letter.js';
@@ -182,6 +182,31 @@ describe('Layer 5 — market', () => {
     expect(marketConventions({ job_data: { Country: 'Germany' } })).toMatch(/conventional here/);
   });
 
+  it('gives CZ/PL the short-letter band and everyone else the neutral one', () => {
+    expect(coverWordBand({ job_data: { Country: 'Czech Republic' } })).toEqual({ min: 200, max: 300, target: 250 });
+    expect(coverWordBand({ job_data: { Country: 'Poland' } })).toEqual({ min: 200, max: 300, target: 250 });
+    expect(coverWordBand({ job_data: { Country: 'United Kingdom' } })).toEqual({ min: 250, max: 350, target: 275 });
+    expect(coverWordBand({ job_data: { Country: 'Germany' } })).toEqual({ min: 250, max: 350, target: 275 });
+    // Unknown and absent countries take the neutral band, never the CZ one.
+    expect(coverWordBand({ cv_data: { Country: 'Atlantis' } })).toEqual({ min: 250, max: 350, target: 275 });
+    expect(coverWordBand({})).toEqual({ min: 250, max: 350, target: 275 });
+  });
+
+  it('follows the CV country when there is no job ad', () => {
+    expect(coverWordBand({ cv_data: { Country: 'CZ' } }).max).toBe(300);
+    // The job's market wins over the candidate's own.
+    expect(coverWordBand({ job_data: { Country: 'US' }, cv_data: { Country: 'CZ' } }).max).toBe(350);
+  });
+
+  it('states the band as a ceiling and clamps the analysis word target into it', () => {
+    const cz = coverLengthRule({ job_data: { Country: 'CZ' } });
+    expect(cz).toMatch(/200-300 words/);
+    expect(cz).not.toMatch(/250-350/);
+    expect(cz).toMatch(/only if it falls inside 200-300/);
+    expect(cz).toMatch(/CEILING, not a quota/);
+    expect(coverLengthRule({})).toMatch(/250-350 words/);
+  });
+
   it('falls back to the neutral default for an unknown market and never invents personal data', () => {
     const t = marketConventions({ cv_data: { Country: 'Atlantis' } });
     expect(t).toMatch(/No market-specific convention is known/);
@@ -220,6 +245,14 @@ describe('the prompts actually carry the rules', () => {
     const [, user] = buildCoverPrompt('MASTER', analysis, 'confident');
     expect(user.content).toContain('T1 — Never fabricate');
     expect(user.content).toMatch(/three matched pairs/i);
+  });
+
+  it('carries the market word band into the cover prompt itself', () => {
+    const [, cz] = buildCoverPrompt('MASTER', { analysis: {}, job_data: { Country: 'Czech Republic' } }, 'confident');
+    expect(cz.content).toMatch(/200-300 words/);
+    expect(cz.content).not.toMatch(/250-350/);
+    const [, uk] = buildCoverPrompt('MASTER', { analysis: {}, job_data: { Country: 'United Kingdom' } }, 'confident');
+    expect(uk.content).toMatch(/250-350 words/);
   });
 
   it('tells the letter to make one argument, not to walk the guidance list', () => {

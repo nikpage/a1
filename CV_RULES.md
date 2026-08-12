@@ -113,6 +113,8 @@ Set per target market, applied last. Market rules key off the job ad's country w
 
 Never generate a photo, a date of birth, or a consent statement the user did not provide.
 
+**Cover letter length is a market convention too.** The letter's word budget belongs here rather than as one global number, because the norm genuinely differs: in CZ/PL the *motivační dopis* / *list motywacyjny* is a short covering note of roughly 200–300 words that stays well inside one A4, and a letter that runs past it reads as padding, not thoroughness. The Anglo and DACH markets carry the longer letter comfortably. Each market therefore sets a band and a default within it: CZ/PL 200–300, default 250; every other market 250–350, default 275; an unrecognised country takes the neutral 250–350. The band is a ceiling to cut against, never a quota to fill — the letter makes its argument and stops, and a letter that lands under its band because the argument is finished is correct.
+
 ## Layer 6 — Output validation (must pass before delivery)
 
 1. Every hard noun in the output (skill, tool, employer, title, certification, number) traces to the master. Any that does not → block.

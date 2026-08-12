@@ -8,6 +8,7 @@ import { targetJobBlock } from './job-target.js';
 import { cvInvariants, coverMatchingRule } from './cv-rules.js';
 import { generationBrief } from './analysis-brief.js';
 import { scenarioCoverRules } from './scenarios.js';
+import { coverLengthRule } from './market.js';
 
 export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   // The ad itself — the letter is addressed to THIS job, so it reads it directly.
@@ -54,7 +55,7 @@ ${scenarioBlock}
     ${humanVoiceRules()}
 
     # Rules
-    - LENGTH (hard constraint): the letter body must be 250-350 words total, in 3-4 short paragraphs, comfortably under one page. This word budget does NOT include the date, salutation, or signature block. Use \`generation_framework.target_cover_words\` from the analysis when present (default guidance ~275, allowed range 250-350); if it is absent, stay within the 250-350 default. Before you return the letter, count the body against this ceiling and cut if you're over — a longer letter is not a stronger one.
+    ${coverLengthRule(analysis)}
     - Start with only the date at the top. Do NOT add the applicant's name or contact details above the salutation.
     - Salutation: "Dear [First Name] [Last Name]" if a name is available, otherwise "Dear Hiring Manager". No titles like Mr./Ms.
     - No generic filler, invented claims, or placeholders like [Company Address].
