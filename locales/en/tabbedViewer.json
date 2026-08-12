@@ -36,7 +36,6 @@
   "cvWarningsTitle": "Worth a look before you send this",
   "cvWarning": {
     "noSections": "The CV has no recognisable sections, so the opening could not be checked.",
-    "summaryBullets": "The summary uses {{count}} bullet(s) — a summary reads as prose; achievements belong under their role.",
     "impactZoneWords": "The opening runs to {{count}} words; a recruiter reads about 120 before deciding.",
     "bulletCeiling": "\"{{role}}\" has {{count}} bullets; {{ceiling}} keeps it sharp.",
     "bulletBand": "A bullet under \"{{role}}\" is {{count}} words; {{min}}–{{max}} reads best.",
@@ -45,6 +44,11 @@
     "dobInvented": "The CV states a date of birth that is not in your record.",
     "consentInvented": "The CV states a data-processing consent line that is not in your record.",
     "gaps": "The job asks for these, and your record does not evidence them — they were left off rather than faked: {{list}}",
-    "projectsNoOverride": "A Projects section appears without a reason to use one."
+    "projectsNoOverride": "A Projects section appears without a reason to use one.",
+    "summaryNoAchievements": "The summary carries no achievement bullets — the first 120 words are the space a recruiter actually reads.",
+    "summaryTooManyAchievements": "The summary lists {{count}} achievements; three is the ceiling before the opening stops being scannable.",
+    "summaryAchievementNoRole": "{{count}} summary achievement(s) do not name the role they came from, so they read as floating claims.",
+    "earlierCareerNoEmployer": "The Earlier Career line names no real employer — a recognisable name there is the strongest thing on that line.",
+    "identityEpithet": "The opening describes you rather than what you did: {{list}}. Lead with a fact instead."
   }
 }

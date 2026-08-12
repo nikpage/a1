@@ -36,7 +36,6 @@
   "cvWarningsTitle": "Warto sprawdzić przed wysłaniem",
   "cvWarning": {
     "noSections": "CV nie ma rozpoznawalnych sekcji, więc nie dało się sprawdzić początku.",
-    "summaryBullets": "Podsumowanie zawiera {{count}} punktów — podsumowanie pisze się ciągłym tekstem; osiągnięcia należą do roli.",
     "impactZoneWords": "Początek ma {{count}} słów; rekruter decyduje mniej więcej do 120.",
     "bulletCeiling": "„{{role}}” ma {{count}} punktów; {{ceiling}} brzmi mocniej.",
     "bulletBand": "Punkt przy „{{role}}” ma {{count}} słów; najlepiej czyta się {{min}}–{{max}}.",
@@ -45,6 +44,11 @@
     "dobInvented": "CV podaje datę urodzenia, której nie ma w Twoich danych.",
     "consentInvented": "CV zawiera klauzulę zgody na przetwarzanie danych, której nie ma w Twoich danych.",
     "gaps": "Tego wymaga ogłoszenie, a Twoje dane tego nie potwierdzają — pominęliśmy to zamiast zmyślać: {{list}}",
-    "projectsNoOverride": "Sekcja Projekty pojawia się bez powodu, by jej użyć."
+    "projectsNoOverride": "Sekcja Projekty pojawia się bez powodu, by jej użyć.",
+    "summaryNoAchievements": "Podsumowanie nie zawiera punktów z osiągnięciami — pierwsze 120 słów to miejsce, które rekruter naprawdę czyta.",
+    "summaryTooManyAchievements": "Podsumowanie wymienia {{count}} osiągnięć; trzy to maksimum, powyżej wstęp przestaje być czytelny.",
+    "summaryAchievementNoRole": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu nie wskazują stanowiska, z którego pochodzą, więc brzmią jak gołosłowna deklaracja.",
+    "earlierCareerNoEmployer": "Wiersz Wcześniejsza kariera nie wymienia żadnego prawdziwego pracodawcy — rozpoznawalna nazwa jest tam najcenniejsza.",
+    "identityEpithet": "Wstęp opisuje, kim jesteś, zamiast tego, co zrobiłeś/aś: {{list}}. Zacznij od konkretu."
   }
 }

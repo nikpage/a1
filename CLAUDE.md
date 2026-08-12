@@ -52,7 +52,7 @@ Each user has one persisted **master CV** — a structured career record (facts 
 
 ## CV rules (the layer stack)
 
-`prompts/cv-rules.js` is the canonical statement of what a generated CV must be. `cv-generator.js` imports `cvRulesBlock(hasJobText)` for the whole stack; `cover-letter.js` imports `cvInvariants()` and `coverMatchingRule(hasJobText)`. Precedence: **Layer 4 > Layer 3 > Layer 2**, with **Layer 1 as the floor beneath all three** and the invariants above everything.
+**`CV_RULES.md` at the repo root is the spec** — the prose statement of what a generated CV must be, and the authority when code and it disagree. `prompts/cv-rules.js` is its implementation. `cv-generator.js` imports `cvRulesBlock(hasJobText)` for the whole stack; `cover-letter.js` imports `cvInvariants()` and `coverMatchingRule(hasJobText)`. Precedence: **Layer 4 > Layer 3 > Layer 2**, with **Layer 1 as the floor beneath all three** and the invariants above everything.
 
 | Layer | What it governs | Lives in |
 |---|---|---|
@@ -65,7 +65,8 @@ Each user has one persisted **master CV** — a structured career record (facts 
 | 6 — Output validation | deterministic checks over the finished document | `utils/cv-validate.js` |
 
 - **T2 in practice:** omission is permitted, alteration is not. Normalising a date's FORMAT to MM/YYYY is required; changing a date is forbidden. Year-only dates are never used to soften a gap — the "Earlier Career" line is the only undated entry a CV may carry.
-- **The impact zone** is the Summary section: headline, a 2–3 sentence value proposition, then three achievement bullets that each name the role they came from, all inside the first ~120 words. The three come from `generation_framework.cv_blueprint.top_three_achievements`, which the analysis blueprint emits.
+- **The impact zone** is the Summary section: headline, a 2–3 sentence value proposition, then UP TO three achievement bullets that each name the role and employer they came from, all inside the first ~120 words. They come from `generation_framework.cv_blueprint.top_three_achievements`. Three is a **ceiling, not a quota** — a thin record prints fewer. Their repetition under the roles is **deliberate**: a recruiter who reads only the top block still sees the strongest results. (This was once inverted to "the Summary contains no bullets"; that was wrong and is now pinned by tests in both directions.)
+- **Openers name facts, not identities.** "veteran", "seasoned", "accomplished", "industry expert", "technology leader" and equivalents are banned in the Summary and headline — a category asserted in place of evidence, and an age signal under an Older Applicant override. Check 12 warns; `voice.js` covers the cover letter.
 - **Layer 1 forbids layout HTML.** Skills render as a single-column bullet list; the validator hard-blocks any `div` / `table` / `ul` / `img` in the output. `utils/exportDocxFormatted.js` flattens such tags anyway, so a column grid buys nothing and costs parsing.
 - **Layer 5** keys off the job's country when there is a job ad, otherwise the candidate's own (`targetCountry()`). An unrecognised country falls back to the neutral default. It never generates a photo, date of birth or consent line the candidate did not supply.
 - Unit tests: `prompts/cv-rules.test.js` (all layers, both prompts), `utils/cv-validate.test.js`.
@@ -95,7 +96,8 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 `validateCv(document, { master, analysis, language })` in `utils/cv-validate.js` is code, not a prompt, so it cannot hallucinate a violation. It returns `{ ok, hard, warnings }`.
 
 - **Hard (checks 1–4):** every number in the document traces to the master; dates match the master and are MM/YYYY throughout Work Experience; no Work Experience entry that is not a real role; single column, no layout HTML, section names standard in some registered language or named by the blueprint.
-- **Warnings (checks 5–9):** impact zone within ~120 words with its three bullets; bullet ceilings and the metric-fallback share; no invented photo/DOB/consent; unevidenced job requirements listed as gaps; a Projects section only under an Under-qualified or Career Pivot override.
+- **Hard (check 10):** with the Older Applicant override active, no graduation year in Education and no "X+ years" anywhere. Hard rather than a warning because it is pure arithmetic and one stray year undoes the whole override.
+- **Warnings (checks 5–9, 11–12):** impact zone within ~120 words carrying its achievement bullets, each naming its role; bullet ceilings and the metric-fallback share; no invented photo/DOB/consent; unevidenced job requirements listed as gaps; a Projects section only under an Under-qualified or Career Pivot override; an Earlier Career line that names at least one real employer from the master (check 11); no identity epithet in the Summary or headline (check 12).
 - `generateCV()` runs it after the AI verify pass. A hard failure triggers **one** regeneration with `validationFeedback(hard)` appended to the messages; the retry is kept only if it has no more hard failures than the draft it replaces. Every call it makes lands in `gemini_usages`, so the cost-logging rule is satisfied.
 - Warnings ride out as `cv_warnings` from the background generation run and render as a banner on the CV tab in `TabbedViewer.js`, translated from their `{ code, params }` form.
 - A check whose evidence is missing (no parseable master, no `section_order`) reports nothing rather than guessing.

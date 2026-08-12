@@ -30,6 +30,15 @@ describe('Layer 1', () => {
     expect(t).toMatch(/only permitted undated entry/i);
     expect(t).toContain('single column');
   });
+
+  // A shipped CV collapsed Morgan Stanley into "financial institutions and tech
+  // companies" — the one marquee name on the line, dissolved.
+  it('requires the Earlier Career line to name employers individually', () => {
+    const t = machineParseability();
+    expect(t).toMatch(/NAME the employers individually/);
+    expect(t).toMatch(/is NOT a substitute for a name/);
+    expect(t).toMatch(/location where the location itself carries weight/);
+  });
 });
 
 describe('Layer 2', () => {
@@ -39,18 +48,32 @@ describe('Layer 2', () => {
     expect(t).toMatch(/Counted by words from the top/);
   });
 
-  // The generator shipped a CV whose Summary repeated three Work Experience
-  // bullets at the top of page one. Layer 2 now forbids that outright.
-  it('forbids bullets in the Summary', () => {
+  // The impact zone carries the achievements: a recruiter who reads only the top
+  // block still sees the three strongest results, so the repeat under each role
+  // is intended. Three is a ceiling, never a quota.
+  it('requires up to three role-naming achievement bullets in the Summary', () => {
     const t = humanScannability();
-    expect(t).toMatch(/Summary contains NO bullets/);
-    expect(t).not.toMatch(/three achievements are three bullets/);
+    expect(t).toMatch(/UP TO THREE achievement bullets/);
+    expect(t).toMatch(/NAMES the role and employer/);
+    expect(t).toMatch(/CEILING, never a quota/);
+    expect(t).not.toMatch(/Summary contains NO bullets/);
   });
 
-  it('tells the generator the Summary is prose and where achievements go', () => {
+  // "A veteran technology leader" opened a shipped CV — a category asserted in
+  // place of evidence, and an age signal under the Older Applicant override.
+  it('bans identity epithets in the opening', () => {
+    const t = humanScannability();
+    expect(t).toMatch(/Openers name facts, not identities/);
+    for (const word of ['veteran', 'seasoned', 'accomplished']) {
+      expect(t).toContain(word);
+    }
+  });
+
+  it('tells the generator to write those bullets into the Summary block', () => {
     const p = buildCvPrompt({ cv: 'x', analysis: {}, tone: 'Formal' });
     const text = JSON.stringify(p);
-    expect(text).toMatch(/PROSE ONLY/);
+    expect(text).toMatch(/top_three_achievements/);
+    expect(text).toMatch(/naming the role and employer it came from/);
     expect(text).toMatch(/No heading markers/);
   });
 

@@ -182,19 +182,40 @@ describe('hard block: heading depth', () => {
 });
 
 describe('warnings (checks 5-9)', () => {
-  // The Summary is prose. Bullets there repeat Work Experience at the top of the
-  // page — the exact defect a real generated CV shipped with.
-  it('warns when the Summary carries bullets at all', () => {
+  // The impact zone carries the achievements. Their duplication under the roles
+  // is deliberate: a recruiter who reads only the top block still sees them.
+  it('accepts three role-naming achievement bullets in the Summary', () => {
     const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
     expect(r.ok).toBe(true);
-    expect(codes(r)).toContain('summaryBullets');
-    expect(paramsFor(r, 'summaryBullets').count).toBe(3);
+    expect(codes(r)).not.toContain('summaryNoAchievements');
+    expect(codes(r)).not.toContain('summaryAchievementNoRole');
+    expect(codes(r)).not.toContain('summaryTooManyAchievements');
   });
 
-  it('stays silent when the Summary is prose only', () => {
+  it('warns when the Summary carries no achievements at all', () => {
     const doc = GOOD.split('\n').filter((l) => !l.startsWith('- As ')).join('\n');
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
-    expect(codes(r)).not.toContain('summaryBullets');
+    expect(codes(r)).toContain('summaryNoAchievements');
+  });
+
+  it('warns when the Summary lists more than three achievements', () => {
+    const doc = GOOD.replace(
+      '- As Delivery Manager at Borealis, introduced CI pipelines using Jenkins',
+      '- As Delivery Manager at Borealis, introduced CI pipelines using Jenkins\n- As Head of Delivery at Acme Ltd, ran a delivery org of 25 engineers'
+    );
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('summaryTooManyAchievements');
+    expect(paramsFor(r, 'summaryTooManyAchievements').count).toBe(4);
+  });
+
+  it('warns when a Summary achievement names no role or employer', () => {
+    const doc = GOOD.replace(
+      '- As Head of Delivery at Acme Ltd, ran a delivery org of 25 engineers',
+      '- Ran a delivery org of 25 engineers'
+    );
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('summaryAchievementNoRole');
+    expect(paramsFor(r, 'summaryAchievementNoRole').count).toBe(1);
   });
 
   it('warns when the impact zone runs past 120 words', () => {
@@ -251,6 +272,74 @@ describe('warnings (checks 5-9)', () => {
     const doc = GOOD + '\n### **Projects**\n- Something\n';
     const r = validateCv(doc, { master: MASTER, analysis });
     expect(codes(r)).not.toContain('projectsNoOverride');
+  });
+});
+
+// Check 10 is HARD because it is pure arithmetic: the override is active or it
+// is not, and a stray graduation year undoes the whole mitigation.
+describe('check 10 — Older Applicant (hard)', () => {
+  const OLDER = {
+    analysis: { scenario_tags: ['Older Applicant'], ats_keywords_missing: [] },
+    generation_framework: { cv_blueprint: { section_order: ['Summary', 'Work Experience', 'Education'] } },
+  };
+  const withEducation = (entry) => `${GOOD}\n### **Education**\n${entry}\n`;
+
+  it('blocks a graduation year while the override is active', () => {
+    const r = validateCv(withEducation('**BSc Computing | Leeds University | 1994**'), { master: MASTER, analysis: OLDER });
+    expect(r.ok).toBe(false);
+    // Specifically check 10, not check 1 also objecting to an untraced number.
+    expect(r.hard.some((h) => /Older Applicant override strips graduation years/.test(h) && h.includes('1994'))).toBe(true);
+  });
+
+  it('passes the same Education entry with the year stripped', () => {
+    const r = validateCv(withEducation('**BSc Computing | Leeds University**'), { master: MASTER, analysis: OLDER });
+    expect(r.ok).toBe(true);
+  });
+
+  // Without the override the year is legitimate, so check 10 must say nothing
+  // about it. (Check 1 still blocks it as an untraceable number — that is a
+  // different rule, and the assertion is deliberately about check 10 only.)
+  it('leaves graduation years alone when the override is NOT active', () => {
+    const r = validateCv(withEducation('**BSc Computing | Leeds University | 1994**'), { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toContain('Older Applicant');
+  });
+
+  it('blocks a stated career total', () => {
+    const r = validateCv(GOOD.replace('Delivery leader who rebuilt', 'Delivery leader with 20+ years who rebuilt'), { master: MASTER, analysis: OLDER });
+    expect(r.ok).toBe(false);
+    expect(r.hard.join(' ')).toMatch(/20\+?\s*years/);
+  });
+});
+
+describe('check 11 — Earlier Career names a real employer', () => {
+  const earlier = (subtitle) => `${GOOD}\n#### **Earlier Career**\n**${subtitle}**\n`;
+
+  it('warns when every employer is dissolved into a category', () => {
+    const r = validateCv(earlier('Senior QA Engineer and UX Manager at financial institutions and tech companies'), { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('earlierCareerNoEmployer');
+  });
+
+  it('stays silent when the line names an employer from the master', () => {
+    const r = validateCv(earlier('Senior QA Engineer and UX Manager — Borealis, Acme Ltd'), { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).not.toContain('earlierCareerNoEmployer');
+  });
+});
+
+describe('check 12 — identity epithets', () => {
+  it('warns when the Summary opens on what the candidate IS', () => {
+    const r = validateCv(GOOD.replace('Delivery leader who rebuilt', 'A veteran delivery leader who rebuilt'), { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('identityEpithet');
+    expect(paramsFor(r, 'identityEpithet').list).toContain('veteran');
+  });
+
+  it('catches an epithet in the headline above the first section', () => {
+    const r = validateCv(GOOD.replace('**Head of Delivery | Platform Teams**', '**Seasoned Head of Delivery**'), { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('identityEpithet');
+  });
+
+  it('stays silent on a fact-led opening', () => {
+    const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).not.toContain('identityEpithet');
   });
 });
 

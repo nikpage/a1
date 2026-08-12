@@ -2,6 +2,7 @@
 
 
 import { saveAs } from 'file-saver';
+import { isSlot } from '../prompts/cv-sections.js';
 import {
 Document,
 Packer,
@@ -324,9 +325,15 @@ if (raw.startsWith('- ') || raw.startsWith('• ') || /^<li>.*<\/li>$/i.test(raw
 }
 
 if (cleaned) {
+  // The Summary's value proposition is justified — it is the one real block of
+  // prose on the page and a flush right edge reads as deliberate. Everything
+  // else (bullets, company lines) stays left-aligned: justification stretches
+  // word spacing, which looks broken on short lines.
+  const isSummaryProse = isSlot('summary', currentSectionTitle);
   docParagraphs.push(new Paragraph({
     children: makeRuns(cleanedMd, styles.bodyText),
     spacing: { after: 200 },
+    ...(isSummaryProse ? { alignment: AlignmentType.JUSTIFIED } : {}),
     keepLines: true,
     keepNext: inJobBlock,
   }));

@@ -71,10 +71,10 @@ Every CV carries a headline: one short line directly under the name, before the 
 
 # The summary — and the impact zone inside it
 The Summary section IS the impact zone (Layer 2). It has two parts:
-1. **Value proposition** — 2-4 sentences, written by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register. Impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`.
-2. **No bullets.** The Summary is prose only. Do NOT list achievements here — they belong under the role that produced them, where the reader sees their context. A bulleted summary duplicates the Work Experience section and wastes the most valuable space on the page.
+1. **Value proposition** — 2-3 sentences, written by adapting \`generation_framework.cv_blueprint.summary_draft\` into the "${tone}" voice: keep its facts and impact, change the register. Impact-first, no "Seeking to" / "Looking to" openers. Reflect \`analysis.career_arc\` and, where relevant, \`analysis.parallel_experience\`. Open on a FACT — something this person did or built — never on what they are: "veteran", "seasoned", "accomplished", "industry expert" and the like are banned here.
+2. **Up to three achievement bullets**, immediately beneath that prose and inside the Summary block, taken from \`generation_framework.cv_blueprint.top_three_achievements\`. Each NAMES the role and employer it came from ("As Head of Experience Design at Česká spořitelna, built..."), so it stands as evidence rather than a floating claim. It is fine — intended, in fact — that the same achievement appears again as a bullet under its own role: the recruiter who reads only the top block still sees the three strongest results. Print only as many as the master genuinely evidences; three is a ceiling, not a quota, and one real achievement gets one bullet.
 
-The headline and those 2-4 sentences together must fit inside the first ~120 words of the document. Count the words before you move on; if you are over, tighten the prose.
+The headline, those 2-3 sentences and the achievement bullets together must fit inside the first ~120 words of the document. Count the words before you move on; if you are over, tighten the prose first — never drop an evidenced achievement to make room.
 
 # Job history rules
 - Use the master CV's \`experience[]\` as the definitive source for all employment (roles, companies, dates, locations, achievements) — this includes any nested \`contracts[]\` inside a merged parent entry, which carry real detail that must not be lost; follow the blueprint's job_selection exactly.
@@ -117,7 +117,10 @@ ${sectionNameBlock(language)}
 The English names in the template below identify WHICH section is which; write each heading in the document's own language using the names above.
 
 ### **Summary**
-[The 2-4 sentence value proposition you wrote — adapted from summary_draft into the "${tone}" tone, impact-first. PROSE ONLY — no bullets in this section.]
+[The 2-3 sentence value proposition you wrote — adapted from summary_draft into the "${tone}" tone, impact-first, opening on a FACT rather than on what the candidate IS.]
+<!-- BLOCK:START -->
+- [Achievement from top_three_achievements, naming the role and employer it came from — up to three, only as many as the master evidences]
+<!-- BLOCK:END -->
 
 ---
 

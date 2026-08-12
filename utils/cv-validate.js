@@ -218,22 +218,58 @@ function checkStructure(document, analysis, hard) {
 
 // ---- checks 5-9: warnings ---------------------------------------------------
 
-// 5. Impact zone: the Summary is prose within ~120 words — headline + proposition.
-function checkImpactZone(document, warnings) {
+// 5. Impact zone: headline + proposition + the evidenced achievements (up to
+//    three), each naming its role, all inside ~120 words.
+//
+//    The achievement bullets are REQUIRED, and their duplication further down the
+//    document is deliberate — a recruiter who reads only the top block still sees
+//    the three strongest results. The ceiling is three but the floor is what the
+//    master evidences, so a thin record legitimately shows fewer; only an empty
+//    Summary block is reported.
+function checkImpactZone(document, master, warnings) {
   const sections = splitSections(document);
   const summary = sections[0];
   if (!summary) {
     warnings.push({ code: 'noSections' });
     return;
   }
-  // The Summary is prose. Bullets there duplicate Work Experience and push the
-  // value proposition out of the space a recruiter actually reads.
-  const bullets = summary.lines.filter((l) => /^\s*[-*•]\s+/.test(l));
-  if (bullets.length > 0) {
-    warnings.push({ code: 'summaryBullets', params: { count: bullets.length } });
+  const bullets = summary.lines.filter((l) => /^\s*[-*•]\s+/.test(l)).map((l) => l.replace(/^\s*[-*•]\s+/, ''));
+  if (bullets.length === 0) {
+    warnings.push({ code: 'summaryNoAchievements' });
+  } else if (bullets.length > 3) {
+    warnings.push({ code: 'summaryTooManyAchievements', params: { count: bullets.length } });
   }
+
+  // Each bullet must name the role or employer it came from. The master's own
+  // titles and companies are the only accepted evidence of that, so a record we
+  // cannot parse reports nothing rather than guessing.
+  const sources = masterRoleNames(master);
+  if (sources.length) {
+    const unattributed = bullets.filter((b) => {
+      const low = plain(b).toLowerCase();
+      return !sources.some((s) => low.includes(s));
+    });
+    if (unattributed.length) {
+      warnings.push({ code: 'summaryAchievementNoRole', params: { count: unattributed.length } });
+    }
+  }
+
   const count = words(summary.lines.join(' ')).length;
   if (count > 120) warnings.push({ code: 'impactZoneWords', params: { count } });
+}
+
+// Every role title and company the master records, lowercased — used to check
+// that a Summary achievement names where it came from.
+function masterRoleNames(master) {
+  const experience = Array.isArray(master?.parsed?.experience) ? master.parsed.experience : [];
+  const names = [];
+  for (const role of experience) {
+    for (const key of ['title', 'role', 'company', 'employer']) {
+      const v = role?.[key];
+      if (typeof v === 'string' && v.trim().length > 2) names.push(v.trim().toLowerCase());
+    }
+  }
+  return names;
 }
 
 // 6. Bullet ceilings, and the metric-fallback share where metrics exist.
@@ -321,6 +357,78 @@ function checkProjects(document, analysis, warnings) {
   }
 }
 
+// 10. Older Applicant, HARD: the override's two arithmetic promises. A stray
+//     graduation year or a career total undoes the whole mitigation, and code can
+//     settle both beyond doubt — so this blocks rather than warns.
+const OLDER_APPLICANT_TAG = 'older applicant';
+
+function checkOlderApplicant(document, analysis, hard) {
+  const active = scenarioTags(analysis).some((t) => t.toLowerCase() === OLDER_APPLICANT_TAG);
+  if (!active) return;
+
+  const sections = splitSections(document);
+  for (const s of sections) {
+    if (!isSlot('education', s.heading)) continue;
+    for (const line of s.lines) {
+      const year = plain(line).match(/\b(19|20)\d{2}\b/);
+      if (year) {
+        hard.push(`Education entry "${plain(line).trim()}" still carries the year ${year[0]}; the Older Applicant override strips graduation years from EVERY Education entry.`);
+      }
+    }
+  }
+
+  // "12+ years", "20 + years", "a decade of" — any stated career total.
+  const doc = plain(String(document || ''));
+  const total = doc.match(/\b\d+\s*\+?\s*(years|let|lat)\b|\b(a|over a)\s+decade\b/i);
+  if (total) {
+    hard.push(`The CV states a career total ("${total[0].trim()}"); the Older Applicant override forbids "X+ years" anywhere.`);
+  }
+}
+
+// 11. The Earlier Career line names at least one real employer from the master.
+//     A category ("financial institutions and tech companies") dissolves the
+//     marquee name that is the only reason the line is worth printing.
+function checkEarlierCareer(document, master, warnings) {
+  if (!master.parsed) return;
+  const companies = [];
+  for (const role of Array.isArray(master.parsed.experience) ? master.parsed.experience : []) {
+    for (const key of ['company', 'employer']) {
+      const v = role?.[key];
+      if (typeof v === 'string' && v.trim().length > 2) companies.push(v.trim().toLowerCase());
+    }
+  }
+  if (!companies.length) return;
+
+  for (const s of splitSections(document)) {
+    for (const role of parseRoles(s)) {
+      if (!isEarlierCareer(role.title)) continue;
+      const text = `${plain(role.subtitle)} ${role.bullets.join(' ')}`.toLowerCase();
+      if (!companies.some((c) => text.includes(c))) {
+        warnings.push({ code: 'earlierCareerNoEmployer' });
+      }
+    }
+  }
+}
+
+// 12. No identity epithet in the headline or Summary — a category asserted in
+//     place of evidence, and an age signal in the one place it hurts most.
+const EPITHETS = [
+  'veteran', 'seasoned', 'accomplished', 'industry expert', 'technology leader',
+  'thought leader', 'world-class', 'renowned', 'distinguished',
+];
+
+function checkEpithets(document, warnings) {
+  const sections = splitSections(document);
+  // The headline sits above the first `###`, so it is not in any section.
+  const head = plain(String(document || '').split(/^###\s+/m)[0] || '');
+  const summary = sections[0] ? plain(sections[0].lines.join(' ')) : '';
+  const text = `${head} ${summary}`.toLowerCase();
+  const found = EPITHETS.filter((e) => new RegExp(`\\b${e}\\b`, 'i').test(text));
+  if (found.length) {
+    warnings.push({ code: 'identityEpithet', params: { list: found.join(', ') } });
+  }
+}
+
 // ---- the validator ----------------------------------------------------------
 
 export function validateCv(document, { master = '', analysis = null, language = 'auto' } = {}) {
@@ -332,12 +440,15 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkDates(document, m, hard);
   checkRolesReal(document, m, hard);
   checkStructure(document, analysis, hard);
+  checkOlderApplicant(document, analysis, hard);
 
-  checkImpactZone(document, warnings);
+  checkImpactZone(document, m, warnings);
   checkBullets(document, m, language, warnings);
   checkMarket(document, m, warnings);
   checkGaps(analysis, warnings);
   checkProjects(document, analysis, warnings);
+  checkEarlierCareer(document, m, warnings);
+  checkEpithets(document, warnings);
 
   return { ok: hard.length === 0, hard, warnings };
 }
