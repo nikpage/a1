@@ -54,12 +54,15 @@ describe('deep pass is split into blueprint + review', () => {
 
     expect(p).toContain('"overall_score"');
     expect(p).toContain('"ats_score"');
-    expect(p).toContain('"overall_commentary"');
     expect(p).toContain('"quick_wins"');
     expect(p).toContain('"action_items"');
-    expect(p).toContain('"cv_format_analysis"');
-    expect(p).toContain('"cultural_fit"');
-    expect(p).toContain('"final_thought"');
+    // mothballed prose fields: the review half no longer asks for them
+    expect(p).not.toContain('"overall_commentary"');
+    expect(p).not.toContain('"cv_format_analysis"');
+    expect(p).not.toContain('"cultural_fit"');
+    expect(p).not.toContain('"style_wording"');
+    expect(p).not.toContain('"suitable_positions"');
+    expect(p).not.toContain('"final_thought"');
 
     expect(p).not.toContain('"generation_framework"');
     expect(p).not.toContain('"summary_draft"');

@@ -42,11 +42,14 @@ describe('buildAnalysisPrompt — delta mode (teaser supplied)', () => {
     expect(p).toContain('generation_framework');
     expect(p).toContain('skills_to_highlight');
     expect(p).toContain('action_items');
-    // carried fields must NOT be in the output schema (no re-emit / re-spend)
+    // the review half's fields must NOT be in the blueprint's output schema
+    // (they appear only inside the echoed teaser JSON, with a real value)
+    expect(p).not.toContain('"overall_score": "0-10"');
+    expect(p).not.toContain('"action_items": {');
+    // mothballed fields are asked for by no pass at all (the string that does
+    // appear is the teaser JSON echoed back as context, not a schema slot)
     expect(p).not.toContain('"overall_commentary": ""');
-    expect(p).not.toContain('"career_arc": ""');
     expect(p).not.toContain('"final_thought": ""');
-    expect(p).not.toContain('"positioning_strategy": ""');
   });
 
   test('still drives job_extraction when a job ad is present', () => {
@@ -58,9 +61,12 @@ describe('buildAnalysisPrompt — delta mode (teaser supplied)', () => {
   test('no-teaser path is unchanged: full schema still emits carried fields', () => {
     const p = buildAnalysisPrompt(SAMPLE_CV, SAMPLE_JOB, true, null)
       .find(m => m.role === 'user').content;
-    expect(p).toContain('"overall_commentary": ""');
-    expect(p).toContain('"final_thought": ""');
     expect(p).toContain('"positioning_strategy": ""');
+    expect(p).toContain('"career_arc": ""');
+    // mothballed: the standalone schema no longer carries them either
+    expect(p).not.toContain('"overall_commentary"');
+    expect(p).not.toContain('"final_thought"');
+    expect(p).not.toContain('"cv_format_analysis"');
     expect(p).not.toContain('first-pass TEASER');
   });
 });

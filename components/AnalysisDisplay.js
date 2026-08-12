@@ -77,20 +77,19 @@ export default function AnalysisDisplay({ analysis }) {
   const a = data.analysis || {};
   const any = (...vals) => vals.some((v) => !isEmpty(v));
 
-  const hasSummary =
-    data.summary && typeof data.summary === 'object'
-      ? any(data.summary.fit_summary, data.summary.cover_letter_focus)
-      : !isEmpty(data.summary);
-  const hasAssessment = any(a.cv_format_analysis, a.style_wording, a.ats_keywords_present, a.ats_keywords_missing);
-  const hasFit = hasJobMatch
-    ? any(a.cultural_fit, a.overall_commentary)
-    : any(a.cultural_fit, a.overall_commentary, a.suitable_positions, a.career_arc, a.parallel_experience, a.transferable_skills);
+  // MOTHBALLED (see prompts/analysis.js): the read-out shows only what the user
+  // can act on. summary/fit_summary, overall_commentary, cv_format_analysis,
+  // cultural_fit, style_wording, suitable_positions and final_thought are no
+  // longer generated or rendered; career_arc, parallel_experience and
+  // transferable_skills are still generated (the CV generator reads them) but
+  // are not shown. Revive by restoring the <Field> rows and the prompt slots.
+  const hasAssessment = any(a.ats_keywords_present, a.ats_keywords_missing);
   const hasScores = any(a.overall_score, a.ats_score);
   const hasActionItems = a.action_items && Object.values(a.action_items).some(
     (cats) => cats && Object.values(cats).some((items) => Array.isArray(items) && items.filter((x) => !isEmpty(x)).length > 0)
   );
   const hasSuggestions = any(data.job_match?.positioning_strategy, data.job_match?.career_scenario) || hasActionItems;
-  const hasAnalysis = hasScores || hasAssessment || hasFit || any(a.quick_wins, a.red_flags);
+  const hasAnalysis = hasScores || hasAssessment || any(a.quick_wins, a.red_flags);
 
   return (
     <div className="analysis-fix">
@@ -119,22 +118,6 @@ export default function AnalysisDisplay({ analysis }) {
               </div>
             }
           />
-        )}
-        {hasSummary && (
-        <Section
-          title={t('summary')}
-          content={
-            data.summary && typeof data.summary === 'object' ? (
-              <div>
-                <div><strong>{t('fitSummary')}</strong> {data.summary.fit_summary}</div>
-                <div><strong>{t('coverLetterRecommended')}</strong> {data.summary.cover_letter_recommended ? t('yes') : t('no')}</div>
-                <div><strong>{t('coverLetterFocus')}</strong> {data.summary.cover_letter_focus?.join(', ')}</div>
-              </div>
-            ) : (
-              data.summary
-            )
-          }
-        />
         )}
         <Section
           title={t('cvData')}
@@ -182,29 +165,10 @@ export default function AnalysisDisplay({ analysis }) {
               {hasAssessment && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('cvAssessment')}</h3>
-                <Field label={t('structureLength')} value={a.cv_format_analysis} />
-                <Field label={t('writingStyle')} value={a.style_wording} />
                 <Field label={t('atsOptimization')} value={a.ats_keywords_present} />
                 <Field label={t('atsGaps')} value={a.ats_keywords_missing} />
               </div>
               )}
-              {hasFit && (hasJobMatch ? (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('applicantFit')}</h3>
-                  <Field label={t('culturalFit')} value={a.cultural_fit} />
-                  <Field label={t('jobMatchCommentary')} value={a.overall_commentary} />
-                </div>
-              ) : (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('generalAssessment')}</h3>
-                  <Field label={t('culturalFit')} value={a.cultural_fit} />
-                  <Field label={t('commentary')} value={a.overall_commentary} />
-                  <Field label={t('suitablePositions')} value={a.suitable_positions} />
-                  <Field label={t('careerArc')} value={a.career_arc} />
-                  <Field label={t('parallelExperience')} value={a.parallel_experience} />
-                  <Field label={t('transferableSkills')} value={a.transferable_skills} />
-                </div>
-              ))}
               <ListField label={t('quickWins')} items={a.quick_wins} />
               <ListField label={t('redFlags')} items={a.red_flags} />
             </div>
@@ -245,9 +209,6 @@ export default function AnalysisDisplay({ analysis }) {
             </div>
           }
         />
-        )}
-        {!isEmpty(data.final_thought) && (
-          <Section title={t('finalThought')} content={<div>{data.final_thought}</div>} />
         )}
       </div>
     </div>

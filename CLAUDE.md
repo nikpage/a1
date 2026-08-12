@@ -23,7 +23,7 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, and the SQL
 | Database | Supabase (service-role key only; anon key never used for writes) |
 | Sessions / rate-limit | Upstash Redis (`@upstash/redis` + `@upstash/ratelimit`) |
 | Payments | Stripe |
-| Email | Resend |
+| Email | Resend (configured) — **but the magic-link route actually sends via nodemailer/Gmail SMTP**, see Security rules |
 | AI | **Gemini** (model constants in `utils/openai.js`; currently `gemini-2.5-flash-lite`) |
 | Styling | Tailwind CSS |
 | i18n | react-i18next, namespace JSON in `locales/{en,cs,pl}/` registered in `i18n.js` |
@@ -139,6 +139,18 @@ Gemini analysis runs longer than Netlify's 10s synchronous function limit (which
 - All three entry points (landing page, CV uploader, Start-Fresh modal) go through `utils/uploadAndAnalyze.js` — keep them on that single helper.
 - `/.netlify/functions/*` are **not** served by `next dev`; test locally with `doppler run -- netlify dev`.
 
+### Mothballed analysis fields (kept for revival — do not "restore" them casually)
+
+The read-out is deliberately trimmed to what the candidate can **act on**. These prose fields are **no longer requested by any prompt, no longer filled by `formatAnalysis`, and no longer rendered**:
+
+`summary` (incl. `fit_summary`), `analysis.overall_commentary`, `analysis.cv_format_analysis`, `analysis.cultural_fit`, `analysis.style_wording`, `analysis.suitable_positions`, `final_thought`.
+
+They are **mothballed, not dead** — Nik may want them back. Their absence is intentional; an agent that finds a "missing" field must not re-add it without being asked. To revive one: put its field instruction + schema slot back in **both** prompt bodies in `prompts/analysis.js` (the `review` half and the standalone path), add its key to `REQUIRED_SCHEMA` in `utils/formatAnalysis.js`, and re-add its `<Field>` in `components/AnalysisDisplay.js`. Locale strings for all of them are still in `locales/*/analysisDisplay.json`.
+
+Still generated but **not displayed**: `analysis.career_arc`, `parallel_experience`, `transferable_skills` — the CV generator consumes them through `prompts/analysis-brief.js`. Do not drop them from the blueprint pass.
+
+What remains on screen: scores, ATS keywords present/missing, `quick_wins`, `red_flags`, `action_items`, `positioning_strategy`, and the teaser's first-impression block (verdicts, snags, `hr_first_seconds`, `nuance_clarifications`).
+
 ## Sacred files — do not rewrite or inline
 
 ```
@@ -191,7 +203,7 @@ Every API route that touches state or PII is wrapped in `requireAuth` (`lib/requ
 4. Token mutations go through Supabase RPCs (`add_tokens`, `decrement_token`, `decrement_generations`) — never read-modify-write.
 5. The Stripe webhook dedupes on `event.id` via Redis `NX`; `runGeneration()` holds a per-user `gen_lock` (Redis `NX`, 600s, released in `finally`) to block double-submissions.
 6. All DB access goes through `utils/database.js`. Writes use the service-role client (`getAdminSupabase()`); the anon client is for reads only. No `createClient` calls in route files.
-7. Magic-link email uses Resend (`RESEND_FROM_EMAIL`). Users delete their own account and all data via `DELETE /api/delete-account` → `deleteUserData()`.
+7. **Magic-link email — the code and this doc disagreed; the code is:** `pages/api/auth/send-magic-link.js` sends through **nodemailer over Gmail SMTP**, with the sender address `pod.one@gmail.com` hardcoded and the password in `GMAIL_APP_PASSWORD`. Resend (`RESEND_API_KEY` / `RESEND_FROM_EMAIL`) is still configured but this route does not use it. Two open defects, deliberately left as-is until Nik decides: the hardcoded personal sender, and the 500 response leaking `detail: mailErr.message` to the client. Users delete their own account and all data via `DELETE /api/delete-account` → `deleteUserData()`.
 
 ## Key environment variables
 

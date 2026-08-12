@@ -16,7 +16,9 @@
 // So the generators get an ALLOWLIST — only the fields their prompts actually
 // name and act on. Everything user-facing is withheld.
 //
-// Deliberately excluded, and why:
+// Deliberately excluded, and why (several are now MOTHBALLED outright — no
+// longer generated or displayed at all; see the MOTHBALLED note in
+// prompts/analysis.js. The allowlist below is unaffected either way):
 //   overall_score / ats_score, overall_commentary, final_thought, summary
 //     — a verdict on the OLD CV. The writer is producing a new one.
 //   cv_format_analysis, style_wording, cultural_fit, suitable_positions

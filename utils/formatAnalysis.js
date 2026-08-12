@@ -1,8 +1,11 @@
 // utils/formatAnalysis.js
 
+// MOTHBALLED (see prompts/analysis.js): summary, cv_format_analysis,
+// cultural_fit, overall_commentary, suitable_positions, style_wording and
+// final_thought are no longer generated or displayed, so they are no longer
+// filled in here. Put the key back in this schema to revive one.
 const REQUIRED_SCHEMA = {
   candidate_core: "",
-  summary: "",
   cv_data: {
     Name: "",
     Seniority: "",
@@ -22,15 +25,10 @@ const REQUIRED_SCHEMA = {
     overall_score: "0-10",
     ats_score: "0-10",
     scenario_tags: [],
-    cv_format_analysis: "",
-    cultural_fit: "",
     red_flags: "",
-    overall_commentary: "",
-    suitable_positions: "",
     career_arc: "",
     parallel_experience: "",
     transferable_skills: "",
-    style_wording: "",
     ats_keywords_present: "",
     ats_keywords_missing: "",
     action_items: {
@@ -51,8 +49,7 @@ const REQUIRED_SCHEMA = {
     inferred_keywords: "n/a",
     career_scenario: "n/a",
     positioning_strategy: "n/a"
-  },
-  final_thought: ""
+  }
 };
 
 function extractFirstJsonObject(text) {

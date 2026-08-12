@@ -18,6 +18,18 @@ import { currentDateBlock, currentDateReminder } from './current-date.js';
 // away and reports "clean", so those questions are computed deterministically
 // from the master's verbatim dates in utils/master-issues.js — NOT by this pass.
 
+// MOTHBALLED (not deleted — may be revived): the read-out is trimmed to what the
+// user can ACT on, so these prose fields are no longer requested by any pass and
+// no longer rendered. Their field instructions and schema slots were removed from
+// the review + standalone prompts here, and their rendering from
+// components/AnalysisDisplay.js. To revive one, put its instruction line and its
+// schema slot back in BOTH prompt bodies and re-add its <Field> in the display.
+//   summary (fit_summary), overall_commentary, cv_format_analysis, cultural_fit,
+//   style_wording, suitable_positions, final_thought
+// Still GENERATED but no longer displayed, because the CV generator consumes them
+// via prompts/analysis-brief.js: career_arc, parallel_experience,
+// transferable_skills. Do not drop them from the blueprint pass.
+//
 // Fields carried verbatim from the teaser — the delta call must NOT re-emit them.
 const CARRIED_FROM_TEASER = [
   'cv_data',
@@ -35,8 +47,8 @@ const CARRIED_FROM_TEASER = [
 //   'blueprint' — ONLY what the CV/cover generators actually execute
 //                 (generation_framework, jobs_extracted, positioning, the skill
 //                 and keyword evidence, red flags to neutralise, job_extraction).
-//   'review'    — ONLY what the user reads on screen (scores, commentary,
-//                 quick wins, action items, format/culture/style, final thought).
+//   'review'    — ONLY what the user reads on screen and can act on: scores,
+//                 quick wins, action items. (See MOTHBALLED below.)
 // Each call spends its whole budget on its own half. `mode` is required on the
 // teaser path; the standalone (no-teaser) path still emits the full schema.
 export function buildAnalysisPrompt(cvText, jobText, hasJobText, teaser = null, mode = 'blueprint', now = new Date()) {
@@ -181,39 +193,25 @@ ANALYSIS FRAMEWORK:
 ${scenarioBlock}
 
 ${noJobBlock}FIELD INSTRUCTIONS:
-- summary: 1-2 sentence attention-grabbing TL;DR of the candidate's real situation that makes the reader want to keep reading.
 - analysis.overall_score / analysis.ats_score: each "0-10", honest; consistent with the teaser's verdicts.
-- analysis.overall_commentary: 2-3 sentences. Open by naming a concrete thing this person actually did (a fact, no adjective), then name the ONE tension diluting it as a fixable thing. No praise words.
-- analysis.cv_format_analysis: MUST review length (with page count), structure and design.
-- analysis.cultural_fit: ${hasJobText ? `review the CV against the customs of the JOB's country.` : `review the CV against the customs of its OWN country (cv_data.Country). Do NOT invent a target country, city or market.`}
-- analysis.style_wording: tone, clarity and professionalism, quoting CV wording; MUST include length advice.
-- analysis.suitable_positions: ARRAY of concrete role titles this candidate is well-positioned to win.
 - analysis.quick_wins: ARRAY of high-impact, low-effort fixes, each naming the exact change (e.g. "Move the AWS certification above the fold"). Every win must operate on content the CV ALREADY contains (move, reorder, relabel, cut, reframe). NEVER an instruction to add, mention, introduce or highlight a skill, tool, technology or achievement the CV does not prove — see the REFRAME vs ADD rule.
 - analysis.action_items.cv_changes (critical / advised / optional): every item must reframe, reorder, relabel, condense or cut content the CV ALREADY contains. NEVER instruct the writer to ADD, MENTION, INTRODUCE or HIGHLIGHT a skill, tool, technology, domain or achievement the CV does not evidence — that is fabrication. The critical list MUST include length reduction if the CV is too long.
 - analysis.action_items["Cover Letter"]["Points to Address"] / ["Narrative Flow"]: concrete, drawn from this candidate's real history and (where present) the job ad.
 - analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.
 - job_data: the target job's details from the ad${hasJobText ? '' : ' — "n/a" everywhere, no job ad was given'}.
-- final_thought: 1-2 sentences — name the current overall_score and the ONE highest-impact change that would move it up. Plain, concrete, no hype.
 
 OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field above, and do NOT emit generation_framework, jobs_extracted, candidate_core or job_extraction — another pass owns those):
 {
-  "summary": "",
   "job_data": { "Position": "${hasJobText ? '' : 'n/a'}", "Seniority": "${hasJobText ? '' : 'n/a'}", "Company": "${hasJobText ? '' : 'n/a'}", "Industry": "${hasJobText ? '' : 'n/a'}", "Country": "${hasJobText ? '' : 'n/a'}", "HR Contact": "" },
   "analysis": {
     "overall_score": "0-10",
     "ats_score": "0-10",
-    "overall_commentary": "",
-    "cv_format_analysis": "",
-    "cultural_fit": "",
-    "style_wording": "",
-    "suitable_positions": [],
     "quick_wins": [],
     "action_items": {
       "cv_changes": { "critical": [], "advised": [], "optional": [] },
       "Cover Letter": { "Points to Address": [], "Narrative Flow": [], "Tone and Style": [] }
     }
-  },
-  "final_thought": ""
+  }
 }
 
 CV CONTENT:
@@ -255,22 +253,17 @@ SCENARIO HANDLING — once you choose the scenario(s), your positioning_strategy
 ${scenarioHandling(hasJobText)}
 
 ${!hasJobText ? `NO JOB AD PROVIDED — STANDALONE CV REVIEW:
-No job description was given, so there is NO target role, company, location, industry or market to measure against. Do NOT invent one — no hypothetical target market, no assumed seniority jump, no keywords for a role the candidate never named. (Locations, industries or tools that appear in the CV itself are real facts and may be used; only an invented target is forbidden.) Assess the CV on its own merits and against the norms of its OWN country (cv_data.Country). Every job-relative field stays neutral: job_data, job_match.* and job_extraction stay "n/a"; analysis.ats_keywords_missing MUST be an empty array (you cannot be "missing" keywords with no job to compare against); positioning_strategy describes how to strengthen the CV for the kind of roles already in suitable_positions, asserting no unproven skill or target.
+No job description was given, so there is NO target role, company, location, industry or market to measure against. Do NOT invent one — no hypothetical target market, no assumed seniority jump, no keywords for a role the candidate never named. (Locations, industries or tools that appear in the CV itself are real facts and may be used; only an invented target is forbidden.) Assess the CV on its own merits and against the norms of its OWN country (cv_data.Country). Every job-relative field stays neutral: job_data, job_match.* and job_extraction stay "n/a"; analysis.ats_keywords_missing MUST be an empty array (you cannot be "missing" keywords with no job to compare against); positioning_strategy describes how to strengthen the CV for the kind of roles the CV itself already evidences, asserting no unproven skill or target.
 
 ` : ''}FIELD INSTRUCTIONS (apply when filling the schema below):
 ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extract ONLY what is literally stated in the ad — quote exact phrasing where possible. Use empty arrays where the ad is silent. NEVER invent, infer, or embellish.
 ` : ''}
 - candidate_core: 2-3 sentences capturing WHO THIS CANDIDATE IS across any job — the durable through-line of what they bring (e.g. the kind of value, leadership, or domain depth that travels with them), drawn ONLY from real evidence in the CV. Job-agnostic: do not mention the target job. This becomes the candidate's editable profile and a steering principle for future documents — so make it identity-level and true, never aspirational or invented.
-- summary: 1-2 sentence attention-grabbing TL;DR of the candidate's real situation that makes the reader want to keep reading.
 - analysis.career_arc: 1-4 sentences telling the honest-but-flattering story of this candidate's trajectory — where they've been heading and why it's compelling.
 - analysis.parallel_experience: side projects, teaching, speaking, volunteering, certifications drawn ONLY from the CV that strengthen the candidate.
 - analysis.transferable_skills: skills from past roles that support the target direction; quote the exact CV phrases that prove them.
-- analysis.suitable_positions: ARRAY of concrete role titles this candidate is well-positioned to win.
 - analysis.red_flags: ARRAY of specific concerns a recruiter would flag (e.g. "14-month gap 2021-2022", "4 jobs in 3 years"), each one short and concrete. Empty array if genuinely none.
 - analysis.quick_wins: ARRAY of high-impact, low-effort fixes, each naming the exact change (e.g. "Move the AWS certification above the fold"). Every win must operate on content the CV ALREADY contains (move, reorder, relabel, cut, reframe). NEVER an instruction to add, mention, introduce or highlight a skill, tool, technology or achievement the CV does not prove — see the REFRAME vs ADD rule.
-- analysis.cv_format_analysis: MUST review length (with page count), structure and design.
-- analysis.cultural_fit: ${hasJobText ? `review the CV against the customs of the JOB's country.` : `review the CV against the customs of its OWN country (cv_data.Country). Do NOT invent a target country, city or market.`}
-- analysis.style_wording: tone, clarity and professionalism, quoting CV wording; MUST include length advice.
 - analysis.ats_keywords_present: strong terms the CV ALREADY EARNS, quoting the exact CV phrase that proves each. A keyword is PRESENT if the CV demonstrates the concept — not just the exact phrase. Examples: "managed a team of 8" satisfies "people management"; "reduced churn by 30%" satisfies "retention"; "built CI/CD pipelines" satisfies "DevOps". Be generous and thorough here: surface every term the candidate has genuinely earned but under-labelled — this is where honest ATS gains come from. These are safe to put on the CV.
 - analysis.ats_keywords_missing: ${hasJobText ? `important job-ad terms for which the CV shows NO evidence at all (e.g. a named tool/language/certification the candidate never demonstrates). These are ADVICE TO THE CANDIDATE ONLY — list them so the user can add them IF true. They must NEVER be treated as facts about the candidate, must NEVER feed skills_to_highlight, and must NEVER appear on the generated CV. Empty if none.` : `MUST be an empty array. With no job ad there is no target to be "missing" keywords against — do NOT invent generic industry keywords for a role the candidate never named.`}
 - analysis.action_items.cv_changes (critical / advised / optional): every item must reframe, reorder, relabel, condense or cut content the CV ALREADY contains. NEVER instruct the writer to ADD, MENTION, INTRODUCE or HIGHLIGHT a skill, tool, technology, domain or achievement the CV does not evidence — that is fabrication under the REFRAME vs ADD rule. Skills the candidate is missing for the target job go in ats_keywords_missing only. The critical list MUST include length reduction if the CV is too long.
@@ -290,7 +283,6 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 JSON OUTPUT SCHEMA:
 {
   "candidate_core": "",
-  "summary": "",
   "cv_data": { "Name": "", "Seniority": "", "Industry": "", "Country": "" },
   "job_data": { "Position": "n/a", "Seniority": "n/a", "Company": "n/a", "Industry": "n/a", "Country": "n/a", "HR Contact": "" },
   "jobs_extracted": [],
@@ -298,16 +290,11 @@ JSON OUTPUT SCHEMA:
     "overall_score": "0-10",
     "ats_score": "0-10",
     "scenario_tags": [],
-    "cv_format_analysis": "",
-    "cultural_fit": "",
     "red_flags": [],
     "quick_wins": [],
-    "overall_commentary": "",
-    "suitable_positions": [],
     "career_arc": "",
     "parallel_experience": "",
     "transferable_skills": "",
-    "style_wording": "",
     "ats_keywords_present": "",
     "ats_keywords_missing": "",
     "action_items": {
@@ -344,8 +331,7 @@ JSON OUTPUT SCHEMA:
       "skills_to_highlight": []
     },
     "target_cover_words": ""
-  },
-  "final_thought": ""${hasJobText ? `,
+  }${hasJobText ? `,
   "job_extraction": {
     "position_title": "",
     "company": "",
