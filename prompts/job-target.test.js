@@ -74,7 +74,7 @@ describe('the generators receive the ad', () => {
     const header = user.content.indexOf('# The target job');
     expect(header).toBeGreaterThan(-1);
     expect(user.content.indexOf('- 5+ years Kubernetes in production')).toBeGreaterThan(header);
-    expect(header).toBeLessThan(user.content.indexOf('## Analysis:'));
+    expect(header).toBeLessThan(user.content.indexOf('## Analysis ('));
   });
 
   it('states the target job to the cover-letter prompt, before the analysis dump', () => {
@@ -82,7 +82,7 @@ describe('the generators receive the ad', () => {
     const header = user.content.indexOf('# The target job');
     expect(header).toBeGreaterThan(-1);
     expect(user.content.indexOf('Company: Northwind')).toBeGreaterThan(header);
-    expect(header).toBeLessThan(user.content.indexOf('## Analysis:'));
+    expect(header).toBeLessThan(user.content.indexOf('## Analysis ('));
   });
 
   it('leaves both prompts free of a target-job section when there is no ad', () => {

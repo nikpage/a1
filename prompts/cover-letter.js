@@ -6,6 +6,7 @@ import { languageInstruction } from './language.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock } from './job-target.js';
 import { cvInvariants, coverMatchingRule } from './cv-rules.js';
+import { generationBrief } from './analysis-brief.js';
 
 export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   // The ad itself — the letter is addressed to THIS job, so it reads it directly.
@@ -68,8 +69,8 @@ ${pairsRule}
     ${currentDateReminder(now)}
     ${cv}
 
-    ## Analysis:
-    ${JSON.stringify(analysis, null, 2)}
+    ## Analysis (the strategic brief — the plan to execute, not a review to answer):
+    ${JSON.stringify(generationBrief(analysis), null, 2)}
 
     # Output
     Return only the cover letter. Start with the date, then salutation, body, and end with the signature block.

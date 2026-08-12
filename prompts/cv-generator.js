@@ -9,6 +9,7 @@ import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { cvRulesBlock } from './cv-rules.js';
 import { marketConventions } from './market.js';
 import { sectionNameBlock } from './cv-sections.js';
+import { generationBrief } from './analysis-brief.js';
 
 export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
   const tags = analysis?.analysis?.scenario_tags;
@@ -177,8 +178,8 @@ The English names in the template below identify WHICH section is which; write e
 ${currentDateReminder(now)}
 ${cv}
 
-## Analysis:
-${JSON.stringify(analysis, null, 2)}
+## Analysis (the strategic brief — the plan to execute, not a review to answer):
+${JSON.stringify(generationBrief(analysis), null, 2)}
 
 # Before you finish — check:
 - Every hard noun on the page (skill, tool, employer, title, certification, number) traces to the master CV, and every date matches the master exactly.
