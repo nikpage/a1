@@ -25,7 +25,7 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Titles.** Print the official title exactly. If it is non-standard, the industry-standard equivalent may be used in the skills/summary prose, never bolted onto the title line.
 
-**Dates.** MM/YYYY on every dated entry, one format throughout. The "Earlier Career" line is the only permitted undated entry. Never switch to YYYY-only to hide anything.
+**Dates.** MM/YYYY on every dated entry, one format throughout. The "Earlier Career" line is the only permitted undated entry. Never switch to YYYY-only to hide anything. A month the master does not record is never invented: print the year as recorded and report the missing month to the user as a warning.
 
 **Recency window.** Full detail for the last 10–15 years. Older roles collapse into one undated "Earlier Career" line — titles, employers, and the location where the location itself carries weight (a major market the candidate genuinely worked in). Employers are named individually; a category ("financial institutions and tech companies") is not a substitute for a name. No bullets on that line.
 
@@ -33,7 +33,7 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 ## Layer 2 — Human scannability
 
-**Impact zone.** The first ~120 words must carry the target-facing headline, a 2–3 sentence value proposition, and up to three of the strongest evidenced achievements. The headline and value proposition are the Summary's opening prose; the achievements are up to three bullets immediately beneath, inside the Summary block. Print only as many as the master genuinely evidences — three is a ceiling, not a quota, exactly as role bullets are. They may restate a Work Experience bullet: the duplication is intentional, and each must carry the role name so it does not read as a floating claim. Checked by word count from the top of the document, not by rendered lines.
+**Impact zone.** The first ~120 words must carry the target-facing headline, a 2–3 sentence value proposition, and up to three of the strongest evidenced achievements. The headline and value proposition are the Summary's opening prose; the achievements are up to three bullets immediately beneath, inside the Summary block. Print only as many as the master genuinely evidences — three is a ceiling, not a quota, exactly as role bullets are. They may restate a Work Experience bullet: the duplication is intentional, and each must carry the role name so it does not read as a floating claim. Checked by word count from the very top of the document — the name/contact block, the headline, the proposition and the bullets all count — not by rendered lines.
 
 **Rendering.** The Summary prose is justified. The achievement bullets are standard left-aligned bullets in the same style as Work Experience bullets — never centered, never a distinct visual block.
 
@@ -43,7 +43,7 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Metric fallback.** Where the master holds no number, use [Action verb] + [method/tool] + [concrete deliverable]. A deliverable is a thing that shipped or changed — not an adjective. Fallback bullets are permitted without limit where the master holds no metrics; the cap of one third of bullets per role applies only when metrics exist and were not used.
 
-**Volume.** Bullets 15–25 words. 3–5 bullets for the two most recent roles, 2–3 for the rest. Bullet counts are ceilings, never quotas. If the master evidences fewer, print fewer. A role with one evidenced achievement gets one bullet.
+**Volume.** Bullets 15–25 words in English; 12–22 in Czech and Polish, which carry the same content in fewer words — no articles, heavy inflection. The band is set per language in the section-name registry; an unregistered language uses 15–25. 3–5 bullets for the two most recent roles, 2–3 for the rest. Bullet counts are ceilings, never quotas. If the master evidences fewer, print fewer. A role with one evidenced achievement gets one bullet.
 
 **Density.** No paragraph blocks inside Work Experience.
 
@@ -75,7 +75,15 @@ Maximum two active at once. Every rule below reframes, reorders, relabels or cut
 
 **Senior portfolio / independent consultant.** A standing independent practice whose dates span or overlap one or more shorter corporate roles. The candidate was never between jobs — the practice ran throughout, so there is no real gap and no string of short jobs. Optionally fold the overlapping corporate roles into the consultancy window as concurrent engagements, so the timeline reads as one unbroken practice with engagements inside it. That fold is a recommendation the analysis makes case by case, never a default: keep a marquee employer distinct where its name is the stronger asset. Either way, every corporate role keeps its real employer, title and dates; never relabel an employer as a client of the practice.
 
-**Older applicant.** Apply the 10–15 year window strictly, strip all graduation years, and never write "X+ years". Trigger: the earliest evidenced role begins more than 15 years before the most recent role's end date. That trigger is computed in code from the master's dates, not chosen by the model, and it is inserted ahead of the two-override cap so a co-occurring scenario cannot displace it. The master keeps every role and date intact — this is selection, not editing.
+**Older applicant.** Apply the 10–15 year window strictly, strip all graduation years, and never state a career total.
+
+What is banned is the *cumulative* number — "25+ years' experience", "over two decades in banking", "a decade of expertise". That is a single figure the screening sort can act on before it reads anything, and it prices and dates the candidate in seconds.
+
+What stays legal is duration scoped to one role, project or engagement — "five years running the Prague platform team", "twelve years at Deutsche Bank". Depth does not live in the total; it lives in scope, marquee employers and long tenures inside the visible window. Banning those would strip out the evidence the override exists to protect. Suppressing the total changes the order the fact is learned in, not whether it is known: by the interview the decision to consider the candidate is already made.
+
+Roles that explicitly buy the decades — board, advisory, expert witness, some executive search — are the exception, and that is a judgement the analysis makes case by case, never a default in this override.
+
+Trigger: the earliest evidenced role begins more than 15 years before the most recent role's end date. That trigger is computed in code from the master's dates, not chosen by the model, and it is inserted ahead of the two-override cap so a co-occurring scenario cannot displace it. The master keeps every role and date intact — this is selection, not editing.
 
 **Employment gap.** Dates stay MM/YYYY throughout; the gap is simply visible. Under 6 months: nothing. Over 6 months: no timeline entry, no summary apology — one neutral line is permitted only if the master records what happened (study, caregiving, illness, relocation) and only in the candidate's own recorded words. Otherwise silent.
 
@@ -98,16 +106,17 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 1. Every hard noun in the output (skill, tool, employer, title, certification, number) traces to the master. Any that does not → block.
 2. Dates in the output match the master exactly.
 3. No Work Experience entry that is not a real role.
-4. Single column, standard headers, one date format across all dated entries (the "Earlier Career" line is exempt).
+4. Single column, standard headers, one date format across all dated entries (the "Earlier Career" line is exempt, as is a year-only entry permitted by check 13).
 5. Impact zone within 120 words and contains headline + proposition + the evidenced achievements, up to three, each naming its role.
 6. No role exceeds its bullet ceiling; fallback bullets within the one-third limit where metrics exist.
 7. Market rules satisfied; no photo/DOB/consent invented.
 8. With a job ad: unevidenced requirements are listed to the user as gaps.
 9. Projects section present ⇒ a qualifying override is active.
-10. When the Older Applicant override is active: no Education entry carries a graduation year, and no "X+ years" construction appears anywhere.
+10. When the Older Applicant override is active: no Education entry carries a graduation year, and no cumulative career total appears anywhere ("X+ years' experience", "over two decades in the field"). A duration scoped to a single role, project or engagement is not a total and does not fail this check.
 11. An Earlier Career line names at least one real employer from the master.
 12. No banned identity epithet in the Summary or headline.
+13. A dated entry whose master record holds no month prints the year alone and is reported to the user as a missing month — never completed with an invented one.
 
-A failure at 1–4 and 10 is a hard block. 5–9 and 11–12 are warnings surfaced to the user.
+A failure at 1–4 and 10 is a hard block. 5–9 and 11–13 are warnings surfaced to the user.
 
 A check whose evidence is missing (no parseable master, no section order) reports nothing rather than guessing.
