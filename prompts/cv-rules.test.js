@@ -49,6 +49,16 @@ describe('Layer 1', () => {
     expect(t).toMatch(/is NOT a substitute for a name/);
     expect(t).toMatch(/location where the location itself carries weight/);
   });
+
+  // A real CV filed "Visiting Lecturer, Faculty of Arts, Charles University" as
+  // the candidate's education — the institution's name was taken as a
+  // qualification. Education carries only what was AWARDED to the candidate.
+  it('keeps a teaching appointment out of Education', () => {
+    const t = machineParseability();
+    expect(t).toMatch(/ONLY qualifications AWARDED to the candidate/);
+    expect(t).toMatch(/teach, lecture, guest-lecture or examine/);
+    expect(t).toMatch(/belongs in Work Experience/);
+  });
 });
 
 describe('Layer 2', () => {

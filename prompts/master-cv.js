@@ -54,7 +54,7 @@ const SCHEMA = `MASTER CV JSON SCHEMA (emit EXACTLY this shape — valid JSON on
       ]
     }
   ],
-  "education": [ { "institution": "", "qualification": "", "dates": "", "notes": "" } ],
+  "education": [ { "institution": "", "qualification": "", "dates": "", "notes": "" } ],   // ONLY qualifications AWARDED TO this person — degrees, diplomas, certifications earned. An appointment to teach, lecture, guest-lecture or examine AT an institution is employment: it goes in experience[], never here, however academic the institution's name looks.
   "certifications": [ { "name": "", "issuer": "", "date": "" } ],
   "parallel_experience": [],            // side projects, teaching, speaking, volunteering — each a short factual line, from the input only
   "transferable_notes": [               // the hidden-value layer: real strengths from one domain that travel to others
@@ -93,8 +93,8 @@ ${SELF_CONSISTENCY}`;
 PLACEMENT — decide where each fact belongs:
 - An existing role it elaborates → add achievements / skills_utilized / a metric to THAT entry.
 - A role the record does not have → a new experience entry, in date order.
-- Study, a qualification, a certification → education / certifications.
-- A side project, volunteering, teaching, speaking → parallel_experience.
+- Study, a qualification, a certification the person EARNED → education / certifications. An appointment to teach, lecture, guest-lecture or examine AT an institution is employment, not a qualification — never education.
+- A side project, volunteering, one-off speaking → parallel_experience. A named teaching appointment with an employer and dates is a role → experience (nested under its umbrella entry if it was delivered through one).
 - A genuine strength the text evidences → transferable_notes (with its real evidence).
 - A language, a link, a contact detail → identity.
 

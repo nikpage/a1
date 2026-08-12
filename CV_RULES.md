@@ -29,6 +29,8 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Recency window.** Full detail for the last 10–15 years. Older roles collapse into one undated "Earlier Career" line — titles, employers, and the location where the location itself carries weight (a major market the candidate genuinely worked in). Employers are named individually; a category ("financial institutions and tech companies") is not a substitute for a name. No bullets on that line.
 
+**Education contains only qualifications awarded to the candidate** — degrees, diplomas, certifications earned. An appointment to teach, lecture, guest-lecture or examine at an institution is employment, not a qualification, and belongs in Work Experience, nested under its umbrella entry if it was delivered through one.
+
 **Education.** Retain graduation years by default. Strip them only when the Older Applicant scenario is active (defined in Layer 4), and then strip all of them, never selectively.
 
 ## Layer 2 — Human scannability
