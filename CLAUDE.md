@@ -52,7 +52,11 @@ Each user has one persisted **master CV** — a structured career record (facts 
 
 ## CV rules (the layer stack)
 
-**`CV_RULES.md` at the repo root is the spec** — the prose statement of what a generated CV must be, and the authority when code and it disagree. `prompts/cv-rules.js` is its implementation. `cv-generator.js` imports `cvRulesBlock(hasJobText)` for the whole stack; `cover-letter.js` imports `cvInvariants()` and `coverMatchingRule(hasJobText)`. Precedence: **Layer 4 > Layer 3 > Layer 2**, with **Layer 1 as the floor beneath all three** and the invariants above everything.
+**`CV_RULES.md` at the repo root is the SOURCE OF TRUTH (binding).** It is the prose statement of what a generated CV must be, and it wins over any code that disagrees with it.
+
+**Any change to CV behaviour starts there and cascades down.** Edit `CV_RULES.md` first and get it approved; then change `prompts/cv-rules.js` / `scenarios.js` / `market.js` / `cv-sections.js`, then `cv-generator.js` / `cover-letter.js`, then `utils/cv-validate.js`, then the locale warning strings, then the tests. Never the other way round: a rule that exists only in code, or a code change that quietly contradicts the doc, is the defect that put "no bullets in the Summary" into three files at once. If code and `CV_RULES.md` disagree, the doc is right and the code is fixed — never the reverse without Nik editing the doc.
+
+`prompts/cv-rules.js` is its implementation. `cv-generator.js` imports `cvRulesBlock(hasJobText)` for the whole stack; `cover-letter.js` imports `cvInvariants()` and `coverMatchingRule(hasJobText)`. Precedence: **Layer 4 > Layer 3 > Layer 2**, with **Layer 1 as the floor beneath all three** and the invariants above everything.
 
 | Layer | What it governs | Lives in |
 |---|---|---|
