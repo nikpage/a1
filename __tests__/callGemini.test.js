@@ -101,16 +101,36 @@ describe('2.3 — callGemini 429 key rotation', () => {
       generateCV({ cv: 'cv text', analysis: {}, tone: 'Formal' })
     ).rejects.toMatchObject({ isRateLimit: true });
 
-    expect(mockAxiosPost).toHaveBeenCalledTimes(2);
+    // callGemini makes up to 6 attempts (max(keys, 6)) so a transient overload
+    // is ridden out; a 429 rotates the key with no backoff.
+    expect(mockAxiosPost).toHaveBeenCalledTimes(6);
   });
 
-  test('first key returns non-429 error (500) → thrown immediately, second key never tried', async () => {
-    mockAxiosPost.mockRejectedValueOnce(make500Error());
+  // 500 is a TRANSIENT status: it is retried with backoff rather than thrown at
+  // once. One 500 then a success must produce a normal result.
+  test('a transient 500 is retried, not thrown immediately', async () => {
+    mockAxiosPost
+      .mockRejectedValueOnce(make500Error())
+      .mockResolvedValueOnce(SUCCESS_RESPONSE)
+      .mockResolvedValueOnce(CLEAN_VERIFY_RESPONSE);
+
+    const result = await generateCV({ cv: 'cv text', analysis: {}, tone: 'Formal' });
+
+    expect(result.content).toBe('Great CV content');
+    expect(writingCalls()).toBe(2);
+  });
+
+  // A genuinely non-retryable status (400) is surfaced on the first attempt,
+  // with Gemini's own reason rather than the opaque axios message.
+  test('a non-transient error (400) is thrown at once with Gemini\'s reason', async () => {
+    const err = new Error('Request failed with status code 400');
+    err.response = { status: 400, data: { error: { message: 'Bad request: bad model' } } };
+    mockAxiosPost.mockRejectedValue(err);
 
     await expect(
       generateCV({ cv: 'cv text', analysis: {}, tone: 'Formal' })
-    ).rejects.toMatchObject({ message: 'Internal server error' });
+    ).rejects.toMatchObject({ status: 400, message: 'Gemini 400 Bad request: bad model' });
 
-    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+    expect(writingCalls()).toBe(1);
   });
 });

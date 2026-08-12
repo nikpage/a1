@@ -1,13 +1,12 @@
 // __tests__/analysis-teaser-gauntlet.test.js
 //
 // Pins the gauntlet contract added to the landing-page teaser scan: the prompt
-// must ask for two BINARY pass/fail gates (ATS + 7-second recruiter skim), a
-// solid/needs-work state that drives the closing branch, and 1-4 (not exactly 2)
-// CV-specific clarifying questions. These fields are what TeaserDisplay renders
-// the gauntlet from — without them the UI's gate rows go blank.
-//
-// Red on the old prompt (it had no ats_verdict/scan_verdict/cv_state and fixed
-// nuance at "EXACTLY 2"), green on the new one.
+// must ask for two BINARY pass/fail gates (ATS + 7-second recruiter skim) and
+// 1-4 (not exactly 2) CV-specific clarifying questions. These fields are what
+// TeaserDisplay renders the gauntlet from — without them the UI's gate rows go
+// blank. It also pins the teaser's LEANNESS: the heavy fields (cv_state,
+// sample_rewrite, scores) were cut so a landing visitor stays cheap, and the
+// deep pass owns them.
 
 import { describe, test, expect } from 'vitest';
 import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
@@ -22,7 +21,7 @@ function userPrompt(hasJob) {
 describe('buildAnalysisTeaserPrompt — gauntlet gates', () => {
   test('schema exposes both binary gates and the solid/needs-work state', () => {
     const p = userPrompt(false);
-    for (const key of ['ats_verdict', 'ats_reason', 'scan_verdict', 'scan_reason', 'cv_state']) {
+    for (const key of ['ats_verdict', 'ats_reason', 'scan_verdict', 'scan_reason']) {
       expect(p).toContain(key);
     }
   });
@@ -34,9 +33,14 @@ describe('buildAnalysisTeaserPrompt — gauntlet gates', () => {
     expect(p).toMatch(/scan_verdict[\s\S]{0,120}EXACTLY "pass" or "fail"/);
   });
 
-  test('cv_state is constrained to solid/needs_work (drives the closing branch)', () => {
+  // The teaser was later cut to ONLY the fields TeaserDisplay renders, so the
+  // heavy fields below are no longer asked for here — the deep pass owns them.
+  // This pins that leanness (it is what keeps the landing visitor cheap).
+  test('teaser does not ask for the deep pass\'s fields', () => {
     const p = userPrompt(false);
-    expect(p).toMatch(/cv_state[\s\S]{0,120}EXACTLY "solid" or "needs_work"/);
+    for (const key of ['cv_state', 'sample_rewrite', 'overall_score', 'ats_score', 'action_items']) {
+      expect(p).not.toContain(key);
+    }
   });
 
   test('clarifying questions are now 1-4, no longer hard-fixed at exactly 2', () => {
@@ -51,8 +55,8 @@ describe('buildAnalysisTeaserPrompt — gauntlet gates', () => {
     const p = userPrompt(false);
     expect(p).toMatch(/NO REPETITION/);
     expect(p).toMatch(/cover DIFFERENT ground/);
-    // scope is capped so it cannot become an 8-item dump.
-    expect(p).toMatch(/analysis\.scope:\s*2 to 4 values MAX/);
+    // Named sections must be the ones that actually repeat each other.
+    expect(p).toMatch(/scan_snags, hr_first_seconds and nuance_clarifications/);
   });
 
   test('both gates expose fail-point arrays (ats_snags + scan_snags) for the per-card fail blocks', () => {
@@ -79,7 +83,7 @@ describe('buildAnalysisTeaserPrompt — gauntlet gates', () => {
 
   test('the existing teaser proof fields survive the rebuild', () => {
     const p = userPrompt(false);
-    for (const key of ['hr_first_seconds', 'sample_rewrite', 'scope', 'overall_score', 'ats_score']) {
+    for (const key of ['hr_first_seconds', 'buried_credentials', 'scenario_tags', 'cv_data']) {
       expect(p).toContain(key);
     }
   });

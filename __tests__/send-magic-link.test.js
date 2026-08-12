@@ -14,14 +14,13 @@ vi.hoisted(() => {
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { mockReqRes } from './helpers.js';
 
+// The route sends through nodemailer/SMTP (not Resend, despite the
+// RESEND_FROM_EMAIL env var still being set elsewhere) — mock the boundary the
+// code actually uses, or every production-path test silently hits real SMTP.
 const mockSend = vi.hoisted(() => vi.fn());
 
-vi.mock('resend', () => ({
-  Resend: class {
-    constructor() {
-      this.emails = { send: mockSend };
-    }
-  },
+vi.mock('nodemailer', () => ({
+  default: { createTransport: () => ({ sendMail: mockSend }) },
 }));
 
 vi.mock('@upstash/redis', () => ({
@@ -85,7 +84,7 @@ describe('POST /api/auth/send-magic-link', () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
-  test('valid new-user email in production → resend.emails.send called with correct fields, returns 200', async () => {
+  test('valid new-user email in production → the mail transport is called with the right fields, returns 200', async () => {
     const orig = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     try {
@@ -100,15 +99,16 @@ describe('POST /api/auth/send-magic-link', () => {
       const [sendArgs] = mockSend.mock.calls;
       expect(sendArgs[0].to).toBe(VALID_EMAIL);
       expect(sendArgs[0].subject).toContain('login link');
-      expect(sendArgs[0].from).toBe('noreply@mysuper.cv');
+      expect(sendArgs[0].from).toBe('pod.one@gmail.com');
+      expect(sendArgs[0].html).toContain('/api/auth/verify');
       expect(res.statusCode).toBe(200);
     } finally {
       process.env.NODE_ENV = orig;
     }
   });
 
-  test('Resend returns error object → response 500 { error: "Email send failed." }', async () => {
-    mockSend.mockResolvedValue({ error: { message: 'rate limited by Resend' } });
+  test('the mail transport throws → 500 with the reason in detail', async () => {
+    mockSend.mockRejectedValue(new Error('smtp refused'));
     const orig = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     try {
@@ -120,7 +120,7 @@ describe('POST /api/auth/send-magic-link', () => {
       await handler(req, res);
 
       expect(res.statusCode).toBe(500);
-      expect(res._getJSONData()).toEqual({ error: 'Email send failed.' });
+      expect(res._getJSONData()).toEqual({ error: 'Email send failed.', detail: 'smtp refused' });
     } finally {
       process.env.NODE_ENV = orig;
     }

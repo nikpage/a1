@@ -8,7 +8,12 @@ vi.hoisted(() => {
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 const mockVerifyToken = vi.hoisted(() => vi.fn());
+const mockAnalyzeTeaser = vi.hoisted(() => vi.fn());
 const mockAnalyzeCvJob = vi.hoisted(() => vi.fn());
+const mockBuildOrMergeMaster = vi.hoisted(() => vi.fn());
+const mockGetMasterCv = vi.hoisted(() => vi.fn());
+const mockSaveMasterCv = vi.hoisted(() => vi.fn());
+const mockSetCandidateCore = vi.hoisted(() => vi.fn());
 const mockSaveGeneratedDoc = vi.hoisted(() => vi.fn());
 const mockLogAiTransaction = vi.hoisted(() => vi.fn());
 const mockSupabaseFrom = vi.hoisted(() => vi.fn());
@@ -18,16 +23,37 @@ vi.mock('../lib/auth.js', () => ({
 }));
 
 vi.mock('../utils/openai.js', () => ({
+  analyzeTeaser: mockAnalyzeTeaser,
   analyzeCvJob: mockAnalyzeCvJob,
+  buildOrMergeMaster: mockBuildOrMergeMaster,
 }));
 
 vi.mock('../utils/database.js', () => ({
   saveGeneratedDoc: mockSaveGeneratedDoc,
   logAiTransaction: mockLogAiTransaction,
+  setCandidateCoreIfEmpty: mockSetCandidateCore,
+  getMasterCv: mockGetMasterCv,
+  saveMasterCv: mockSaveMasterCv,
   supabase: {
     from: mockSupabaseFrom,
   },
 }));
+
+// The worker always runs the cheap teaser first and only then the deep pass, so
+// every test that expects a saved analysis must stub BOTH. This teaser stands in
+// for the seed (verdicts + cv_data); the deep mock supplies the delta.
+const TEASER_OUTPUT = JSON.stringify({
+  cv_data: { Name: 'Jane Roe', Seniority: 'Senior', Industry: 'Tech', Country: 'Germany' },
+  analysis: { scenario_tags: [], scan_verdict: 'pass', scan_reason: 'Clear top line.' },
+});
+
+function stubTeaser() {
+  mockAnalyzeTeaser.mockResolvedValue({
+    output: TEASER_OUTPUT,
+    gemini_usage: null,
+    usage: { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 },
+  });
+}
 
 import { handler } from '../netlify/functions/analyse-background.mjs';
 
@@ -41,7 +67,15 @@ function makeEvent({ cookieHeader = '', body = {} } = {}) {
 describe('analyse-background — auth gate', () => {
   beforeEach(() => {
     mockVerifyToken.mockReset();
+    mockAnalyzeTeaser.mockReset();
     mockAnalyzeCvJob.mockReset();
+    mockBuildOrMergeMaster.mockReset();
+    mockGetMasterCv.mockReset();
+    mockSaveMasterCv.mockReset();
+    mockSetCandidateCore.mockReset();
+    mockGetMasterCv.mockResolvedValue(null);
+    mockBuildOrMergeMaster.mockResolvedValue({ master: null, usages: [] });
+    stubTeaser();
     mockSaveGeneratedDoc.mockReset();
     mockLogAiTransaction.mockReset();
     mockSupabaseFrom.mockReset();
@@ -120,7 +154,15 @@ describe('analyse-background — auth gate', () => {
 describe('analyse-background — confirmed job override', () => {
   beforeEach(() => {
     mockVerifyToken.mockReset();
+    mockAnalyzeTeaser.mockReset();
     mockAnalyzeCvJob.mockReset();
+    mockBuildOrMergeMaster.mockReset();
+    mockGetMasterCv.mockReset();
+    mockSaveMasterCv.mockReset();
+    mockSetCandidateCore.mockReset();
+    mockGetMasterCv.mockResolvedValue(null);
+    mockBuildOrMergeMaster.mockResolvedValue({ master: null, usages: [] });
+    stubTeaser();
     mockSaveGeneratedDoc.mockReset();
     mockLogAiTransaction.mockReset();
     mockSupabaseFrom.mockReset();
@@ -228,7 +270,8 @@ describe('analyse-background — confirmed job override', () => {
 
     await handler(makeEvent({
       cookieHeader: 'auth-token=valid.jwt.here',
-      body: { analysis_id: 'aid-no-override', jobText: 'some job ad' },
+      // deep:true — job_extraction is emitted by the DEEP pass, not the teaser.
+      body: { analysis_id: 'aid-no-override', jobText: 'some job ad', deep: true },
     }));
 
     const savedContent = mockSaveGeneratedDoc.mock.calls[0][0].content;

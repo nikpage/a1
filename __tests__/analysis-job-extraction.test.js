@@ -36,7 +36,9 @@ describe('buildAnalysisPrompt — job_extraction schema', () => {
     const messages = buildAnalysisPrompt(SAMPLE_CV, '', false);
     const userPrompt = messages.find(m => m.role === 'user').content;
 
-    expect(userPrompt).not.toContain('job_extraction');
+    // The no-job block still NAMES job_extraction (to pin it to "n/a"), but the
+    // schema block and its fields must not be requested.
+    expect(userPrompt).not.toContain('"job_extraction"');
     expect(userPrompt).not.toContain('keywords_for_ats');
   });
 

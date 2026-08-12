@@ -21,7 +21,9 @@ const VALID_USER = 'user-fetch-test-001';
 function makeFetchMock(opts = {}) {
   const {
     contentType = 'text/html; charset=utf-8',
-    body = '<html><head><title>Test</title></head><body><h1>Senior Engineer</h1><p>We are hiring a backend engineer. Requirements: Python, AWS, 5+ years. Responsibilities include building scalable APIs and mentoring junior devs. We offer competitive salary and remote work.</p></body></html>',
+    // Must strip to MORE than 500 chars — below that the route returns 422 on the
+    // assumption the page blocked us or renders its content via JavaScript.
+    body = '<html><head><title>Test</title></head><body><h1>Senior Engineer</h1><p>We are hiring a backend engineer. Requirements: Python, AWS, 5+ years. Responsibilities include building scalable APIs and mentoring junior devs. We offer competitive salary and remote work. You will own services end to end, from design review through deployment and on-call, working with product managers and designers to ship features our customers actually use. Our stack is Python, Postgres, Redis and Terraform on AWS, and we deploy several times a day. We value written communication, pragmatic testing and steady incremental delivery over heroics.</p></body></html>',
     throws = null,
   } = opts;
 
@@ -158,7 +160,7 @@ describe('POST /api/fetch-job-url', () => {
           <header>Site header</header>
           <main>
             <h1>Backend Engineer</h1>
-            <p>Join our team. You will work with Go, Kubernetes, and PostgreSQL. Must have 3+ years experience. We offer €80k-€100k salary and 30 days holiday plus remote work options available immediately.</p>
+            <p>Join our team. You will work with Go, Kubernetes, and PostgreSQL. Must have 3+ years experience. We offer €80k-€100k salary and 30 days holiday plus remote work options available immediately. You will design and operate services that handle millions of requests a day, take part in code review, and share the on-call rotation with the rest of the platform group. We care about clear writing, small pull requests and tests that pin real behaviour rather than coverage numbers. The role is permanent and full time, based in Berlin with two office days a week, and we sponsor visas for candidates already inside the EU.</p>
           </main>
           <script>trackUser()</script>
           <footer>Footer content</footer>
@@ -190,7 +192,7 @@ describe('POST /api/fetch-job-url', () => {
   });
 
   describe('bot wall / tiny response', () => {
-    test('page with < 200 chars of text → 422', async () => {
+    test('page with < 500 chars of text → 422', async () => {
       vi.stubGlobal('fetch', makeFetchMock({ body: '<html><body>Access denied. Please enable JavaScript.</body></html>' }));
 
       const { req, res } = mockReqRes({
@@ -201,7 +203,7 @@ describe('POST /api/fetch-job-url', () => {
       await handler(req, res);
 
       expect(res.statusCode).toBe(422);
-      expect(res._getJSONData()).toMatchObject({ error: expect.stringContaining('bot wall') });
+      expect(res._getJSONData()).toMatchObject({ error: expect.stringContaining('block automated access') });
     });
   });
 
