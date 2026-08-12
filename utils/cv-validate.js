@@ -155,6 +155,114 @@ function checkCertificationsTrace(document, master, hard) {
   }
 }
 
+// The bullet entries of the Skills and Core Competencies sections, as written.
+function skillEntries(document) {
+  const out = [];
+  for (const s of splitSections(document)) {
+    if (!isSlot('skills', s.heading) && !isSlot('coreCompetencies', s.heading)) continue;
+    for (const line of s.lines) {
+      if (!/^[-*•]\s+/.test(line.trim())) continue;
+      const skill = plain(line).replace(/^[-*•]\s+/, '').trim();
+      if (skill.length >= 3) out.push(skill);
+    }
+  }
+  return out;
+}
+
+// The content words of a skill, which are what must be found in the record —
+// "&", "and", "of" carry no evidence. Matching is on a five-letter stem, not the
+// whole word: the master says "Delivery Manager" where the CV says "Delivery
+// Management", and Czech and Polish inflect every one of these. Exact matching
+// would hard-block honest skills, which costs more than it protects.
+function skillWords(skill) {
+  return words(skill).filter((w) => w.length > 3).map((w) => w.toLowerCase().slice(0, 5));
+}
+
+// 14. Skills trace to the master, on exactly the basis certifications already do:
+//     the section is a plain list, so each entry either appears in the record or
+//     it does not. Without this, a plausible-sounding skill the candidate has
+//     never had ("Value Proposition Modeling") printed unchallenged — the CV
+//     making a claim about a person that the person's own record does not carry.
+//     The threshold is higher than a certification's because a skill is short and
+//     its words are generic: two-thirds of "Value Proposition Modeling" is present
+//     in almost any product CV.
+function checkSkillsTrace(document, master, hard) {
+  if (!master.text) return;
+  for (const skill of skillEntries(document)) {
+    const core = skillWords(skill);
+    if (!core.length) continue;
+    const hit = core.filter((w) => master.lower.includes(w)).length;
+    if (hit / core.length < 0.75) {
+      hard.push(`Skill "${skill}" appears in the CV but the master record does not evidence it.`);
+    }
+  }
+}
+
+// 15. A listed skill whose only evidence sits in roles the CV does not show.
+//     The Skills section says what the candidate is NOW: a speciality evidenced
+//     only by the collapsed Earlier Career line misdirects the recruiter and
+//     re-emits the age signal the recency window exists to manage.
+function checkSkillRecency(document, master, warnings) {
+  const experience = Array.isArray(master?.parsed?.experience) ? master.parsed.experience : [];
+  if (!experience.length) return;
+
+  // A role is "shown" when it prints as its own Work Experience entry — not when
+  // its name merely appears somewhere in the prose, and not when it is dissolved
+  // into the Earlier Career line's employer list.
+  const printed = [];
+  for (const s of splitSections(document)) {
+    for (const role of parseRoles(s)) {
+      if (isEarlierCareer(role.title)) continue;
+      printed.push(`${role.title} ${plain(role.subtitle)}`.toLowerCase());
+    }
+  }
+  const shown = experience.filter((role) => {
+    const company = String(role?.company || role?.employer || '').trim().toLowerCase();
+    const title = String(role?.role || role?.title || '').trim().toLowerCase();
+    return printed.some((p) => (company.length > 2 && p.includes(company)) || (title.length > 2 && p.includes(title)));
+  });
+  if (!shown.length || shown.length === experience.length) return;
+
+  const evidences = (role, core) => {
+    const text = JSON.stringify(role || '').toLowerCase();
+    const hit = core.filter((w) => text.includes(w)).length;
+    return core.length ? hit / core.length >= 0.75 : false;
+  };
+
+  const stale = [];
+  for (const skill of skillEntries(document)) {
+    const core = skillWords(skill);
+    if (!core.length) continue;
+    const evidencedAnywhere = experience.some((r) => evidences(r, core));
+    if (evidencedAnywhere && !shown.some((r) => evidences(r, core))) stale.push(skill);
+  }
+  if (stale.length) {
+    warnings.push({ code: 'skillOutsideWindow', params: { list: stale.join(', ') } });
+  }
+}
+
+// 16. A printed role whose master record holds no number anywhere. The CV cannot
+//     invent one — that is T1 — so the candidate is told which role is missing
+//     its metrics and can supply them.
+function checkRoleMetrics(document, master, warnings) {
+  if (!master?.parsed) return;
+  const sections = splitSections(document);
+  const exp = sections.find((s) => parseRoles(s).length > 0);
+  if (!exp) return;
+  const bare = [];
+  for (const role of parseRoles(exp)) {
+    if (isEarlierCareer(role.title)) continue;
+    const entry = findMasterEntry(master, role);
+    if (!entry) continue;
+    const achievements = Array.isArray(entry.achievements) ? entry.achievements : [];
+    if (!achievements.length) continue;
+    if (!/\d/.test(JSON.stringify(achievements))) bare.push(role.title);
+  }
+  if (bare.length) {
+    warnings.push({ code: 'noMetricsInRecord', params: { list: bare.join(', ') } });
+  }
+}
+
 // 2. Dates match the master, and every dated experience entry is MM/YYYY —
 //    except the year-only entries check 13 permits, collected into yearOnly[]
 //    and reported to the candidate as a warning by the caller.
@@ -533,6 +641,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
 
   checkNumbersTrace(document, m, hard);
   checkCertificationsTrace(document, m, hard);
+  checkSkillsTrace(document, m, hard);
   checkDates(document, m, hard, yearOnly);
   checkRolesReal(document, m, hard);
   checkStructure(document, analysis, hard);
@@ -545,6 +654,8 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
   checkEpithets(document, warnings);
+  checkSkillRecency(document, m, warnings);
+  checkRoleMetrics(document, m, warnings);
 
   // 13. Year-only dates the master could not supply a month for. Printing the
   //     bare year is correct — inventing "01/" would falsify the record — so the

@@ -404,6 +404,71 @@ describe('check 13 — missing month', () => {
   });
 });
 
+// The hole that let "Value Proposition Modeling" onto a shipped CV: the Skills
+// section is the same shape of list as Certifications and was checked by nothing.
+describe('check 14 — skills trace to the master (hard)', () => {
+  const withSkills = (...skills) => `${GOOD}\n### **Skills**\n${skills.map((s) => `- ${s}`).join('\n')}\n`;
+
+  it('blocks a skill the master does not evidence', () => {
+    const r = validateCv(withSkills('Value Proposition Modeling'), { master: MASTER, analysis: ANALYSIS });
+    expect(r.ok).toBe(false);
+    expect(r.hard.join(' ')).toContain('Value Proposition Modeling');
+  });
+
+  it('passes skills the master evidences', () => {
+    const r = validateCv(withSkills('Delivery Management', 'Jenkins'), { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toContain('Skill "');
+  });
+
+  it('checks Core Competencies on the same basis', () => {
+    const doc = `${GOOD}\n### **Core Competencies**\n- Quantum Cryptography Governance\n`;
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toContain('Quantum Cryptography Governance');
+  });
+});
+
+describe('check 15 — skills evidenced only by work the CV does not show', () => {
+  // Borealis is in the master but absent from this document, so a skill only
+  // Borealis evidences is describing a career the reader cannot see.
+  const RECENT_ONLY = GOOD.split('#### **Delivery Manager**')[0];
+
+  it('warns about a skill whose only evidence is a role the CV drops', () => {
+    const doc = `${RECENT_ONLY}\n### **Skills**\n- Jenkins\n`;
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('skillOutsideWindow');
+    expect(paramsFor(r, 'skillOutsideWindow').list).toBe('Jenkins');
+  });
+
+  it('stays silent when the skill is evidenced by a role the CV shows', () => {
+    // Acme is the role this CV shows, and its record evidences both words.
+    const doc = `${RECENT_ONLY}\n### **Skills**\n- Engineering Delivery\n`;
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).not.toContain('skillOutsideWindow');
+  });
+});
+
+describe('check 16 — a printed role whose record holds no numbers', () => {
+  const NO_METRICS = JSON.stringify({
+    experience: [
+      { company: 'Acme Ltd', role: 'Head of Delivery', dates: '03/2019 - 08/2022', achievements: [{ text: 'Built the delivery organisation' }] },
+    ],
+  });
+
+  it('warns so the candidate can supply the real figures', () => {
+    const doc = '### **Summary**\nDelivery leader.\n\n- As Head of Delivery at Acme Ltd, built the delivery organisation\n\n### **Work Experience**\n\n#### **Head of Delivery**\n**Acme Ltd** | 03/2019 - 08/2022 | London\n- Built the delivery organisation across four product teams and two platform squads\n';
+    const r = validateCv(doc, { master: NO_METRICS, analysis: ANALYSIS });
+    expect(codes(r)).toContain('noMetricsInRecord');
+    expect(paramsFor(r, 'noMetricsInRecord').list).toBe('Head of Delivery');
+  });
+
+  // Acme's record holds numbers, Borealis's holds none — so exactly one role is
+  // named, and a role with metrics is never reported.
+  it('names only the roles whose record is bare', () => {
+    const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
+    expect(paramsFor(r, 'noMetricsInRecord').list).toBe('Delivery Manager');
+  });
+});
+
 describe('check 11 — Earlier Career names a real employer', () => {
   const earlier = (subtitle) => `${GOOD}\n#### **Earlier Career**\n**${subtitle}**\n`;
 

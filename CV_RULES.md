@@ -120,7 +120,10 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 11. An Earlier Career line names at least one real employer from the master.
 12. No banned identity epithet in the Summary or headline.
 13. A dated entry whose master record holds no month prints the year alone and is reported to the user as a missing month — never completed with an invented one.
+14. Every entry in Skills and Core Competencies traces to the master, on the same basis as a certification: the section is a plain list, so each entry either appears in the record or it does not.
+15. A listed skill whose only evidence lies in roles the CV does not show is reported to the user, per the Layer 2 recency rule.
+16. A role printed on the CV whose master record holds no number anywhere is reported to the user, so the candidate can supply the metrics. The CV never invents them.
 
-A failure at 1–4 and 10 is a hard block. 5–9 and 11–13 are warnings surfaced to the user.
+A failure at 1–4, 10 and 14 is a hard block. 5–9, 11–13, 15 and 16 are warnings surfaced to the user.
 
 A check whose evidence is missing (no parseable master, no section order) reports nothing rather than guessing.
