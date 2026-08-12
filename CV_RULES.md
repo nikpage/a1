@@ -138,8 +138,8 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 15. A listed skill whose only evidence lies in roles the CV does not show is reported to the user, per the Layer 2 recency rule.
 16. A role printed on the CV whose master record holds no number anywhere is reported to the user, so the candidate can supply the metrics. The CV never invents them.
 
-17. No phrase from the banned-phrasing list (Layer 2) appears in the document. This is a hard block, not a warning: it is the app's own writing failing, and telling the user their document reads as machine-written while shipping it that way helps no one. The AI verify pass corrects these before validation runs — rewriting the clause into what the record actually supports, or deleting it where it carries no claim — so a hit reaching this check means the correction was missed, and the document is regenerated with the phrases named.
+17. No phrase from the banned-phrasing list (Layer 2) appears in the document. It is neither a block nor a warning: it is the app's own writing failing, so the user never sees it, and it is repaired rather than reported. The AI verify pass rewrites the clause into what the record supports — or deletes it where it carries no claim — and anything that survives goes to one narrow second pass over those exact spans. Regenerating the document is not the remedy: reprinting a finished page to fix a clause reopens every judgement the draft already got right, and costs a full generation to remove five words. The repair adds no fact; where the record has nothing to put in the space, the shorter, plainer sentence is the correct outcome.
 
-A failure at 1–4, 10, 14 and 17 is a hard block. 5–9, 11–13, 15 and 16 are warnings surfaced to the user.
+A failure at 1–4, 10 and 14 is a hard block. 5–9, 11–13, 15 and 16 are warnings surfaced to the user.
 
 A check whose evidence is missing (no parseable master, no section order) reports nothing rather than guessing.

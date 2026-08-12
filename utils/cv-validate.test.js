@@ -5,7 +5,7 @@
 // no mocks, and each test is built so it fails if the check stops working.
 
 import { describe, it, expect } from 'vitest';
-import { validateCv, validateCoverLetter, validationFeedback, splitSections } from './cv-validate.js';
+import { validateCv, validateCoverLetter, validationFeedback, splitSections, bannedPhraseHits } from './cv-validate.js';
 
 // Warnings are { code, params } pairs so the UI can translate them; these
 // helpers keep the assertions about WHICH warning fired, not about wording.
@@ -544,95 +544,66 @@ describe('check 17 — banned phrasing', () => {
     experience: [{ title: 'Head of Ops', company: 'Acme', dates: '01/2019 - 12/2024', achievements: ['Cut fulfilment cost 18%'] }],
   });
 
-  it('hard-fails and names every stock phrase, through markdown emphasis', () => {
+  it('finds every stock phrase, through markdown emphasis', () => {
     const doc = '### Summary\nA **results-driven** leader with a proven track record, passionate about seamless delivery.';
-    const { ok, hard } = validateCv(doc, { master });
-    expect(ok).toBe(false);
-    const failure = hard.find((h) => /stock phrasing/i.test(h));
-    expect(failure).toBeTruthy();
-    expect(failure).toContain('results-driven');
-    expect(failure).toContain('proven track record');
-    expect(failure).toContain('passionate about');
+    const hits = bannedPhraseHits(doc, 'en');
+    expect(hits).toContain('results-driven');
+    expect(hits).toContain('proven track record');
+    expect(hits).toContain('passionate about');
+    expect(hits).toContain('seamless');
   });
 
-  it('never reports stock phrasing to the user as a warning', () => {
-    const { warnings } = validateCv('### Summary\nA results-driven leader.', { master });
+  it('never blocks or warns — the caller repairs it instead', () => {
+    const doc = '### Summary\nA results-driven leader.';
+    const { ok, hard, warnings } = validateCv(doc, { master, language: 'en' });
+    expect(ok).toBe(true);
+    expect(hard.find((h) => /stock phrasing/i.test(h))).toBeUndefined();
     expect(warnings.find((w) => w.code === 'bannedPhrase')).toBeUndefined();
   });
 
   it('stays silent on specific, evidenced writing', () => {
-    const doc = '### Summary\nCut fulfilment cost 18% at Acme.\n\n### Work Experience\n#### **Head of Ops**\n**Acme** | 01/2019 - 12/2024\n- Cut fulfilment cost 18% across three warehouses';
-    const { hard } = validateCv(doc, { master });
-    expect(hard.find((h) => /stock phrasing/i.test(h))).toBeUndefined();
+    expect(bannedPhraseHits('Cut fulfilment cost 18% across three warehouses', 'en')).toEqual([]);
   });
 
   it('does not fire inside a longer word', () => {
     // "synergy" is banned; "Synergybank" as an employer name is not a hit.
-    const { hard } = validateCv('### Summary\nBuilt the payments team at Synergybank.', { master });
-    expect(hard.find((h) => /stock phrasing/i.test(h))).toBeUndefined();
-  });
-
-  it('feeds the phrases into the regeneration feedback', () => {
-    const { hard } = validateCv('### Summary\nA results-driven leader.', { master });
-    expect(validationFeedback(hard)).toContain('results-driven');
+    expect(bannedPhraseHits('Built the payments team at Synergybank.', 'en')).toEqual([]);
   });
 });
 
 describe('validateCoverLetter', () => {
-  it('hard-fails the boilerplate wrapper the letter is most prone to', () => {
-    const { ok, hard } = validateCoverLetter(
-      'Dear Hiring Manager,\n\nI am writing to express my interest in the role. As you can see from my CV, I am passionate about seamless delivery.\n\nSincerely,'
-    );
-    expect(ok).toBe(false);
-    expect(hard[0]).toContain('i am writing to express');
-    expect(hard[0]).toContain('as you can see from my cv');
-    expect(hard[0]).toContain('passionate about');
-  });
-
-  it('catches an identity epithet in the letter too', () => {
+  it('catches an identity epithet in the letter', () => {
     const { warnings } = validateCoverLetter('Dear Hiring Manager,\n\nA seasoned technology leader writes to you.');
     expect(warnings.find((x) => x.code === 'identityEpithet')).toBeTruthy();
   });
 
-  it('passes a clean letter', () => {
-    const res = validateCoverLetter('Dear Hiring Manager,\n\nI cut fulfilment cost 18% at Acme across three warehouses. That is the problem your ad describes.\n\nSincerely,');
+  it('passes a clean letter and never blocks', () => {
+    const res = validateCoverLetter('Dear Hiring Manager,\n\nI cut fulfilment cost 18% at Acme across three warehouses.\n\nSincerely,');
     expect(res.ok).toBe(true);
     expect(res.hard).toEqual([]);
     expect(res.warnings).toEqual([]);
   });
 });
 
-describe('check 17 is language-scoped', () => {
-  const master = JSON.stringify({
-    experience: [{ title: 'Vedoucí provozu', company: 'Acme', dates: '01/2019 - 12/2024', achievements: ['Snížil náklady o 18 %'] }],
-  });
-
-  it('hard-fails a Czech document on Czech tells', () => {
-    const doc = '### Shrnutí\nProaktivní přístup a komplexní řešení, týmový hráč.';
-    const { ok, hard } = validateCv(doc, { master, language: 'cs' });
-    expect(ok).toBe(false);
-    const f = hard.find((h) => /stock phrasing/i.test(h));
-    expect(f).toContain('proaktivní přístup');
-    expect(f).toContain('komplexní řešení');
-    expect(f).toContain('týmový hráč');
+describe('banned phrases are language-scoped', () => {
+  it('finds Czech tells in a Czech document', () => {
+    const hits = bannedPhraseHits('Proaktivní přístup a komplexní řešení, týmový hráč.', 'cs');
+    expect(hits).toContain('proaktivní přístup');
+    expect(hits).toContain('komplexní řešení');
+    expect(hits).toContain('týmový hráč');
   });
 
   it('does not judge a Czech document on English phrases', () => {
-    // English list only; a Czech CV must not be measured against it.
-    const { hard } = validateCv('### Shrnutí\nSnížil náklady o 18 % v Acme.', { master, language: 'cs' });
-    expect(hard.find((h) => /stock phrasing/i.test(h))).toBeUndefined();
+    expect(bannedPhraseHits('Snížil náklady o 18 % v Acme.', 'cs')).toEqual([]);
   });
 
   it('applies every registered language on auto', () => {
-    const { hard } = validateCv('### Summary\nTýmový hráč with a proven track record.', { master, language: 'auto' });
-    const f = hard.find((h) => /stock phrasing/i.test(h));
-    expect(f).toContain('týmový hráč');
-    expect(f).toContain('proven track record');
+    const hits = bannedPhraseHits('Týmový hráč with a proven track record.', 'auto');
+    expect(hits).toContain('týmový hráč');
+    expect(hits).toContain('proven track record');
   });
 
-  it('checks a Czech cover letter against the Czech list', () => {
-    const { ok, hard } = validateCoverLetter('Vážená paní, s nadšením se ucházím o pozici.', { language: 'cs' });
-    expect(ok).toBe(false);
-    expect(hard[0]).toContain('s nadšením se ucházím');
+  it('checks an unregistered language against nothing', () => {
+    expect(bannedPhraseHits('Ein ergebnisorientierter results-driven Leader.', 'de')).toEqual([]);
   });
 });

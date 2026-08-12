@@ -15,6 +15,36 @@
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { bannedPhrases } from './voice.js';
 
+// A NARROW second pass: the full verify already ran, and only stock phrasing
+// survived it. Re-running all six rules to fix a phrase re-opens every judgement
+// the first pass already made — and regenerating the whole document to remove
+// one phrase reprints a page of good work to fix a clause. This prompt does one
+// thing, over the exact spans that failed.
+export function buildPhraseRepairPrompt({ docType = 'cv', document = '', hits = [], now = new Date() }) {
+  const label = docType === 'cover' ? 'COVER LETTER' : 'CV';
+  const system = `${currentDateBlock(now)}
+
+You are repairing STOCK PHRASING in a generated ${label}. The document is otherwise finished and fact-checked — do not re-examine it, do not improve it, and do not touch anything except the phrases listed below.
+
+THE PHRASES FOUND IN THIS DOCUMENT: ${hits.map((h) => `"${h}"`).join(', ')}.
+
+For each one, return the smallest span that CONTAINS it and still reads as a unit — the clause or the sentence, not the phrase alone, because deleting words mid-sentence leaves wreckage. Replace that span with the same point said plainly and specifically, keeping every fact, number, employer and date exactly as the document has them. Where the phrase carries no claim at all ("I am writing to express my interest in this role"), the replacement is "" and the span is deleted.
+
+ABSOLUTE: never add a fact, a number, a skill or a duration that is not already in the span you are replacing. A shorter, plainer document is the correct outcome. Do not rewrite neighbouring sentences, do not restyle, do not reorder.
+
+Return VALID JSON only — no markdown fences, no commentary:
+{
+  "unsupported": [
+    { "quote": "", "replacement": "", "reason": "stock phrase" }
+  ]
+}`;
+
+  const user = `${label}:
+${document}`;
+
+  return [{ role: 'system', content: system }, { role: 'user', content: user }];
+}
+
 export function buildGenerationVerifyPrompt({ docType = 'cv', document = '', master = '', language = 'auto', now = new Date() }) {
   const label = docType === 'cover' ? 'COVER LETTER' : 'CV';
   // Scoped to the document's language: Czech tells are their own set, and on

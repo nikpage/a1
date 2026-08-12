@@ -8,8 +8,8 @@ import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
 import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
-import { buildGenerationVerifyPrompt } from '../prompts/generation-verify.js';
-import { validateCv, validateCoverLetter, validationFeedback } from './cv-validate.js';
+import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
+import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits } from './cv-validate.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
@@ -741,6 +741,36 @@ export async function verifyGeneratedDoc({ document, master, docType = 'cv', lan
   }
 }
 
+// One narrow call, only when stock phrasing survived the verify pass, over only
+// the spans that carry it. The alternative — a hard validation failure feeding
+// the full regeneration — reprints a finished document to fix a clause and can
+// come back worse in ways nothing measures. Corrections are applied by the same
+// literal-match path, so anything the repair invents is discarded.
+export async function repairStockPhrases({ document, docType = 'cv', language = 'auto' }) {
+  const hits = bannedPhraseHits(document, language);
+  if (!hits.length) return { content: document, gemini_usage: null, applied: [] };
+
+  try {
+    const messages = buildPhraseRepairPrompt({ docType, document, hits });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
+    const gemini_usage = geminiUsage(`repair phrases ${docType}`, data, GEMINI_VERIFY_MODEL);
+    const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+    const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
+    trackDailySpend(gemini_usage.costUsd);
+
+    const left = bannedPhraseHits(content, language);
+    if (left.length) {
+      logger.error(`[repair phrases ${docType}] survived: ${left.join(', ')}`);
+    } else {
+      logger.info(`[repair phrases ${docType}] ${applied.length} stock phrase(s) removed`);
+    }
+    return { content, gemini_usage, applied };
+  } catch (e) {
+    logger.error(`stock-phrase repair failed (${docType}, keeping document):`, e.message);
+    return { content: document, gemini_usage: null, applied: [] };
+  }
+}
+
 export async function generateCV({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
   const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language);
   // medium effort: 'low' is exactly where a writing model drops the constraints
@@ -760,6 +790,11 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
     language,
   });
   if (verified.gemini_usage) usages.push(verified.gemini_usage);
+
+  // Stock phrasing the verify pass missed: repaired in place, never regenerated.
+  const cvRepair = await repairStockPhrases({ document: verified.content, docType: 'cv', language });
+  if (cvRepair.gemini_usage) usages.push(cvRepair.gemini_usage);
+  verified = { ...verified, content: cvRepair.content };
 
   // Layer 6 — deterministic output validation. Checks 1-4 are hard blocks, so a
   // failing draft is regenerated ONCE with the exact failures fed back; checks
@@ -887,16 +922,19 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // that mean anything on prose with no sections, dates or bullets. The verify
   // pass above already repairs stock phrasing, so anything left here is a miss
   // worth logging — the letter has no regeneration path to hand it to.
-  const validation = validateCoverLetter(verified.content, { language });
-  if (validation.hard.length) {
-    logger.error(`[validate cover] ${validation.hard.join(' | ')}`);
-  }
+  const repair = await repairStockPhrases({ document: verified.content, docType: 'cover', language });
+  const content = repair.content;
+  const validation = validateCoverLetter(content, { language });
 
   return {
-    content: verified.content,
+    content,
     usage: data.usage,
     validation,
     gemini_usage,
-    gemini_usages: [gemini_usage, ...(verified.gemini_usage ? [verified.gemini_usage] : [])],
+    gemini_usages: [
+      gemini_usage,
+      ...(verified.gemini_usage ? [verified.gemini_usage] : []),
+      ...(repair.gemini_usage ? [repair.gemini_usage] : []),
+    ],
   };
 }

@@ -661,15 +661,14 @@ function phraseHits(document, language) {
   return hits;
 }
 
-//     HARD, not a warning: a stock phrase is the app's own writing failing, and
-//     the user is not the right person to hand it to. The verify pass repairs
-//     these first, so a hit here means that correction was missed — the document
-//     is regenerated with the exact phrases named in the feedback.
-function checkBannedPhrases(document, hard, language) {
-  const hits = phraseHits(document, language);
-  if (hits.length) {
-    hard.push(`Banned stock phrasing (reads as machine-written). Remove every one of these and say the specific thing the record supports instead: ${hits.map((h) => `"${h}"`).join(', ')}.`);
-  }
+//     Neither hard nor a warning. A stock phrase is the app's own writing
+//     failing, so the user never sees it — but regenerating a whole document to
+//     remove one clause reprints a page of good work and re-opens every
+//     judgement the draft already got right. The caller runs a targeted repair
+//     over these exact spans instead, which is why this is exported as a plain
+//     finder rather than wired into validateCv's hard/warning lists.
+export function bannedPhraseHits(document, language = 'auto') {
+  return phraseHits(document, language);
 }
 
 // ---- the validator ----------------------------------------------------------
@@ -696,7 +695,6 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
   checkEpithets(document, warnings);
-  checkBannedPhrases(document, hard, language);
   checkSkillRecency(document, m, warnings);
   checkRoleMetrics(document, m, warnings);
 
@@ -729,7 +727,6 @@ Fix them WITHOUT inventing anything: correct a wrong number by using the master'
 export function validateCoverLetter(document, { language = 'auto' } = {}) {
   const hard = [];
   const warnings = [];
-  checkBannedPhrases(document, hard, language);
   checkEpithets(document, warnings);
   return { ok: hard.length === 0, hard, warnings };
 }

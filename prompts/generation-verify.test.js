@@ -6,7 +6,7 @@
 // words out.
 
 import { describe, it, expect } from 'vitest';
-import { buildGenerationVerifyPrompt } from './generation-verify.js';
+import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from './generation-verify.js';
 import { bannedPhrases } from './voice.js';
 import { applyGenerationCorrections } from '../utils/openai.js';
 
@@ -110,3 +110,25 @@ describe('stock phrasing (rule 6)', () => {
     expect(applied).toHaveLength(1);
   });
 });
+
+describe('buildPhraseRepairPrompt', () => {
+  it('narrows to the exact phrases found, and nothing else', () => {
+    const [system, user] = buildPhraseRepairPrompt({
+      docType: 'cover',
+      document: 'I am writing to express my interest. I cut cost 18%.',
+      hits: ['i am writing to express'],
+    });
+    expect(system.content).toContain('"i am writing to express"');
+    // The full six-rule verify must not be re-litigated here.
+    expect(system.content).not.toMatch(/INVENTED FACT|UPGRADED CLAIM|BORROWED REQUIREMENT/);
+    expect(system.content).toMatch(/do not re-examine it/i);
+    expect(system.content).toMatch(/never add a fact/i);
+    expect(user.content).toContain('I cut cost 18%.');
+  });
+
+  it('asks for the containing clause, not the bare phrase', () => {
+    const [system] = buildPhraseRepairPrompt({ docType: 'cv', document: 'x', hits: ['synergy'] });
+    expect(system.content).toMatch(/smallest span that CONTAINS it and still reads as a unit/);
+    expect(system.content).toMatch(/deleting words mid-sentence leaves wreckage/);
+  });
+})
