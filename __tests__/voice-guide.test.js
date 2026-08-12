@@ -17,6 +17,7 @@ vi.hoisted(() => {
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { normaliseMaster } from '../utils/master-schema.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { humanScannability } from '../prompts/cv-rules.js';
 
 const GUIDE = 'Open on a concrete scene. Short declarative, then one longer sentence.';
 
@@ -88,6 +89,16 @@ describe('saveMasterCv', () => {
     await saveMasterCv('user-1', { voice_guide: 'A replacement guide.' });
 
     expect(upserted.master_cv.voice_guide).toBe('A replacement guide.');
+  });
+});
+
+describe('CV prompt (Layer 2)', () => {
+  test('tells the generator to follow voice_guide, subordinate to the layer', () => {
+    const block = humanScannability('en');
+    expect(block).toContain('voice_guide');
+    expect(block).toMatch(/never WHAT is said/);
+    // It must not be handed to the writer as an override of the layer above it.
+    expect(block).toMatch(/UNDER this layer/);
   });
 });
 
