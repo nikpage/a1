@@ -25,6 +25,16 @@ describe('Layer 1', () => {
     expect(t).toMatch(/NEVER switch to year-only dates/);
   });
 
+  // The rule used to tell the writer to print 01/YYYY when the master held only
+  // a year. That is an invented month — a falsified date under T2 — so the bare
+  // year stands and the missing month is reported to the candidate instead.
+  it('never invents a month to complete MM/YYYY', () => {
+    const t = machineParseability();
+    expect(t).toMatch(/never invent a month/i);
+    expect(t).toMatch(/print that bare year/i);
+    expect(t).not.toContain('print 01/YYYY');
+  });
+
   it('makes Earlier Career the only undated entry and single column the layout', () => {
     const t = machineParseability();
     expect(t).toMatch(/only permitted undated entry/i);
@@ -45,7 +55,11 @@ describe('Layer 2', () => {
   it('defines the impact zone by word count, not rendered lines', () => {
     const t = humanScannability();
     expect(t).toContain('~120 words');
-    expect(t).toMatch(/Counted by words from the top/);
+    expect(t).toMatch(/Counted by words from the VERY TOP/);
+    // The headline and the name block sit above the Summary heading and are read
+    // first, so they spend the 120 words too — counting from the Summary let a
+    // long header push the achievements out of the zone unmeasured.
+    expect(t).toMatch(/name\/contact block, the headline/);
   });
 
   // The impact zone carries the achievements: a recruiter who reads only the top
@@ -81,6 +95,22 @@ describe('Layer 2', () => {
     const t = humanScannability();
     expect(t).toMatch(/CEILINGS, never quotas/);
     expect(t).toContain('15-25 words');
+  });
+
+  // Czech and Polish carry the same content in fewer words — no articles, heavy
+  // inflection — so an English 15-25 band pads every bullet on a Czech CV.
+  it('gives the generator the bullet band for the document language', () => {
+    expect(humanScannability('cs')).toContain('12-22 words');
+    expect(humanScannability('pl')).toContain('12-22 words');
+    expect(humanScannability('en')).toContain('15-25 words');
+    expect(humanScannability('auto')).toContain('15-25 words');
+    expect(humanScannability('de')).toContain('15-25 words');
+  });
+
+  it('carries that band through the whole rule stack into the CV prompt', () => {
+    expect(cvRulesBlock(true, 'cs')).toContain('12-22 words');
+    expect(JSON.stringify(buildCvPrompt('x', {}, 'Formal', '', '', 'cs'))).toContain('12-22 words');
+    expect(JSON.stringify(buildCvPrompt('x', {}, 'Formal', '', '', 'en'))).toContain('15-25 words');
   });
 });
 

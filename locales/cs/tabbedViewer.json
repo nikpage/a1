@@ -49,6 +49,7 @@
     "summaryTooManyAchievements": "Shrnutí uvádí {{count}} výsledků; strop jsou tři, jinak úvod přestane být přehledný.",
     "summaryAchievementNoRole": "{{count}} výsledek/výsledky ve shrnutí neuvádí pozici, ze které pochází, a působí tak jako nepodložené tvrzení.",
     "earlierCareerNoEmployer": "Řádek Dřívější kariéra neuvádí žádného skutečného zaměstnavatele — známé jméno je na něm to nejcennější.",
-    "identityEpithet": "Úvod popisuje, kdo jste, místo toho, co jste dokázal/a: {{list}}. Začněte konkrétním faktem."
+    "identityEpithet": "Úvod popisuje, kdo jste, místo toho, co jste dokázal/a: {{list}}. Začněte konkrétním faktem.",
+    "missingMonth": "Ve vašem záznamu chybí měsíc u {{list}}, proto je uveden pouze rok — neodhadujeme jej. Pokud měsíc znáte, doplňte ho."
   }
 }

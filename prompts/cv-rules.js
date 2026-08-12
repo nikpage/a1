@@ -20,6 +20,8 @@
 // Precedence for everything outside the invariants: Layer 4 > Layer 3 > Layer 2,
 // with Layer 1 as the floor beneath all three.
 
+import { bulletBand } from './cv-sections.js';
+
 // ---- Layer 0: invariants ----------------------------------------------------
 // Bound into every document prompt. Nothing below may override these.
 export function cvInvariants() {
@@ -38,19 +40,23 @@ export function machineParseability() {
 - **Headers:** standard names only — Summary, Work Experience, Education, Skills, Projects, Certifications (in the CV's own language). No creative section names. A **Projects** section renders ONLY when an Under-qualified or Career Pivot override is active, and only from evidenced master entries.
 - **Layout:** single column. No text boxes, tables, graphics, icons, multi-column blocks, or content carried in headers/footers.
 - **Titles:** print the official title from the master exactly. If it is non-standard, the industry-standard equivalent may appear in the Skills or Summary prose — never bolted onto the title line.
-- **Dates:** MM/YYYY on every dated entry (e.g. "03/2019 - 08/2022", ongoing roles "03/2019 - Present"), one format throughout the document. Where the master records only a year, print 01/YYYY only if the month is genuinely unknown — otherwise reproduce the master's month. NEVER switch to year-only dates to hide a gap or a short tenure; the "Earlier Career" line is the ONLY permitted undated entry.
+- **Dates:** MM/YYYY on every dated entry (e.g. "03/2019 - 08/2022", ongoing roles "03/2019 - Present"), one format throughout the document. Where the master records only a year, print that bare year and NOTHING else — never invent a month, not even 01, to complete the pattern: an invented month is a falsified date under T2. A year-only entry is permitted for exactly this reason and no other. NEVER switch to year-only dates to hide a gap or a short tenure; the "Earlier Career" line is the ONLY permitted undated entry.
 - **Recency window:** full detail for the last 10-15 years. Older roles collapse into one undated "Earlier Career" line — titles, employers, and the location where the location itself carries weight (a major market the candidate genuinely worked in), no bullets. NAME the employers individually, exactly as the master records them: a category ("financial institutions and tech companies") is NOT a substitute for a name, and collapsing a marquee employer into one destroys the strongest thing on that line.
 - **Education:** graduation years are written as a bare year — that is the one place a four-digit year stands alone, and it is not an exception to the MM/YYYY rule for dated *experience* entries. Keep graduation years by default. Strip them ONLY when the Older Applicant override is active, and then strip ALL of them — never selectively.`;
 }
 
 // ---- Layer 2: human scannability --------------------------------------------
-export function humanScannability() {
+// The bullet-length band is per language (see ./cv-sections.js): Czech and Polish
+// carry the same content in fewer words, so telling a Czech CV to write 15-25
+// pads every bullet to hit a band built on English.
+export function humanScannability(language = 'auto') {
+  const [minWords, maxWords] = bulletBand(language);
   return `# Layer 2 — Human scannability
-- **Impact zone — the first ~120 words of the document.** Counted by words from the top of the CV, not by rendered lines. It carries, in this order: the target-facing HEADLINE, a 2-3 sentence VALUE PROPOSITION (prose), then UP TO THREE achievement bullets immediately beneath, inside the Summary block. Each of those bullets NAMES the role and employer it came from, so it cannot read as a floating claim. They may restate a bullet that also appears under its role — that duplication is deliberate: the recruiter who reads only the top block still sees the three strongest results. Print only as many as the master genuinely evidences — three is a CEILING, never a quota.
+- **Impact zone — the first ~120 words of the document.** Counted by words from the VERY TOP of the CV — the name/contact block, the headline, the value proposition and the achievement bullets all count — not by rendered lines. It carries, in this order: the target-facing HEADLINE, a 2-3 sentence VALUE PROPOSITION (prose), then UP TO THREE achievement bullets immediately beneath, inside the Summary block. Each of those bullets NAMES the role and employer it came from, so it cannot read as a floating claim. They may restate a bullet that also appears under its role — that duplication is deliberate: the recruiter who reads only the top block still sees the three strongest results. Print only as many as the master genuinely evidences — three is a CEILING, never a quota.
 - **Openers name facts, not identities.** The value proposition's first sentence states something the candidate did or built. BANNED as descriptions of the candidate: "veteran", "seasoned", "accomplished", "industry expert", "technology leader" and their equivalents — they assert a category instead of evidence, and under an Older Applicant override "veteran" re-emits the very signal that override exists to manage.
 - **Bullet form:** [Action verb] + [scope/context] + [quantified outcome].
 - **Metric fallback:** where the master holds no number for an achievement, write [Action verb] + [method/tool] + [concrete deliverable]. A deliverable is a thing that shipped or changed — never an adjective. Fallback bullets are unlimited where the master genuinely holds no metrics; where metrics DO exist and you chose not to use them, fallback bullets must stay under one third of that role's bullets.
-- **Volume:** bullets 15-25 words. Up to 3-5 bullets for the two most recent roles, 2-3 for the rest. These are CEILINGS, never quotas — if the master evidences fewer achievements, print fewer. A role with one evidenced achievement gets one bullet.
+- **Volume:** bullets ${minWords}-${maxWords} words (the band for this document's language). Up to 3-5 bullets for the two most recent roles, 2-3 for the rest. These are CEILINGS, never quotas — if the master evidences fewer achievements, print fewer. A role with one evidenced achievement gets one bullet.
 - **Density:** no paragraph blocks inside Work Experience — bullets only.`;
 }
 
@@ -72,11 +78,11 @@ export function coverMatchingRule(hasJobText) {
 }
 
 // The full CV-side rule stack, in precedence order, for cv-generator.js.
-export function cvRulesBlock(hasJobText) {
+export function cvRulesBlock(hasJobText, language = 'auto') {
   return [
     cvInvariants(),
     machineParseability(),
-    humanScannability(),
+    humanScannability(language),
     jobMatchingRules(hasJobText),
   ].filter(Boolean).join('\n\n');
 }

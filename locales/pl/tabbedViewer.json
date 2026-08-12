@@ -49,6 +49,7 @@
     "summaryTooManyAchievements": "Podsumowanie wymienia {{count}} osiągnięć; trzy to maksimum, powyżej wstęp przestaje być czytelny.",
     "summaryAchievementNoRole": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu nie wskazują stanowiska, z którego pochodzą, więc brzmią jak gołosłowna deklaracja.",
     "earlierCareerNoEmployer": "Wiersz Wcześniejsza kariera nie wymienia żadnego prawdziwego pracodawcy — rozpoznawalna nazwa jest tam najcenniejsza.",
-    "identityEpithet": "Wstęp opisuje, kim jesteś, zamiast tego, co zrobiłeś/aś: {{list}}. Zacznij od konkretu."
+    "identityEpithet": "Wstęp opisuje, kim jesteś, zamiast tego, co zrobiłeś/aś: {{list}}. Zacznij od konkretu.",
+    "missingMonth": "Twój zapis nie podaje miesiąca dla {{list}}, więc widnieje sam rok — nie zgadujemy go. Jeśli znasz miesiąc, uzupełnij go."
   }
 }

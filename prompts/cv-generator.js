@@ -18,7 +18,7 @@ export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', languag
   const jobBlock = targetJobBlock(analysis);
   // Layers 0-3 come from the shared rule module; Layer 5 from the target market.
   const hasJobText = Boolean(jobBlock);
-  const rulesBlock = cvRulesBlock(hasJobText);
+  const rulesBlock = cvRulesBlock(hasJobText, language);
   const marketBlock = marketConventions(analysis);
   const coreBlock = core && core.trim()
     ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`

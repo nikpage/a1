@@ -226,6 +226,17 @@ describe('warnings (checks 5-9)', () => {
     expect(paramsFor(r, 'impactZoneWords').count).toBeGreaterThan(120);
   });
 
+  // The zone is what the recruiter reads first, and the name block plus headline
+  // sit above the Summary heading. Counting only the Summary section let a long
+  // header spend the budget invisibly.
+  it('counts the impact zone from the very top of the document, headline included', () => {
+    const filler = ' padding words above the summary heading that spend the zone'.repeat(12);
+    const doc = GOOD.replace('**Head of Delivery | Platform Teams**', `**Head of Delivery${filler}**`);
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('impactZoneWords');
+    expect(paramsFor(r, 'impactZoneWords').count).toBeGreaterThan(120);
+  });
+
   it('warns when a third-or-later role exceeds its three-bullet ceiling', () => {
     const bullet = '- Introduced continuous integration pipelines using Jenkins across every product team in the group\n';
     const doc = `${GOOD}\n#### **Earlier Delivery Manager**\n**Borealis** | 01/2015 - 02/2019 | London, United Kingdom\n${bullet.repeat(4)}`;
@@ -331,6 +342,48 @@ describe('check 10 — Older Applicant (hard)', () => {
     const r = validateCv(GOOD.replace('Delivery leader who rebuilt', 'Delivery leader with 20+ years who rebuilt'), { master: MASTER, analysis: OLDER });
     expect(r.ok).toBe(false);
     expect(r.hard.join(' ')).toMatch(/20\+?\s*years/);
+  });
+
+  it('blocks the prose forms of the same total', () => {
+    for (const phrase of ['over two decades in banking', 'a decade of expertise', '25 years of experience']) {
+      const r = validateCv(GOOD.replace('Delivery leader who rebuilt', `Delivery leader, ${phrase}, who rebuilt`), { master: MASTER, analysis: OLDER });
+      expect(r.hard.join(' '), phrase).toMatch(/cumulative career total/);
+    }
+  });
+
+  // The old catch-all regex matched any "N years" and hard-blocked this — a
+  // duration scoped to one role, which is the depth the override exists to keep.
+  it('allows a duration scoped to a single role', () => {
+    for (const phrase of ['five years running the Acme delivery org', 'four years at Borealis']) {
+      const doc = GOOD.replace('Works close to the code and the customer.', `Spent ${phrase}.`);
+      const r = validateCv(doc, { master: MASTER, analysis: OLDER });
+      expect(r.hard.join(' '), phrase).not.toMatch(/career total/);
+    }
+  });
+});
+
+// 13. A month the master does not record is never invented — the bare year
+//     stands and the candidate is told which one is incomplete.
+describe('check 13 — missing month', () => {
+  const YEAR_ONLY_MASTER = JSON.stringify({
+    experience: [
+      { company: 'Acme Ltd', role: 'Head of Delivery', dates: '2019 - 2022', achievements: [{ text: 'Cut release cycle from 42 days to 9 days' }] },
+    ],
+  });
+  const doc = `### **Summary**\nDelivery leader who rebuilt how Acme ships.\n\n- As Head of Delivery at Acme Ltd, cut release cycle from 42 days to 9 days\n\n### **Work Experience**\n\n#### **Head of Delivery**\n**Acme Ltd** | 2019 - 2022 | London, United Kingdom\n- Cut release cycle from 42 days to 9 days across four product teams and two platform squads\n`;
+
+  it('permits the bare year when the master holds no month, and warns instead', () => {
+    const r = validateCv(doc, { master: YEAR_ONLY_MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toMatch(/MM\/YYYY/);
+    expect(codes(r)).toContain('missingMonth');
+    expect(paramsFor(r, 'missingMonth').list).toBe('2019, 2022');
+  });
+
+  it('still blocks a bare year the master DOES give a month for', () => {
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.ok).toBe(false);
+    expect(r.hard.join(' ')).toMatch(/without a month, but the master records a month/);
+    expect(codes(r)).not.toContain('missingMonth');
   });
 });
 

@@ -155,18 +155,29 @@ function checkCertificationsTrace(document, master, hard) {
   }
 }
 
-// 2. Dates match the master, and every dated experience entry is MM/YYYY.
-function checkDates(document, master, hard) {
+// 2. Dates match the master, and every dated experience entry is MM/YYYY —
+//    except the year-only entries check 13 permits, collected into yearOnly[]
+//    and reported to the candidate as a warning by the caller.
+function checkDates(document, master, hard, yearOnly) {
   const sections = splitSections(document);
   const exp = sections.find((s) => parseRoles(s).length > 0);
   if (!exp) return;
   const text = exp.lines.join('\n');
 
-  // Format: any year in the experience section must be part of an MM/YYYY pair.
-  const yearMatches = text.match(/\b(19|20)\d{2}\b/g) || [];
+  // Format: any year in the experience section must be part of an MM/YYYY pair,
+  // with ONE exception (check 13) — a year the master itself records without a
+  // month. Inventing "01/" to complete the pattern would falsify a date, so the
+  // bare year is correct there and only warns. A bare year the master DOES hold
+  // a month for is the old failure: year-only dates softening a gap.
   const mmYyyy = text.match(/\b(0[1-9]|1[0-2])\/((19|20)\d{2})\b/g) || [];
-  if (yearMatches.length !== mmYyyy.length) {
-    hard.push('Work Experience contains a date that is not in MM/YYYY form — one date format is required throughout.');
+  const bare = (text.replace(/\b(0[1-9]|1[0-2])\/((19|20)\d{2})\b/g, ' ').match(/\b(19|20)\d{2}\b/g) || []);
+  for (const year of new Set(bare)) {
+    const masterHasMonth = new RegExp(`\\b(0[1-9]|1[0-2])[\\/.\\-]${year}\\b`).test(master.text || '');
+    if (masterHasMonth) {
+      hard.push(`Work Experience shows the year ${year} without a month, but the master records a month for it — MM/YYYY is required wherever the master supplies it.`);
+    } else {
+      yearOnly.push(year);
+    }
   }
 
   if (!master.text) return;
@@ -279,7 +290,12 @@ function checkImpactZone(document, master, warnings) {
     }
   }
 
-  const count = words(summary.lines.join(' ')).length;
+  // Counted from the VERY TOP of the document, not from the Summary heading: the
+  // name/contact block and the headline sit above it and are read first, so they
+  // spend the recruiter's 120 words exactly as the Summary does.
+  const doc = String(document || '');
+  const head = doc.split(/^###\s+/m)[0] || '';
+  const count = words(head).length + words(summary.lines.join(' ')).length;
   if (count > 120) warnings.push({ code: 'impactZoneWords', params: { count } });
 }
 
@@ -402,11 +418,23 @@ function checkOlderApplicant(document, analysis, hard) {
     }
   }
 
-  // "12+ years", "20 + years", "a decade of" — any stated career total.
+  // The banned thing is the CUMULATIVE total — one figure the screening sort can
+  // act on before it reads anything. A duration scoped to a single role or
+  // engagement ("five years running the Prague platform team") is evidence of
+  // depth, not an age signal, and the earlier catch-all regex hard-blocked it.
   const doc = plain(String(document || ''));
-  const total = doc.match(/\b\d+\s*\+?\s*(years|let|lat)\b|\b(a|over a)\s+decade\b/i);
-  if (total) {
-    hard.push(`The CV states a career total ("${total[0].trim()}"); the Older Applicant override forbids "X+ years" anywhere.`);
+  const totals = [
+    /\b\d+\s*\+\s*(years|let|lat)\b/i,                                   // "25+ years"
+    /\b\d+\s*(years|let|lat)\b[^.]{0,20}\b(experience|expertise|career|zkušeností|doświadczenia)\b/i,
+    /\b(a|over a|nearly a)\s+decade\s+of\b/i,
+    /\b(two|three|four|several|multiple|over)\s+decades\b/i,
+  ];
+  for (const re of totals) {
+    const hit = doc.match(re);
+    if (hit) {
+      hard.push(`The CV states a cumulative career total ("${hit[0].trim()}"); the Older Applicant override forbids career totals. A duration scoped to one role is fine — a sum of the whole career is not.`);
+      break;
+    }
   }
 }
 
@@ -461,9 +489,11 @@ export function validateCv(document, { master = '', analysis = null, language = 
   const warnings = [];
   const m = readMaster(master);
 
+  const yearOnly = [];
+
   checkNumbersTrace(document, m, hard);
   checkCertificationsTrace(document, m, hard);
-  checkDates(document, m, hard);
+  checkDates(document, m, hard, yearOnly);
   checkRolesReal(document, m, hard);
   checkStructure(document, analysis, hard);
   checkOlderApplicant(document, analysis, hard);
@@ -475,6 +505,13 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
   checkEpithets(document, warnings);
+
+  // 13. Year-only dates the master could not supply a month for. Printing the
+  //     bare year is correct — inventing "01/" would falsify the record — so the
+  //     candidate is told which months are missing and can fill them in.
+  if (yearOnly.length) {
+    warnings.push({ code: 'missingMonth', params: { list: [...new Set(yearOnly)].sort().join(', ') } });
+  }
 
   return { ok: hard.length === 0, hard, warnings };
 }

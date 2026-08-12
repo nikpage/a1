@@ -68,6 +68,16 @@ describe('scenarioGenerationRules', () => {
     expect(scenarioGenerationRules(undefined)).toBe('');
   });
 
+  // The override's target is the cumulative figure a screening sort acts on
+  // before it reads anything. A duration scoped to one role is evidence of depth
+  // — banning it stripped out the very thing the override exists to protect.
+  it('bans career totals but keeps role-scoped durations', () => {
+    const out = scenarioGenerationRules(['Older Applicant']);
+    expect(out).toMatch(/CUMULATIVE career total/);
+    expect(out).toMatch(/SINGLE role, project or engagement stays/);
+    expect(out).not.toMatch(/or any career total anywhere/);
+  });
+
   it('every scenario in SCENARIOS has detect, handling and generation text', () => {
     for (const [name, s] of Object.entries(SCENARIOS)) {
       expect(s.detect, `${name}.detect`).toBeTruthy();
