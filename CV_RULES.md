@@ -47,6 +47,10 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Density.** No paragraph blocks inside Work Experience.
 
+**Skills — ordered by recency, clustered by domain.** Skills are listed in the order of the most recent role that evidences them: the current role's skills first, then the next role's, and so on. Within that order, skills belonging to the same domain sit adjacent — a domain is never split by an unrelated entry. Grouping is expressed by ORDER alone; the section stays a single flat bullet list with no sub-headings, labels or categories, because Layer 1 permits no heading below the section level.
+
+A skill whose only evidence lies outside the recency window — in the "Earlier Career" line or older — is not listed at all. The Skills section describes the candidate now, not the whole career, and an old speciality listed alongside current ones both misdirects the recruiter and re-emits the age signal the recency window exists to manage. Every listed skill traces to the master AND to a role the CV actually shows.
+
 ## Layer 3 — Job matching (only with a job ad)
 
 **Coverage, bounded.** Extract required hard skills, tools, and certifications from the ad. Use the ad's exact term only where the master evidences it. Unevidenced requirements are reported to the user as a gap — never quietly filled.
