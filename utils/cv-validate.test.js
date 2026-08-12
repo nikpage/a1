@@ -5,7 +5,7 @@
 // no mocks, and each test is built so it fails if the check stops working.
 
 import { describe, it, expect } from 'vitest';
-import { validateCv, validationFeedback, splitSections } from './cv-validate.js';
+import { validateCv, validateCoverLetter, validationFeedback, splitSections } from './cv-validate.js';
 
 // Warnings are { code, params } pairs so the UI can translate them; these
 // helpers keep the assertions about WHICH warning fired, not about wording.
@@ -536,5 +536,64 @@ describe('language', () => {
   it('falls back to the default band for an unregistered language', () => {
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS, language: 'hu' });
     expect(r.warnings.find((w) => w.code === 'bulletBand').params.min).toBe(15);
+  });
+});
+
+describe('check 17 — banned phrasing', () => {
+  const master = JSON.stringify({
+    experience: [{ title: 'Head of Ops', company: 'Acme', dates: '01/2019 - 12/2024', achievements: ['Cut fulfilment cost 18%'] }],
+  });
+
+  it('flags every stock phrase it finds, through markdown emphasis', () => {
+    const doc = '### Summary\nA **results-driven** leader with a proven track record, passionate about seamless delivery.';
+    const { warnings } = validateCv(doc, { master });
+    const w = warnings.find((x) => x.code === 'bannedPhrase');
+    expect(w).toBeTruthy();
+    expect(w.params.list).toContain('results-driven');
+    expect(w.params.list).toContain('proven track record');
+    expect(w.params.list).toContain('passionate about');
+    expect(w.params.count).toBeGreaterThanOrEqual(3);
+  });
+
+  it('stays silent on specific, evidenced writing', () => {
+    const doc = '### Summary\nCut fulfilment cost 18% at Acme.\n\n### Work Experience\n#### **Head of Ops**\n**Acme** | 01/2019 - 12/2024\n- Cut fulfilment cost 18% across three warehouses';
+    const { warnings } = validateCv(doc, { master });
+    expect(warnings.find((x) => x.code === 'bannedPhrase')).toBeUndefined();
+  });
+
+  it('does not fire inside a longer word', () => {
+    // "synergy" is banned; "synergybank" as an employer name is not a hit.
+    const { warnings } = validateCv('### Summary\nBuilt the payments team at Synergybank.', { master });
+    expect(warnings.find((x) => x.code === 'bannedPhrase')).toBeUndefined();
+  });
+
+  it('is a warning, never a hard block', () => {
+    const { ok, hard } = validateCv('### Summary\nA results-driven leader.', { master });
+    expect(hard.find((h) => /banned|phrase/i.test(String(h)))).toBeUndefined();
+    expect(ok).toBe(true);
+  });
+});
+
+describe('validateCoverLetter', () => {
+  it('catches the boilerplate wrapper the letter is most prone to', () => {
+    const { warnings } = validateCoverLetter(
+      'Dear Hiring Manager,\n\nI am writing to express my interest in the role. As you can see from my CV, I am passionate about seamless delivery.\n\nSincerely,'
+    );
+    const w = warnings.find((x) => x.code === 'bannedPhrase');
+    expect(w.params.list).toContain('i am writing to express');
+    expect(w.params.list).toContain('as you can see from my cv');
+    expect(w.params.list).toContain('passionate about');
+  });
+
+  it('catches an identity epithet in the letter too', () => {
+    const { warnings } = validateCoverLetter('Dear Hiring Manager,\n\nA seasoned technology leader writes to you.');
+    expect(warnings.find((x) => x.code === 'identityEpithet')).toBeTruthy();
+  });
+
+  it('passes a clean letter and never blocks', () => {
+    const res = validateCoverLetter('Dear Hiring Manager,\n\nI cut fulfilment cost 18% at Acme across three warehouses. That is the problem your ad describes.\n\nSincerely,');
+    expect(res.warnings).toEqual([]);
+    expect(res.ok).toBe(true);
+    expect(res.hard).toEqual([]);
   });
 });

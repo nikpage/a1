@@ -53,6 +53,7 @@
     "summaryVerbatimCopy": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu powtarzają słowo w słowo punkt z doświadczenia. Ten sam efekt ujęty inaczej czyta się dużo lepiej.",
     "skillOutsideWindow": "Te umiejętności potwierdza wyłącznie praca, której CV już nie pokazuje: {{list}}. Cofają uwagę do starszej części kariery.",
     "noMetricsInRecord": "Twoje dane nie zawierają liczb dla: {{list}}. Podaj prawdziwe wartości, a te punkty znacznie zyskają — nie wymyślamy ich.",
-    "missingMonth": "Twój zapis nie podaje miesiąca dla {{list}}, więc widnieje sam rok — nie zgadujemy go. Jeśli znasz miesiąc, uzupełnij go."
+    "missingMonth": "Twój zapis nie podaje miesiąca dla {{list}}, więc widnieje sam rok — nie zgadujemy go. Jeśli znasz miesiąc, uzupełnij go.",
+    "bannedPhrase": "Utarte zwroty, które brzmią jak tekst pisany przez maszynę: {{list}}. Zastąp je tym, co konkretnie zrobiłeś(-aś)."
   }
 }

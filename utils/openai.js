@@ -9,7 +9,7 @@ import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { buildGenerationVerifyPrompt } from '../prompts/generation-verify.js';
-import { validateCv, validationFeedback } from './cv-validate.js';
+import { validateCv, validateCoverLetter, validationFeedback } from './cv-validate.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
@@ -880,9 +880,15 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     docType: 'cover',
   });
 
+  // Layer 6 for the letter: the banned-phrase and epithet checks, the only two
+  // that mean anything on prose with no sections, dates or bullets. Warnings
+  // only — a stock phrase is reported, never a reason to block the document.
+  const validation = validateCoverLetter(verified.content);
+
   return {
     content: verified.content,
     usage: data.usage,
+    validation,
     gemini_usage,
     gemini_usages: [gemini_usage, ...(verified.gemini_usage ? [verified.gemini_usage] : [])],
   };

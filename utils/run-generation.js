@@ -177,10 +177,12 @@ export async function runGeneration({
     // Layer 6 warnings (checks 5-9) ride out with the document so the user
     // sees what the validator flagged; hard failures never reach here.
     const cvWarnings = cvRes?.validation?.warnings || [];
+    const coverWarnings = coverRes?.validation?.warnings || [];
     return {
       ...(cv && { cv }),
       ...(cover && { cover }),
       ...(cvWarnings.length && { cv_warnings: cvWarnings }),
+      ...(coverWarnings.length && { cover_warnings: coverWarnings }),
       gemini_usage: [...usagesOf(cvRes), ...usagesOf(coverRes)],
     };
   } finally {

@@ -20,6 +20,7 @@
 // band come from prompts/cv-sections.js, which holds them per language.
 
 import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js';
+import { BANNED_PHRASES } from '../prompts/voice.js';
 
 // ---- small parsing helpers --------------------------------------------------
 
@@ -630,6 +631,38 @@ function checkEpithets(document, warnings) {
   }
 }
 
+
+// 17. No banned stock phrase anywhere in the document (CV_RULES.md, Layer 2).
+//     The prompt already forbids the list; this is what makes the ban real —
+//     five of these undo a page of real evidence, and a rule only asked for is
+//     followed most of the time. The list is imported from prompts/voice.js so
+//     the instruction and the check cannot drift apart.
+//
+//     Matched on the plain text (markup stripped) so "**seamless**" cannot hide,
+//     literal and case-insensitive, with word boundaries where the phrase starts
+//     and ends on a word character — "synergy" must not fire inside a longer
+//     word, and "underscore" must not fire on "underscored the beam" in some
+//     unrelated trade. Every hit is reported, so the candidate sees the actual
+//     phrases rather than a count.
+function phraseHits(document) {
+  const text = plain(document).toLowerCase();
+  const hits = [];
+  for (const phrase of BANNED_PHRASES) {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const lead = /^\w/.test(phrase) ? '\\b' : '';
+    const tail = /\w$/.test(phrase) ? '\\b' : '';
+    if (new RegExp(`${lead}${escaped}${tail}`, 'i').test(text)) hits.push(phrase);
+  }
+  return hits;
+}
+
+function checkBannedPhrases(document, warnings) {
+  const hits = phraseHits(document);
+  if (hits.length) {
+    warnings.push({ code: 'bannedPhrase', params: { list: hits.join(', '), count: hits.length } });
+  }
+}
+
 // ---- the validator ----------------------------------------------------------
 
 export function validateCv(document, { master = '', analysis = null, language = 'auto' } = {}) {
@@ -654,6 +687,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
   checkEpithets(document, warnings);
+  checkBannedPhrases(document, warnings);
   checkSkillRecency(document, m, warnings);
   checkRoleMetrics(document, m, warnings);
 
@@ -675,4 +709,17 @@ Your previous draft broke rules that cannot be broken. Regenerate the CV, keepin
 ${hard.map((h) => `- ${h}`).join('\n')}
 
 Fix them WITHOUT inventing anything: correct a wrong number by using the master's number or cutting the claim, correct a date by copying the master's date, remove any entry that is not a real role, and express any structure with plain single-column markdown.`;
+}
+
+// The cover letter's slice of Layer 6. The letter has no sections, dates or
+// bullets to check, so almost nothing in validateCv applies to it — but the
+// banned-phrase list does, and the letter is prose, which is exactly where the
+// boilerplate wrapper ("I am writing to express my interest") lands. Same list,
+// same { code, params } warnings, so the UI renders both documents' findings
+// through the one translation path.
+export function validateCoverLetter(document) {
+  const warnings = [];
+  checkBannedPhrases(document, warnings);
+  checkEpithets(document, warnings);
+  return { ok: true, hard: [], warnings };
 }
