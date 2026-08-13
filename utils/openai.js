@@ -11,7 +11,7 @@ import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
 import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
 import { buildVoiceFixPrompt } from '../prompts/voice-check.js';
-import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits } from './cv-validate.js';
+import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits } from './cv-validate.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
@@ -805,6 +805,40 @@ export async function repairStockPhrases({ document, docType = 'cv', language = 
   }
 }
 
+// Layer 6, check 23 — the invented industry, REPAIRED rather than reported. The
+// letter that named "fintech" over an ad asking for financial advisory is the
+// case: the word is in neither the ad nor the master, and no AI pass reaches it,
+// because a bare domain noun carries no number, no date and no upgraded verb.
+//
+// Same machinery as the stock-phrase repair — hits found in code, one narrow
+// call, corrections applied by literal string match — because it is the same
+// defect class: the app's own writing failing, fixed before delivery instead of
+// handed to the candidate as a warning about their own document.
+export async function repairUnsourcedDomains({ document, master = '', analysis = null }) {
+  const hits = unsourcedDomainHits(document, { master, analysis });
+  if (!hits.length) return { content: document, gemini_usage: null, applied: [] };
+
+  try {
+    const messages = buildPhraseRepairPrompt({ docType: 'cover', document, hits, kind: 'domain' });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
+    const gemini_usage = geminiUsage('repair unsourced domain', data, GEMINI_VERIFY_MODEL);
+    const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+    const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
+    trackDailySpend(gemini_usage.costUsd);
+
+    const left = unsourcedDomainHits(content, { master, analysis });
+    if (left.length) {
+      logger.error(`[repair domain cover] survived: ${left.join(', ')}`);
+    } else {
+      logger.info(`[repair domain cover] ${applied.length} invented domain label(s) removed`);
+    }
+    return { content, gemini_usage, applied };
+  } catch (e) {
+    logger.error('unsourced-domain repair failed (keeping document):', e.message);
+    return { content: document, gemini_usage: null, applied: [] };
+  }
+}
+
 // ── Voice profile ────────────────────────────────────────────────────────────
 //
 // Build the profile ONCE, from samples of the user's own writing. Reading prose
@@ -1055,12 +1089,14 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // Layer 6 for the letter: the banned-phrase repair, then the letter's own
   // checks (word band, matched pairs, salutation, one objection, numbers).
   const repair = await repairStockPhrases({ document: verified.content, docType: 'cover', language });
+  const domainRepair = await repairUnsourcedDomains({ document: repair.content, master: cv, analysis });
   usages.push(...(voiced.gemini_usages || []));
   if (verified.gemini_usage) usages.push(verified.gemini_usage);
   if (repair.gemini_usage) usages.push(repair.gemini_usage);
+  if (domainRepair.gemini_usage) usages.push(domainRepair.gemini_usage);
 
-  let content = repair.content;
-  let validation = validateCoverLetter(content, { master: cv, analysis, language });
+  let content = domainRepair.content;
+  let validation = validateCoverLetter(content, { master: cv, analysis, language, tweak });
 
   // The word band is a hard failure, so an over-length letter is regenerated
   // ONCE with the count fed back — the same shape as generateCV's retry, and the
@@ -1086,9 +1122,12 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     const reRepair = await repairStockPhrases({ document: reVerified.content, docType: 'cover', language });
     if (reRepair.gemini_usage) usages.push(reRepair.gemini_usage);
 
-    const revalidated = validateCoverLetter(reRepair.content, { master: cv, analysis, language });
+    const reDomain = await repairUnsourcedDomains({ document: reRepair.content, master: cv, analysis });
+    if (reDomain.gemini_usage) usages.push(reDomain.gemini_usage);
+
+    const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language, tweak });
     if (revalidated.hard.length <= validation.hard.length) {
-      content = reRepair.content;
+      content = reDomain.content;
       validation = revalidated;
     }
     if (!validation.ok) {

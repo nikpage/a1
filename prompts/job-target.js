@@ -56,6 +56,7 @@ ${facts}
 - Evidence the job asks for gets promoted; experience the job has no use for gets condensed or cut. That reordering IS the tailoring.
 - **A requirement with no evidence stays unanswered.** Say nothing about it. Do NOT imply, hint at, adjacent-skill it, or borrow the ad's phrasing to cover a hole — an unclaimed gap is honest, a papered-over one is a lie.
 - Never upgrade what the evidence says to make it fit better: "contributed to" does not become "led", a team of 3 does not become a department, exposure does not become expertise, and no number moves.
+- **The candidate's own instructions, where this document carries them, outrank this block.** If they asked for something to be played down, it does NOT get promoted here no matter which requirement it answers: answer that requirement with other real evidence, or leave it unanswered. This block decides ordering only where the candidate has not already decided it.
 - Use the ad's own vocabulary ONLY over experience the candidate genuinely has — matching their real work to the employer's words, never their words to work that isn't there.
 `;
 }

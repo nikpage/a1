@@ -91,6 +91,10 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
   const [cv, setCv] = useState('');
   const [cover, setCover] = useState('');
   const [warnings, setWarnings] = useState([]);
+  // The letter's own Layer 6 warnings (checks 19-22). run-generation returns them
+  // alongside cv_warnings; showing only the CV's meant a letter's findings were
+  // computed on every run and seen by nobody.
+  const [coverWarnings, setCoverWarnings] = useState([]);
   const [activeTab, setActiveTab] = useState('cv');
   const [error, setError] = useState('');
 
@@ -190,6 +194,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
       setCv(data.cv || '');
       setCover(data.cover || '');
       setWarnings(Array.isArray(data.cv_warnings) ? data.cv_warnings : []);
+      setCoverWarnings(Array.isArray(data.cover_warnings) ? data.cover_warnings : []);
       setActiveTab(data.cv ? 'cv' : 'cover');
       window.dispatchEvent(new Event('header-stats-updated'));
     } catch (err) {
@@ -429,9 +434,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                     <span className="ml-auto text-xs text-gray-500">editable — downloads use what is shown</span>
                   </div>
 
-                  {activeTab === 'cv' && (
-                    <CvWarningBanner items={warnings} className="mt-3" />
-                  )}
+                  <CvWarningBanner items={activeTab === 'cv' ? warnings : coverWarnings} className="mt-3" />
 
                   <textarea
                     value={activeTab === 'cv' ? cv : cover}

@@ -20,13 +20,36 @@ import { bannedPhrases } from './voice.js';
 // the first pass already made — and regenerating the whole document to remove
 // one phrase reprints a page of good work to fix a clause. This prompt does one
 // thing, over the exact spans that failed.
-export function buildPhraseRepairPrompt({ docType = 'cv', document = '', hits = [], now = new Date() }) {
+// `kind` selects what is being repaired. Both repairs are the same operation —
+// find the smallest span carrying the offending words, say the same thing without
+// them, add nothing — so they share one prompt rather than two that drift apart.
+//   'phrase' — stock phrasing from the Layer 2 banned list.
+//   'domain' — an industry label the letter invented (Layer 6, check 23): a word
+//              in neither the job ad nor the master, which the fact-checker does
+//              not reach because a bare domain noun makes no checkable claim.
+const REPAIR_KINDS = {
+  phrase: {
+    title: 'STOCK PHRASING',
+    found: 'THE PHRASES FOUND IN THIS DOCUMENT',
+    reason: 'stock phrase',
+    extra: '',
+  },
+  domain: {
+    title: 'AN INVENTED INDUSTRY LABEL',
+    found: 'THE WORDS FOUND IN THIS DOCUMENT, WHICH APPEAR IN NEITHER THE JOB AD NOR THE CANDIDATE\'S RECORD',
+    reason: 'unsourced domain',
+    extra: '\n\nThese name a world the candidate has not been evidenced to work in. Do NOT substitute a different industry — you have no source for one either. Say what they actually did, and let the sentence carry no domain label at all: "delivery of custom software products" where it said "fintech products". Where the label is the only content the clause has, delete the clause.',
+  },
+};
+
+export function buildPhraseRepairPrompt({ docType = 'cv', document = '', hits = [], kind = 'phrase', now = new Date() }) {
   const label = docType === 'cover' ? 'COVER LETTER' : 'CV';
+  const k = REPAIR_KINDS[kind] || REPAIR_KINDS.phrase;
   const system = `${currentDateBlock(now)}
 
-You are repairing STOCK PHRASING in a generated ${label}. The document is otherwise finished and fact-checked — do not re-examine it, do not improve it, and do not touch anything except the phrases listed below.
+You are repairing ${k.title} in a generated ${label}. The document is otherwise finished and fact-checked — do not re-examine it, do not improve it, and do not touch anything except the words listed below.
 
-THE PHRASES FOUND IN THIS DOCUMENT: ${hits.map((h) => `"${h}"`).join(', ')}.
+${k.found}: ${hits.map((h) => `"${h}"`).join(', ')}.${k.extra}
 
 For each one, return the smallest span that CONTAINS it and still reads as a unit — the clause or the sentence, not the phrase alone, because deleting words mid-sentence leaves wreckage. Replace that span with the same point said plainly and specifically, keeping every fact, number, employer and date exactly as the document has them. Where the phrase carries no claim at all ("I am writing to express my interest in this role"), the replacement is "" and the span is deleted.
 
@@ -35,7 +58,7 @@ ABSOLUTE: never add a fact, a number, a skill or a duration that is not already 
 Return VALID JSON only — no markdown fences, no commentary:
 {
   "unsupported": [
-    { "quote": "", "replacement": "", "reason": "stock phrase" }
+    { "quote": "", "replacement": "", "reason": "${k.reason}" }
   ]
 }`;
 

@@ -36,8 +36,23 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
   // Short excerpts, so the model can hear the rhythm a description loses. Fenced
   // hard: manner only, nothing taken.
   const excerptBlock = voiceProfile ? voiceExcerptBlock(voiceProfile) : '';
+  // Steering outranks THE PLAN, not just the writer. The blueprint's matched
+  // pairs and the target-job block's "make it early" rule were both written
+  // during analysis, before the candidate typed a word — so a letter that obeys
+  // them faithfully foregrounds exactly the experience the candidate just asked
+  // to bury. Stating "highest priority" once and leaving the plan intact loses:
+  // one line cannot outweigh a labelled three-item plan repeated downstream.
+  // These instructions therefore say what to DO to the plan, concretely.
   const tweakBlock = tweak && tweak.trim()
-    ? `    # The candidate's own instructions (HIGHEST PRIORITY)\n    Follow this over any conflicting guidance below, but NEVER invent facts to satisfy it:\n    "${tweak.trim()}"\n`
+    ? `    # The candidate's own instructions (HIGHEST PRIORITY — they outrank the plan itself)
+    "${tweak.trim()}"
+
+    This is the candidate speaking about their own letter, after the plan below was written. It wins over every block that follows, including the blueprint's matched pairs and the target-job instruction to lead with evidence for each requirement. Apply it like this:
+    - **Demoted content is not evidence.** Where they ask you to play something down, it may NOT be the proof you lead with, the hook, or the evidence in a matched pair — however well it answers a requirement in the ad. Find other real evidence in the master for that requirement. If the master has none, DROP that pair and make the letter's argument with fewer: an unanswered requirement is honest, and the candidate has decided what this letter argues.
+    - **Demoted content is not deleted.** It may still appear once, late, plainly, where leaving it out would make the story incoherent — never as the letter's centre of gravity, never named repeatedly.
+    - **Emphasised content leads and is proved.** What they ask you to foreground belongs in the opening and carries the letter's argument, with the specific facts the master records for it. An emphasis reduced to one passing clause has been ignored, not applied.
+    - **NEVER invent a fact to satisfy any of this.** Steering reorders, reframes and cuts real content. It never adds. If they ask you to emphasise something the master does not evidence, foreground the closest thing the master DOES evidence and say no more.
+`
     : '';
   const systemMessage = {
     role: 'system',

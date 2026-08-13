@@ -1,33 +1,45 @@
 // __tests__/cover-provenance.test.js
 //
-// CV_RULES.md Layer 6, check 23 — vocabulary provenance in the cover letter.
+// CV_RULES.md Layer 6 check 23 (the invented domain, REPAIRED not reported) and
+// the steering precedence rule in the Invariants section.
 //
-// The defect this pins is a real run: a Product Owner ad at a Zlín software
-// house asking for "finančně-poradenský business", banking, insurance or IFA
-// experience. The letter came back describing the candidate's fintech
-// background. The word "fintech" was in neither the ad nor the candidate's
-// record — the model reached for it because the three finance nouns in the ad
-// suggested a domain and it supplied the label itself. Every AI pass let it
-// through: it carries no number, no date and no upgraded verb, so it is not a
-// claim any of the five verify categories look at.
+// Both pin the same real run. A Product Owner ad at a Zlín software house asked
+// for banking, insurance or independent financial advisory experience. The
+// candidate's steering said: emphasise Zlín, the eBay client relationship and
+// the financial-advisory projects; play down all the banks. The letter came back
+// naming Česká spořitelna, Airbank and ČSOB throughout, and described the
+// candidate's "fintech" background — a word in neither the ad nor the record.
 //
-// Everything here calls the real validator. No mocks — validateCoverLetter is a
-// pure function over strings.
+// Two defects, two fixes:
+//   1. "fintech" reached the page because no AI pass looks at a bare domain noun
+//      (no number, no date, no upgraded verb) and check 23 only warned.
+//   2. The banks led the letter because the blueprint's matched pairs and the
+//      target-job block — both written during analysis, BEFORE the candidate
+//      typed anything — order the writer to lead with evidence for each
+//      requirement, and check 19 warns if a planned pair is missing. Steering
+//      was one line against a plan repeated in detail downstream.
+//
+// Everything here calls the real modules — the real validator, the real prompt
+// builders. No Gemini call is involved.
 
 import { describe, test, expect } from 'vitest';
-import { validateCoverLetter } from '../utils/cv-validate.js';
+import { unsourcedDomainHits, validateCoverLetter } from '../utils/cv-validate.js';
+import { buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
+import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { buildCvPrompt } from '../prompts/cv-generator.js';
+import { targetJobBlock } from '../prompts/job-target.js';
 
-// The candidate's real record: product ownership for financial-advisory groups,
-// no bank, no fintech employer.
+// The candidate's real record: delivery for financial-advisory groups and an
+// eBay account. No fintech employer.
 const MASTER = JSON.stringify({
   identity: { name: 'Nik Page' },
   experience: [
     {
       title: 'Product Owner',
-      company: 'Salsita',
+      company: 'Salsita Software',
       dates: '01/2021 - 06/2024',
       location: 'Zlín, Czechia',
-      achievements: ['Vedl dodávku pro skupinu finančních poradců a rozšířil objem účtu'],
+      achievements: ['Vedl účet eBay a zvýšil měsíční fakturaci', 'Dodával projekty pro finančně poradenské skupiny'],
     },
   ],
 });
@@ -44,84 +56,123 @@ const JOB = {
   responsibilities: ['produktová specifikace a analýza', 'řízení dodávky, milníky a rozpočet'],
 };
 
+const BLUEPRINT = {
+  salutation_target: 'Deborah',
+  matched_pairs: [
+    { requirement: 'znalost bankovnictví', evidence: 'budoval UX v České spořitelně' },
+    { requirement: 'řízení softwarových produktů', evidence: 'vedl dodávku v Salsita Software' },
+    { requirement: 'práce s klientem', evidence: 'vedl účet eBay' },
+  ],
+};
+
 const analysis = (extra = {}) => ({
   job_extraction: JOB,
   job_data: { Country: 'Czechia' },
-  generation_framework: { cover_blueprint: {}, target_cover_words: 250 },
+  generation_framework: { cv_blueprint: {}, cover_blueprint: BLUEPRINT, target_cover_words: 250 },
   ...extra,
 });
 
 const letter = (bodyText) =>
   `13.08.2026\n\nVážený pane Nováku,\n\n${bodyText}\n\nS pozdravem\n\n**Nik Page**`;
 
-const unsourced = (text, opts = {}) => {
-  const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysis(), ...opts });
-  return warnings.find((w) => w.code === 'coverUnsourced');
-};
+const hits = (text, opts = {}) => unsourcedDomainHits(text, { master: MASTER, analysis: analysis(), ...opts });
 
-describe('check 23 — the letter may only use the ad’s words and the record’s', () => {
-  test('the invented domain label is reported (the fintech regression)', () => {
-    const w = unsourced(letter('Posledních pět let jsem strávil ve fintechu a rozumím tomu, co klient potřebuje.'));
-    expect(w).toBeTruthy();
-    expect(w.params.list).toMatch(/fintechu/i);
+describe('check 23 — an industry the letter invented for itself', () => {
+  test('the fintech regression: the word is found so the repair pass can remove it', () => {
+    const found = hits(letter('Mé zkušenosti s řízením dodávek zakázkového softwaru a fintech produktů jsou rozsáhlé.'));
+    expect(found.join(' ')).toMatch(/fintech/i);
   });
 
-  test('a letter built only from the ad and the record raises nothing', () => {
-    const w = unsourced(letter(
-      'Vedl jsem dodávku pro skupinu finančních poradců a rozšířil objem účtu. '
-      + 'Rozumím prostředí nezávislého finančního poradenství a řízení softwarových produktů.'
-    ));
-    expect(w).toBeFalsy();
+  test('it is NOT a warning — the app’s own writing is repaired, never handed to the user', () => {
+    const { warnings } = validateCoverLetter(
+      letter('Mé zkušenosti s fintech produkty jsou rozsáhlé.'),
+      { master: MASTER, analysis: analysis() }
+    );
+    expect(warnings.find((w) => w.code === 'coverUnsourced')).toBeFalsy();
+  });
+
+  test('a domain the ad itself used is never touched', () => {
+    expect(hits(letter('Prostředí bankovnictví i pojišťovnictví znám z dodávek pro klienty.'))).toEqual([]);
   });
 
   test('inflected forms count as their root — Czech suffixes are not new words', () => {
-    // The ad says "bankovnictví" and "pojišťovnictví"; the letter declines them.
-    const w = unsourced(letter('Prostředí bankovnictví i pojišťovnictvím jsem prošel u klienta, kterému jsem dodával produkt.'));
-    expect(w).toBeFalsy();
-  });
-
-  test('a domain word the ad itself used is never reported, however unusual', () => {
-    const w = unsourced(letter('Pracoval jsem v bankovnictví i v pojišťovnictví.'));
-    expect(w).toBeFalsy();
+    expect(hits(letter('Pojišťovnictvím i bankovnictvím jsem prošel u klienta.'))).toEqual([]);
   });
 
   test('an inferred industry on job_data does not whitelist the invention', () => {
     // job_data.Industry is the model's own inference, not the ad's words. If it
-    // counted as a source, the analysis could launder the label into the letter
-    // and this check would report nothing — which is the bug, not the fix.
-    const w = unsourced(
-      letter('Posledních pět let jsem strávil ve fintechu.'),
-      { analysis: analysis({ job_data: { Country: 'Czechia', Industry: 'FinTech' } }) }
-    );
-    expect(w).toBeTruthy();
-    expect(w.params.list).toMatch(/fintechu/i);
+    // counted as a source, the analysis would launder the label into the letter.
+    const found = hits(letter('Působím ve fintechu.'), {
+      analysis: analysis({ job_data: { Country: 'Czechia', Industry: 'FinTech' } }),
+    });
+    expect(found.join(' ')).toMatch(/fintechu/i);
   });
 
   test('ordinary prose absent from both sources is not an invention', () => {
-    // Every content word here is missing from the ad and the record, and none of
-    // it claims a domain. The open version of this check flagged all of it; the
-    // closed list is what keeps the banner worth reading.
-    const w = unsourced(letter(
-      'Děkuji za možnost spolupráce. Rád se s vámi potkám a probereme další kroky, '
-      + 'protože tato pozice mi dává smysl.'
-    ));
-    expect(w).toBeFalsy();
+    expect(hits(letter('Děkuji za možnost spolupráce, rád se s vámi potkám a probereme další kroky.'))).toEqual([]);
   });
 
-  test('with neither an ad nor a record the check reports nothing rather than guessing', () => {
-    const { warnings } = validateCoverLetter(letter('Posledních pět let jsem strávil ve fintechu.'), {
-      master: '',
-      analysis: { generation_framework: {} },
-    });
-    expect(warnings.find((w) => w.code === 'coverUnsourced')).toBeFalsy();
+  test('with neither an ad nor a record it reports nothing rather than guessing', () => {
+    expect(unsourcedDomainHits(letter('Působím ve fintechu.'), { master: '', analysis: null })).toEqual([]);
   });
 
-  test('an English invention is caught on the same basis', () => {
-    const w = unsourced(letter(
-      'My blockchain and cryptocurrency background makes me the obvious owner of this delivery.'
-    ));
-    expect(w).toBeTruthy();
-    expect(w.params.list).toMatch(/blockchain/i);
-    expect(w.params.list).toMatch(/cryptocurrency/i);
+  test('the repair prompt tells the model to drop the label, not swap in another industry', () => {
+    const system = buildPhraseRepairPrompt({ docType: 'cover', document: 'x', hits: ['fintech'], kind: 'domain' })[0].content;
+    expect(system).toContain('INVENTED INDUSTRY LABEL');
+    expect(system).toContain('"fintech"');
+    expect(system).toMatch(/Do NOT substitute a different industry/);
+    expect(system).toMatch(/no domain label at all/);
+  });
+
+  test('the stock-phrase repair is unchanged by the new kind', () => {
+    const system = buildPhraseRepairPrompt({ docType: 'cover', document: 'x', hits: ['proven track record'] })[0].content;
+    expect(system).toContain('STOCK PHRASING');
+    expect(system).toContain('"proven track record"');
+    expect(system).not.toMatch(/substitute a different industry/);
+  });
+});
+
+describe('steering outranks the plan, not just the writer', () => {
+  const steering = 'Foreground and lead with: I really love Zlín\nPlay down, condense or place late: all the banks';
+
+  test('the letter is told demoted content cannot be a matched pair’s evidence', () => {
+    const text = buildCoverPrompt(MASTER, analysis(), 'formal', steering).map((m) => m.content).join('\n');
+    expect(text).toContain('they outrank the plan');
+    expect(text).toMatch(/Demoted content is not evidence/);
+    expect(text).toMatch(/DROP that pair/);
+    expect(text).toMatch(/Emphasised content leads/);
+    // And it still cannot buy the emphasis with an invented fact.
+    expect(text).toMatch(/NEVER invent a fact/);
+  });
+
+  test('the CV carries the same precedence, since the same plan drives it', () => {
+    const text = buildCvPrompt(MASTER, analysis(), 'formal', steering).map((m) => m.content).join('\n');
+    expect(text).toMatch(/outrank the blueprint itself/);
+    expect(text).toMatch(/Demoted content is not the lead/);
+    // T2 still holds: demotion reorders, it never removes a role or a date.
+    expect(text).toMatch(/Demoted content is not deleted/);
+  });
+
+  test('with no steering the blocks stay absent exactly as before', () => {
+    const text = buildCoverPrompt(MASTER, analysis(), 'formal', '').map((m) => m.content).join('\n');
+    expect(text).not.toMatch(/outrank the plan/);
+  });
+
+  test('the target-job block no longer promotes demoted evidence unconditionally', () => {
+    const block = targetJobBlock(analysis());
+    expect(block).toMatch(/outrank this block/);
+    expect(block).toMatch(/does NOT get promoted here/);
+  });
+
+  test('check 19 does not warn about a pair the candidate’s own instruction deleted', () => {
+    // The letter drops the bank pair, exactly as told to. Without steering that
+    // is a missing pair; with steering it is obedience, and warning for it would
+    // be the check punishing the fix.
+    const text = letter('Vedl jsem účet eBay a dodával projekty pro finančně poradenské skupiny ze Zlína.');
+    const steered = validateCoverLetter(text, { master: MASTER, analysis: analysis(), tweak: steering });
+    expect(steered.warnings.find((w) => w.code === 'coverPairsMissing')).toBeFalsy();
+
+    const unsteered = validateCoverLetter(text, { master: MASTER, analysis: analysis() });
+    expect(unsteered.warnings.find((w) => w.code === 'coverPairsMissing')).toBeTruthy();
   });
 });

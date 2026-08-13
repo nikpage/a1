@@ -807,7 +807,16 @@ function halfPresent(haystack, tokens) {
 //     the page at all: a pair counts only when the letter carries something
 //     distinctive from BOTH halves — the requirement and the evidence that
 //     answers it. Fewer than the blueprint planned is reported to the candidate.
-function checkCoverPairs(body, analysis, warnings) {
+//
+//     STEERING SUSPENDS THIS CHECK. The pairs were chosen during analysis, before
+//     the candidate typed anything; steering outranks the plan, so a candidate who
+//     demoted the very experience a pair rests on has DELETED that pair, not
+//     failed to deliver it. Warning them for obeying their own instruction is the
+//     check punishing the fix. With steering present the planned count is no
+//     longer the standard, so — as with any check whose evidence is gone — it
+//     reports nothing rather than guessing.
+function checkCoverPairs(body, analysis, warnings, steered) {
+  if (steered) return;
   const pairs = analysis?.generation_framework?.cover_blueprint?.matched_pairs;
   if (!Array.isArray(pairs) || pairs.length === 0) return;
   const text = body.toLowerCase();
@@ -937,24 +946,27 @@ function jobVocabulary(analysis) {
   return text.length > 2 ? stemSet(text) : null;
 }
 
-function checkCoverProvenance(body, master, analysis, warnings) {
+// The domain words the letter used that neither source gave it, as written. Like
+// bannedPhraseHits, this REPORTS TO THE REPAIR PASS, not to the candidate: an
+// invented industry is the app's own writing failing, so it is removed before
+// delivery rather than handed back as the user's problem to solve.
+export function unsourcedDomainHits(document, { master = '', analysis = null } = {}) {
+  const m = readMaster(master);
   const jobStems = jobVocabulary(analysis);
   // No ad and no master is no evidence: report nothing rather than guess.
-  if (!master.text && !jobStems) return;
+  if (!m.text && !jobStems) return [];
 
-  const allowed = new Set([...(jobStems || []), ...stemSet(master.text)]);
+  const allowed = new Set([...(jobStems || []), ...stemSet(m.text)]);
   const seen = new Set();
   const stray = [];
-  for (const w of plain(body).split(/\s+/)) {
+  for (const w of plain(coverBody(document)).split(/\s+/)) {
     const s = stem(w);
     if (!s || seen.has(s)) continue;
     seen.add(s);
     if (!DOMAIN_TERMS.has(s) || allowed.has(s)) continue;
     stray.push(w.replace(/[^\p{L}\p{N}-]/gu, ''));
   }
-  if (stray.length) {
-    warnings.push({ code: 'coverUnsourced', params: { list: stray.join(', ') } });
-  }
+  return stray;
 }
 
 // The cover letter's slice of Layer 6 (checks 17-23). The letter has no
@@ -969,7 +981,7 @@ function checkCoverProvenance(body, master, analysis, warnings) {
 // on it, and a letter over its market's ceiling is the one defect the candidate
 // cannot see by reading. Under the band is not a failure — a finished argument
 // is allowed to stop early.
-export function validateCoverLetter(document, { master = '', analysis = null, language = 'auto' } = {}) {
+export function validateCoverLetter(document, { master = '', analysis = null, language = 'auto', tweak = '' } = {}) {
   const hard = [];
   const warnings = [];
   const m = readMaster(master);
@@ -983,11 +995,10 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
     hard.push(`The letter body runs to ${count} words; this market's ceiling is ${max}. Cut it to length without dropping the argument.`);
   }
 
-  checkCoverPairs(body, analysis, warnings);
+  checkCoverPairs(body, analysis, warnings, Boolean(String(tweak || '').trim()));
   checkCoverSalutation(document, analysis, warnings);
   checkCoverObjections(body, analysis, warnings);
   checkCoverNumbers(body, m, warnings);
-  checkCoverProvenance(body, m, analysis, warnings);
 
   return { ok: hard.length === 0, hard, warnings };
 }

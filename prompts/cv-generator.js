@@ -23,8 +23,11 @@ export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', languag
   const coreBlock = core && core.trim()
     ? `\n# Who this candidate is (steering)\nThe candidate describes the durable value they bring to any role as: "${core.trim()}"\nLet this guide what you foreground and how you frame their story — surface the real experience that backs it up. It is steering, not a fact source: never state or imply anything the CV doesn't actually prove.\n`
     : '';
+  // The same precedence the letter states, for the same reason: the blueprint
+  // and the target-job block were written before the candidate typed this, so
+  // obeying them faithfully promotes the very experience they asked to bury.
   const tweakBlock = tweak && tweak.trim()
-    ? `\n# The candidate's own instructions (HIGHEST PRIORITY)\nThe candidate asked for this specifically — follow it over any conflicting guidance above, but NEVER invent facts, roles, skills or numbers to satisfy it:\n"${tweak.trim()}"\n`
+    ? `\n# The candidate's own instructions (HIGHEST PRIORITY — they outrank the blueprint itself)\n"${tweak.trim()}"\n\nThis is the candidate speaking about their own CV, after the blueprint below was written. It wins over every block that follows, including \`skills_to_highlight\`, \`top_three_achievements\` and the instruction to lead with evidence for each requirement in the ad. Apply it like this:\n- **Demoted content is not the lead.** Where they ask you to play something down, it may not sit in the impact zone, the headline or a top-three achievement — however well it answers the ad. Use other real evidence from the master; where there is none, that requirement simply goes unanswered.\n- **Demoted content is not deleted.** Roles stay in the timeline with their real dates (T2 is absolute); they are condensed and placed by relevance, not removed.\n- **Emphasised content leads and is proved**, with the specific facts the master records for it.\n- **NEVER invent facts, roles, skills or numbers to satisfy any of this.** Steering reorders, reframes and cuts real content — it never adds.\n`
     : '';
 
   const systemMessage = {

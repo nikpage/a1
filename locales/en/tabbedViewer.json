@@ -60,7 +60,6 @@
     "coverPairsMissing": "The letter proves {{present}} of the {{planned}} requirement-to-evidence pairings the analysis planned. The missing one is the strongest argument you are not making.",
     "coverSalutation": "The ad names {{name}}, but the letter does not open to them. Using the name is the first sign the letter was written for this application.",
     "coverManyObjections": "The letter answers {{count}} concerns. One defence reads as confidence; several read as an admission.",
-    "coverNumber": "The letter uses figures your record does not hold: {{list}}. Check them — we will not invent numbers for you.",
-    "coverUnsourced": "The letter uses words that appear neither in the job ad nor in your record: {{list}}. Check them — a domain or industry you were never in reads as a bluff."
+    "coverNumber": "The letter uses figures your record does not hold: {{list}}. Check them — we will not invent numbers for you."
   }
 }
