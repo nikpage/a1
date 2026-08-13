@@ -53,6 +53,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
   // Layer 6 output-validation warnings (checks 5-9) for the CV last generated —
   // hard failures never reach the browser, these are the ones the user decides about.
   const [cvWarnings, setCvWarnings] = useState([]);
+  const [coverWarnings, setCoverWarnings] = useState([]);
 
   // Layer 6 warnings for either document — the shared CvWarningBanner owns the
   // { code, params } → locale-string rendering for every caller.
@@ -317,6 +318,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
             setCoverCurrentIndex(newCovers.length - 1);
             return newCovers;
           });
+          setCoverWarnings(data.cover_warnings || []);
           setActiveTab('cover');
         }
       }
@@ -363,6 +365,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       if (data.cover) {
         setCoverVersions(prev => [...prev, data.cover]);
         setCoverCurrentIndex(coverVersions.length);
+        setCoverWarnings(data.cover_warnings || []);
       }
     } catch (error) {
       console.error("Regeneration error:", error);
@@ -661,6 +664,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     </button>
                   </div>
                 </div>
+
+                <WarningBanner items={coverWarnings} />
 
                 {renderDocument('cover', coverVersions[coverCurrentIndex])}
 

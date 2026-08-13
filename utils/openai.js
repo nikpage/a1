@@ -970,16 +970,11 @@ export async function generateHeadline({ cv, analysis, tone, current = '', langu
   };
 }
 
-export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
-  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile);
-  // See generateCV: medium effort + low temperature keep the letter tied to the
-  // record instead of drifting into a better-sounding version of it.
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
-
-  const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
-
-  const rawContent = data.choices?.[0]?.message?.content || '';
-
+// The letter as it leaves the model, dressed for sending: the model's own date
+// line dropped, placeholders removed, today's real date prepended. Shared by the
+// first draft and the validation retry, which must be processed identically or
+// the retry is judged on text the candidate would never receive.
+function dressLetter(rawContent) {
   // A line that is JUST a date, in any of the forms the model actually emits.
   // The old pattern missed the day-first form ("10 August 2026"), so that line
   // survived and the real date was prepended above it — two dates on the letter.
@@ -1017,7 +1012,19 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
 
   // Ensure we always prepend today's real date (de-DE format like before)
   const todayString = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  processedContent = `${todayString}\n\n${processedContent}`;
+  return `${todayString}\n\n${processedContent}`.trim();
+}
+
+export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
+  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile);
+  // See generateCV: medium effort + low temperature keep the letter tied to the
+  // record instead of drifting into a better-sounding version of it.
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
+
+  const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
+  const usages = [gemini_usage];
+
+  const processedContent = dressLetter(data.choices?.[0]?.message?.content || '');
 
   trackDailySpend(gemini_usage.costUsd);
 
@@ -1040,13 +1047,49 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     language,
   });
 
-  // Layer 6 for the letter: the banned-phrase and epithet checks, the only two
-  // that mean anything on prose with no sections, dates or bullets. The verify
-  // pass above already repairs stock phrasing, so anything left here is a miss
-  // worth logging — the letter has no regeneration path to hand it to.
+  // Layer 6 for the letter: the banned-phrase repair, then the letter's own
+  // checks (word band, matched pairs, salutation, one objection, numbers).
   const repair = await repairStockPhrases({ document: verified.content, docType: 'cover', language });
-  const content = repair.content;
-  const validation = validateCoverLetter(content, { language });
+  usages.push(...(voiced.gemini_usages || []));
+  if (verified.gemini_usage) usages.push(verified.gemini_usage);
+  if (repair.gemini_usage) usages.push(repair.gemini_usage);
+
+  let content = repair.content;
+  let validation = validateCoverLetter(content, { master: cv, analysis, language });
+
+  // The word band is a hard failure, so an over-length letter is regenerated
+  // ONCE with the count fed back — the same shape as generateCV's retry, and the
+  // retry is kept only if it did not make things worse. The voice pass is not
+  // repeated: its fixes are already in the draft the model is asked to shorten,
+  // and re-running it on a cut-down letter spends a call to re-learn them.
+  if (!validation.ok) {
+    logger.info(`[validate cover] hard failures, regenerating once: ${validation.hard.join(' | ')}`);
+    const retryMessages = [...messages, { role: 'user', content: validationFeedback(validation.hard, 'cover') }];
+    const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4 });
+    const retryUsage = geminiUsage('generate cover letter (validation retry)', retry, GEMINI_GENERATION_MODEL);
+    trackDailySpend(retryUsage.costUsd);
+    usages.push(retryUsage);
+
+    const reVerified = await verifyGeneratedDoc({
+      document: dressLetter(retry.choices?.[0]?.message?.content || ''),
+      master: cv,
+      docType: 'cover',
+      language,
+    });
+    if (reVerified.gemini_usage) usages.push(reVerified.gemini_usage);
+
+    const reRepair = await repairStockPhrases({ document: reVerified.content, docType: 'cover', language });
+    if (reRepair.gemini_usage) usages.push(reRepair.gemini_usage);
+
+    const revalidated = validateCoverLetter(reRepair.content, { master: cv, analysis, language });
+    if (revalidated.hard.length <= validation.hard.length) {
+      content = reRepair.content;
+      validation = revalidated;
+    }
+    if (!validation.ok) {
+      logger.error(`[validate cover] hard failures survived the retry: ${validation.hard.join(' | ')}`);
+    }
+  }
 
   return {
     content,
@@ -1054,12 +1097,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     validation,
     gemini_usage,
     // Every call, in order — the cost-logging rule covers the voice passes too.
-    gemini_usages: [
-      gemini_usage,
-      ...(voiced.gemini_usages || []),
-      ...(verified.gemini_usage ? [verified.gemini_usage] : []),
-      ...(repair.gemini_usage ? [repair.gemini_usage] : []),
-    ],
+    gemini_usages: usages,
     voice_fixes: voiced.applied || [],
   };
 }

@@ -5,8 +5,9 @@ import { humanVoiceRules } from './voice.js';
 import { languageInstruction } from './language.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock } from './job-target.js';
-import { cvInvariants, coverMatchingRule } from './cv-rules.js';
+import { cvInvariants, coverMatchingRule, coverOpeningRules, coverRedFlagRule } from './cv-rules.js';
 import { generationBrief } from './analysis-brief.js';
+import { coverBlueprintBlock, salutationName } from './cover-blueprint.js';
 import { scenarioCoverRules } from './scenarios.js';
 import { coverLengthRule } from './market.js';
 import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
@@ -17,6 +18,11 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
   // The letter is bound by the same invariants as the CV, plus the Layer 3
   // matched-pairs rule when there is an ad to match against.
   const pairsRule = coverMatchingRule(Boolean(jobBlock));
+  // The plan written for THIS document (Layer 3), and the two rules that read
+  // off it: who the letter is addressed to, and the one concern it may defuse.
+  const blueprintBlock = coverBlueprintBlock(analysis);
+  const openingRules = coverOpeningRules(salutationName(analysis));
+  const redFlagRule = coverRedFlagRule();
   // Layer 4 reaches the letter as well as the CV, in its own letter-specific
   // form — the tags the analysis already chose, capped at two by the module.
   const scenarioBlock = scenarioCoverRules(analysis?.analysis?.scenario_tags);
@@ -54,18 +60,19 @@ ${cvInvariants()}
     - Build a short narrative: why this candidate, why this role, what they bring. Use concrete proof from the master CV (real achievements, numbers, scope from \`experience[]\`), not adjectives.
     - **Never state a span of experience the record doesn't state.** No "14 years of AI solution design", no "a decade in fintech", no "X+ years" of anything. Durations are facts: the only ones that exist are those written in \`experience[].dates\`. Never sum roles into a career total, never stretch a domain label across roles that weren't in that domain. Lead with what they did, not with how long they've been doing it.
     - **Match the candidate's own voice.**${voiceBlock ? ' Their writing voice is described in its own block below — that description is the authority on HOW this letter reads, and a letter that sounds slightly too casual is a better outcome than one that reads like a template.' : ''} The master CV's \`voice_samples\` are verbatim sentences in the candidate's real writing style — echo their cadence, vocabulary and register so the letter reads as written by them, not by a machine. Use them for tone only; never copy a sample wholesale or treat it as a fact about this role. If the master CV carries a \`voice_guide\`, it is the candidate's own written style guide — how THEY write, stated in their words. Follow it: it outranks any generic style habit of yours, and where it and the chosen tone pull apart, the tone decides the attitude while the guide decides the cadence, sentence shapes and vocabulary. It describes HOW to write, never WHAT is true — it can never license a fact the record does not carry.
-    - The cover letter is the right place to address concerns: where relevant, briefly and confidently turn the items in \`analysis.red_flags\` into a strength or a non-issue. Do this with a light touch — explain, don't apologise. Let any such pivot grow naturally out of the surrounding story rather than appearing as an abrupt, bolted-on sentence.
-    - Where a gap or short tenure is genuinely relevant and the matching master \`experience[]\` entry carries a \`clarification\`, you may use the candidate's own words to defuse it in ONE brief clause — confident, factual, never apologetic, never a whole paragraph, and only when it strengthens the letter. Never invent a reason the clarification does not state; if there is no clarification, do not speculate about the gap.
+${redFlagRule}
+    - Where the defusal the blueprint named concerns a gap or short tenure and the matching master \`experience[]\` entry carries a \`clarification\`, use the candidate's own words for it. Never invent a reason the clarification does not state; if there is no clarification, do not speculate about the gap.
     - **The guidance is material, not a running order.** \`analysis.action_items["Cover Letter"]\` (Points to Address, Narrative Flow, Tone and Style) tells you what is worth proving and what evidence proves it. Mine it — do not walk it. One paragraph may answer several items; an item that does not advance the argument is dropped; nothing is included merely because it appears on the list. If any item arrives as a finished sentence or a quoted opening line, treat it as raw material only: rewrite it in this candidate's voice and this tone, at the length you actually have. Never paste it, and never restate an item the active scenario forbids you to say.
 ${pairsRule}
+${openingRules}
 
+${blueprintBlock}
 ${scenarioBlock}
     ${humanVoiceRules(language)}
 
     # Rules
     ${coverLengthRule(analysis)}
     - Start with only the date at the top. Do NOT add the applicant's name or contact details above the salutation.
-    - Salutation: "Dear [First Name] [Last Name]" if a name is available, otherwise "Dear Hiring Manager". No titles like Mr./Ms.
     - No generic filler, invented claims, or placeholders like [Company Address].
     - Adhere to target-country norms (CZ, PL, UE, HU, RO) from the analysis. Do not print country-specific suggestion comments in the output.
     - End with a signature block in this exact format, using the master CV's \`identity\` / \`contact\` data:

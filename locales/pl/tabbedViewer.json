@@ -56,6 +56,10 @@
     "missingMonth": "Twój zapis nie podaje miesiąca dla {{list}}, więc widnieje sam rok — nie zgadujemy go. Jeśli znasz miesiąc, uzupełnij go.",
     "earlierCareerTooManyBullets": "Wcześniejsza kariera wymienia {{count}} stanowisk; drukowanych jest najwyżej {{max}}, aby sekcja nie cofała czytelnika przez całą karierę.",
     "earlierCareerDated": "Wcześniejsza kariera podaje daty przy {{count}} stanowiskach — ta sekcja jest bez dat, a lata ponownie wysyłają sygnał o wieku.",
-    "earlierCareerLocation": "Wcześniejsza kariera podaje lokalizację, której nie ma w Twoim rekordzie: {{location}}. Zostawiliśmy ją, ale sprawdź — lokalizacja wywnioskowana z nazwy pracodawcy to zmyślony fakt."
+    "earlierCareerLocation": "Wcześniejsza kariera podaje lokalizację, której nie ma w Twoim rekordzie: {{location}}. Zostawiliśmy ją, ale sprawdź — lokalizacja wywnioskowana z nazwy pracodawcy to zmyślony fakt.",
+    "coverPairsMissing": "List dowodzi {{present}} z {{planned}} zaplanowanych par wymaganie–dowód. Brakująca to najmocniejszy argument, którego nie użyto.",
+    "coverSalutation": "Ogłoszenie podaje kontakt {{name}}, ale list nie jest do tej osoby skierowany. Zwrot po imieniu to pierwszy dowód, że list napisano pod tę aplikację.",
+    "coverManyObjections": "List odnosi się do {{count}} wątpliwości. Jedno wyjaśnienie brzmi pewnie, kilka brzmi jak przyznanie się.",
+    "coverNumber": "List podaje liczby, których nie ma w Twoim zapisie: {{list}}. Sprawdź je — nie wymyślamy liczb."
   }
 }

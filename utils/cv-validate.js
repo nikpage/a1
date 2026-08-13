@@ -26,6 +26,8 @@
 
 import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js';
 import { bannedPhrases } from '../prompts/voice.js';
+import { coverWordBand } from '../prompts/market.js';
+import { salutationName } from '../prompts/cover-blueprint.js';
 
 // ---- small parsing helpers --------------------------------------------------
 
@@ -749,12 +751,16 @@ export function validateCv(document, { master = '', analysis = null, language = 
 
 // The correction note fed back to the generator on a hard failure — the same
 // rules, pointed at what the document actually got wrong.
-export function validationFeedback(hard) {
-  return `# Output validation FAILED — fix these before returning the CV
-Your previous draft broke rules that cannot be broken. Regenerate the CV, keeping everything that was right and fixing exactly these:
+export function validationFeedback(hard, docType = 'cv') {
+  const doc = docType === 'cover' ? 'cover letter' : 'CV';
+  const remedy = docType === 'cover'
+    ? `Fix them WITHOUT inventing anything and WITHOUT dropping the argument: cut the weakest supporting sentences and the words that carry no claim, keep the matched pairs and the evidence that proves them, and keep the salutation and signature block exactly as they are.`
+    : `Fix them WITHOUT inventing anything: correct a wrong number by using the master's number or cutting the claim, correct a date by copying the master's date, remove any entry that is not a real role, and express any structure with plain single-column markdown.`;
+  return `# Output validation FAILED — fix these before returning the ${doc}
+Your previous draft broke rules that cannot be broken. Regenerate the ${doc}, keeping everything that was right and fixing exactly these:
 ${hard.map((h) => `- ${h}`).join('\n')}
 
-Fix them WITHOUT inventing anything: correct a wrong number by using the master's number or cutting the claim, correct a date by copying the master's date, remove any entry that is not a real role, and express any structure with plain single-column markdown.`;
+${remedy}`;
 }
 
 // The cover letter's slice of Layer 6. The letter has no sections, dates or
@@ -763,9 +769,129 @@ Fix them WITHOUT inventing anything: correct a wrong number by using the master'
 // boilerplate wrapper ("I am writing to express my interest") lands. Same list,
 // same { code, params } warnings, so the UI renders both documents' findings
 // through the one translation path.
-export function validateCoverLetter(document, { language = 'auto' } = {}) {
+// The letter's BODY: what the word band is measured against, and the only part
+// checks 19-22 read. The date line, the salutation and the signature block are
+// scaffolding, not argument, so they are stripped exactly as coverLengthRule
+// promises the writer they will be.
+export function coverBody(document) {
+  let lines = String(document || '').split('\n');
+  const sigIndex = lines.findIndex((l) => /^\s*(sincerely|kind regards|best regards|yours sincerely|s pozdravem|z poważaniem)\b/i.test(l));
+  if (sigIndex !== -1) lines = lines.slice(0, sigIndex);
+  lines = lines.filter((l) => !/^\s*\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\s*$/.test(l));
+  const salIndex = lines.findIndex((l) => /^\s*(dear|vážen|szanown)/i.test(l));
+  if (salIndex !== -1) lines = lines.slice(salIndex + 1);
+  return lines.join('\n').trim();
+}
+
+// Content words worth matching on: long enough to be distinctive, so a pair is
+// not "found" because the letter and the requirement both say "the".
+function distinctiveTokens(text) {
+  return [...new Set(
+    plain(text).toLowerCase().replace(/[^a-z0-9á-žäöüß\s]/gi, ' ').split(/\s+/)
+      .filter((w) => w.length > 4)
+  )];
+}
+
+// Half a pair counts as reaching the page when TWO of its distinctive words did
+// — one shared word ("product") is vocabulary two unrelated sentences happen to
+// share, and counting it marks a pair present that the letter never made. A half
+// that only has one distinctive word to give is matched on that one.
+function halfPresent(haystack, tokens) {
+  if (!tokens.length) return false;
+  const hits = tokens.filter((t) => haystack.includes(t)).length;
+  return hits >= Math.min(2, tokens.length);
+}
+
+// 19. With a job ad, the letter carries its three matched pairs. Code cannot
+//     judge whether a pairing persuades, but it can see whether the pair reached
+//     the page at all: a pair counts only when the letter carries something
+//     distinctive from BOTH halves — the requirement and the evidence that
+//     answers it. Fewer than the blueprint planned is reported to the candidate.
+function checkCoverPairs(body, analysis, warnings) {
+  const pairs = analysis?.generation_framework?.cover_blueprint?.matched_pairs;
+  if (!Array.isArray(pairs) || pairs.length === 0) return;
+  const text = body.toLowerCase();
+  const present = pairs.filter((p) => {
+    const req = distinctiveTokens(p?.requirement);
+    const ev = distinctiveTokens(p?.evidence);
+    if (!req.length || !ev.length) return false;
+    return halfPresent(text, req) && halfPresent(text, ev);
+  }).length;
+  if (present < pairs.length) {
+    warnings.push({ code: 'coverPairsMissing', params: { present, planned: pairs.length } });
+  }
+}
+
+// 20. The salutation addresses the contact the job data names. A named contact
+//     left as "Dear Hiring Manager" is the cheapest tell in the letter.
+function checkCoverSalutation(document, analysis, warnings) {
+  const name = salutationName(analysis);
+  if (!name) return;
+  const line = String(document || '').split('\n').find((l) => /^\s*(dear|vážen|szanown)/i.test(l));
+  if (!line) return;
+  const first = name.split(/\s+/)[0].toLowerCase();
+  if (!plain(line).toLowerCase().includes(first)) {
+    warnings.push({ code: 'coverSalutation', params: { name } });
+  }
+}
+
+// 21. At most one red-flag clause. The analysis picks the single objection the
+//     letter may defuse; a second one is the letter arguing with a reader who
+//     has not spoken. A sentence counts as answering a flag only when it carries
+//     TWO distinctive words from that flag — one is a coincidence of vocabulary.
+function checkCoverObjections(body, analysis, warnings) {
+  const flags = analysis?.analysis?.red_flags;
+  if (!Array.isArray(flags) || !flags.length) return;
+  const sentences = body.split(/(?<=[.!?])\s+/).map((s) => plain(s).toLowerCase()).filter(Boolean);
+  const touched = sentences.filter((s) =>
+    flags.some((f) => distinctiveTokens(typeof f === 'string' ? f : f?.flag).filter((t) => s.includes(t)).length >= 2)
+  ).length;
+  if (touched > 1) {
+    warnings.push({ code: 'coverManyObjections', params: { count: touched } });
+  }
+}
+
+// 22. No claim the record does not support. The part code can settle is the same
+//     part it settles on the CV: every number in the letter traces to the master.
+function checkCoverNumbers(body, master, warnings) {
+  if (!master.text) return;
+  const masterNums = new Set(digitRuns(master.text));
+  const stray = [...new Set(digitRuns(body))].filter((n) => !masterNums.has(n));
+  if (stray.length) {
+    warnings.push({ code: 'coverNumber', params: { list: stray.join(', ') } });
+  }
+}
+
+// The cover letter's slice of Layer 6 (checks 17-22). The letter has no
+// sections, dates or bullets, so most of validateCv does not apply to it — but
+// the banned-phrase list does, the letter is prose and that is exactly where the
+// boilerplate wrapper ("I am writing to express my interest") lands, and the
+// letter's own rules (word band, matched pairs, salutation, one objection) are
+// checkable here and nowhere else. Same { code, params } warnings, so the UI
+// renders both documents' findings through the one translation path.
+//
+// The word band is the only HARD failure: it is arithmetic, the caller can act
+// on it, and a letter over its market's ceiling is the one defect the candidate
+// cannot see by reading. Under the band is not a failure — a finished argument
+// is allowed to stop early.
+export function validateCoverLetter(document, { master = '', analysis = null, language = 'auto' } = {}) {
   const hard = [];
   const warnings = [];
+  const m = readMaster(master);
+  const body = coverBody(document);
+
   checkEpithets(document, warnings);
+
+  const { max } = coverWordBand(analysis);
+  const count = words(body).length;
+  if (count > max) {
+    hard.push(`The letter body runs to ${count} words; this market's ceiling is ${max}. Cut it to length without dropping the argument.`);
+  }
+
+  checkCoverPairs(body, analysis, warnings);
+  checkCoverSalutation(document, analysis, warnings);
+  checkCoverObjections(body, analysis, warnings);
+  checkCoverNumbers(body, m, warnings);
+
   return { ok: hard.length === 0, hard, warnings };
 }

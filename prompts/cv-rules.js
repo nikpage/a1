@@ -80,6 +80,29 @@ export function coverMatchingRule(hasJobText) {
   return `- **Three matched pairs (Layer 3).** Build the letter's evidence around three explicit pairings: the ad's top three requirements against the candidate's three strongest evidenced achievements. Pair them, do not list them. Make no claim in this letter that is absent from the CV, and never answer a requirement the master does not evidence — an unevidenced requirement is a gap reported to the candidate, not a sentence in the letter.`;
 }
 
+// The rest of the letter's Layer 3, which holds with or without an ad: the
+// salutation is a fact off the job data, the opening spends itself on evidence,
+// and a capability the record lacks is never argued around. `contact` is the
+// ad's own named contact where it gave one — passed in rather than read here, so
+// this module stays a pure statement of the rules.
+export function coverOpeningRules(contact = '') {
+  const named = String(contact || '').trim();
+  return `- **The salutation is a fact, not a formula (Layer 3).** ${named
+    ? `The ad names its contact: address the letter to ${named} — "Dear ${named}". Using the name the ad printed is the first evidence this letter was written for THIS application; "Dear Hiring Manager" over a named contact is not neutral politeness, it is a tell.`
+    : `The ad names nobody, so use "Dear Hiring Manager". NEVER guess, infer or invent a name.`} No titles like Mr./Ms.
+- **Open on a fact (Layer 3).** The first sentence states something this candidate did, built or ran that this role needs. It is the sentence with the least competition for attention in either document. BANNED as an opening: any description of the act of applying ("I am writing to apply", "I am excited to submit"), and any identity claim standing in for evidence ("As a seasoned leader", "As an accomplished professional") — the epithet ban binds the letter exactly as it binds the CV.
+- **Never argue around a capability the record lacks (Layer 3).** A requirement the master does not evidence may appear ONLY as forward-looking interest, in the candidate's own register, and NEVER as a claim of present ability, an adjacent skill offered as a substitute, or the ad's phrasing borrowed to cover the hole. It is already reported to the candidate as a gap; the letter's job is not to fill it.`;
+}
+
+// Layer 4's letter-side red-flag rule. The analysis chooses the one objection
+// (generation_framework.cover_blueprint.objection_to_defuse) or chooses none;
+// this states what the writer may do with that choice, and what it may never do
+// on its own initiative.
+export function coverRedFlagRule() {
+  return `- **At most ONE concern is defused, and the analysis chose it (Layer 4).** \`cover_blueprint.objection_to_defuse\` names the single objection this letter may address, or is null — and null is a common, correct answer. You never pick one yourself, and you never address a second: two defences read as a defence, three read as an admission. \`analysis.red_flags\` is context for what the letter must not walk into, NOT a list to answer.
+- **One clause, once, carrying a fact.** The defusal lives inside the body of the argument — never the opening, never the close — stated flat and then passed. It carries a real fact from the record (the blueprint names it) or it is CUT: "confident I can adapt", "a fast learner", "eager to return" defuse nothing. Never restate the concern in its own language first — state the fact that makes it a non-issue. No apology, and no reason the master does not record.`;
+}
+
 // The full CV-side rule stack, in precedence order, for cv-generator.js.
 export function cvRulesBlock(hasJobText, language = 'auto') {
   return [

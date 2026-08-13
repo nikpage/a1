@@ -134,8 +134,11 @@ describe('buildCoverPrompt — clarifications defuse in one clause; length budge
   test('instructs the writer that a clarification may defuse a relevant gap in one brief clause, never a whole paragraph', () => {
     const p = buildCoverPrompt(MASTER_JSON, analysisWithTarget, 'professional').find((m) => m.role === 'user').content;
     expect(p).toMatch(/clarification/);
-    expect(p).toMatch(/ONE brief clause/);
-    expect(p).toMatch(/never a whole paragraph/);
+    // The "one clause, once" limit now lives in the Layer 4 red-flag rule
+    // (prompts/cv-rules.js coverRedFlagRule), which the letter always carries;
+    // the clarification rule below it supplies the candidate's own words.
+    expect(p).toMatch(/One clause, once, carrying a fact/);
+    expect(p).toMatch(/never the opening, never the close/);
     expect(p).toMatch(/Never invent a reason the clarification does not state/);
   });
 

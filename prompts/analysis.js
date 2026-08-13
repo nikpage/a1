@@ -24,6 +24,30 @@ const COVER_ACTION_ITEMS_RULE = `- analysis.action_items["Cover Letter"]["Points
 - analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.`;
 
 
+// The LETTER'S OWN BLUEPRINT (CV_RULES.md, Layer 3: "The letter gets its own
+// blueprint"). Without it the writer holds only cv_blueprint — section orders,
+// bullet counts and rewrite notes for a document it is not writing — and answers
+// them the only way it can, by narrating the CV back. The matched pairs in
+// particular are this pass's judgement to make, not the writer's: it is the same
+// requirement-against-evidence call cv_blueprint already makes, made once against
+// the whole record, where a writer holding the finished master picks the three
+// that read best in a paragraph. Same discipline as the action items — material,
+// never drafted copy.
+const coverBlueprintRule = (hasJobText) => `- generation_framework.cover_blueprint.salutation_target: the person the letter opens to, from the ad's own contact if it names one (first name and surname where both are given, first name alone where that is all there is). Empty string when the ad names nobody — the writer then uses the neutral form. NEVER guess a name.
+- generation_framework.cover_blueprint.hook_angle: the ONE thing the first sentence should stand on — the specific evidenced fact about this candidate that this employer most needs, named plainly ("ran the platform consolidation at wflow.com"). This is the ANGLE, not the sentence: do not draft the opening line, and never an identity claim ("seasoned leader") or a duration.
+- generation_framework.cover_blueprint.matched_pairs: ${hasJobText ? `ARRAY of exactly THREE objects { requirement, evidence } — Layer 3's matched pairs. \`requirement\` quotes the ad's own words for one of its top three requirements. \`evidence\` names the real achievement that answers it AND the employer it came from, drawn from the record. Pick the three requirements that decide this hire, not the three easiest to answer. NEVER pair a requirement the record cannot answer: if only two requirements have real evidence, return two.` : `MUST be an empty array. With no job ad there is no requirement to pair against; the letter argues from the candidate's strongest evidenced work.`}
+- generation_framework.cover_blueprint.objection_to_defuse: the SINGLE concern the letter may address, as { flag, answer_evidence } — \`flag\` naming it in one short phrase, \`answer_evidence\` the real fact from the record that settles it. Choose one ONLY where silence costs more than mention: a gap over six months, the permanence question under a standing consultancy, a location or relocation mismatch, a required capability with a genuine adjacent answer. Choose NOTHING — return null — for anything the letter cannot improve (age, salary, a seniority mismatch with no answer behind it): naming those raises an objection the reader had not, and the CV's own overrides already do what can be done. null is a common and correct answer. Never pick a flag the record holds no answering fact for.
+- generation_framework.cover_blueprint.close_ask: what the closing paragraph asks for, in plain terms (an interview, a conversation about a named problem the ad raises). One short phrase, not a sentence.`;
+
+// Shared schema fragment, so both prompt bodies describe the same object.
+const COVER_BLUEPRINT_SCHEMA = `    "cover_blueprint": {
+      "salutation_target": "",
+      "hook_angle": "",
+      "matched_pairs": [],
+      "objection_to_defuse": null,
+      "close_ask": ""
+    },`;
+
 // NOTE: the onboarding "open questions" the user settles on the master are no
 // longer produced here. A model reading the master reconciles its gaps/overlaps
 // away and reports "clean", so those questions are computed deterministically
@@ -136,6 +160,7 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer adapts this into the requested tone, so make it factual and dense, not stylised.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
 - generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority AND to the target market's convention (Layer 5): for a CZECH or POLISH target the letter is a short covering note — 200-300, default 250; for every other market 250-350, default 275. Pick the market from the job ad's country when there is one, otherwise the candidate's own.
+${coverBlueprintRule(hasJobText)}
 
 OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field above, and do NOT emit scores, commentary, quick_wins or action_items — another pass owns those):
 {
@@ -165,6 +190,7 @@ OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field abo
       "top_three_achievements": [],
       "skills_to_highlight": []
     },
+${COVER_BLUEPRINT_SCHEMA}
     "target_cover_words": ""
   }${hasJobText ? `,
   "job_extraction": {
@@ -289,6 +315,7 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 ${COVER_ACTION_ITEMS_RULE}
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
 - generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority AND to the target market's convention (Layer 5): for a CZECH or POLISH target the letter is a short covering note — 200-300, default 250; for every other market 250-350, default 275. Pick the market from the job ad's country when there is one, otherwise the candidate's own.
+${coverBlueprintRule(hasJobText)}
 
 JSON OUTPUT SCHEMA:
 {
@@ -340,6 +367,7 @@ JSON OUTPUT SCHEMA:
       "top_three_achievements": [],
       "skills_to_highlight": []
     },
+${COVER_BLUEPRINT_SCHEMA}
     "target_cover_words": ""
   }${hasJobText ? `,
   "job_extraction": {
