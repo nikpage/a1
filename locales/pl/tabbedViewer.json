@@ -60,6 +60,7 @@
     "coverPairsMissing": "List dowodzi {{present}} z {{planned}} zaplanowanych par wymaganie–dowód. Brakująca to najmocniejszy argument, którego nie użyto.",
     "coverSalutation": "Ogłoszenie podaje kontakt {{name}}, ale list nie jest do tej osoby skierowany. Zwrot po imieniu to pierwszy dowód, że list napisano pod tę aplikację.",
     "coverManyObjections": "List odnosi się do {{count}} wątpliwości. Jedno wyjaśnienie brzmi pewnie, kilka brzmi jak przyznanie się.",
-    "coverNumber": "List podaje liczby, których nie ma w Twoim zapisie: {{list}}. Sprawdź je — nie wymyślamy liczb."
+    "coverNumber": "List podaje liczby, których nie ma w Twoim zapisie: {{list}}. Sprawdź je — nie wymyślamy liczb.",
+    "coverUnsourced": "List używa słów, których nie ma ani w ogłoszeniu, ani w Twoim zapisie: {{list}}. Sprawdź je — branża, w której nigdy nie pracowałeś, brzmi jak blef."
   }
 }

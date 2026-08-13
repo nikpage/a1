@@ -862,7 +862,102 @@ function checkCoverNumbers(body, master, warnings) {
   }
 }
 
-// The cover letter's slice of Layer 6 (checks 17-22). The letter has no
+// ---- 23. vocabulary provenance ---------------------------------------------
+//
+// The letter may only name a DOMAIN the job ad or the master gave it. The case
+// this exists for is real: a Product Owner ad asking for banking, insurance or
+// independent financial advisory came back as a letter about the candidate's
+// "fintech" background — a word in neither the ad nor the record, supplied by
+// the model because three finance nouns suggested a label. Every AI pass let it
+// through: it carries no number, no date and no upgraded verb, so none of the
+// five verify categories is looking at it.
+//
+// The check is a CLOSED LIST, on the same reasoning as the banned-phrasing list
+// in Layer 2. The open version — report any word absent from both sources —
+// flags ordinary prose instead: a Czech verb the ad happens not to use is not an
+// invention, and a warning that fires on "pracoval" teaches the candidate to
+// ignore the banner. A closed list of industry labels reports the defect and
+// nothing else, and it grows only by adding a term actually seen invented.
+//
+// Matching folds diacritics and truncates to a stem, because Czech and Polish
+// inflect the suffix: "fintech", "fintechu" and "fintechem" are one word to a
+// reader and three strings to a computer.
+const STEM_LEN = 6;
+
+// One word reduced to what its inflected forms share: no diacritics, no case,
+// no punctuation, cut to its stem.
+function stem(word) {
+  const folded = String(word || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+  return folded.length < 4 ? '' : folded.slice(0, STEM_LEN);
+}
+
+function stemSet(text) {
+  const out = new Set();
+  for (const w of plain(text).split(/\s+/)) {
+    const s = stem(w);
+    if (s) out.add(s);
+  }
+  return out;
+}
+
+// Industry and domain labels — the words that assert what world the candidate
+// worked in. Each is legitimate when the ad or the record supplies it, and an
+// invention when neither does. English and CZ/PL forms both appear because the
+// letter is written in the market's language; stemming covers the inflections.
+const DOMAIN_TERMS = [
+  'fintech', 'insurtech', 'regtech', 'proptech', 'adtech', 'martech', 'edtech', 'healthtech',
+  'biotech', 'cleantech', 'agritech', 'legaltech', 'hrtech',
+  'banking', 'bankovnictvi', 'bankowosc', 'insurance', 'pojistovnictvi', 'ubezpieczenia',
+  'blockchain', 'cryptocurrency', 'crypto', 'kryptomeny', 'kryptowaluty', 'web3', 'defi',
+  'ecommerce', 'retail', 'maloobchod', 'logistics', 'logistika',
+  'telecom', 'telekomunikace', 'automotive', 'automobilovy', 'pharma', 'farmaceuticky',
+  'gaming', 'gambling', 'sazkarstvi', 'aerospace', 'defence', 'defense',
+  'manufacturing', 'vyroba', 'produkcja', 'healthcare', 'zdravotnictvi',
+  'hospitality', 'gastronomie', 'construction', 'stavebnictvi', 'budownictwo',
+  'energetika', 'utilities', 'mining', 'agriculture', 'zemedelstvi',
+  'saas', 'marketplace', 'startup', 'scaleup',
+].reduce((set, w) => {
+  const s = stem(w);
+  if (s) set.add(s);
+  return set;
+}, new Set());
+
+// The ad, as the extraction recorded it. Only `job_extraction` counts: it is the
+// one part of the analysis the prompt binds to literal quotation from the ad, so
+// it cannot launder an inferred industry ("Industry: FinTech") into the allowed
+// set and whitelist the very word this check looks for.
+function jobVocabulary(analysis) {
+  const job = analysis?.job_extraction;
+  if (!job || typeof job !== 'object') return null;
+  const text = JSON.stringify(job);
+  return text.length > 2 ? stemSet(text) : null;
+}
+
+function checkCoverProvenance(body, master, analysis, warnings) {
+  const jobStems = jobVocabulary(analysis);
+  // No ad and no master is no evidence: report nothing rather than guess.
+  if (!master.text && !jobStems) return;
+
+  const allowed = new Set([...(jobStems || []), ...stemSet(master.text)]);
+  const seen = new Set();
+  const stray = [];
+  for (const w of plain(body).split(/\s+/)) {
+    const s = stem(w);
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    if (!DOMAIN_TERMS.has(s) || allowed.has(s)) continue;
+    stray.push(w.replace(/[^\p{L}\p{N}-]/gu, ''));
+  }
+  if (stray.length) {
+    warnings.push({ code: 'coverUnsourced', params: { list: stray.join(', ') } });
+  }
+}
+
+// The cover letter's slice of Layer 6 (checks 17-23). The letter has no
 // sections, dates or bullets, so most of validateCv does not apply to it — but
 // the banned-phrase list does, the letter is prose and that is exactly where the
 // boilerplate wrapper ("I am writing to express my interest") lands, and the
@@ -892,6 +987,7 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
   checkCoverSalutation(document, analysis, warnings);
   checkCoverObjections(body, analysis, warnings);
   checkCoverNumbers(body, m, warnings);
+  checkCoverProvenance(body, m, analysis, warnings);
 
   return { ok: hard.length === 0, hard, warnings };
 }

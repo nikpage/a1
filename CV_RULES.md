@@ -162,7 +162,8 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 20. The salutation addresses the contact the job data names, where it names one.
 21. At most one red-flag clause appears in the letter, and it carries a fact traceable to the master.
 22. No claim in the letter that the CV does not also support, where both documents were generated in the same run.
+23. An industry or domain the cover letter names appears in the job ad or in the master. A label the letter introduces from neither source — "fintech" over an ad asking for financial advisory — is reported to the user. The list of labels is closed and exact, on the same reasoning as the banned-phrasing list: judging every word by whether the sources used it flags ordinary prose, since a verb the ad happens not to contain is not an invention. It grows by adding a term actually seen invented in output, never by inferring a family from one member. Matching is by normalised, truncated stems, so an inflected form counts as its root. The check catches an invented domain, not invented meaning, which remains the AI verify pass's work.
 
-A failure at 1–4, 10, 14 and 18 is a hard block. 5–9, 11–13, 15, 16 and 19–22 are warnings surfaced to the user.
+A failure at 1–4, 10, 14 and 18 is a hard block. 5–9, 11–13, 15, 16 and 19–23 are warnings surfaced to the user.
 
 A check whose evidence is missing (no parseable master, no section order) reports nothing rather than guessing.

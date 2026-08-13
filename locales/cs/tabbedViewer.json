@@ -60,6 +60,7 @@
     "coverPairsMissing": "Dopis dokládá {{present}} z {{planned}} plánovaných dvojic požadavek–důkaz. Ta chybějící je nejsilnější argument, který nezazněl.",
     "coverSalutation": "Inzerát uvádí kontakt {{name}}, ale dopis se na tuto osobu neobrací. Oslovení jménem je první známkou, že dopis je psaný na míru.",
     "coverManyObjections": "Dopis se vyjadřuje k {{count}} výhradám. Jedna vysvětlená působí sebejistě, více jich působí jako přiznání.",
-    "coverNumber": "Dopis uvádí čísla, která nejsou ve vašem záznamu: {{list}}. Zkontrolujte je — čísla si nevymýšlíme."
+    "coverNumber": "Dopis uvádí čísla, která nejsou ve vašem záznamu: {{list}}. Zkontrolujte je — čísla si nevymýšlíme.",
+    "coverUnsourced": "Dopis používá slova, která nejsou ani v inzerátu, ani ve vašem záznamu: {{list}}. Zkontrolujte je — obor, ve kterém jste nikdy nepůsobili, působí jako blaf."
   }
 }
