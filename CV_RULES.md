@@ -2,7 +2,8 @@
 
 The canonical statement of what a generated CV must be. `prompts/cv-rules.js`,
 `prompts/scenarios.js`, `prompts/market.js`, `prompts/cv-sections.js` and
-`utils/cv-validate.js` implement this document. Where code and this document
+`utils/cv-validate.js` implement this document. It governs the cover letter too,
+wherever a rule says so — `prompts/cover-letter.js` implements those. Where code and this document
 disagree, this document is the authority.
 
 ## Invariants (cannot be overridden by any layer)
@@ -71,6 +72,14 @@ A skill whose only evidence lies outside the recency window — in the "Earlier 
 
 **Cover letter.** Three matched pairs — the ad's top three requirements against the candidate's three strongest evidenced achievements. No claim in the letter that is absent from the CV.
 
+**The letter gets its own blueprint.** The matched pairs, and everything else the letter is asked to do, are chosen by the analysis and handed over as a named structure alongside the CV blueprint — the salutation's target, the angle the letter opens on, the three pairs, the one objection it may defuse, and what it asks for at the close. Without it the letter is handed a plan written for the CV and executes that instead: it receives section orders, bullet counts and rewrite instructions for a document it is not writing, and answers them the only way it can, by narrating the CV back. The pairs in particular cannot be left to the writer. Choosing which of the ad's requirements matter most, and which evidenced achievement answers each, is the same judgement the analysis already makes for the CV, made once against the whole record — a writer holding only the finished master picks the three that read best in a paragraph. Where there is no ad, the blueprint carries no pairs and the letter argues from the candidate's strongest evidenced work instead.
+
+**The salutation is a fact, not a formula.** Where the ad names a person, the letter addresses that person. "Dear Hiring Manager" over a named contact is not neutral politeness — the name was on the page, and using it is the first evidence that the letter was written for this application. The name comes from the extracted job data; where the ad names no one, the neutral form is correct and no name is guessed at.
+
+**The letter opens on a fact.** The first sentence states something the candidate did, built or ran that this role needs. Openers that describe the act of applying, or that assert an identity in place of evidence, are barred by Layer 2's rules on epithets and banned phrasing, which bind the letter as they bind the CV. The opening is the sentence with the least competition for attention in either document; spending it on "I am writing to apply" spends it on nothing.
+
+**A capability the candidate lacks is not argued around.** A requirement the master does not evidence may appear in the letter only as forward-looking interest, in the candidate's own words, and never as a claim of present ability. It is reported to the user as a gap by the same rule that governs the CV.
+
 **The letter makes one argument.** A cover letter is a single claim about why this candidate and this role belong together, proved in three or four paragraphs. Every paragraph advances that claim or is cut. This is what separates a letter from a list, and it is the rule most easily lost: the letter is fed a strategy, matched pairs, red flags to defuse, an active override and a body of guidance, and a model satisfying each in turn produces one sentence per instruction — a document with no through-line, where the seams between the instructions are visible to any reader. Guidance is raw material, never a running order. Several items may be answered by one paragraph, and an item with nothing to add to the argument is dropped. Nothing that reaches the writer is copy to be transcribed: sentences drafted upstream are rewritten in the candidate's own recorded voice, at the length the letter has room for, or not used. The argument decides what is said and in what order — not the shape of the guidance that informed it.
 
 ## Layer 4 — Situational overrides
@@ -78,6 +87,10 @@ A skill whose only evidence lies outside the recency window — in the "Earlier 
 Maximum two active at once. Every rule below reframes, reorders, relabels or cuts real content; none inserts a fact.
 
 **The overrides reach the cover letter too.** The scenario that shapes the CV shapes the letter, but not with the same instructions: a letter has no sections to reorder, no dates to format and no bullets to cap, so a CV mitigation transplanted into it is noise. Each override therefore carries a second, letter-specific rule governing what the letter leads on, what it may address in the candidate's own recorded words, and what it must not claim. The same cap of two applies, and the invariants and Layer 3's matched pairs still outrank it. Where an override forbids a fact on the CV — a cumulative career total under Older Applicant, years of experience under Under-qualified — it is forbidden in the letter as well; the letter is not a place to say what the CV was not allowed to.
+
+**Red flags are defused in the letter, at most one, and only where silence costs more.** The analysis names the single objection the letter may address, or names none — the writer never chooses for itself, and none is a common and legitimate answer. Only a flag a recruiter will otherwise resolve against the candidate qualifies: a gap over six months, the permanence question under a standing consultancy, a location or relocation mismatch, a required capability the candidate has a genuine adjacent answer to. A flag the letter cannot improve is left alone — age, salary, a seniority mismatch with no answer behind it. Naming those introduces the objection to a reader who had not yet raised it, and the CV's own overrides already do what can be done about them.
+
+One flag, one clause, once — inside the body of the argument, never the opening and never the close, stated flat and then passed. Two defences read as a defence and three read as an admission. The clause carries a fact from the master or it is cut: reassurance that the candidate is confident, adaptable or a fast learner defuses nothing, and where the record holds no evidence the flag is not addressed at all. It is never restated in the concern's own language — the letter states the positive fact that makes it a non-issue rather than repeating the doubt first — and it carries no apology and no explanation of motive the master does not record, which the invariants forbid in any case.
 
 **Recent grad.** Lead with education, internships, projects and demonstrable skills rather than a thin work history. Never pad or invent experience to fill space.
 
@@ -144,6 +157,12 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 
 17. No phrase from the banned-phrasing list (Layer 2) appears in the document. It is neither a block nor a warning: it is the app's own writing failing, so the user never sees it, and it is repaired rather than reported. The AI verify pass rewrites the clause into what the record supports — or deletes it where it carries no claim — and anything that survives goes to one narrow second pass over those exact spans. Regenerating the document is not the remedy: reprinting a finished page to fix a clause reopens every judgement the draft already got right, and costs a full generation to remove five words. The repair adds no fact; where the record has nothing to put in the space, the shorter, plainer sentence is the correct outcome.
 
-A failure at 1–4, 10 and 14 is a hard block. 5–9, 11–13, 15 and 16 are warnings surfaced to the user.
+18. The cover letter's word count sits inside its market band (Layer 5). Over the band is a block; under it is neither, since a finished argument is allowed to stop early.
+19. With a job ad: the letter carries its three matched pairs, each naming a requirement from the ad and an achievement the master evidences. Fewer than three is reported to the user.
+20. The salutation addresses the contact the job data names, where it names one.
+21. At most one red-flag clause appears in the letter, and it carries a fact traceable to the master.
+22. No claim in the letter that the CV does not also support, where both documents were generated in the same run.
+
+A failure at 1–4, 10, 14 and 18 is a hard block. 5–9, 11–13, 15, 16 and 19–22 are warnings surfaced to the user.
 
 A check whose evidence is missing (no parseable master, no section order) reports nothing rather than guessing.
