@@ -617,6 +617,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     cvText={cvVersions[cvCurrentIndex]}
                     coverText={coverVersions[coverCurrentIndex]}
                     activeTab={activeTab}
+                    analysis={analysisTextState}
                     onTokenFail={() => openBuyPanel("tokens")}
                   />
                 </div>
@@ -669,6 +670,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     cvText={cvVersions[cvCurrentIndex]}
                     coverText={coverVersions[coverCurrentIndex]}
                     activeTab={activeTab}
+                    analysis={analysisTextState}
                     onTokenFail={() => openBuyPanel("tokens")}
                   />
                 </div>

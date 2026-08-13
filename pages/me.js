@@ -441,6 +441,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                     cvText={cv}
                     coverText={cover}
                     activeTab={activeTab}
+                    analysis={analysis}
                     onTokenFail={() => setError('Out of download tokens.')}
                   />
                 </>

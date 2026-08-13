@@ -9,6 +9,7 @@ export default function DocumentDownloadButtons({
   cvText,
   coverText,
   activeTab,
+  analysis,          // names the file: [doc]-[FirstLast]_[Company]
   onTokenFail,
 }) {
   const handleDownload = async () => {
@@ -38,6 +39,7 @@ export default function DocumentDownloadButtons({
         type,
         user_id,
         markdownText: content,
+        analysis,
       });
 
 

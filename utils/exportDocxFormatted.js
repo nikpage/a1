@@ -3,6 +3,7 @@
 
 import { saveAs } from 'file-saver';
 import { isSlot } from '../prompts/cv-sections.js';
+import { docFileName } from './doc-filename.js';
 import {
 Document,
 Packer,
@@ -16,6 +17,7 @@ export default async function exportDocxFormatted({
 type = 'cv',
 user_id = 'user',
 markdownText = '',
+analysis = null,   // the analysis the document was written against — names the file
 }) {
 if (!markdownText) {
 alert('Nothing to export.');
@@ -366,6 +368,10 @@ children: docParagraphs,
 });
 
 const blob = await Packer.toBlob(doc);
-const filename = `${type}-${user_id}.docx`;
+// [doc]-[FirstLast]_[Company], e.g. cv-NikPage_Xco.docx. Without an analysis to
+// read the candidate and employer from, fall back to the user id so a download
+// still lands with a distinguishable name.
+const base = analysis ? docFileName(type, analysis) : `${type}-${user_id}`;
+const filename = `${base}.docx`;
 saveAs(blob, filename);
 }
