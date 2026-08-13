@@ -25,9 +25,11 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Titles.** Print the official title exactly. If it is non-standard, the industry-standard equivalent may be used in the skills/summary prose, never bolted onto the title line.
 
-**Dates.** MM/YYYY on every dated entry, one format throughout. The "Earlier Career" line is the only permitted undated entry. Never switch to YYYY-only to hide anything. A month the master does not record is never invented: print the year as recorded and report the missing month to the user as a warning.
+**Dates.** MM/YYYY on every dated entry, one format throughout. The "Earlier Career" section is the only permitted undated entry. Never switch to YYYY-only to hide anything. A month the master does not record is never invented: print the year as recorded and report the missing month to the user as a warning.
 
-**Recency window.** Full detail for the last 10–15 years. Older roles collapse into one undated "Earlier Career" line — titles, employers, and the location where the location itself carries weight (a major market the candidate genuinely worked in). Employers are named individually; a category ("financial institutions and tech companies") is not a substitute for a name. No bullets on that line.
+**Recency window.** Full detail for the last 10–15 years. Older roles collapse into an undated "Earlier Career" section — titles, employers, and the location where the location itself carries weight (a major market the candidate genuinely worked in). Employers are named individually; a category ("financial institutions and tech companies") is not a substitute for a name.
+
+**Earlier Career form.** One bullet per role, reverse-chronological, each bullet `Title, Employer` plus ` — Location` where the location earns its place. No dates, no achievements, no prose: a bullet that describes what the role involved is a Work Experience entry smuggled past the recency window. **At most six bullets**, chosen for the strength of the name and the relevance of the title, not simply the six most recent — the section exists so a recognisable employer is not lost, and a longer list drags the reader backwards through a career the window is meant to close. Where more roles fall outside the window than the section prints, the remainder are simply omitted; no "and others" line, no count. These bullets are outside the Layer 2 bullet ceilings and the metric-fallback share, which govern Work Experience only. A location prints only where the master records it from the source — it is never inferred from the employer's name, however well known its home city.
 
 **Education contains only qualifications awarded to the candidate** — degrees, diplomas, certifications earned. An appointment to teach, lecture, guest-lecture or examine at an institution is employment, not a qualification, and belongs in Work Experience, nested under its umbrella entry if it was delivered through one.
 
@@ -126,14 +128,14 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 1. Every hard noun in the output (skill, tool, employer, title, certification, number) traces to the master. Any that does not → block.
 2. Dates in the output match the master exactly.
 3. No Work Experience entry that is not a real role.
-4. Single column, standard headers, one date format across all dated entries (the "Earlier Career" line is exempt, as is a year-only entry permitted by check 13).
+4. Single column, standard headers, one date format across all dated entries (the "Earlier Career" section is exempt, as is a year-only entry permitted by check 13).
 5. Impact zone within 120 words and contains headline + proposition + the evidenced achievements, up to three, each naming its role, and none of them a word-for-word copy of the Work Experience bullet it restates.
 6. No role exceeds its bullet ceiling; fallback bullets within the one-third limit where metrics exist.
 7. Market rules satisfied; no photo/DOB/consent invented.
 8. With a job ad: unevidenced requirements are listed to the user as gaps.
 9. Projects section present ⇒ a qualifying override is active.
 10. When the Older Applicant override is active: no Education entry carries a graduation year, and no cumulative career total appears anywhere ("X+ years' experience", "over two decades in the field"). A duration scoped to a single role, project or engagement is not a total and does not fail this check.
-11. An Earlier Career line names at least one real employer from the master.
+11. An Earlier Career section names at least one real employer from the master, prints at most six bullets, carries no dates, and states no location the master does not record.
 12. No banned identity epithet in the Summary or headline.
 13. A dated entry whose master record holds no month prints the year alone and is reported to the user as a missing month — never completed with an invented one.
 14. Every entry in Skills and Core Competencies traces to the master, on the same basis as a certification: the section is a plain list, so each entry either appears in the record or it does not.
