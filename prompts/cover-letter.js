@@ -9,8 +9,9 @@ import { cvInvariants, coverMatchingRule } from './cv-rules.js';
 import { generationBrief } from './analysis-brief.js';
 import { scenarioCoverRules } from './scenarios.js';
 import { coverLengthRule } from './market.js';
+import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
 
-export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
+export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), voiceProfile = null) {
   // The ad itself — the letter is addressed to THIS job, so it reads it directly.
   const jobBlock = targetJobBlock(analysis);
   // The letter is bound by the same invariants as the CV, plus the Layer 3
@@ -22,6 +23,13 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
   const coreBlock = core && core.trim()
     ? `    # Who this candidate is (steering)\n    The candidate describes the durable value they bring to any role as: "${core.trim()}"\n    Let it guide what you foreground and how you frame the story — never state anything the CV doesn't actually prove.\n`
     : '';
+  // The candidate's own writing voice, built once from samples of their own prose
+  // (prompts/voice-profile.js). It is a constraint on HOW to write and carries no
+  // facts — which is why it lives outside the master record, not inside it.
+  const voiceBlock = voiceProfileBlock(voiceProfile);
+  // Short excerpts, so the model can hear the rhythm a description loses. Fenced
+  // hard: manner only, nothing taken.
+  const excerptBlock = voiceProfile ? voiceExcerptBlock(voiceProfile) : '';
   const tweakBlock = tweak && tweak.trim()
     ? `    # The candidate's own instructions (HIGHEST PRIORITY)\n    Follow this over any conflicting guidance below, but NEVER invent facts to satisfy it:\n    "${tweak.trim()}"\n`
     : '';
@@ -45,7 +53,7 @@ ${cvInvariants()}
     - Open with a specific hook tied to this candidate and this role — never a generic "I am writing to apply for...". Keep the opening to one or two short, punchy sentences; do NOT cram the whole pitch into a single dense, multi-clause first sentence.
     - Build a short narrative: why this candidate, why this role, what they bring. Use concrete proof from the master CV (real achievements, numbers, scope from \`experience[]\`), not adjectives.
     - **Never state a span of experience the record doesn't state.** No "14 years of AI solution design", no "a decade in fintech", no "X+ years" of anything. Durations are facts: the only ones that exist are those written in \`experience[].dates\`. Never sum roles into a career total, never stretch a domain label across roles that weren't in that domain. Lead with what they did, not with how long they've been doing it.
-    - **Match the candidate's own voice.** The master CV's \`voice_samples\` are verbatim sentences in the candidate's real writing style — echo their cadence, vocabulary and register so the letter reads as written by them, not by a machine. Use them for tone only; never copy a sample wholesale or treat it as a fact about this role. If the master CV carries a \`voice_guide\`, it is the candidate's own written style guide — how THEY write, stated in their words. Follow it: it outranks any generic style habit of yours, and where it and the chosen tone pull apart, the tone decides the attitude while the guide decides the cadence, sentence shapes and vocabulary. It describes HOW to write, never WHAT is true — it can never license a fact the record does not carry.
+    - **Match the candidate's own voice.**${voiceBlock ? ' Their writing voice is described in its own block below — that description is the authority on HOW this letter reads, and a letter that sounds slightly too casual is a better outcome than one that reads like a template.' : ''} The master CV's \`voice_samples\` are verbatim sentences in the candidate's real writing style — echo their cadence, vocabulary and register so the letter reads as written by them, not by a machine. Use them for tone only; never copy a sample wholesale or treat it as a fact about this role. If the master CV carries a \`voice_guide\`, it is the candidate's own written style guide — how THEY write, stated in their words. Follow it: it outranks any generic style habit of yours, and where it and the chosen tone pull apart, the tone decides the attitude while the guide decides the cadence, sentence shapes and vocabulary. It describes HOW to write, never WHAT is true — it can never license a fact the record does not carry.
     - The cover letter is the right place to address concerns: where relevant, briefly and confidently turn the items in \`analysis.red_flags\` into a strength or a non-issue. Do this with a light touch — explain, don't apologise. Let any such pivot grow naturally out of the surrounding story rather than appearing as an abrupt, bolted-on sentence.
     - Where a gap or short tenure is genuinely relevant and the matching master \`experience[]\` entry carries a \`clarification\`, you may use the candidate's own words to defuse it in ONE brief clause — confident, factual, never apologetic, never a whole paragraph, and only when it strengthens the letter. Never invent a reason the clarification does not state; if there is no clarification, do not speculate about the gap.
     - **The guidance is material, not a running order.** \`analysis.action_items["Cover Letter"]\` (Points to Address, Narrative Flow, Tone and Style) tells you what is worth proving and what evidence proves it. Mine it — do not walk it. One paragraph may answer several items; an item that does not advance the argument is dropped; nothing is included merely because it appears on the list. If any item arrives as a finished sentence or a quoted opening line, treat it as raw material only: rewrite it in this candidate's voice and this tone, at the length you actually have. Never paste it, and never restate an item the active scenario forbids you to say.
@@ -71,6 +79,7 @@ ${scenarioBlock}
     # Tone — "${tone}"
     ${toneInstructions(tone)}
 
+${voiceBlock}
     # Inputs
     ## Master CV (the candidate's complete, structured career record — your sole factual source; includes \`voice_samples\` and, where present, \`voice_guide\` for the candidate's writing voice):
     ${currentDateReminder(now)}
@@ -79,6 +88,7 @@ ${scenarioBlock}
     ## Analysis (the strategic brief — the plan to execute, not a review to answer):
     ${JSON.stringify(generationBrief(analysis), null, 2)}
 
+${excerptBlock}
     # Output
     Return only the cover letter. Start with the date, then salutation, body, and end with the signature block.
     `

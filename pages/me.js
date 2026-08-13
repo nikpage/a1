@@ -29,6 +29,7 @@ import MasterRecordPanel from '../components/MasterRecordPanel';
 import AnalysisDisplay from '../components/AnalysisDisplay';
 import DocumentDownloadButtons from '../components/DocumentDownloadButtons';
 import CvWarningBanner from '../components/CvWarningBanner';
+import VoiceProfilePanel from '../components/VoiceProfilePanel';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { logGemini } from '../utils/log-gemini.js';
 import { generateDocuments } from '../utils/generateDocuments';
@@ -73,6 +74,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
   const [flags, setFlags] = useState([]);
   const [experience, setExperience] = useState([]);
   const [master, setMaster] = useState(null);
+  const [voiceProfile, setVoiceProfile] = useState(null);
   const [loadingRecord, setLoadingRecord] = useState(true);
 
   const [masterOpen, setMasterOpen] = useState(false);
@@ -106,6 +108,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
         setFlags(Array.isArray(data.flags) ? data.flags : []);
         setExperience(Array.isArray(data.experience) ? data.experience : []);
         setMaster(data.master || null);
+        setVoiceProfile(data.voice_profile || null);
       }
     } catch {
       /* an empty record simply renders the upload box */
@@ -277,6 +280,11 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── How you write: samples in, reviewed profile out ───────────── */}
+        <div className="mb-6 border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
+          <VoiceProfilePanel profile={voiceProfile} onUpdated={setVoiceProfile} />
         </div>
 
         {/* ── The job and the fit ───────────────────────────────────────── */}

@@ -51,6 +51,21 @@ Each user has one persisted **master CV** — a structured career record (facts 
 - **`voice_guide` (user-authored, never AI-written):** an optional prose field on the master — the candidate's own statement of how they write. No prompt emits it and no verify pass rewrites it; `normaliseMaster` carries it from the stored record (the editor cannot overwrite it, like `voice_samples`), the merge/augment prompts copy it through verbatim, and `saveMasterCv()` re-attaches it whenever an incoming record lacks one — otherwise a rebuild from a fresh CV upload would silently delete it. Both generators read it for voice only: cadence, sentence shapes, vocabulary. It is Layer 2 in the CV stack (`CV_RULES.md` → `humanScannability()`), so it never overrides parseability, bullet limits, banned phrasing or the invariants, and never licenses a fact the master lacks. Tests: `__tests__/voice-guide.test.js`.
 - **Never-fabricate** is absolute here too: the master records only what the input evidences; gaps stay gaps. The build prompt's SELF-CONSISTENCY block + the verify pass are the two layers that keep gaps/country/conflicts honest on a cheap model.
 
+## Voice (per-user, cover letters only)
+
+The **voice profile** makes a cover letter sound like the person applying instead of like a language model. It lives in `cv_data.voice_profile` (JSONB, `009_voice_profile.sql`) — **never inside `master_cv`**, and that separation is load-bearing: the master is the evidence set the truth-verify pass and the Layer 6 validator check every claim against, so voice text stored there would launder a sample's wording into a "supported" fact. `prompts/voice-profile.js` + `prompts/voice-check.js`; `getVoiceProfile()` / `saveVoiceProfile()` in `utils/database.js`; route `pages/api/voice-profile.js`; UI `components/VoiceProfilePanel.js` (on `/me`).
+
+- **Input is the user's own writing, never their CV.** Two to four samples, 300+ words each (one is accepted with a stated warning that the result is weaker). Bullet fragments carry no voice, so the CV is refused. Each sample carries the user's **label** (`SAMPLE_LABELS`: previous application / work document / public writing / personal message / other), and the label sets how far the translation below has to travel (`LABEL_DISTANCE`).
+- **One extraction call** (`buildVoiceProfile()`, on `GEMINI_ANALYSIS_MODEL` — judgment about prose, and it runs once per user) returns 15–25 plain-prose observations, **not scores or tags**, split into two lists:
+  - **List A — carries across registers.** Applied directly: sentence length and variation, leading with the point vs building to it, hedging, concreteness, quantification, punctuation habits, transitions, metaphor, how they open and close.
+  - **List B — register-bound.** Profanity, slang, casual openers, rhetorical questions, second-person, emoji, fragments, subject-specific vocabulary. **Never applied raw.** Each is stored with a **translation** into its business-appropriate equivalent that preserves what the habit was *doing* ("swears when emphatic" → "states it flat, no hedging"). `voiceProfileBlock()` emits List A + translations only; a trait whose translation is empty is dropped. A raw List B trait reaching a generator is the defect that puts profanity in a cover letter — pinned by tests in both directions.
+- **The review screen is not optional.** The user edits List A, the translations and their own lines, and their lines outrank the extracted ones. Their edits and the `cleanup` option survive a re-extract.
+- **Generation** hands the letter the profile block plus **1–2 short excerpts** of the samples (`voiceExcerptBlock()`), because a description of cadence loses the cadence. The excerpts are fenced absolutely: manner only, no fact, no claim, no number, no phrasing, and the master wins any contradiction.
+- **The check pass is where most of the quality is** (`applyVoice()`): one call lists concrete misses against numbered profile lines with verbatim quotes, a second repairs **only** those spans. Corrections go through `applyGenerationCorrections()` by literal string match, so anything not verbatim in the letter is discarded. It runs **before** the truth-verify pass, never after — a style rewrite must not smuggle a claim past the fact-checker. Both calls are cost-logged like every other.
+- **No rigidity check overrides the profile.** Mild informality is an acceptable outcome; a letter that reads slightly too casual beats one that reads like a template. The hard limits stay what they already were: the invariants, no profanity in output, nothing factually wrong about the applicant.
+- **The CV is not promised voice.** Bullets are bullets and the constraint there is accuracy; the UI says so. `voice_guide` (see the master-CV section) still reaches the CV as Layer 2.
+- Tests: `__tests__/voice-profile.test.js`, `__tests__/apply-voice.test.js`.
+
 ## CV rules (the layer stack)
 
 **`CV_RULES.md` at the repo root is the SOURCE OF TRUTH (binding).** It is the prose statement of what a generated CV must be, and it wins over any code that disagrees with it.
@@ -168,6 +183,8 @@ prompts/master-cv.js
 prompts/cv-rules.js
 prompts/generation-verify.js
 prompts/cv-sections.js
+prompts/voice-profile.js
+prompts/voice-check.js
 ```
 
 These are the product IP. Import them; never copy-paste their content into handlers.
@@ -184,7 +201,7 @@ Secrets come from **Doppler** — do not add `.env` files or hardcode values. If
 
 ## AI cost logging rule (DO NOT REMOVE — owner order required to change)
 
-Every AI step — job extraction, master-CV build/merge, master-CV verify, CV+job analysis, CV generation, cover-letter generation — **must** report all of the following in **both** places:
+Every AI step — job extraction, master-CV build/merge, master-CV verify, CV+job analysis, CV generation, cover-letter generation, voice-profile extraction, voice check, voice fix — **must** report all of the following in **both** places:
 
 | Field | DB column (`transactions`) | Console (`[Gemini] …` line) |
 |---|---|---|

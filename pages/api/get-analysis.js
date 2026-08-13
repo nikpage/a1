@@ -1,6 +1,6 @@
 // pages/api/get-analysis.js
 import { logger } from '../../lib/logger';
-import { getLatestAnalysis, getMasterCv } from '../../utils/database';
+import { getLatestAnalysis, getMasterCv, getVoiceProfile } from '../../utils/database';
 import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
 import requireAuth from '../../lib/requireAuth';
 
@@ -30,6 +30,14 @@ async function handler(req, res) {
     // The full master record, for callers that show/edit the whole thing (the
     // personal workbench at /me) rather than just the onboarding skeleton.
     let master = null;
+    // The voice profile lives in its own column, deliberately outside the master
+    // (see utils/database.js) — the workbench renders and edits it alongside.
+    let voice_profile = null;
+    try {
+      voice_profile = await getVoiceProfile(user_id);
+    } catch (e) {
+      logger.error('get-analysis: voice profile load failed:', e.message);
+    }
     try {
       master = await getMasterCv(user_id);
       master_missing = !master;
@@ -42,7 +50,7 @@ async function handler(req, res) {
     } catch (e) {
       logger.error('get-analysis: master load failed:', e.message);
     }
-    return res.status(200).json({ analysis: data.content, experience, flags, master_missing, master });
+    return res.status(200).json({ analysis: data.content, experience, flags, master_missing, master, voice_profile });
   } catch (error) {
     logger.error('Supabase query error:', error.message);
     return res.status(500).json({ analysis: '', error: 'Error fetching data from database.' });

@@ -5,7 +5,8 @@
 //   - the master editor cannot overwrite it (it is carried from the stored record);
 //   - saveMasterCv carries it forward when the incoming record lacks it — the
 //     case that matters is a fresh CV upload, whose rebuilt master has no guide;
-//   - a record that DOES state one is written as given (an update must land);
+//   - a record that DOES state one is written as given (an update must land),
+//     including an explicit empty one — the user clearing it on purpose;
 //   - the cover-letter prompt actually tells the model to follow it.
 
 vi.hoisted(() => {
@@ -89,6 +90,20 @@ describe('saveMasterCv', () => {
     await saveMasterCv('user-1', { voice_guide: 'A replacement guide.' });
 
     expect(upserted.master_cv.voice_guide).toBe('A replacement guide.');
+  });
+
+  // The carry-forward keys off the KEY being absent, not the value being empty:
+  // a record that states voice_guide: '' is the user deleting their guide on
+  // purpose, and resurrecting the old prose would make the field unclearable.
+  test('honours an explicit empty voice_guide as a deliberate clear', async () => {
+    const client = mockSupabase(GUIDE);
+    vi.doMock('@supabase/supabase-js', () => ({ createClient: () => client }));
+    const { saveMasterCv } = await import('../utils/database.js');
+
+    await saveMasterCv('user-1', { candidate_core: 'Kept.', voice_guide: '' });
+
+    expect(upserted.master_cv.voice_guide).toBe('');
+    expect(upserted.master_cv.candidate_core).toBe('Kept.');
   });
 });
 

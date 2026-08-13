@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import MasterRecordEditor from './MasterRecordEditor';
+import VoiceGuidePanel from './VoiceGuidePanel';
 
 function Field({ label, children }) {
   if (!children) return null;
@@ -187,12 +188,12 @@ export default function MasterRecordPanel({ master, onUpdated }) {
             </div>
           )}
 
-          {master.voice_guide && (
-            <div className="py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">How you write</div>
-              <div className="text-sm text-gray-800 whitespace-pre-wrap">{master.voice_guide}</div>
-            </div>
-          )}
+          {/* The only write path for voice_guide — every other path deliberately
+              cannot set it, which had left it permanently empty. */}
+          <VoiceGuidePanel
+            voiceGuide={master.voice_guide || ''}
+            onUpdated={(saved) => onUpdated?.(saved)}
+          />
 
           {gaps.length > 0 && (
             <div className="py-3">

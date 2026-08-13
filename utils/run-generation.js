@@ -14,7 +14,7 @@
 import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
 import { logger } from '../lib/logger.js';
-import { getGenerationSource, saveGeneratedDoc, logAiTransaction } from './database.js';
+import { getGenerationSource, saveGeneratedDoc, logAiTransaction, getVoiceProfile } from './database.js';
 import { getUserById, decrementGenerations } from './generation-utils.js';
 import { generateCV, generateCoverLetter } from './openai.js';
 import { GENERATION_LANGUAGES } from '../prompts/language.js';
@@ -115,7 +115,17 @@ export async function runGeneration({
       }
 
       if (type === 'cover' || type === 'both') {
-        coverRes = await generateCoverLetter({ cv: source, analysis, tone, tweak, core, language });
+        // The user's own writing voice, read only for the letter — the CV's
+        // constraint is accuracy, not personality, and we don't promise voice
+        // there. A missing profile is normal: the letter falls back to the
+        // master's voice_samples exactly as before.
+        let voiceProfile = null;
+        try {
+          voiceProfile = await getVoiceProfile(user_id);
+        } catch (e) {
+          logger.error('voice profile load failed (writing without it):', e.message);
+        }
+        coverRes = await generateCoverLetter({ cv: source, analysis, tone, tweak, core, language, voiceProfile });
         cover = coverRes.content;
       }
     } catch (err) {

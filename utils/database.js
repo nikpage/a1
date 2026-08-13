@@ -111,12 +111,19 @@ export async function getGenerationSource(user_id) {
 // `voice_guide` is the user's own cover-letter style guide: user-authored prose
 // that no AI pass emits. A fresh build from a new CV upload therefore arrives
 // without it, and a bare save would silently delete it. Carry the stored value
-// forward whenever the incoming record doesn't state one — this is the single
+// forward whenever the incoming record doesn't MENTION one — this is the single
 // choke point every master write goes through.
+//
+// "Doesn't mention" is the absence of the KEY, not an empty value. A record that
+// carries `voice_guide: ''` is the user having deleted their guide on purpose,
+// and carrying the old prose back over that would make the field impossible to
+// clear — the write path (/api/update-voice-guide) sets the key either way.
 export async function saveMasterCv(user_id, master) {
+  const statesGuide =
+    master && typeof master === 'object' && Object.prototype.hasOwnProperty.call(master, 'voice_guide');
   // The read is best-effort: losing the guide is bad, losing a paid master build
   // because a read failed is worse, so a failure here never blocks the write.
-  if (master && typeof master === 'object' && !String(master.voice_guide || '').trim()) {
+  if (master && typeof master === 'object' && !statesGuide) {
     try {
       const stored = await getMasterCv(user_id);
       const kept = String(stored?.voice_guide || '').trim();
@@ -132,6 +139,39 @@ export async function saveMasterCv(user_id, master) {
   if (error) throw new Error(`saveMasterCv failed: ${error.message || JSON.stringify(error)}`);
   if (!data || data.length === 0) {
     throw new Error(`saveMasterCv saved nothing for user ${user_id}`);
+  }
+  return data;
+}
+
+// ── Voice profile ────────────────────────────────────────────────────────────
+//
+// The per-user VOICE PROFILE: samples of their own writing, the extracted
+// List A / List B(+translations), and their own hand-edited lines. Stored in its
+// own JSONB column, NOT inside master_cv, and that separation is load-bearing:
+// the master is the evidence set the truth-verify pass and the Layer 6 validator
+// check every generated claim against, so voice text living in it would launder
+// a claim from a writing sample into a "supported" fact.
+export async function getVoiceProfile(user_id) {
+  const { data, error } = await supabase
+    .from('cv_data')
+    .select('voice_profile')
+    .eq('user_id', user_id)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.voice_profile || null;
+}
+
+// Service-role write, upsert for the same reason saveMasterCv uses one: an
+// update whose filter matches no row reports no error and writes nothing.
+// Only user_id + voice_profile are sent, so cv_data and master_cv are untouched.
+export async function saveVoiceProfile(user_id, profile) {
+  const { data, error } = await getAdminSupabase()
+    .from('cv_data')
+    .upsert([{ user_id, voice_profile: profile }], { onConflict: ['user_id'] })
+    .select('user_id');
+  if (error) throw new Error(`saveVoiceProfile failed: ${error.message || JSON.stringify(error)}`);
+  if (!data || data.length === 0) {
+    throw new Error(`saveVoiceProfile saved nothing for user ${user_id}`);
   }
   return data;
 }

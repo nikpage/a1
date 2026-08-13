@@ -9,6 +9,8 @@ import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
+import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
+import { buildVoiceCheckPrompt, buildVoiceFixPrompt } from '../prompts/voice-check.js';
 import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits } from './cv-validate.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
@@ -803,6 +805,101 @@ export async function repairStockPhrases({ document, docType = 'cv', language = 
   }
 }
 
+// ── Voice profile ────────────────────────────────────────────────────────────
+//
+// Build the profile ONCE, from samples of the user's own writing. Reading prose
+// and describing its manner is judgment that cannot be checked against a schema,
+// so it runs on the ANALYSIS model rather than lite — and it runs once per user,
+// so the quality is close to free.
+//
+// Throws on failure: unlike the generation passes there is nothing to fall back
+// to and nothing already paid for to protect. The caller shows the error and the
+// user tries again.
+export async function buildVoiceProfile(samples) {
+  const messages = buildVoiceProfilePrompt({ samples });
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium' });
+  const gemini_usage = geminiUsage('voice profile', data, GEMINI_ANALYSIS_MODEL);
+  trackDailySpend(gemini_usage.costUsd);
+
+  const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+
+  // Coerce to the stored shape here, so nothing downstream has to guess. A
+  // trait with no translation is dropped: an untranslated List B habit must
+  // never reach a generator, which is the entire point of the split.
+  const list_a = (Array.isArray(parsed.list_a) ? parsed.list_a : [])
+    .map((o) => String(o || '').trim())
+    .filter(Boolean);
+  const list_b = (Array.isArray(parsed.list_b) ? parsed.list_b : [])
+    .map((b) => ({
+      trait: String(b?.trait || '').trim(),
+      translation: String(b?.translation || '').trim(),
+    }))
+    .filter((b) => b.trait && b.translation);
+
+  return {
+    profile: { list_a, list_b, confidence: String(parsed.confidence || '').trim() },
+    gemini_usage,
+  };
+}
+
+// Check a finished letter against the profile, then repair only what missed.
+//
+// This is where most of the voice actually comes from: a first draft drifts to
+// generic business prose however the prompt is written. Two calls on the
+// generation model, because judging cadence and rewriting in a person's manner
+// is prose work, not schema-checking.
+//
+// Non-fatal throughout: any failure returns the document untouched, because a
+// letter in the wrong voice still beats no letter. Corrections are applied by
+// literal string match (applyGenerationCorrections), so a fix that quotes text
+// the letter does not contain is discarded rather than trusted.
+export async function applyVoice({ document, profile, docType = 'cover' }) {
+  const usages = [];
+  const empty = { content: document, gemini_usages: usages, misses: [], applied: [] };
+  if (!document || !profile) return empty;
+
+  // Nothing to check against: no List A, no translated List B, no user lines.
+  const hasProfile =
+    (Array.isArray(profile.list_a) && profile.list_a.length > 0) ||
+    (Array.isArray(profile.list_b) && profile.list_b.some((b) => String(b?.translation || '').trim())) ||
+    String(profile.profile_text || '').trim().length > 0;
+  if (!hasProfile) return empty;
+
+  let misses = [];
+  try {
+    const checkMessages = buildVoiceCheckPrompt({ document, profile });
+    const checkData = await callGemini(GEMINI_GENERATION_MODEL, checkMessages, { reasoning_effort: 'low' });
+    const checkUsage = geminiUsage(`voice check ${docType}`, checkData, GEMINI_GENERATION_MODEL);
+    usages.push(checkUsage);
+    trackDailySpend(checkUsage.costUsd);
+    const parsed = JSON.parse(stripJsonFences(checkData.choices?.[0]?.message?.content || '{}'));
+    misses = (Array.isArray(parsed.misses) ? parsed.misses : []).filter((m) => String(m?.quote || '').trim());
+  } catch (e) {
+    logger.error(`voice check failed (${docType}, keeping document):`, e.message);
+    return { ...empty, gemini_usages: usages };
+  }
+
+  if (!misses.length) {
+    logger.info(`[voice ${docType}] draft matched the profile — no repairs`);
+    return { ...empty, gemini_usages: usages };
+  }
+
+  try {
+    const fixMessages = buildVoiceFixPrompt({ document, profile, misses });
+    const fixData = await callGemini(GEMINI_GENERATION_MODEL, fixMessages, { reasoning_effort: 'low', temperature: 0.4 });
+    const fixUsage = geminiUsage(`voice fix ${docType}`, fixData, GEMINI_GENERATION_MODEL);
+    usages.push(fixUsage);
+    trackDailySpend(fixUsage.costUsd);
+    const parsed = JSON.parse(stripJsonFences(fixData.choices?.[0]?.message?.content || '{}'));
+    const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
+    logger.info(`[voice ${docType}] ${misses.length} miss(es) found, ${applied.length} repaired`);
+    return { content, gemini_usages: usages, misses, applied };
+  } catch (e) {
+    logger.error(`voice fix failed (${docType}, keeping document):`, e.message);
+    return { ...empty, gemini_usages: usages, misses };
+  }
+}
+
 export async function generateCV({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
   const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language);
   // medium effort: 'low' is exactly where a writing model drops the constraints
@@ -890,8 +987,8 @@ export async function generateHeadline({ cv, analysis, tone, current = '', langu
   };
 }
 
-export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
-  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language);
+export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
+  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile);
   // See generateCV: medium effort + low temperature keep the letter tied to the
   // record instead of drifting into a better-sounding version of it.
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
@@ -941,10 +1038,20 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
 
   trackDailySpend(gemini_usage.costUsd);
 
+  // Voice BEFORE truth. A first draft drifts to generic business prose whatever
+  // the prompt says, so the profile is checked and the misses repaired — and then
+  // the fact-checker reads the repaired text, so a style rewrite can never
+  // smuggle a claim past it.
+  const voiced = await applyVoice({
+    document: processedContent.trim(),
+    profile: voiceProfile,
+    docType: 'cover',
+  });
+
   // Verify AFTER the date/placeholder cleanup, so the checker sees exactly the
   // text the candidate will send.
   const verified = await verifyGeneratedDoc({
-    document: processedContent.trim(),
+    document: voiced.content,
     master: cv,
     docType: 'cover',
     language,
@@ -963,10 +1070,13 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     usage: data.usage,
     validation,
     gemini_usage,
+    // Every call, in order — the cost-logging rule covers the voice passes too.
     gemini_usages: [
       gemini_usage,
+      ...(voiced.gemini_usages || []),
       ...(verified.gemini_usage ? [verified.gemini_usage] : []),
       ...(repair.gemini_usage ? [repair.gemini_usage] : []),
     ],
+    voice_misses: voiced.misses || [],
   };
 }
