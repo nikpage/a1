@@ -1,29 +1,34 @@
 // pages/me.js
 //
-// Personal workbench — one page, the whole loop, no funnel:
+// Personal workbench — one page, the whole loop, no funnel.
 //
-//   1. Master     upload the base CV once, then keep topping the record up
-//                 (AddInfoPanel) and settling its open questions (MasterFlagFixer).
-//   2. Job        paste the ad, run the deep analysis (auto-confirms the cheap
-//                 extraction pass — no modal in the way).
-//   3. Steering   emphasise / play down / free instructions, composed into the
-//                 `tweak` string that prompts/cv-generator.js already treats as
-//                 HIGHEST PRIORITY, plus tone and output language.
-//   4. Write      generate CV + cover, read them, re-steer and regenerate without
-//                 paying for a second analysis, download.
+// The page is ordered by how often each thing is actually done:
+//
+//   The record   collapsed to one line. It is built once and topped up rarely,
+//                so it sits in a bar at the top and only opens when asked (or
+//                when there is no master yet, or open questions to settle).
+//   Job → Fit    paste the ad, run the analysis, and READ IT. The analysis is
+//                rendered through the same AnalysisDisplay the viewer uses —
+//                never reduced to a "ready" tick, which told me nothing.
+//   Steer → Write  the steering sits BESIDE the documents, so the CV can be
+//                read while the instructions that produced it are adjusted.
+//   Send         the documents are editable in place; the download buttons take
+//                the edited text, so a last-minute fix ships.
 //
 // Every call goes through the existing shared paths (uploadAndAnalyze,
-// /api/master-add-info, /api/resolve-flag, generate-background) — this page
-// adds UI and the steering composition, nothing else. The session cookie decides
-// whose record this is, so /me is always the signed-in user's own workbench.
+// /api/master-add-info, /api/resolve-flag, generate-background) — this page adds
+// UI, live phase text and the steering composition, nothing else. The session
+// cookie decides whose record this is, so /me is always the signed-in user's own.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Header from '../components/Header';
 import MasterFlagFixer from '../components/MasterFlagFixer';
 import AddInfoPanel from '../components/AddInfoPanel';
 import MasterRecordPanel from '../components/MasterRecordPanel';
+import AnalysisDisplay from '../components/AnalysisDisplay';
 import DocumentDownloadButtons from '../components/DocumentDownloadButtons';
+import CvWarningBanner from '../components/CvWarningBanner';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { logGemini } from '../utils/log-gemini.js';
 import { generateDocuments } from '../utils/generateDocuments';
@@ -34,16 +39,33 @@ import { GENERATION_LANGUAGES } from '../prompts/language';
 
 const TONES = ['Formal', 'Friendly', 'Enthusiastic', 'Cocky'];
 
-function Section({ n, title, children, note }) {
-  return (
-    <section className="border border-gray-200 rounded-lg shadow-sm bg-white p-6 mb-6">
-      <h2 className="text-lg font-semibold text-gray-900">
-        <span className="text-gray-400 mr-2">{n}</span>{title}
-      </h2>
-      {note && <p className="mt-1 text-sm text-gray-600">{note}</p>}
-      <div className="mt-4">{children}</div>
-    </section>
-  );
+// The analysis arrives as the stored gen_data payload — a JSON string. Parsed
+// here only to label the fit header (position / company / score); the readout
+// itself is AnalysisDisplay's job and it parses defensively on its own.
+function analysisHeadline(analysis) {
+  if (!analysis) return null;
+  let data;
+  try {
+    const raw = typeof analysis === 'string'
+      ? analysis.trim().replace(/^```json/, '').replace(/```$/, '').trim()
+      : analysis;
+    data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+  // The "0-10" sentinel is the schema's own placeholder for a score that was
+  // never produced (see utils/formatAnalysis.js), so it counts as absent.
+  const real = (v) => {
+    const s = String(v ?? '').trim();
+    return s && !['n/a', 'na', 'none', 'null', 'undefined', '0-10'].includes(s.toLowerCase()) ? s : null;
+  };
+  const position = real(data?.job_data?.Position);
+  const company = real(data?.job_data?.Company);
+  return {
+    title: position ? [position, company].filter(Boolean).join(' · ') : 'Standalone CV review',
+    overall: real(data?.analysis?.overall_score),
+    ats: real(data?.analysis?.ats_score),
+  };
 }
 
 export default function MePage({ user_id, generationsRemaining, docDownloadsRemaining }) {
@@ -53,9 +75,10 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
   const [master, setMaster] = useState(null);
   const [loadingRecord, setLoadingRecord] = useState(true);
 
-  const [uploading, setUploading] = useState(false);
+  const [masterOpen, setMasterOpen] = useState(false);
   const [jobText, setJobText] = useState('');
-  const [analysing, setAnalysing] = useState(false);
+  const [phase, setPhase] = useState('');          // live status of whatever is running
+  const [busy, setBusy] = useState('');            // '' | 'upload' | 'analyse' | 'generate'
 
   const [tone, setTone] = useState('Formal');
   const [language, setLanguage] = useState('auto');
@@ -63,9 +86,9 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
   const [playDown, setPlayDown] = useState('');
   const [freeform, setFreeform] = useState('');
 
-  const [generating, setGenerating] = useState(false);
   const [cv, setCv] = useState('');
   const [cover, setCover] = useState('');
+  const [warnings, setWarnings] = useState([]);
   const [activeTab, setActiveTab] = useState('cv');
   const [error, setError] = useState('');
 
@@ -92,26 +115,42 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
 
   useEffect(() => { loadRecord(); }, [loadRecord]);
 
+  // No master yet, or questions left open on it — the record is the only thing
+  // worth doing, so open it rather than making me hunt for the toggle.
+  useEffect(() => {
+    if (!loadingRecord && (!master || flags.length > 0)) setMasterOpen(true);
+  }, [loadingRecord, master, flags.length]);
+
+  const headline = useMemo(() => analysisHeadline(analysis), [analysis]);
+
   async function handleUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError('');
-    setUploading(true);
+    setBusy('upload');
+    setPhase('Reading the file…');
     try {
       // deep:true — this is a signed-in, past-the-wall run, so the worker builds
       // the master and runs the full analysis, not just the landing teaser.
-      await uploadAndAnalyze({ file, user_id, deep: true });
+      await uploadAndAnalyze({
+        file,
+        user_id,
+        deep: true,
+        onPing: () => setPhase('Building the master record…'),
+      });
       await loadRecord();
     } catch (err) {
       setError(err.message);
     }
-    setUploading(false);
+    setBusy('');
+    setPhase('');
   }
 
   async function runAnalysis() {
     if (!jobText.trim()) return;
     setError('');
-    setAnalysing(true);
+    setBusy('analyse');
+    setPhase('Reading the ad…');
     try {
       await uploadAndAnalyze({
         user_id,
@@ -120,18 +159,21 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
         // The confirmation modal exists to protect strangers from paying for a
         // misread ad. On my own workbench the extraction is accepted as-is.
         onJobExtracted: (extraction) => extraction,
+        onPing: () => setPhase('Analysing the ad against my record…'),
       });
       await loadRecord();
     } catch (err) {
       setError(err.message);
     }
-    setAnalysing(false);
+    setBusy('');
+    setPhase('');
   }
 
   async function generate() {
     if (!analysis) return;
     setError('');
-    setGenerating(true);
+    setBusy('generate');
+    setPhase('Writing, checking every fact against the record…');
     try {
       const data = await generateDocuments({
         analysis,
@@ -144,13 +186,18 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
       (data.gemini_usage || []).forEach(logGemini);
       setCv(data.cv || '');
       setCover(data.cover || '');
+      setWarnings(Array.isArray(data.cv_warnings) ? data.cv_warnings : []);
       setActiveTab(data.cv ? 'cv' : 'cover');
       window.dispatchEvent(new Event('header-stats-updated'));
     } catch (err) {
       setError(err.message);
     }
-    setGenerating(false);
+    setBusy('');
+    setPhase('');
   }
+
+  const running = Boolean(busy);
+  const docs = Boolean(cv || cover);
 
   return (
     <>
@@ -163,177 +210,250 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
         generationsRemaining={generationsRemaining}
         docDownloadsRemaining={docDownloadsRemaining}
       />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-6">
         {error && (
           <div className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
         )}
 
-        <Section
-          n="1"
-          title="My master record"
-          note="The single source every CV and cover letter is written from. Upload replaces it; the boxes below grow it."
-        >
-          <div className="flex items-center gap-3">
-            <label className="px-4 py-2 text-sm rounded bg-gray-800 text-white font-medium cursor-pointer">
-              {uploading ? 'Building…' : master ? 'Replace base CV' : 'Upload base CV'}
-              <input type="file" accept=".pdf,.doc,.docx" className="hidden" disabled={uploading} onChange={handleUpload} />
+        {/* ── The record: one bar, opened on demand ─────────────────────── */}
+        <div className="mb-6 border border-gray-200 rounded-lg bg-white shadow-sm">
+          <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+            <button
+              onClick={() => setMasterOpen((v) => !v)}
+              className="text-sm font-medium text-gray-900 hover:text-blue-700"
+            >
+              {masterOpen ? '▾' : '▸'} My master record
+            </button>
+            <span className="text-sm text-gray-600">
+              {loadingRecord
+                ? 'loading…'
+                : master
+                  ? `${experience.length} role${experience.length === 1 ? '' : 's'} on file`
+                  : 'no record yet — upload a CV to build it'}
+            </span>
+            {flags.length > 0 && (
+              <span className="text-xs font-medium rounded-full bg-amber-100 text-amber-800 px-2 py-0.5">
+                {flags.length} open question{flags.length === 1 ? '' : 's'}
+              </span>
+            )}
+            <label className="ml-auto px-3 py-1.5 text-sm rounded bg-gray-800 text-white font-medium cursor-pointer">
+              {busy === 'upload' ? 'Building…' : master ? 'Replace base CV' : 'Upload base CV'}
+              <input type="file" accept=".pdf,.doc,.docx" className="hidden" disabled={running} onChange={handleUpload} />
             </label>
           </div>
 
-          {master && (
-            <div className="mt-4">
-              <MasterRecordPanel
-                master={master}
-                onUpdated={(saved, newFlags) => {
-                  setMaster(saved);
-                  if (Array.isArray(saved?.experience)) setExperience(saved.experience);
+          {masterOpen && (
+            <div className="border-t border-gray-200 px-4 py-4">
+              {master && (
+                <MasterRecordPanel
+                  master={master}
+                  onUpdated={(saved, newFlags) => {
+                    setMaster(saved);
+                    if (Array.isArray(saved?.experience)) setExperience(saved.experience);
+                    if (Array.isArray(newFlags)) setFlags(newFlags);
+                  }}
+                />
+              )}
+
+              {!loadingRecord && (experience.length > 0 || flags.length > 0) && (
+                <div className="mt-5">
+                  <MasterFlagFixer
+                    flags={flags}
+                    experience={experience}
+                    rebuilding={false}
+                    onComplete={loadRecord}
+                  />
+                </div>
+              )}
+
+              <div className="mt-5">
+                <AddInfoPanel onUpdated={(updated, newFlags) => {
+                  if (updated) {
+                    setMaster(updated);
+                    if (Array.isArray(updated.experience)) setExperience(updated.experience);
+                  }
                   if (Array.isArray(newFlags)) setFlags(newFlags);
-                }}
-              />
+                }} />
+              </div>
             </div>
           )}
+        </div>
 
-          {!loadingRecord && (experience.length > 0 || flags.length > 0) && (
-            <div className="mt-5">
-              <MasterFlagFixer
-                flags={flags}
-                experience={experience}
-                rebuilding={false}
-                onComplete={loadRecord}
+        {/* ── The job and the fit ───────────────────────────────────────── */}
+        <section className="border border-gray-200 rounded-lg shadow-sm bg-white p-5 mb-6">
+          <h2 className="text-base font-semibold text-gray-900">The job</h2>
+          <div className="mt-3 grid gap-5 lg:grid-cols-2">
+            <div>
+              <textarea
+                value={jobText}
+                onChange={(e) => setJobText(e.target.value)}
+                rows={14}
+                disabled={running}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono disabled:opacity-60"
+                placeholder="Paste the whole job ad here…"
               />
-            </div>
-          )}
-
-          <div className="mt-5">
-            <AddInfoPanel onUpdated={(updated, newFlags) => {
-              if (updated) {
-                setMaster(updated);
-                if (Array.isArray(updated.experience)) setExperience(updated.experience);
-              }
-              if (Array.isArray(newFlags)) setFlags(newFlags);
-            }} />
-          </div>
-        </Section>
-
-        <Section n="2" title="The job" note="Paste the ad. This runs the full analysis your documents are written against.">
-          <textarea
-            value={jobText}
-            onChange={(e) => setJobText(e.target.value)}
-            rows={8}
-            disabled={analysing}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:opacity-60"
-            placeholder="Paste the whole job ad here…"
-          />
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              onClick={runAnalysis}
-              disabled={analysing || !jobText.trim()}
-              className="px-4 py-2 text-sm rounded bg-blue-600 text-white font-medium disabled:opacity-50"
-            >
-              {analysing ? 'Analysing…' : 'Analyse against my record'}
-            </button>
-            {analysis && !analysing && <span className="text-sm text-green-700">✓ analysis ready</span>}
-          </div>
-        </Section>
-
-        <Section
-          n="3"
-          title="Steering"
-          note="Highest-priority instructions to the writer. It reframes, reorders and cuts — it will never invent a fact to satisfy these."
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-sm">
-              <span className="font-medium text-gray-800">Tone</span>
-              <select
-                value={tone}
-                onChange={(e) => setTone(e.target.value)}
-                className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              >
-                {TONES.map((tn) => <option key={tn} value={tn}>{tn}</option>)}
-              </select>
-            </label>
-            <label className="text-sm">
-              <span className="font-medium text-gray-800">Output language</span>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              >
-                {Object.entries(GENERATION_LANGUAGES).map(([k, label]) => (
-                  <option key={k} value={k}>{label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="mt-4 block text-sm">
-            <span className="font-medium text-gray-800">Emphasise</span>
-            <textarea
-              value={emphasise}
-              onChange={(e) => setEmphasise(e.target.value)}
-              rows={2}
-              className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              placeholder="e.g. the AI/automation work, anything hands-on with product"
-            />
-          </label>
-          <label className="mt-3 block text-sm">
-            <span className="font-medium text-gray-800">Play down</span>
-            <textarea
-              value={playDown}
-              onChange={(e) => setPlayDown(e.target.value)}
-              rows={2}
-              className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              placeholder="e.g. the early sales roles, the agency years"
-            />
-          </label>
-          <label className="mt-3 block text-sm">
-            <span className="font-medium text-gray-800">Anything else</span>
-            <textarea
-              value={freeform}
-              onChange={(e) => setFreeform(e.target.value)}
-              rows={3}
-              className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              placeholder="e.g. frame this as a deliberate pivot into X — the through-line is Y. One page."
-            />
-          </label>
-
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              onClick={generate}
-              disabled={generating || !analysis}
-              className="px-4 py-2 text-sm rounded bg-blue-600 text-white font-medium disabled:opacity-50"
-            >
-              {generating ? 'Writing…' : cv || cover ? 'Regenerate with this steering' : 'Write CV + cover letter'}
-            </button>
-            {!analysis && <span className="text-sm text-gray-500">Run an analysis first</span>}
-          </div>
-        </Section>
-
-        {(cv || cover) && (
-          <Section n="4" title="Documents" note="Re-steer above and regenerate as often as you like — no new analysis needed.">
-            <div className="flex gap-2 border-b border-gray-200">
-              {['cv', 'cover'].map((tab) => (
+              <div className="mt-2 flex items-center gap-3">
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-sm font-medium ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500'}`}
+                  onClick={runAnalysis}
+                  disabled={running || !jobText.trim()}
+                  className="px-4 py-2 text-sm rounded bg-blue-600 text-white font-medium disabled:opacity-50"
                 >
-                  {tab === 'cv' ? 'CV' : 'Cover letter'}
+                  {busy === 'analyse' ? 'Analysing…' : 'Analyse against my record'}
                 </button>
-              ))}
+                {busy === 'analyse' && <span className="text-sm text-gray-600">{phase}</span>}
+              </div>
             </div>
-            <pre className="mt-4 whitespace-pre-wrap text-sm text-gray-900">
-              {activeTab === 'cv' ? cv : cover}
-            </pre>
-            <DocumentDownloadButtons
-              user_id={user_id}
-              cvText={cv}
-              coverText={cover}
-              activeTab={activeTab}
-              onTokenFail={() => setError('Out of download tokens.')}
-            />
-          </Section>
-        )}
+
+            <div className="lg:border-l lg:border-gray-200 lg:pl-5">
+              {analysis ? (
+                <>
+                  {headline && (
+                    <div className="mb-3 flex items-baseline gap-2">
+                      <span className="text-sm font-semibold text-gray-900">{headline.title}</span>
+                      {headline.overall && (
+                        <span className="text-sm text-gray-600">overall {headline.overall}</span>
+                      )}
+                      {headline.ats && (
+                        <span className="text-sm text-gray-600">ATS {headline.ats}</span>
+                      )}
+                    </div>
+                  )}
+                  <div className="max-h-[28rem] overflow-y-auto pr-2 text-sm leading-relaxed text-gray-800">
+                    <AnalysisDisplay analysis={analysis} />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  {busy === 'analyse' ? phase : 'The read-out of my record against this ad appears here.'}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Steering beside the documents ─────────────────────────────── */}
+        <section className="border border-gray-200 rounded-lg shadow-sm bg-white p-5">
+          <h2 className="text-base font-semibold text-gray-900">Write</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Steering is the highest-priority instruction to the writer. It reframes, reorders and cuts —
+            it will never invent a fact to satisfy it.
+          </p>
+
+          <div className="mt-4 grid gap-5 lg:grid-cols-[20rem_1fr]">
+            {/* steering column */}
+            <div>
+              <div className="grid gap-3 grid-cols-2">
+                <label className="text-sm">
+                  <span className="font-medium text-gray-800">Tone</span>
+                  <select
+                    value={tone}
+                    onChange={(e) => setTone(e.target.value)}
+                    className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  >
+                    {TONES.map((tn) => <option key={tn} value={tn}>{tn}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm">
+                  <span className="font-medium text-gray-800">Language</span>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  >
+                    {Object.entries(GENERATION_LANGUAGES).map(([k, label]) => (
+                      <option key={k} value={k}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="mt-3 block text-sm">
+                <span className="font-medium text-gray-800">Emphasise</span>
+                <textarea
+                  value={emphasise}
+                  onChange={(e) => setEmphasise(e.target.value)}
+                  rows={2}
+                  className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  placeholder="e.g. the AI/automation work, anything hands-on with product"
+                />
+              </label>
+              <label className="mt-3 block text-sm">
+                <span className="font-medium text-gray-800">Play down</span>
+                <textarea
+                  value={playDown}
+                  onChange={(e) => setPlayDown(e.target.value)}
+                  rows={2}
+                  className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  placeholder="e.g. the early sales roles, the agency years"
+                />
+              </label>
+              <label className="mt-3 block text-sm">
+                <span className="font-medium text-gray-800">Anything else</span>
+                <textarea
+                  value={freeform}
+                  onChange={(e) => setFreeform(e.target.value)}
+                  rows={4}
+                  className="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  placeholder="e.g. frame this as a deliberate pivot into X — the through-line is Y. One page."
+                />
+              </label>
+
+              <button
+                onClick={generate}
+                disabled={running || !analysis}
+                className="mt-4 w-full px-4 py-2 text-sm rounded bg-blue-600 text-white font-medium disabled:opacity-50"
+              >
+                {busy === 'generate' ? 'Writing…' : docs ? 'Regenerate with this steering' : 'Write CV + cover letter'}
+              </button>
+              {!analysis && <p className="mt-2 text-sm text-gray-500">Analyse a job ad first.</p>}
+              {busy === 'generate' && <p className="mt-2 text-sm text-gray-600">{phase}</p>}
+            </div>
+
+            {/* documents column — editable, and the edits are what download */}
+            <div>
+              {docs ? (
+                <>
+                  <div className="flex items-center gap-2 border-b border-gray-200">
+                    {['cv', 'cover'].map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-2 text-sm font-medium ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500'}`}
+                      >
+                        {tab === 'cv' ? 'CV' : 'Cover letter'}
+                      </button>
+                    ))}
+                    <span className="ml-auto text-xs text-gray-500">editable — downloads use what is shown</span>
+                  </div>
+
+                  {activeTab === 'cv' && (
+                    <CvWarningBanner items={warnings} className="mt-3" />
+                  )}
+
+                  <textarea
+                    value={activeTab === 'cv' ? cv : cover}
+                    onChange={(e) => (activeTab === 'cv' ? setCv(e.target.value) : setCover(e.target.value))}
+                    rows={30}
+                    className="mt-3 w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono leading-relaxed"
+                  />
+                  <DocumentDownloadButtons
+                    user_id={user_id}
+                    cvText={cv}
+                    coverText={cover}
+                    activeTab={activeTab}
+                    onTokenFail={() => setError('Out of download tokens.')}
+                  />
+                </>
+              ) : (
+                <div className="h-full min-h-[16rem] rounded border border-dashed border-gray-300 flex items-center justify-center px-6 text-center text-sm text-gray-500">
+                  {busy === 'generate'
+                    ? phase
+                    : 'The CV and cover letter appear here. Adjust the steering on the left and regenerate as often as needed — no new analysis is charged.'}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </main>
     </>
   );

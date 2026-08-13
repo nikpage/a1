@@ -30,6 +30,7 @@ import BaseModal from './BaseModal';
 import ThankYouModal from './ThankYouModal';
 import ToneDocModal from './ToneDocModal';
 import AnalysisDisplay from './AnalysisDisplay';
+import CvWarningBanner from './CvWarningBanner';
 import Regenerate from './Regenerate';
 import StartFreshModal from './StartFreshModal';
 import LoadingModal from './LoadingModal';
@@ -53,19 +54,10 @@ export default function TabbedViewer({ user_id, analysisText }) {
   // hard failures never reach the browser, these are the ones the user decides about.
   const [cvWarnings, setCvWarnings] = useState([]);
 
-  // Layer 6 warnings for either document. One banner, one translation path —
-  // both documents' findings are the same { code, params } shape.
+  // Layer 6 warnings for either document — the shared CvWarningBanner owns the
+  // { code, params } → locale-string rendering for every caller.
   const WarningBanner = ({ items }) => (
-    items.length > 0 ? (
-      <div className="mb-4 sm:mb-6 mx-auto max-w-2xl rounded-lg border border-amber-300 bg-amber-50 p-3 sm:p-4">
-        <div className="text-sm font-bold text-amber-900">{t('cvWarningsTitle')}</div>
-        <ul className="mt-2 list-disc pl-5 text-sm text-amber-900">
-          {items.map((w, i) => (
-            <li key={i}>{t(`cvWarning.${w.code}`, { ...(w.params || {}), defaultValue: w.code })}</li>
-          ))}
-        </ul>
-      </div>
-    ) : null
+    <CvWarningBanner items={items} className="mb-4 sm:mb-6 mx-auto max-w-2xl" />
   );
   const [coverVersions, setCoverVersions] = useState([]);
   const [cvCurrentIndex, setCvCurrentIndex] = useState(0);
