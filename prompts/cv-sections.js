@@ -118,5 +118,5 @@ ${line('experience', 'Work Experience')}
 ${line('projects', 'Projects')}
 ${line('education', 'Education')}
 ${line('certifications', 'Certifications')}
-${line('earlierCareer', 'Earlier Career')} (the undated collapsed-roles line)`;
+${line('earlierCareer', 'Earlier Career')} (the undated collapsed-roles section)`;
 }

@@ -48,11 +48,14 @@
     "summaryNoAchievements": "The summary carries no achievement bullets — the first 120 words are the space a recruiter actually reads.",
     "summaryTooManyAchievements": "The summary lists {{count}} achievements; three is the ceiling before the opening stops being scannable.",
     "summaryAchievementNoRole": "{{count}} summary achievement(s) do not name the role they came from, so they read as floating claims.",
-    "earlierCareerNoEmployer": "The Earlier Career line names no real employer — a recognisable name there is the strongest thing on that line.",
+    "earlierCareerNoEmployer": "The Earlier Career section names no real employer — a recognisable name there is the strongest thing in it.",
     "identityEpithet": "The opening describes you rather than what you did: {{list}}. Lead with a fact instead.",
     "summaryVerbatimCopy": "{{count}} summary achievement(s) repeat a work-experience bullet word for word. Same result, said differently, reads far better.",
     "skillOutsideWindow": "These skills are only evidenced by work the CV no longer shows: {{list}}. They pull the eye back to an older career.",
     "noMetricsInRecord": "Your record holds no numbers for {{list}}. Add the real figures and these bullets get far stronger — we will not invent them.",
-    "missingMonth": "Your record gives no month for {{list}}, so the year stands alone rather than being guessed. Add the month if you know it."
+    "missingMonth": "Your record gives no month for {{list}}, so the year stands alone rather than being guessed. Add the month if you know it.",
+    "earlierCareerTooManyBullets": "Earlier Career lists {{count}} roles; at most {{max}} are printed so the section does not drag the reader back through the whole career.",
+    "earlierCareerDated": "Earlier Career carries dates on {{count}} of its roles — that section is undated, and the years are what re-emit the age signal.",
+    "earlierCareerLocation": "Earlier Career states a location your record does not hold: {{location}}. It was left in, but check it — a location inferred from the employer's name is a fabricated fact."
   }
 }

@@ -48,11 +48,14 @@
     "summaryNoAchievements": "Podsumowanie nie zawiera punktów z osiągnięciami — pierwsze 120 słów to miejsce, które rekruter naprawdę czyta.",
     "summaryTooManyAchievements": "Podsumowanie wymienia {{count}} osiągnięć; trzy to maksimum, powyżej wstęp przestaje być czytelny.",
     "summaryAchievementNoRole": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu nie wskazują stanowiska, z którego pochodzą, więc brzmią jak gołosłowna deklaracja.",
-    "earlierCareerNoEmployer": "Wiersz Wcześniejsza kariera nie wymienia żadnego prawdziwego pracodawcy — rozpoznawalna nazwa jest tam najcenniejsza.",
+    "earlierCareerNoEmployer": "Sekcja Wcześniejsza kariera nie wymienia żadnego prawdziwego pracodawcy — rozpoznawalna nazwa jest w niej najcenniejsza.",
     "identityEpithet": "Wstęp opisuje, kim jesteś, zamiast tego, co zrobiłeś/aś: {{list}}. Zacznij od konkretu.",
     "summaryVerbatimCopy": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu powtarzają słowo w słowo punkt z doświadczenia. Ten sam efekt ujęty inaczej czyta się dużo lepiej.",
     "skillOutsideWindow": "Te umiejętności potwierdza wyłącznie praca, której CV już nie pokazuje: {{list}}. Cofają uwagę do starszej części kariery.",
     "noMetricsInRecord": "Twoje dane nie zawierają liczb dla: {{list}}. Podaj prawdziwe wartości, a te punkty znacznie zyskają — nie wymyślamy ich.",
-    "missingMonth": "Twój zapis nie podaje miesiąca dla {{list}}, więc widnieje sam rok — nie zgadujemy go. Jeśli znasz miesiąc, uzupełnij go."
+    "missingMonth": "Twój zapis nie podaje miesiąca dla {{list}}, więc widnieje sam rok — nie zgadujemy go. Jeśli znasz miesiąc, uzupełnij go.",
+    "earlierCareerTooManyBullets": "Wcześniejsza kariera wymienia {{count}} stanowisk; drukowanych jest najwyżej {{max}}, aby sekcja nie cofała czytelnika przez całą karierę.",
+    "earlierCareerDated": "Wcześniejsza kariera podaje daty przy {{count}} stanowiskach — ta sekcja jest bez dat, a lata ponownie wysyłają sygnał o wieku.",
+    "earlierCareerLocation": "Wcześniejsza kariera podaje lokalizację, której nie ma w Twoim rekordzie: {{location}}. Zostawiliśmy ją, ale sprawdź — lokalizacja wywnioskowana z nazwy pracodawcy to zmyślony fakt."
   }
 }

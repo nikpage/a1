@@ -481,6 +481,82 @@ describe('check 11 — Earlier Career names a real employer', () => {
     const r = validateCv(earlier('Senior QA Engineer and UX Manager — Borealis, Acme Ltd'), { master: MASTER, analysis: ANALYSIS });
     expect(codes(r)).not.toContain('earlierCareerNoEmployer');
   });
+
+  // The section became a bulleted list, so the remaining three clauses of the
+  // check all read the bullets rather than the subtitle.
+  const bullets = (lines) =>
+    `${GOOD}\n#### **Earlier Career**\n**Acme Ltd**\n${lines.map((l) => `- ${l}`).join('\n')}\n`;
+
+  it('warns when the section prints more than six roles', () => {
+    const seven = [
+      'Delivery Manager, Acme Ltd',
+      'QA Lead, Borealis',
+      'QA Engineer, Corvus',
+      'Analyst, Dunlin',
+      'Tester, Egret',
+      'Engineer, Falcon',
+      'Junior Engineer, Grebe',
+    ];
+    const r = validateCv(bullets(seven), { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).toContain('earlierCareerTooManyBullets');
+    expect(paramsFor(r, 'earlierCareerTooManyBullets')).toEqual({ count: 7, max: 6 });
+  });
+
+  it('accepts exactly six', () => {
+    const six = [
+      'Delivery Manager, Acme Ltd',
+      'QA Lead, Borealis',
+      'QA Engineer, Corvus',
+      'Analyst, Dunlin',
+      'Tester, Egret',
+      'Engineer, Falcon',
+    ];
+    const r = validateCv(bullets(six), { master: MASTER, analysis: ANALYSIS });
+    expect(codes(r)).not.toContain('earlierCareerTooManyBullets');
+  });
+
+  it('warns when a year survives into the undated section', () => {
+    const r = validateCv(
+      bullets(['Delivery Manager, Acme Ltd', 'QA Lead, Borealis (2003)']),
+      { master: MASTER, analysis: ANALYSIS },
+    );
+    expect(codes(r)).toContain('earlierCareerDated');
+    expect(paramsFor(r, 'earlierCareerDated').count).toBe(1);
+  });
+
+  it('stays silent when no bullet carries a year', () => {
+    const r = validateCv(
+      bullets(['Delivery Manager, Acme Ltd', 'QA Lead, Borealis']),
+      { master: MASTER, analysis: ANALYSIS },
+    );
+    expect(codes(r)).not.toContain('earlierCareerDated');
+  });
+
+  // The real defect this came from: the extractor filled a missing location
+  // from what it knew about the employer, so the CV printed a city the record
+  // never held.
+  it('warns when a bullet states a location the master does not record', () => {
+    const r = validateCv(
+      bullets(['Delivery Manager, Acme Ltd — San Francisco']),
+      { master: MASTER, analysis: ANALYSIS },
+    );
+    expect(codes(r)).toContain('earlierCareerLocation');
+    expect(paramsFor(r, 'earlierCareerLocation').location).toBe('San Francisco');
+  });
+
+  it('accepts a location the master does record', () => {
+    const withLocation = JSON.stringify({
+      identity: { name: 'Jane Roe' },
+      experience: [
+        { company: 'Acme Ltd', role: 'Head of Delivery', dates: '03/2019 - 08/2022', location: 'San Francisco, USA', achievements: [] },
+      ],
+    });
+    const r = validateCv(
+      bullets(['Delivery Manager, Acme Ltd — San Francisco']),
+      { master: withLocation, analysis: ANALYSIS },
+    );
+    expect(codes(r)).not.toContain('earlierCareerLocation');
+  });
 });
 
 describe('check 12 — identity epithets', () => {

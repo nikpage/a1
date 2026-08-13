@@ -47,7 +47,25 @@ describe('Layer 1', () => {
     const t = machineParseability();
     expect(t).toMatch(/NAME the employers individually/);
     expect(t).toMatch(/is NOT a substitute for a name/);
-    expect(t).toMatch(/location where the location itself carries weight/);
+  });
+
+  // The section used to be a single dot-separated run-on, which buried the
+  // marquee names in the middle of it.
+  it('asks for the Earlier Career section as a capped bulleted list', () => {
+    const t = machineParseability();
+    expect(t).toMatch(/ONE BULLET PER ROLE/);
+    expect(t).toMatch(/where the location itself carries weight/);
+    expect(t).toMatch(/AT MOST SIX bullets/);
+    expect(t).toMatch(/No dates, no achievements, no prose/);
+    expect(t).toMatch(/do NOT count toward the per-role bullet ceilings/);
+  });
+
+  // The extractor filled missing locations from what it knew about the
+  // employer, so the CV printed cities the record never held.
+  it('forbids a location the master does not record', () => {
+    const t = machineParseability();
+    expect(t).toMatch(/ONLY where the master records one for that role/);
+    expect(t).toMatch(/NEVER infer it from the employer's name/);
   });
 
   // A real CV filed "Visiting Lecturer, Faculty of Arts, Charles University" as

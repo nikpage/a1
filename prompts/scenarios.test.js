@@ -45,6 +45,16 @@ describe('scenarioGenerationRules', () => {
     expect(out).not.toContain('Recent Grad:');
   });
 
+  // The override is what actually builds the section, so the bulleted form and
+  // its cap have to reach the generator from here, not only from Layer 1.
+  it('builds the Earlier Career section as a capped bulleted list', () => {
+    const out = scenarioGenerationRules(['Older Applicant']);
+    expect(out).toContain('ONE BULLET PER ROLE');
+    expect(out).toContain('AT MOST SIX bullets');
+    expect(out).toMatch(/print a location ONLY where the master records one/);
+    expect(out).not.toMatch(/no bullets/i);
+  });
+
   it('handles multiple tags', () => {
     const out = scenarioGenerationRules([
       'Senior Portfolio / Independent Consultant',

@@ -48,11 +48,14 @@
     "summaryNoAchievements": "Shrnutí neobsahuje žádné odrážky s výsledky — prvních 120 slov je prostor, který personalista skutečně čte.",
     "summaryTooManyAchievements": "Shrnutí uvádí {{count}} výsledků; strop jsou tři, jinak úvod přestane být přehledný.",
     "summaryAchievementNoRole": "{{count}} výsledek/výsledky ve shrnutí neuvádí pozici, ze které pochází, a působí tak jako nepodložené tvrzení.",
-    "earlierCareerNoEmployer": "Řádek Dřívější kariéra neuvádí žádného skutečného zaměstnavatele — známé jméno je na něm to nejcennější.",
+    "earlierCareerNoEmployer": "Sekce Dřívější kariéra neuvádí žádného skutečného zaměstnavatele — známé jméno je v ní to nejcennější.",
     "identityEpithet": "Úvod popisuje, kdo jste, místo toho, co jste dokázal/a: {{list}}. Začněte konkrétním faktem.",
     "summaryVerbatimCopy": "{{count}} úspěch(y) ve shrnutí doslova opakují odrážku z praxe. Stejný výsledek řečený jinak působí mnohem lépe.",
     "skillOutsideWindow": "Tyto dovednosti dokládá jen praxe, kterou už životopis neuvádí: {{list}}. Vracejí pozornost ke starší části kariéry.",
     "noMetricsInRecord": "Ve vašich podkladech nejsou žádná čísla u: {{list}}. Doplňte skutečné údaje a odrážky výrazně zesílí — my si je nevymýšlíme.",
-    "missingMonth": "Ve vašem záznamu chybí měsíc u {{list}}, proto je uveden pouze rok — neodhadujeme jej. Pokud měsíc znáte, doplňte ho."
+    "missingMonth": "Ve vašem záznamu chybí měsíc u {{list}}, proto je uveden pouze rok — neodhadujeme jej. Pokud měsíc znáte, doplňte ho.",
+    "earlierCareerTooManyBullets": "Dřívější kariéra uvádí {{count}} pozic; tiskne se nejvýše {{max}}, aby sekce nevracela čtenáře zpět celou kariérou.",
+    "earlierCareerDated": "Dřívější kariéra uvádí data u {{count}} pozic — tato sekce je bez dat a roky znovu vysílají signál o věku.",
+    "earlierCareerLocation": "Dřívější kariéra uvádí místo, které váš záznam neobsahuje: {{location}}. Ponechali jsme ho, ale zkontrolujte je — místo odvozené z názvu zaměstnavatele je vymyšlený údaj."
   }
 }

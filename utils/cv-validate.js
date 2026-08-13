@@ -592,17 +592,28 @@ function checkOlderApplicant(document, analysis, hard) {
   }
 }
 
-// 11. The Earlier Career line names at least one real employer from the master.
+// 11. The Earlier Career section names at least one real employer from the
+//     master, prints at most six bullets, carries no dates, and states no
+//     location the master does not record.
 //     A category ("financial institutions and tech companies") dissolves the
-//     marquee name that is the only reason the line is worth printing.
+//     marquee name that is the only reason the section is worth printing. The
+//     cap keeps it from dragging the reader back through a career the recency
+//     window exists to close, the dates are what carry the age signal, and an
+//     inferred location — the employer's well-known home city, which the master
+//     never recorded — is a fabricated fact under T1.
+const EARLIER_CAREER_MAX_BULLETS = 6;
+
 function checkEarlierCareer(document, master, warnings) {
   if (!master.parsed) return;
   const companies = [];
+  const locations = [];
   for (const role of Array.isArray(master.parsed.experience) ? master.parsed.experience : []) {
     for (const key of ['company', 'employer']) {
       const v = role?.[key];
       if (typeof v === 'string' && v.trim().length > 2) companies.push(v.trim().toLowerCase());
     }
+    const loc = role?.location;
+    if (typeof loc === 'string' && loc.trim()) locations.push(loc.trim().toLowerCase());
   }
   if (!companies.length) return;
 
@@ -612,6 +623,34 @@ function checkEarlierCareer(document, master, warnings) {
       const text = `${plain(role.subtitle)} ${role.bullets.join(' ')}`.toLowerCase();
       if (!companies.some((c) => text.includes(c))) {
         warnings.push({ code: 'earlierCareerNoEmployer' });
+      }
+
+      if (role.bullets.length > EARLIER_CAREER_MAX_BULLETS) {
+        warnings.push({
+          code: 'earlierCareerTooManyBullets',
+          params: { count: role.bullets.length, max: EARLIER_CAREER_MAX_BULLETS },
+        });
+      }
+
+      // The section is the one permitted undated entry, so any year at all is
+      // the age signal walking back in through it.
+      const dated = role.bullets.filter((b) => /\b(19|20)\d{2}\b/.test(plain(b)));
+      if (dated.length) {
+        warnings.push({ code: 'earlierCareerDated', params: { count: dated.length } });
+      }
+
+      // Each bullet is "Title, Employer — Location"; the tail after the dash is
+      // the only place a location may appear, so it is the only place to check.
+      for (const bullet of role.bullets) {
+        const tail = plain(bullet).split(/\s+[—–]\s+/)[1];
+        if (!tail || !tail.trim()) continue;
+        const claimed = tail.trim().toLowerCase().replace(/[.;,]+$/, '');
+        const recorded = locations.some(
+          (l) => l.includes(claimed) || claimed.includes(l),
+        );
+        if (!recorded) {
+          warnings.push({ code: 'earlierCareerLocation', params: { location: tail.trim() } });
+        }
       }
     }
   }
