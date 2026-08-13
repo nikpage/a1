@@ -140,6 +140,43 @@ describe('generateCV', () => {
     expect(writingCallBody.reasoning_effort).toBe('medium');
   });
 
+  // Regression: the validation retry is a FRESH draft, so it can reintroduce
+  // stock phrasing the first repair pass already removed. The repair used to run
+  // only over the first draft, so a banned phrase written by the retry shipped
+  // untouched — this is how "passionate about" reached a delivered CV.
+  test('repairs stock phrasing introduced by the validation retry', async () => {
+    const master = '{"experience":[]}';
+    mockAxiosPost
+      // 1. first draft — a number the master cannot evidence (hard failure)
+      .mockResolvedValueOnce(geminiResp('### Summary\nGrew revenue by 40% in six months.', 'gemini-2.5-flash'))
+      // 2. verify finds nothing to correct
+      .mockResolvedValueOnce(geminiResp(JSON.stringify({ unsupported: [] })))
+      // 3. validation retry — clean of numbers, but now carries a banned phrase
+      .mockResolvedValueOnce(geminiResp('### Summary\nA product leader, passionate about delivery.', 'gemini-2.5-flash'))
+      // 4. verify of the retry finds nothing
+      .mockResolvedValueOnce(geminiResp(JSON.stringify({ unsupported: [] })))
+      // 5. the stock-phrase repair over the retry
+      .mockResolvedValueOnce(
+        geminiResp(JSON.stringify({
+          unsupported: [
+            {
+              quote: 'A product leader, passionate about delivery.',
+              replacement: 'A product leader.',
+              reason: 'banned stock phrase',
+            },
+          ],
+        }))
+      );
+
+    const res = await generateCV({ cv: master, analysis: {}, tone: 'Formal' });
+
+    expect(res.content).not.toContain('passionate about');
+    expect(res.content).toContain('A product leader.');
+    // write + verify + retry write + retry verify + retry repair — every call
+    // surfaced for the cost-logging rule.
+    expect(res.gemini_usages).toHaveLength(5);
+  });
+
   test('a failed verify pass still returns the written CV', async () => {
     mockAxiosPost
       .mockResolvedValueOnce(geminiResp('- Wrote the deploy runbook', 'gemini-2.5-flash'))

@@ -928,10 +928,15 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
     });
     if (reVerified.gemini_usage) usages.push(reVerified.gemini_usage);
 
-    const revalidated = validateCv(reVerified.content, { master: cv, analysis, language });
+    // The retry is a fresh draft, so it can reintroduce stock phrasing the first
+    // repair removed. Repair it the same way — spans only, never a regeneration.
+    const reRepair = await repairStockPhrases({ document: reVerified.content, docType: 'cv', language });
+    if (reRepair.gemini_usage) usages.push(reRepair.gemini_usage);
+
+    const revalidated = validateCv(reRepair.content, { master: cv, analysis, language });
     // Keep the retry only if it actually improved on the draft it replaced.
     if (revalidated.hard.length <= validation.hard.length) {
-      verified = reVerified;
+      verified = { ...reVerified, content: reRepair.content };
       validation = revalidated;
     }
     if (!validation.ok) {
