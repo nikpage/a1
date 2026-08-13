@@ -17,7 +17,7 @@
 //   - the gain is in the cover letter, not the CV, where the constraint is
 //     accuracy rather than personality.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const emptySample = () => ({ text: '' });
 
@@ -49,6 +49,23 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
   const [listB, setListB] = useState(profile?.list_b || []);
   const [ownLines, setOwnLines] = useState(profile?.profile_text || '');
   const [cleanup, setCleanup] = useState(profile?.options?.cleanup === true);
+  // Whether the panel's body is open. Closed by default: this is a set-once
+  // record, and it sat in the way of every other task on the page.
+  const [open, setOpen] = useState(false);
+
+  // The profile arrives AFTER mount — /me fetches it and passes it down — so the
+  // useState initialisers above ran against null and the editor rendered the
+  // saved profile as empty fields. Worse than the display: pressing Save in that
+  // state posted empty lists over a real profile. Sync whenever a new profile
+  // object arrives (load, extract, save); never on re-render, so it cannot wipe
+  // out edits in progress.
+  const syncedRef = useRef(null);
+  useEffect(() => {
+    if (!profile || profile === syncedRef.current) return;
+    syncedRef.current = profile;
+    loadProfile(profile);
+    setShowSamples(false);
+  }, [profile]);
 
   function loadProfile(p) {
     setListA((p?.list_a || []).join('\n'));
@@ -121,8 +138,20 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
 
   return (
     <div className="py-3">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <div className="text-xs uppercase tracking-wide text-gray-500">How you write</div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full flex-wrap items-baseline gap-3 text-left"
+      >
+        <span className="text-xs uppercase tracking-wide text-gray-500">How you write</span>
+        <span className="text-xs text-gray-500">
+          {hasProfile ? 'saved — used for your cover letters' : 'not set up yet'}
+        </span>
+        <span className="ml-auto text-xs text-blue-700 underline">{open ? 'Close' : 'Open'}</span>
+      </button>
+
+      {open && (
+      <>
+      <div className="mt-2 flex flex-wrap items-baseline gap-3">
         <button
           onClick={() => setShowSamples((v) => !v)}
           className="text-xs text-blue-700 underline"
@@ -311,6 +340,8 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
             {saved && <span className="text-sm text-green-700">saved</span>}
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

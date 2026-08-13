@@ -282,11 +282,6 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
           )}
         </div>
 
-        {/* ── How you write: samples in, reviewed profile out ───────────── */}
-        <div className="mb-6 border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
-          <VoiceProfilePanel profile={voiceProfile} onUpdated={setVoiceProfile} />
-        </div>
-
         {/* ── The job and the fit ───────────────────────────────────────── */}
         <section className="border border-gray-200 rounded-lg shadow-sm bg-white p-5 mb-6">
           <h2 className="text-base font-semibold text-gray-900">The job</h2>
@@ -463,6 +458,11 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
             </div>
           </div>
         </section>
+
+        {/* ── How you write: set once, so it sits below the day's work ───── */}
+        <div className="mt-6 border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
+          <VoiceProfilePanel profile={voiceProfile} onUpdated={setVoiceProfile} />
+        </div>
       </main>
     </>
   );
