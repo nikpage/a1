@@ -197,7 +197,15 @@ export default function MasterRecordPanel({ master, onUpdated }) {
           {gaps.length > 0 && (
             <div className="py-3">
               <div className="text-xs uppercase tracking-wide text-gray-500">Gaps and unknowns</div>
-              <List items={gaps} render={(g) => g} />
+              {/* Tolerant of an object gap for the same reason as conflicts
+                  below: rendering one raw prints "[object Object]" at the user,
+                  which is how the shape mismatch stayed invisible. */}
+              <List
+                items={gaps}
+                render={(g) =>
+                  typeof g === 'string' ? g : joinParts([g?.field, g?.where, g?.note])
+                }
+              />
             </div>
           )}
 

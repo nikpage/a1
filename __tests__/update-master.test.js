@@ -106,6 +106,44 @@ describe('normaliseMaster', () => {
     expect(out.conflicts).toEqual(STORED.conflicts);
   });
 
+  // The real defect: the editor renders no field for gaps, so the model's gap
+  // OBJECTS rode through the deep copy of the whole record and were coerced by
+  // String() into eight literal "[object Object]" strings, destroying them.
+  describe('gaps survive a save the editor never rendered', () => {
+    const withGaps = {
+      ...STORED,
+      gaps: [
+        { field: 'experience[2].dates', note: 'no dates given for AVG' },
+        'identity.contact.location',
+      ],
+    };
+
+    test('never stringifies an object gap into a placeholder', () => {
+      const out = normaliseMaster({ ...STORED, gaps: withGaps.gaps }, withGaps);
+      expect(JSON.stringify(out.gaps)).not.toContain('[object Object]');
+    });
+
+    test('carries the stored gaps through verbatim', () => {
+      const out = normaliseMaster({ ...STORED, gaps: withGaps.gaps }, withGaps);
+      expect(out.gaps).toEqual(withGaps.gaps);
+    });
+
+    test('ignores gaps submitted by the editor, like conflicts', () => {
+      const out = normaliseMaster({ ...STORED, gaps: ['injected by the client'] }, withGaps);
+      expect(out.gaps).toEqual(withGaps.gaps);
+    });
+  });
+
+  // str() used to render any non-scalar through String(), so a stray object in
+  // ANY coerced field became the same placeholder. It is dropped now.
+  test('drops an object where a scalar belongs rather than writing a placeholder', () => {
+    const out = normaliseMaster(
+      { ...STORED, candidate_core: { text: 'an object where prose belongs' } },
+      STORED
+    );
+    expect(out.candidate_core).toBe('');
+  });
+
   test('preserves nested contracts on a merged role', () => {
     const out = normaliseMaster(
       { experience: [{ company: 'Self', role: 'Consultant', contracts: [{ company: 'eBay', role: 'Advisor' }] }] },

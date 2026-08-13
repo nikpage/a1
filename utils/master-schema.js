@@ -17,7 +17,12 @@
 //   voice_samples — verbatim quotes, grounded in code against the source CV
 //                   (pruneVoiceSamples); hand-editing them breaks that guarantee.
 //   conflicts     — the open-questions queue, owned by the flag fixer.
-const PRESERVED = ['voice_samples', 'conflicts'];
+// `gaps` sits here for the same reason as `conflicts`: the editor renders no
+// field for it, so an editor save must never be able to change it. It used to be
+// coerced through strList instead, and because the build prompt left the element
+// type open the model wrote gaps as objects — one save turned every one of them
+// into the string "[object Object]" and the real content was gone.
+const PRESERVED = ['voice_samples', 'conflicts', 'gaps'];
 
 // The user's own written style guide for their cover letters. Prose, not a list,
 // and authored by the user (or by the owner on their behalf) — no AI pass writes
@@ -25,7 +30,17 @@ const PRESERVED = ['voice_samples', 'conflicts'];
 // but as a string rather than an array.
 const PRESERVED_STRINGS = ['voice_guide'];
 
-const str = (v) => (typeof v === 'string' ? v.trim() : v == null ? '' : String(v).trim());
+// Scalars coerce; an object or array does NOT. `String({})` is "[object Object]",
+// which is truthy, survives every filter, and silently replaces real content with
+// a placeholder — the exact way a record's gaps were destroyed. A shape this
+// schema did not expect is dropped instead, so the caller sees an empty field
+// rather than a lie.
+const str = (v) => {
+  if (typeof v === 'string') return v.trim();
+  if (v == null) return '';
+  if (typeof v === 'object') return '';
+  return String(v).trim();
+};
 const arr = (v) => (Array.isArray(v) ? v : []);
 const strList = (v) => arr(v).map(str).filter(Boolean);
 
@@ -120,7 +135,6 @@ export function normaliseMaster(edited, stored = null) {
         useful_for: strList(n?.useful_for),
       }))
       .filter((n) => n.observation),
-    gaps: strList(edited.gaps),
   };
 
   // Any field the STORED record carries that this schema does not name — a

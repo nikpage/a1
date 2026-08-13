@@ -42,3 +42,39 @@ describe('buildMasterCvPrompt — a teaching appointment is employment, not educ
     expect(prompt).toMatch(/A named teaching appointment with an employer and dates is a role/);
   });
 });
+
+// A real record lost the dates off three roles and gained locations for seven.
+// Both came from the same compact EARLIER CAREER block, which packs several
+// roles onto one line with their years in brackets and no location at all:
+// the extractor split the line, dropped the bracketed years from some of the
+// fragments, and filled the missing locations from what it knew about the
+// employers (AVG → Brno, Wells Fargo → San Francisco).
+describe('buildMasterCvPrompt — compact earlier-career lines', () => {
+  const prompt = joined(buildMasterCvPrompt({ mode: 'build', rawInput: 'some CV text' }));
+
+  it('tells the model a multi-role line is several roles, each with its own dates', () => {
+    expect(prompt).toMatch(/several to a LINE/i);
+    expect(prompt).toMatch(/Split on the separator/i);
+    expect(prompt).toMatch(/belong to the fragment they sit in/i);
+  });
+
+  it('treats a dropped date as an extraction failure, not a gap', () => {
+    expect(prompt).toMatch(/extraction failure, not a gap/i);
+  });
+
+  it('forbids inferring a location from the employer', () => {
+    expect(prompt).toMatch(/NEVER infer a location/);
+    expect(prompt).toMatch(/headquartered/i);
+    expect(prompt).toMatch(/leave "location": ""/);
+  });
+});
+
+// gaps were declared as a bare [] beside a fully typed conflicts sibling, so the
+// cheap model wrote them as objects — which one editor save then coerced into
+// eight literal "[object Object]" strings.
+describe('buildMasterCvPrompt — gaps are typed', () => {
+  it('declares gaps as plain strings, never objects', () => {
+    const prompt = joined(buildMasterCvPrompt({ mode: 'build', rawInput: 'some CV text' }));
+    expect(prompt).toMatch(/ARRAY OF PLAIN STRINGS — never objects/);
+  });
+});

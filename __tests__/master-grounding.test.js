@@ -260,3 +260,62 @@ describe('two-line role headers', () => {
     expect(out.experience[0].role).toBe('');
   });
 });
+
+// The compact EARLIER CAREER block breaks the one-role-per-line assumption:
+// several roles on ONE line, each with its years in brackets. Ending a role's
+// block at the next anchor's line start gave every role but the last an EMPTY
+// block, so its real title and real dates were blanked as ungrounded — which is
+// how three roles reached a live record with no dates at all.
+describe('several roles packed onto one line', () => {
+  const SOURCE = [
+    'EARLIER CAREER',
+    'Manager QA Labs, AVG (2010) · Manager QA & UX, ZOOM International (2008-2009)',
+    'Sr. QA Engineer, Morgan Stanley Online (2000-2001) · QA Consultant, Wells Fargo (2000)',
+  ].join('\n');
+
+  const clean = JSON.stringify({
+    country: '', remove_gaps: [], unsupported_skills: [], unsupported_metrics: [],
+    unsupported_achievements: [], unsupported_roles: [], unsupported_notes: [],
+    invented_locations: [], invented_dates: [], missing_titles: [], missing_dates: [],
+  });
+
+  const master = () => ({
+    identity: { name: 'Nik Page', country: 'Czechia' },
+    experience: [
+      { company: 'AVG', role: 'Manager QA Labs', dates: '2010', location: '', achievements: [] },
+      { company: 'ZOOM International', role: 'Manager QA & UX', dates: '2008-2009', location: '', achievements: [] },
+      { company: 'Morgan Stanley Online', role: 'Sr. QA Engineer', dates: '2000-2001', location: '', achievements: [] },
+      { company: 'Wells Fargo', role: 'QA Consultant', dates: '2000', location: '', achievements: [] },
+    ],
+    gaps: [],
+    transferable_notes: [],
+  });
+
+  test('keeps the title and dates of every role sharing a line', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(clean));
+
+    const { master: out } = await verifyMaster(master(), SOURCE);
+
+    expect(out.experience.map((r) => [r.role, r.dates])).toEqual([
+      ['Manager QA Labs', '2010'],
+      ['Manager QA & UX', '2008-2009'],
+      ['Sr. QA Engineer', '2000-2001'],
+      ['QA Consultant', '2000'],
+    ]);
+    expect(out.needs_confirmation || []).toEqual([]);
+  });
+
+  // The line is shared, but a fact from a DIFFERENT line still must not ground.
+  test('still blanks a date that belongs to another line', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(clean));
+
+    const m = master();
+    m.experience[0].dates = '2001'; // Morgan Stanley's year, one line below
+    const { master: out } = await verifyMaster(m, SOURCE);
+
+    expect(out.experience[0].dates).toBe('');
+    expect(out.needs_confirmation).toEqual([
+      expect.objectContaining({ kind: 'field', company: 'AVG', field: 'dates', value: '2001' }),
+    ]);
+  });
+});

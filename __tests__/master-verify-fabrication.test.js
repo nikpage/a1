@@ -177,3 +177,99 @@ describe('verifyMaster — restores a dropped job title', () => {
     expect(output.experience[0].role).toBe('');
   });
 });
+
+// The mirror of the dropped title: a period the CV states, lost by the
+// extraction. It happened on a compact earlier-career line that packed several
+// roles onto one line with their years in brackets — the split kept some
+// fragments' years and dropped others, so three roles reached the record with
+// no dates at all while the source plainly showed them.
+describe('verifyMaster — restores dropped dates', () => {
+  const SOURCE = [
+    'EARLIER CAREER',
+    'Manager QA Labs, AVG (2010) · Manager QA & UX, ZOOM International (2008-2009)',
+    'Sr. QA Engineer, Morgan Stanley Online (2000-2001) · QA Consultant, Wells Fargo (2000)',
+  ].join('\n');
+
+  const MASTER = {
+    identity: { name: 'Nik Page', country: 'Czechia' },
+    experience: [
+      { company: 'AVG', role: 'Manager QA Labs', dates: '', location: '', achievements: [] },
+      { company: 'ZOOM International', role: 'Manager QA & UX', dates: '2008-2009', location: '', achievements: [] },
+      { company: 'Morgan Stanley Online', role: 'Sr. QA Engineer', dates: '', location: '', achievements: [] },
+    ],
+    gaps: [],
+    transferable_notes: [],
+  };
+
+  const CLEAN = {
+    country: '', remove_gaps: [], unsupported_skills: [], unsupported_metrics: [],
+    unsupported_achievements: [], unsupported_roles: [], unsupported_notes: [],
+    invented_locations: [], invented_dates: [], missing_titles: [], missing_dates: [],
+  };
+
+  test('fills empty dates from the source, verbatim', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({
+      ...CLEAN,
+      missing_dates: [
+        { company: 'AVG', role: 'Manager QA Labs', dates: '2010' },
+        { company: 'Morgan Stanley Online', role: 'Sr. QA Engineer', dates: '2000-2001' },
+      ],
+    })));
+
+    const { master: output } = await verifyMaster(structuredClone(MASTER), SOURCE);
+
+    expect(output.experience[0].dates).toBe('2010');
+    expect(output.experience[2].dates).toBe('2000-2001');
+  });
+
+  test('never overwrites dates that were extracted', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({
+      ...CLEAN,
+      missing_dates: [{ company: 'ZOOM International', role: 'Manager QA & UX', dates: '1999' }],
+    })));
+
+    const { master: output } = await verifyMaster(structuredClone(MASTER), SOURCE);
+
+    expect(output.experience[1].dates).toBe('2008-2009');
+  });
+
+  test('empty dates stay empty when the checker offers nothing', async () => {
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify(CLEAN)));
+
+    const { master: output } = await verifyMaster(structuredClone(MASTER), SOURCE);
+
+    expect(output.experience[0].dates).toBe('');
+  });
+});
+
+// gaps may now arrive as objects (the build prompt types them as strings, but a
+// stored record predates that). normWs renders every object to the same
+// "[object Object]", so a remove_gaps match would delete all of them at once.
+describe('verifyMaster — remove_gaps cannot collapse object gaps', () => {
+  test('removes the named string gap and leaves object gaps untouched', async () => {
+    const master = {
+      identity: { name: 'Nik Page', country: 'Czechia' },
+      experience: [{ company: 'AVG', role: 'Manager QA Labs', dates: '2010', location: '', achievements: [] }],
+      gaps: [
+        'identity.contact.location',
+        { field: 'experience[0].location', note: 'no location given' },
+        { field: 'experience[0].dates', note: 'no dates given' },
+      ],
+      transferable_notes: [],
+    };
+
+    mockAxiosPost.mockResolvedValue(geminiResp(JSON.stringify({
+      country: '', remove_gaps: ['identity.contact.location', '[object Object]'],
+      unsupported_skills: [], unsupported_metrics: [], unsupported_achievements: [],
+      unsupported_roles: [], unsupported_notes: [], invented_locations: [],
+      invented_dates: [], missing_titles: [], missing_dates: [],
+    })));
+
+    const { master: output } = await verifyMaster(master, 'AVG, Manager QA Labs (2010)');
+
+    expect(output.gaps).toEqual([
+      { field: 'experience[0].location', note: 'no location given' },
+      { field: 'experience[0].dates', note: 'no dates given' },
+    ]);
+  });
+});

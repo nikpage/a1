@@ -231,7 +231,12 @@ function applyVerifyCorrections(master, corr) {
 
   const removeGaps = new Set((corr.remove_gaps || []).map(normWs));
   if (Array.isArray(master.gaps) && removeGaps.size) {
-    master.gaps = master.gaps.filter((g) => !removeGaps.has(normWs(g)));
+    // Only string gaps are matchable. normWs() renders every object to the same
+    // "[object Object]", so comparing one would either match nothing or delete
+    // every object gap at once on a single spurious hit.
+    master.gaps = master.gaps.filter(
+      (g) => typeof g !== 'string' || !removeGaps.has(normWs(g)),
+    );
   }
 
   const badSkills = new Set((corr.unsupported_skills || []).map(normWs));
@@ -257,6 +262,16 @@ function applyVerifyCorrections(master, corr) {
       .filter((r) => r && typeof r === 'object' && normWs(r.role))
       .map((r) => [titleKey(r), String(r.role).trim()])
   );
+  // The mirror of missingTitles: a period the source states but the extraction
+  // dropped, typically off a compact earlier-career line that packed several
+  // roles onto one line with their years in brackets. Keyed on company+role
+  // because dates are the missing field here. Applied ONLY to an entry whose
+  // dates are empty, so it can never overwrite a period that was extracted.
+  const missingDates = new Map(
+    (corr.missing_dates || [])
+      .filter((r) => r && typeof r === 'object' && normWs(r.dates))
+      .map((r) => [roleKey(r), String(r.dates).trim()])
+  );
 
   if (Array.isArray(master.experience)) {
     // Drop wholly-fabricated roles first (company + role both absent from source).
@@ -269,6 +284,10 @@ function applyVerifyCorrections(master, corr) {
       if (missingTitles.size && !normWs(role.role)) {
         const title = missingTitles.get(titleKey(role));
         if (title) role.role = title;
+      }
+      if (missingDates.size && !normWs(role.dates)) {
+        const dates = missingDates.get(roleKey(role));
+        if (dates) role.dates = dates;
       }
       if (inventedLocations.size && inventedLocations.has(roleKey(role))) role.location = '';
       if (inventedDates.size && inventedDates.has(roleKey(role))) role.dates = '';
@@ -383,11 +402,24 @@ function groundAtomicFactsPerRole(master, sourceText) {
   const sorted = [...anchored].sort((a, b) => a.pos - b.pos);
   const blockOf = new Map();
   const dateBlockOf = new Map();
+  //
+  //    A compact "earlier career" block breaks the one-role-per-line assumption
+  //    outright: "Manager QA Labs, AVG (2010) · Manager QA & UX, ZOOM (2008-2009)"
+  //    anchors TWO roles on one line, and ending each block at the next anchor's
+  //    lineStart gave every role but the last an EMPTY block — so its real title
+  //    and real dates were blanked as ungrounded. Roles sharing a line therefore
+  //    share it as their block: the line is the smallest unit that can be split
+  //    reliably, because norm() has already flattened the separators away.
   for (let i = 0; i < sorted.length; i++) {
     const start = lineStart(sorted[i].pos);
-    const end = i + 1 < sorted.length ? lineStart(sorted[i + 1].pos) : hay.length;
+    // The next anchor on a DIFFERENT line — same-line neighbours do not bound.
+    let next = i + 1;
+    while (next < sorted.length && lineStart(sorted[next].pos) === start) next++;
+    const end = next < sorted.length ? lineStart(sorted[next].pos) : hay.length;
     // Never reach back past the previous role's own header line.
-    const prevStart = i > 0 ? lineStart(sorted[i - 1].pos) : 0;
+    const prev = sorted.findLast?.((s) => lineStart(s.pos) < start)
+      ?? [...sorted].reverse().find((s) => lineStart(s.pos) < start);
+    const prevStart = prev ? lineStart(prev.pos) : 0;
     const dateStart = Math.max(prevStart, headerStart(sorted[i].pos));
     blockOf.set(sorted[i].role, flatHay.slice(start, end));
     dateBlockOf.set(sorted[i].role, flatHay.slice(dateStart, end));
