@@ -11,6 +11,7 @@ export default function DocumentDownloadButtons({
   activeTab,
   analysis,          // names the file: [doc]-[FirstLast]_[Company]
   onTokenFail,
+  onDownloaded,      // called with the exact body that reached the user's disk
 }) {
   const handleDownload = async () => {
     const type = activeTab === 'cv' ? 'cv' : 'cover';
@@ -42,6 +43,9 @@ export default function DocumentDownloadButtons({
         analysis,
       });
 
+      // Only after the export actually completed — a failed export must not
+      // clear the "you haven't saved this yet" warning.
+      onDownloaded?.(content);
 
       window.dispatchEvent(new Event('header-stats-updated'));
 

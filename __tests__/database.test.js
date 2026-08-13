@@ -168,3 +168,47 @@ describe('getLatestAnalysis', () => {
     expect(result).toEqual({ content: '{"score":90}' });
   });
 });
+
+// getGeneratedDocs feeds the viewer's version history on reload. It used to
+// return only the newest CV and cover, so a refresh silently discarded every
+// earlier version the user had not downloaded — this pins the full list, and
+// the oldest-first order the version arrays are built in.
+describe('getGeneratedDocs', () => {
+  function makeSelectMock(rows) {
+    const calls = {};
+    const chain = {
+      select() { return chain; },
+      eq(field, value) { calls.eq = [field, value]; return chain; },
+      in(field, values) { calls.in = [field, values]; return chain; },
+      order(field, opts) { calls.order = [field, opts]; return chain; },
+      limit(n) { calls.limit = n; return Promise.resolve({ data: rows, error: null }); },
+    };
+    return {
+      _calls: calls,
+      from(table) { calls.table = table; return chain; },
+    };
+  }
+
+  test('returns every CV and cover, oldest first, scoped to the user', async () => {
+    // The query asks newest-first; the helper flips it.
+    _adminMock = makeSelectMock([
+      { type: 'cv', content: 'cv v2', created_at: '2026-08-13T10:00:00Z' },
+      { type: 'cover', content: 'cover v1', created_at: '2026-08-13T09:00:00Z' },
+      { type: 'cv', content: 'cv v1', created_at: '2026-08-13T08:00:00Z' },
+    ]);
+    const { getGeneratedDocs } = await import('../utils/database.js');
+
+    const docs = await getGeneratedDocs('user-1');
+
+    expect(docs.map((d) => d.content)).toEqual(['cv v1', 'cover v1', 'cv v2']);
+    expect(_adminMock._calls.table).toBe('gen_data');
+    expect(_adminMock._calls.eq).toEqual(['user_id', 'user-1']);
+    expect(_adminMock._calls.in).toEqual(['type', ['cv', 'cover']]);
+  });
+
+  test('an empty history is an empty list, not a throw', async () => {
+    _adminMock = makeSelectMock(null);
+    const { getGeneratedDocs } = await import('../utils/database.js');
+    await expect(getGeneratedDocs('user-1')).resolves.toEqual([]);
+  });
+});

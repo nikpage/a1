@@ -285,6 +285,22 @@ export async function getLatestAnalysis(user_id) {
   return data;
 }
 
+// Every generated CV / cover letter for a user, newest LAST so the caller can
+// append them straight into the version arrays the viewer already keeps. The
+// documents were always persisted here; without this read they only ever lived
+// in component state, so a reload lost everything not yet downloaded.
+export async function getGeneratedDocs(user_id, { limit = 20 } = {}) {
+  const { data, error } = await getAdminSupabase()
+    .from('gen_data')
+    .select('type, tone, content, created_at')
+    .eq('user_id', user_id)
+    .in('type', ['cv', 'cover'])
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).reverse();
+}
+
 // Get all CVs for user
 export async function getCvList(user_id) {
   const { data, error } = await getAdminSupabase()
