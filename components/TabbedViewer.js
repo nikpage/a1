@@ -42,8 +42,10 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const { t } = useTranslation('tabbedViewer');
   const [analysisTextState, setAnalysisTextState] = useState(analysisText);
   const [activeTab, setActiveTab] = useState('analysis');
-  // Output language chosen for the most recent generation — reused by regenerate.
-  const [lastLanguage, setLastLanguage] = useState('auto');
+  // Output language chosen for the most recent generation OF EACH DOCUMENT —
+  // reused by regenerate. Per document, because the CV and the cover letter are
+  // requested separately and may not share a language.
+  const [lastLanguage, setLastLanguage] = useState({ cv: 'auto', cover: 'auto' });
   const [docs, setDocs] = useState({ cv: null, cover: null });
   const [showBuilder, setShowBuilder] = useState(false);
   const [showBuyPanel, setShowBuyPanel] = useState(false);
@@ -73,7 +75,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [tokensRemaining, setTokensRemaining] = useState(null);
   // Tone the current pair was written in — reused by the headline controls so a
   // re-rolled headline stays in the same voice as the document around it.
-  const [lastTone, setLastTone] = useState('Formal');
+  // Per document, for the same reason as lastLanguage.
+  const [lastTone, setLastTone] = useState({ cv: 'Formal', cover: 'Formal' });
   // Inline headline editing on the CV tab.
   const [headlineDraft, setHeadlineDraft] = useState('');
   const [headlineBusy, setHeadlineBusy] = useState(false);
@@ -82,6 +85,10 @@ export default function TabbedViewer({ user_id, analysisText }) {
   const [editing, setEditing] = useState(null);
   const [editDraft, setEditDraft] = useState('');
   const [editBusy, setEditBusy] = useState(false);
+  // Which document bodies have actually been downloaded this session, keyed by
+  // their content so an edited or regenerated version counts as undownloaded
+  // again. Drives the leave-the-page warning below.
+  const [downloaded, setDownloaded] = useState(() => new Set());
 
   // Single entry point for the buy panel: resolves the token balance first so
   // the panel always has the number it needs. `knownTokens` skips the fetch
@@ -146,10 +153,12 @@ export default function TabbedViewer({ user_id, analysisText }) {
     setAnalysisTextState(analysisText);
   }, [analysisText]);
 
-  // Restore the last generated CV/cover from the DB on (re)load, so a refresh
-  // doesn't wipe the documents the user already paid to generate. Only seeds
-  // when nothing has been generated yet this session, to avoid clobbering
-  // freshly-generated versions.
+  // Restore every generated CV/cover from the DB on (re)load, so a refresh
+  // doesn't wipe the documents the user already paid to generate — the whole
+  // version history, not just the newest, because an earlier version the user
+  // preferred is exactly the thing they lose otherwise. Opens on the newest.
+  // Only seeds when nothing has been generated yet this session, to avoid
+  // clobbering freshly-generated versions.
   useEffect(() => {
     if (!user_id) return;
     fetch('/api/get-docs', {
@@ -159,17 +168,47 @@ export default function TabbedViewer({ user_id, analysisText }) {
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
-        if (data.cv) {
-          setCvVersions((prev) => (prev.length === 0 ? [data.cv] : prev));
+        const cvs = Array.isArray(data.cv) ? data.cv : (data.cv ? [data.cv] : []);
+        const covers = Array.isArray(data.cover) ? data.cover : (data.cover ? [data.cover] : []);
+        if (cvs.length) {
+          setCvVersions((prev) => {
+            if (prev.length) return prev;
+            setCvCurrentIndex(cvs.length - 1);
+            return cvs;
+          });
         }
-        if (data.cover) {
-          setCoverVersions((prev) => (prev.length === 0 ? [data.cover] : prev));
+        if (covers.length) {
+          setCoverVersions((prev) => {
+            if (prev.length) return prev;
+            setCoverCurrentIndex(covers.length - 1);
+            return covers;
+          });
         }
       })
       .catch(() => {});
   }, [user_id]);
 
   const currentCv = cvVersions[cvCurrentIndex] || '';
+
+  // Warn before leaving with a generated document that was never downloaded.
+  // The browser shows its own generic dialog here — the text is not ours to
+  // set — so this is a prompt to stay, not a message. Only armed when there is
+  // something to lose, so an ordinary exit is never interrupted.
+  useEffect(() => {
+    const pending = [...cvVersions, ...coverVersions].some((v) => v && !downloaded.has(v));
+    if (!pending) return;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [cvVersions, coverVersions, downloaded]);
+
+  const markDownloaded = (content) => {
+    setDownloaded((prev) => new Set(prev).add(content));
+  };
 
   // An open editor belongs to one version of one document — leaving that view
   // closes it, so a save can never land on the document the user moved to.
@@ -198,8 +237,8 @@ export default function TabbedViewer({ user_id, analysisText }) {
           headline,
           content: currentCv,
           analysis: analysisTextState,
-          tone: lastTone,
-          language: lastLanguage,
+          tone: lastTone.cv,
+          language: lastLanguage.cv,
         }),
       });
       const data = await res.json();
@@ -234,7 +273,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
       const res = await fetch('/api/save-doc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: docType, content: editDraft, tone: lastTone }),
+        body: JSON.stringify({ type: docType, content: editDraft, tone: lastTone[docType] }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -255,11 +294,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
     }
   };
 
-  const handleSubmit = async ({ tone, selected, jobText, tweak = '', language = 'auto' }) => {
-    // Remember it so a regenerate stays in the language the pair was written in
-    // instead of silently reverting to the master CV's language.
-    setLastLanguage(language);
-    setLastTone(tone);
+  const handleSubmit = async ({ selected, jobText, tweak = '' }) => {
     setShowLoadingModal(true);
     setLoadingModalTitle(t('generatingDocsTitle'));
     setLoadingModalMessage(t('generatingDocsMsg'));
@@ -288,7 +323,13 @@ export default function TabbedViewer({ user_id, analysisText }) {
       // meant the second request lost the race and came back 429 — the cover
       // letter silently never arrived while the CV succeeded. One at a time:
       // the lock is released before the next call asks for it.
-      for (const docType of selected) {
+      for (const { type: docType, tone, language } of selected) {
+        // Remember per document, so a later regenerate of one stays in the tone
+        // and language THAT document was written in — the pair no longer shares
+        // a single setting.
+        setLastTone((prev) => ({ ...prev, [docType]: tone }));
+        setLastLanguage((prev) => ({ ...prev, [docType]: language }));
+
         const data = await generateDocuments({ analysis: jobText || analysisTextState, tone, type: docType, tweak, language });
         if (data.gemini_usage) logGemini(data.gemini_usage);
         if (!data.ok) {
@@ -335,13 +376,18 @@ export default function TabbedViewer({ user_id, analysisText }) {
   };
 
   const handleRegen = async (docType, tone) => {
-    setLastTone(tone);
+    setLastTone((prev) => ({ ...prev, [docType]: tone }));
     setShowLoadingModal(true);
     setLoadingModalTitle(docType === 'cv' ? t('regeneratingCvTitle') : t('regeneratingCoverTitle'));
     setLoadingModalMessage(t('regenMsg'));
 
     try {
-      const data = await generateDocuments({ analysis: analysisTextState, tone, type: docType, language: lastLanguage });
+      const data = await generateDocuments({
+        analysis: analysisTextState,
+        tone,
+        type: docType,
+        language: lastLanguage[docType] || 'auto',
+      });
       if (data.gemini_usage) logGemini(data.gemini_usage);
       if (!data.ok) {
         if (data.error === "NO_GENERATIONS_LEFT") {
@@ -622,6 +668,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     activeTab={activeTab}
                     analysis={analysisTextState}
                     onTokenFail={() => openBuyPanel("tokens")}
+                    onDownloaded={markDownloaded}
                   />
                 </div>
               </>
@@ -677,6 +724,7 @@ export default function TabbedViewer({ user_id, analysisText }) {
                     activeTab={activeTab}
                     analysis={analysisTextState}
                     onTokenFail={() => openBuyPanel("tokens")}
+                    onDownloaded={markDownloaded}
                   />
                 </div>
               </>

@@ -15,5 +15,7 @@
   "tweakHeading": "✏️ Anything to adjust?",
   "tweakHint": "Optional. Tell the writer what to emphasise or change — e.g. lead with leadership, keep it to one page, play up the startup work. We won't invent anything that isn't true to your CV.",
   "tweakPlaceholder": "e.g. Emphasise my team leadership and keep it concise",
-  "generate": "Generate"
+  "generate": "Generate",
+  "costNotice_one": "1 document — 1 write, and 1 token when you download it.",
+  "costNotice_other": "{{count}} documents — {{count}} writes, and 1 token each when you download them."
 }

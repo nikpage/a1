@@ -15,5 +15,7 @@
   "tweakHeading": "✏️ Chcete něco upravit?",
   "tweakHint": "Nepovinné. Řekněte autorovi, co zdůraznit nebo změnit — např. začít vedením týmu, vejít se na jednu stranu, vyzdvihnout práci ve startupu. Nic, co není pravda ve vašem životopise, si nevymyslíme.",
   "tweakPlaceholder": "např. Zdůrazněte mé vedení týmu a buďte struční",
-  "generate": "Vygenerovat"
+  "generate": "Vygenerovat",
+  "costNotice_one": "1 dokument — 1 zápis a 1 token při stažení.",
+  "costNotice_other": "{{count}} dokumenty — {{count}} zápisy a 1 token za každý při stažení."
 }

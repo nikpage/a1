@@ -16,8 +16,10 @@ export default function DocumentGenerator({ user_id, analysis }) {
   const [gensLeft, setGensLeft] = useState(null);
   const [tokens, setTokens] = useState(null);
 
-  const handleSubmit = async ({ tone, type }) => {
-    if (!analysis) return;
+  // ToneDocModal hands back one entry per document, each with its own tone and
+  // language. Each document is one token, so they run one at a time.
+  const handleSubmit = async ({ selected }) => {
+    if (!analysis || !selected?.length) return;
     setLoading(true);
     setError(null);
     setDocs(null);
@@ -28,20 +30,27 @@ export default function DocumentGenerator({ user_id, analysis }) {
       setGensLeft(tokenData.generations_left);
       setTokens(tokenData.tokens);
 
-      if (tokenData.generations_left <= 0) {
+      if (tokenData.generations_left < selected.length) {
         setShowLimitModal(true);
         setLoading(false);
         return;
       }
 
-      const data = await generateDocuments({ analysis, tone, type });
-      if (data.gemini_usage) logGemini(data.gemini_usage);
+      // Sequential: the run holds a per-user gen_lock, so a parallel pair loses
+      // the race and one document silently never arrives.
+      const written = [];
+      for (const { type, tone, language } of selected) {
+        const data = await generateDocuments({ analysis, tone, type, language });
+        if (data.gemini_usage) logGemini(data.gemini_usage);
 
-      if (!data.ok) {
-        setError(data.error || 'Generation failed');
-      } else {
-        setDocs(data.docs);
+        if (!data.ok) {
+          setError(data.error || 'Generation failed');
+          break;
+        }
+        const content = data.cv || data.cover;
+        if (content) written.push({ type, content });
       }
+      if (written.length) setDocs(written);
     } catch (err) {
       setError('Error: ' + err.message);
     }
