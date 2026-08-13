@@ -123,6 +123,17 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
     expect(text).toContain('I am writing to apply');
     expect(text).toMatch(/As a seasoned leader/);
   });
+
+  // A real run opened "Vzpomínám si na jeden z prvních projektů…" — a remembered
+  // scene, which is neither the application act nor an identity claim, so the
+  // rule as written permitted it. It reads as an after-dinner speech and it
+  // invites colour the master does not record.
+  test('the opener rule bans the anecdote opening too', () => {
+    const text = promptText(analysisWith(BLUEPRINT));
+    expect(text).toMatch(/ANECDOTE/);
+    expect(text).toMatch(/Vzpomínám si na/);
+    expect(text).toMatch(/Name the thing done, where it was done, and what came of it/);
+  });
 });
 
 describe('the analysis pass asks for the letter its own plan', () => {

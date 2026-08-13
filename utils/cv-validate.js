@@ -935,28 +935,23 @@ const DOMAIN_TERMS = [
   return set;
 }, new Set());
 
-// The ad, as the extraction recorded it. Only `job_extraction` counts: it is the
-// one part of the analysis the prompt binds to literal quotation from the ad, so
-// it cannot launder an inferred industry ("Industry: FinTech") into the allowed
-// set and whitelist the very word this check looks for.
-function jobVocabulary(analysis) {
-  const job = analysis?.job_extraction;
-  if (!job || typeof job !== 'object') return null;
-  const text = JSON.stringify(job);
-  return text.length > 2 ? stemSet(text) : null;
-}
+// THE MASTER IS THE ONLY SOURCE. The ad was allowed as a second source once, and
+// that was the hole: Blogic's own blurb says "specialisté na FinTech", so the ad
+// licensed "fintech" and the letter then claimed it as the CANDIDATE's
+// background. An ad naming an industry says where the EMPLOYER works — it is
+// evidence about them, never about the applicant. Every other Layer 6 check
+// traces claims to the master alone; this one now does too.
 
 // The domain words the letter used that neither source gave it, as written. Like
 // bannedPhraseHits, this REPORTS TO THE REPAIR PASS, not to the candidate: an
 // invented industry is the app's own writing failing, so it is removed before
 // delivery rather than handed back as the user's problem to solve.
-export function unsourcedDomainHits(document, { master = '', analysis = null } = {}) {
+export function unsourcedDomainHits(document, { master = '' } = {}) {
   const m = readMaster(master);
-  const jobStems = jobVocabulary(analysis);
-  // No ad and no master is no evidence: report nothing rather than guess.
-  if (!m.text && !jobStems) return [];
+  // No record is no evidence: report nothing rather than guess.
+  if (!m.text) return [];
 
-  const allowed = new Set([...(jobStems || []), ...stemSet(m.text)]);
+  const allowed = stemSet(m.text);
   const seen = new Set();
   const stray = [];
   for (const w of plain(coverBody(document)).split(/\s+/)) {

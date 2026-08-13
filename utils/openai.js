@@ -814,8 +814,8 @@ export async function repairStockPhrases({ document, docType = 'cv', language = 
 // call, corrections applied by literal string match — because it is the same
 // defect class: the app's own writing failing, fixed before delivery instead of
 // handed to the candidate as a warning about their own document.
-export async function repairUnsourcedDomains({ document, master = '', analysis = null }) {
-  const hits = unsourcedDomainHits(document, { master, analysis });
+export async function repairUnsourcedDomains({ document, master = '' }) {
+  const hits = unsourcedDomainHits(document, { master });
   if (!hits.length) return { content: document, gemini_usage: null, applied: [] };
 
   try {
@@ -826,7 +826,7 @@ export async function repairUnsourcedDomains({ document, master = '', analysis =
     const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
     trackDailySpend(gemini_usage.costUsd);
 
-    const left = unsourcedDomainHits(content, { master, analysis });
+    const left = unsourcedDomainHits(content, { master });
     if (left.length) {
       logger.error(`[repair domain cover] survived: ${left.join(', ')}`);
     } else {
@@ -1013,16 +1013,24 @@ export async function generateHeadline({ cv, analysis, tone, current = '', langu
 // line dropped, placeholders removed, today's real date prepended. Shared by the
 // first draft and the validation retry, which must be processed identically or
 // the retry is judged on text the candidate would never receive.
-function dressLetter(rawContent) {
+export function dressLetter(rawContent) {
   // A line that is JUST a date, in any of the forms the model actually emits.
   // The old pattern missed the day-first form ("10 August 2026"), so that line
   // survived and the real date was prepended above it — two dates on the letter.
-  const MONTH = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  // Every month name the product can generate in, not just English: this is an EU
+  // product, and a Czech letter dates itself "13. srpna 2026". An unmatched date
+  // line survives and today's date is prepended above it — two dates on the page.
+  // Czech and Polish names are listed in the GENITIVE, which is the form a date
+  // actually uses ("13. srpna", never "13. srpen").
+  const MONTH_EN = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+  const MONTH_CS = 'ledna|února|unora|března|brezna|dubna|května|kvetna|června|cervna|července|cervence|srpna|září|zari|října|rijna|listopadu|prosince';
+  const MONTH_PL = 'stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|wrzesnia|października|pazdziernika|listopada|grudnia';
+  const MONTH = `(?:${MONTH_EN}|${MONTH_CS}|${MONTH_PL})`;
   const leadingDateRegex = new RegExp(
     '^\\s*(?:'
-      + '\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4}'          // 12/08/2023, 12.08.2023
+      + '\\d{1,2}\\s*[./-]\\s*\\d{1,2}\\s*[./-]\\s*\\d{2,4}'  // 12/08/2023, 12.08.2023, 13. 8. 2026
       + '|\\d{4}-\\d{1,2}-\\d{1,2}'                    // 2023-08-12
-      + `|\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH}\\.?\\,?\\s+\\d{4}` // 10 August 2026
+      + `|\\d{1,2}(?:st|nd|rd|th)?\\.?\\s+${MONTH}\\.?\\,?\\s+\\d{4}` // 10 August 2026, 13. srpna 2026
       + `|${MONTH}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?\\,?\\s+\\d{4}` // August 12, 2023
       + `|${MONTH}\\.?\\s+\\d{4}`                      // August 2023
     + ')[.,]?\\s*$',
@@ -1089,7 +1097,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // Layer 6 for the letter: the banned-phrase repair, then the letter's own
   // checks (word band, matched pairs, salutation, one objection, numbers).
   const repair = await repairStockPhrases({ document: verified.content, docType: 'cover', language });
-  const domainRepair = await repairUnsourcedDomains({ document: repair.content, master: cv, analysis });
+  const domainRepair = await repairUnsourcedDomains({ document: repair.content, master: cv });
   usages.push(...(voiced.gemini_usages || []));
   if (verified.gemini_usage) usages.push(verified.gemini_usage);
   if (repair.gemini_usage) usages.push(repair.gemini_usage);
@@ -1122,7 +1130,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     const reRepair = await repairStockPhrases({ document: reVerified.content, docType: 'cover', language });
     if (reRepair.gemini_usage) usages.push(reRepair.gemini_usage);
 
-    const reDomain = await repairUnsourcedDomains({ document: reRepair.content, master: cv, analysis });
+    const reDomain = await repairUnsourcedDomains({ document: reRepair.content, master: cv });
     if (reDomain.gemini_usage) usages.push(reDomain.gemini_usage);
 
     const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language, tweak });

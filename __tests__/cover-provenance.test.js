@@ -75,7 +75,7 @@ const analysis = (extra = {}) => ({
 const letter = (bodyText) =>
   `13.08.2026\n\nVážený pane Nováku,\n\n${bodyText}\n\nS pozdravem\n\n**Nik Page**`;
 
-const hits = (text, opts = {}) => unsourcedDomainHits(text, { master: MASTER, analysis: analysis(), ...opts });
+const hits = (text, opts = {}) => unsourcedDomainHits(text, { master: MASTER, ...opts });
 
 describe('check 23 — an industry the letter invented for itself', () => {
   test('the fintech regression: the word is found so the repair pass can remove it', () => {
@@ -91,29 +91,44 @@ describe('check 23 — an industry the letter invented for itself', () => {
     expect(warnings.find((w) => w.code === 'coverUnsourced')).toBeFalsy();
   });
 
-  test('a domain the ad itself used is never touched', () => {
-    expect(hits(letter('Prostředí bankovnictví i pojišťovnictví znám z dodávek pro klienty.'))).toEqual([]);
-  });
-
   test('inflected forms count as their root — Czech suffixes are not new words', () => {
-    expect(hits(letter('Pojišťovnictvím i bankovnictvím jsem prošel u klienta.'))).toEqual([]);
+    // The master records "finančně poradenské skupiny"; the letter declines it.
+    expect(hits(letter('Poradenským skupinám jsem dodával projekty.'))).toEqual([]);
   });
 
-  test('an inferred industry on job_data does not whitelist the invention', () => {
-    // job_data.Industry is the model's own inference, not the ad's words. If it
-    // counted as a source, the analysis would launder the label into the letter.
-    const found = hits(letter('Působím ve fintechu.'), {
-      analysis: analysis({ job_data: { Country: 'Czechia', Industry: 'FinTech' } }),
+  test('a domain only the AD evidences is caught, since the ad is not the source', () => {
+    const found = hits(letter('Mám za sebou roky v bankovnictví.'));
+    expect(found.join(' ')).toMatch(/bankovnictví/i);
+  });
+
+  test('the AD naming an industry does not license the CANDIDATE claiming it', () => {
+    // The hole that let "fintech" through a second time: Blogic's own blurb says
+    // "specialisté na FinTech", so the ad carried the word and the letter then
+    // claimed it as the candidate's background. An ad names where the EMPLOYER
+    // works — evidence about them, never about the applicant. The master is the
+    // only source, so an ad full of FinTech changes nothing here.
+    const adWithFintech = { ...JOB, keywords_for_ats: ['FinTech', 'InsurTech'] };
+    const found = unsourcedDomainHits(letter('Působím ve fintechu.'), {
+      master: MASTER,
+      analysis: analysis({ job_extraction: adWithFintech }),
     });
     expect(found.join(' ')).toMatch(/fintechu/i);
+  });
+
+  test('a domain the MASTER evidences is never touched', () => {
+    const masterWithFintech = JSON.stringify({
+      identity: { name: 'Nik Page' },
+      experience: [{ title: 'Product Owner', company: 'Salsita', dates: '01/2021 - 06/2024', achievements: ['Dodával fintech produkty'] }],
+    });
+    expect(unsourcedDomainHits(letter('Dodával jsem fintech produkty.'), { master: masterWithFintech })).toEqual([]);
   });
 
   test('ordinary prose absent from both sources is not an invention', () => {
     expect(hits(letter('Děkuji za možnost spolupráce, rád se s vámi potkám a probereme další kroky.'))).toEqual([]);
   });
 
-  test('with neither an ad nor a record it reports nothing rather than guessing', () => {
-    expect(unsourcedDomainHits(letter('Působím ve fintechu.'), { master: '', analysis: null })).toEqual([]);
+  test('with no record it reports nothing rather than guessing', () => {
+    expect(unsourcedDomainHits(letter('Působím ve fintechu.'), { master: '' })).toEqual([]);
   });
 
   test('the repair prompt tells the model to drop the label, not swap in another industry', () => {
