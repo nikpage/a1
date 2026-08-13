@@ -130,6 +130,68 @@ describe('normaliseMaster', () => {
     expect(out.certifications).toEqual([]);
   });
 
+  // The editor renders only part of the master. Anything it does not show is
+  // absent from what it posts back, so dropping unknown keys DELETED real
+  // content from the stored record on every save — the displayed record and the
+  // record in the database silently diverged.
+  test('carries stored fields the editor never rendered through a save', () => {
+    const stored = {
+      ...STORED,
+      voice_guide: 'I write short. Verb first, no windup.',
+      gaps: ['No dates for the 2015 role.'],
+      source_notes: 'built from cv-v3.pdf',
+      identity: { ...STORED.identity, nationality: 'British' },
+      experience: [
+        {
+          ...STORED.experience[0],
+          clarification: 'Contract, not permanent.',
+          contracts: [{ company: 'Sub Ltd', role: 'Consultant', dates: '2020-2021' }],
+          achievements: [{ text: 'Shipped checkout', metric: '', skills_utilized: [], source_quote: 'I shipped checkout' }],
+        },
+      ],
+    };
+    // What the editor actually posts: a deep copy of the whole record with the
+    // rendered fields patched — so nested unknown fields ride along, while
+    // top-level ones it never put in state (voice_guide, source_notes) do not.
+    const edited = {
+      identity: { name: 'Nik Page', contact: { email: 'n@example.com', links: [] }, country: 'Czech Republic', languages: [] },
+      candidate_core: 'Product leader.',
+      experience: [
+        {
+          company: 'Beta Ltd',
+          role: 'PM',
+          dates: '2019-2022',
+          location: 'Prague',
+          core_tags: [],
+          clarification: 'Contract, not permanent.',
+          contracts: [{ company: 'Sub Ltd', role: 'Consultant', dates: '2020-2021' }],
+          achievements: [
+            { text: 'Shipped checkout', metric: '', skills_utilized: [], source_quote: 'I shipped checkout' },
+          ],
+        },
+      ],
+      education: [],
+      certifications: [],
+      parallel_experience: [],
+      transferable_notes: [],
+      gaps: ['No dates for the 2015 role.'],
+    };
+
+    const out = normaliseMaster(edited, stored);
+
+    expect(out.voice_guide).toBe('I write short. Verb first, no windup.');
+    expect(out.source_notes).toBe('built from cv-v3.pdf');
+    expect(out.identity.nationality).toBe('British');
+    expect(out.gaps).toEqual(['No dates for the 2015 role.']);
+    // Nested: role-level and achievement-level fields the editor never rendered.
+    expect(out.experience[0].clarification).toBe('Contract, not permanent.');
+    expect(out.experience[0].contracts[0].company).toBe('Sub Ltd');
+    expect(out.experience[0].achievements[0].source_quote).toBe('I shipped checkout');
+    // The edit itself still wins where the user actually typed something.
+    expect(out.experience[0].company).toBe('Beta Ltd');
+    expect(out.voice_samples).toEqual(STORED.voice_samples);
+  });
+
   test('rejects a non-object', () => {
     expect(() => normaliseMaster(null, STORED)).toThrow(/master object is required/);
     expect(() => normaliseMaster([], STORED)).toThrow(/master object is required/);

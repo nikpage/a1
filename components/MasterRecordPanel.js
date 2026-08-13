@@ -37,6 +37,39 @@ function joinParts(parts) {
   return parts.filter((p) => p && String(p).trim()).join(' | ');
 }
 
+// One role, with every field the record carries for it: the tags it was
+// classified under, the skills each achievement evidences, any clarification or
+// merge note the flag fixer attached, and nested engagements under a merged
+// parent. Recursive, because `contracts` entries are roles.
+function Role({ role, nested = false }) {
+  const achievements = Array.isArray(role.achievements) ? role.achievements : [];
+  const tags = Array.isArray(role.core_tags) ? role.core_tags : [];
+  const contracts = Array.isArray(role.contracts) ? role.contracts : [];
+  return (
+    <div className={nested ? 'mt-3 border-l-2 border-gray-200 pl-3' : 'mt-3'}>
+      <div className="text-sm font-semibold text-gray-900">
+        {joinParts([role.role, role.company]) || 'Untitled role'}
+      </div>
+      <div className="text-xs text-gray-500">{joinParts([role.dates, role.location])}</div>
+      {tags.length > 0 && <div className="text-xs text-gray-500">{tags.join(', ')}</div>}
+      <List
+        items={achievements}
+        render={(a) => (
+          <>
+            {joinParts([a.text, a.metric])}
+            {Array.isArray(a.skills_utilized) && a.skills_utilized.length > 0 && (
+              <span className="text-xs text-gray-500"> — {a.skills_utilized.join(', ')}</span>
+            )}
+          </>
+        )}
+      />
+      <Field label="Clarification">{role.clarification || null}</Field>
+      <Field label="Merge note">{role.merge_note || null}</Field>
+      {contracts.map((c, i) => <Role key={i} role={c} nested />)}
+    </div>
+  );
+}
+
 export default function MasterRecordPanel({ master, onUpdated }) {
   const [showJson, setShowJson] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -64,6 +97,11 @@ export default function MasterRecordPanel({ master, onUpdated }) {
   const parallel = Array.isArray(master.parallel_experience) ? master.parallel_experience : [];
   const notes = Array.isArray(master.transferable_notes) ? master.transferable_notes : [];
   const voice = Array.isArray(master.voice_samples) ? master.voice_samples : [];
+  // Everything the record holds is shown. A field rendered nowhere is a field
+  // the user cannot see is wrong — and this panel is the only view of the
+  // record the CV and cover letter are written from.
+  const gaps = Array.isArray(master.gaps) ? master.gaps : [];
+  const conflicts = Array.isArray(master.conflicts) ? master.conflicts : [];
   const languages = Array.isArray(identity.languages) ? identity.languages : [];
   const links = Array.isArray(contact.links) ? contact.links : [];
 
@@ -107,20 +145,7 @@ export default function MasterRecordPanel({ master, onUpdated }) {
           {experience.length > 0 && (
             <div className="py-3">
               <div className="text-xs uppercase tracking-wide text-gray-500">Experience</div>
-              {experience.map((role, i) => (
-                <div key={i} className="mt-3">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {joinParts([role.role, role.company]) || 'Untitled role'}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {joinParts([role.dates, role.location])}
-                  </div>
-                  <List
-                    items={Array.isArray(role.achievements) ? role.achievements : []}
-                    render={(a) => joinParts([a.text, a.metric])}
-                  />
-                </div>
-              ))}
+              {experience.map((role, i) => <Role key={i} role={role} />)}
             </div>
           )}
 
@@ -159,6 +184,34 @@ export default function MasterRecordPanel({ master, onUpdated }) {
             <div className="py-3">
               <div className="text-xs uppercase tracking-wide text-gray-500">Your own words</div>
               <List items={voice} render={(v) => <span className="italic">“{v}”</span>} />
+            </div>
+          )}
+
+          {master.voice_guide && (
+            <div className="py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">How you write</div>
+              <div className="text-sm text-gray-800 whitespace-pre-wrap">{master.voice_guide}</div>
+            </div>
+          )}
+
+          {gaps.length > 0 && (
+            <div className="py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Gaps and unknowns</div>
+              <List items={gaps} render={(g) => g} />
+            </div>
+          )}
+
+          {conflicts.length > 0 && (
+            <div className="py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Open questions</div>
+              <List
+                items={conflicts}
+                render={(c) =>
+                  typeof c === 'string'
+                    ? c
+                    : joinParts([c.field, c.where, c.old_value, c.new_value])
+                }
+              />
             </div>
           )}
         </div>

@@ -31,6 +31,10 @@ const strList = (v) => arr(v).map(str).filter(Boolean);
 
 function normaliseAchievement(a) {
   return {
+    // Carry every field through, then coerce the ones we know. A field the
+    // editor never rendered must survive the round-trip untouched — dropping it
+    // silently deleted real content from the stored record.
+    ...(a && typeof a === 'object' && !Array.isArray(a) ? a : {}),
     text: str(a?.text),
     metric: str(a?.metric),
     skills_utilized: strList(a?.skills_utilized),
@@ -39,6 +43,7 @@ function normaliseAchievement(a) {
 
 function normaliseRole(role) {
   const out = {
+    ...(role && typeof role === 'object' && !Array.isArray(role) ? role : {}),
     company: str(role?.company),
     role: str(role?.role),
     dates: str(role?.dates),
@@ -50,6 +55,8 @@ function normaliseRole(role) {
   // real detail and resurrect the job-hopping signal the merge removed.
   if (Array.isArray(role?.contracts) && role.contracts.length) {
     out.contracts = role.contracts.map(normaliseRole);
+  } else {
+    delete out.contracts;
   }
   // Clarifications steer generation and are set by the flag fixer; keep them.
   if (str(role?.clarification)) out.clarification = str(role.clarification);
@@ -65,13 +72,22 @@ export function normaliseMaster(edited, stored = null) {
     throw new Error('normaliseMaster: a master object is required');
   }
 
-  const identity = edited.identity && typeof edited.identity === 'object' ? edited.identity : {};
-  const contact = identity.contact && typeof identity.contact === 'object' ? identity.contact : {};
+  // Same one-record rule one level down: identity/contact keys the editor never
+  // rendered come through from the stored record instead of being deleted.
+  const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+  const identity = obj(edited.identity);
+  const contact = obj(identity.contact);
+  // Unknown identity/contact keys, like unknown top-level keys, come from the
+  // stored record only — never from what was submitted.
+  const storedIdentity = obj(stored?.identity);
+  const storedContact = obj(storedIdentity.contact);
 
   const out = {
     identity: {
+      ...storedIdentity,
       name: str(identity.name),
       contact: {
+        ...storedContact,
         email: str(contact.email),
         phone: str(contact.phone),
         location: str(contact.location),
@@ -106,6 +122,18 @@ export function normaliseMaster(edited, stored = null) {
       .filter((n) => n.observation),
     gaps: strList(edited.gaps),
   };
+
+  // Any field the STORED record carries that this schema does not name — a
+  // field the editor never rendered and therefore never posted back. It is
+  // carried through rather than deleted, so the record on screen and the record
+  // in the database stay ONE record. Deliberately from `stored` only: an
+  // unknown key in what the user SUBMITTED is still rejected, so the editor
+  // cannot be used to write arbitrary keys into the row.
+  for (const key of Object.keys(stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {})) {
+    if (!(key in out) && !PRESERVED.includes(key) && !PRESERVED_STRINGS.includes(key)) {
+      out[key] = stored[key];
+    }
+  }
 
   for (const key of PRESERVED) {
     out[key] = arr(stored?.[key]);
