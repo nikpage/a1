@@ -1,7 +1,11 @@
 // components/VoiceProfilePanel.js
 //
-// The voice profile, end to end: paste samples of your own writing, label each
-// one, extract the profile, then REVIEW AND EDIT it.
+// The voice profile, end to end: paste samples of your own writing, extract the
+// profile, then REVIEW AND EDIT it.
+//
+// The user is never asked what kind of writing each sample is. The extraction
+// reads the register off the text and reports it back, which is shown here — a
+// question the model can answer itself is a question not worth asking.
 //
 // The review screen is not optional and not collapsible past the first visit —
 // it is the difference between a tool and a black box. The user deletes the
@@ -14,15 +18,14 @@
 //     accuracy rather than personality.
 
 import { useState } from 'react';
-import { SAMPLE_LABELS } from '../prompts/voice-profile';
 
-const LABEL_ORDER = ['application', 'work_doc', 'public', 'personal', 'other'];
+const emptySample = () => ({ text: '' });
 
 // Registers far from business prose need most of List B translated, and the
-// result is thinner. Say so instead of quietly producing a weaker letter.
-const FAR_LABELS = new Set(['personal']);
-
-const emptySample = () => ({ label: 'application', text: '' });
+// result is thinner. The extraction reports what it read; this spots the private
+// registers in that report so the user is told rather than quietly served a
+// weaker letter.
+const FAR = /(personal|private|chat|message|forum|informal|casual)/i;
 
 function wordCount(text) {
   return String(text || '').trim().split(/\s+/).filter(Boolean).length;
@@ -31,7 +34,7 @@ function wordCount(text) {
 export default function VoiceProfilePanel({ profile, onUpdated }) {
   const [samples, setSamples] = useState(
     Array.isArray(profile?.samples) && profile.samples.length
-      ? profile.samples.map((s) => ({ label: s.label || 'other', text: s.text || '' }))
+      ? profile.samples.map((s) => ({ text: s.text || '' }))
       : [emptySample()]
   );
   const [busy, setBusy] = useState('');      // '' | 'extract' | 'save'
@@ -53,7 +56,7 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
     setOwnLines(p?.profile_text || '');
     setCleanup(p?.options?.cleanup === true);
     if (Array.isArray(p?.samples) && p.samples.length) {
-      setSamples(p.samples.map((s) => ({ label: s.label || 'other', text: s.text || '' })));
+      setSamples(p.samples.map((s) => ({ text: s.text || '' })));
     }
   }
 
@@ -110,7 +113,10 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
 
   const usable = samples.filter((s) => s.text.trim().length > 0);
   const thin = usable.length === 1;
-  const allFar = usable.length > 0 && usable.every((s) => FAR_LABELS.has(s.label));
+  // Judged from what the extraction READ, so it can only be shown after a run —
+  // there is no label to guess from beforehand, by design.
+  const registers = Array.isArray(profile?.registers) ? profile.registers : [];
+  const allFar = registers.length > 0 && registers.every((r) => FAR.test(`${r.register} ${r.distance}`));
   const hasProfile = Boolean(profile?.list_a?.length || profile?.list_b?.length || profile?.profile_text);
 
   return (
@@ -138,26 +144,13 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
         <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-3">
           <p className="text-sm text-gray-700">
             Paste two to four pieces of your own writing, ideally 300+ words each. <strong>Not your CV</strong> —
-            bullet fragments carry no voice.
+            bullet fragments carry no voice. No need to say what each one is; that gets read off the writing.
           </p>
 
           {samples.map((s, i) => (
             <div key={i} className="mt-3 rounded border border-gray-200 bg-white p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-gray-700">Sample {i + 1} — what is it?</span>
-                {LABEL_ORDER.map((key) => (
-                  <button
-                    key={key}
-                    onClick={() => setSamples(samples.map((x, j) => (j === i ? { ...x, label: key } : x)))}
-                    className={`px-2 py-0.5 text-xs rounded-full border ${
-                      s.label === key
-                        ? 'border-blue-600 bg-blue-50 text-blue-800'
-                        : 'border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    {SAMPLE_LABELS[key]}
-                  </button>
-                ))}
+                <span className="text-xs font-medium text-gray-700">Sample {i + 1}</span>
                 {samples.length > 1 && (
                   <button
                     onClick={() => setSamples(samples.filter((_, j) => j !== i))}
@@ -193,13 +186,6 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
               One sample is enough to start, but the profile will be weaker — a single piece only shows one register.
             </p>
           )}
-          {allFar && (
-            <p className="mt-2 text-sm text-amber-800">
-              These are all private-register writing, so most of it has to be translated for a letter. Expect a
-              thinner result than a work email or a previous application would give.
-            </p>
-          )}
-
           <div className="mt-3 flex items-center gap-3">
             <button
               onClick={extract}
@@ -222,6 +208,19 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
             This is what your writing looks like from the outside. Delete anything wrong and add your own lines —
             yours win.
           </p>
+
+          {registers.length > 0 && (
+            <p className="mt-2 text-xs text-gray-600">
+              Read as: {registers.map((r) => `${r.register}${r.distance ? ` (${r.distance})` : ''}`).join('; ')}
+            </p>
+          )}
+
+          {allFar && (
+            <p className="mt-2 text-sm text-amber-800">
+              That is all private-register writing, so most of it had to be translated for a letter. Expect a
+              thinner result than a work email or a previous application would give.
+            </p>
+          )}
 
           {profile?.confidence && (
             <p className="mt-2 text-xs italic text-gray-600">{profile.confidence}</p>

@@ -24,45 +24,17 @@
 //            emphatic" is not "no emphasis" — it is "states it flat, no
 //            hedging"). The translation is stored and shown to the user.
 //
-// How far the translation has to travel is what the sample LABEL is for: a work
-// email needs almost none, a personal chat needs a lot.
+// The REGISTER of each sample — work email, blog post, personal message, a
+// previous application — is inferred by the model FROM THE TEXT and reported
+// back in the profile. The user is never asked to classify their own writing:
+// the writing says what it is, and a question the model can answer itself is a
+// question not worth asking.
 
-// What the user tells us each sample is. The label travels with the sample into
-// the prompt, because "so anyway" in a forum post and in a work email are not
-// the same signal about how this person writes at work.
-export const SAMPLE_LABELS = {
-  application: 'Previous application or cover letter',
-  work_doc: 'Work email or work document',
-  public: 'Blog post, article, or public writing',
-  personal: 'Personal message, chat, forum post',
-  other: 'Other',
-};
-
-// How much translation each register needs. Used by the prompt to calibrate, and
-// by the UI to warn the user when their samples are all far from business prose.
-export const LABEL_DISTANCE = {
-  application: 'almost none — this is already business writing',
-  work_doc: 'almost none — this is already business writing',
-  public: 'some — public prose is looser than a letter but still written for strangers',
-  personal: 'a lot — private register; expect most of List B to need translating',
-  other: 'unknown — judge from the writing itself',
-};
-
-// A single model call over ALL samples together: traits show up as patterns
-// across samples, and one call can see the pattern where per-sample calls only
-// see instances.
 export function buildVoiceProfilePrompt({ samples = [] } = {}) {
   const blocks = samples
-    .map((s, i) => {
-      const label = SAMPLE_LABELS[s?.label] || SAMPLE_LABELS.other;
-      const distance = LABEL_DISTANCE[s?.label] || LABEL_DISTANCE.other;
-      return `--- SAMPLE ${i + 1} ---
-WHAT IT IS: ${label}
-DISTANCE FROM BUSINESS PROSE: ${distance}
-
+    .map((s, i) => `--- SAMPLE ${i + 1} ---
 ${String(s?.text || '').trim()}
---- END SAMPLE ${i + 1} ---`;
-    })
+--- END SAMPLE ${i + 1} ---`)
     .join('\n\n');
 
   const thin = samples.length < 2;
@@ -81,6 +53,11 @@ Read the writing samples below — all by the SAME person — and describe how t
 Return 15 to 25 observations in total, split into the two lists defined below. Every observation must be specific enough to ACT on. "Writes clearly" is useless. "Averages 12-word sentences, then drops a 3-word one to land the point" is usable.
 
 Describe only what the samples actually show. Where a trait is present but inconsistent, say so ("hedges in the personal message, flatly assertive in the work email") — that inconsistency is itself a fact about them.
+
+# First, read the register off the text
+For each sample, work out FROM THE WRITING ITSELF what kind of writing it is — a previous application or cover letter, a work email or work document, a blog post or article or other public writing, a personal message or chat or forum post, or something else. Say which, in one short phrase per sample, and how far that register sits from the prose of a cover letter. Nobody has told you: infer it from the vocabulary, the address, the formality and what the piece is trying to do.
+
+That reading is what calibrates List B below: writing already in a work register needs almost no translation, a private message needs a great deal.
 ${thin ? '\nOnly one sample was supplied, so you are reading a single register. Say plainly in "confidence" which observations you could not test across registers.\n' : ''}
 # LIST A — carries across registers. Applied directly to their cover letters.
 Cover, where the samples show it:
@@ -107,7 +84,7 @@ For EVERY List B trait, write its business-appropriate EQUIVALENT. Translate, ne
 - Fragments for emphasis → short full sentences for emphasis.
 - Subject-specific slang → the same directness in this letter's own subject matter.
 
-Use each sample's stated DISTANCE FROM BUSINESS PROSE to judge how far the translation has to travel.
+Use the register you inferred for each sample to judge how far the translation has to travel.
 
 # Rules
 - Plain prose observations. No scores, no ratings, no tag lists, no percentages you cannot support.
@@ -116,6 +93,9 @@ Use each sample's stated DISTANCE FROM BUSINESS PROSE to judge how far the trans
 
 # Output — JSON only, no markdown fence, exactly this shape:
 {
+  "registers": [
+    { "sample": 1, "register": "the kind of writing this is, in a short phrase", "distance": "how far it sits from cover-letter prose, in a short phrase" }
+  ],
   "list_a": [
     "one specific, actionable observation about how they write, in plain prose"
   ],
@@ -177,17 +157,16 @@ ${cleanup ? `
 // One or two SHORT excerpts, included so the model can hear the rhythm — a
 // description of cadence loses the cadence. Hard-fenced: manner only, no facts,
 // no phrasing lifted. Kept short on purpose; long excerpts get plagiarised.
+//
+// Taken in the order the user pasted them: they put their best first, and there
+// is no label to sort by — register is something the extraction READS, not
+// something the user was asked to declare.
 export function voiceExcerptBlock(profile, maxChars = 700) {
   const samples = Array.isArray(profile?.samples) ? profile.samples : [];
   if (!samples.length) return '';
 
-  // Prefer the registers closest to business prose: the rhythm the model hears
-  // should be the one it is being asked to write in.
-  const rank = { application: 0, work_doc: 1, public: 2, other: 3, personal: 4 };
-  const ordered = [...samples].sort((a, b) => (rank[a?.label] ?? 3) - (rank[b?.label] ?? 3));
-
   const excerpts = [];
-  for (const s of ordered.slice(0, 2)) {
+  for (const s of samples.slice(0, 2)) {
     const text = String(s?.text || '').trim();
     if (!text) continue;
     excerpts.push(text.length > maxChars ? `${text.slice(0, maxChars).trimEnd()}…` : text);

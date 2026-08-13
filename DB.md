@@ -24,7 +24,7 @@
 | `user_id` | text | — | PK, FK → users |
 | `cv_data` | text | — | Extracted CV text |
 | `master_cv` | jsonb | — | Per-user MASTER CV (source-of-truth): structured career record built once from `cv_data` by the background analysis worker and reused by every later match. Built/merged via `buildOrMergeMaster()` in `utils/openai.js`; read/written via `getMasterCv()` / `saveMasterCv()`. Added in `005_master_cv.sql`. |
-| `voice_profile` | jsonb | — | Per-user VOICE PROFILE — how they write, from samples of their own writing: `{ samples: [{label,text}], list_a: [], list_b: [{trait,translation}], confidence, profile_text, options: { cleanup }, updated_at }`. Read by the cover-letter generator (`prompts/voice-profile.js`); read/written via `getVoiceProfile()` / `saveVoiceProfile()`. Deliberately NOT inside `master_cv` — that record is the evidence set the truth-verify pass and Layer 6 validator check claims against, and voice text in it would launder a sample's wording into a "supported" fact. Added in `009_voice_profile.sql`. |
+| `voice_profile` | jsonb | — | Per-user VOICE PROFILE — how they write, from samples of their own writing: `{ samples: [{text}], registers: [{sample,register,distance}], list_a: [], list_b: [{trait,translation}], confidence, profile_text, options: { cleanup }, updated_at }`. Read by the cover-letter generator (`prompts/voice-profile.js`); read/written via `getVoiceProfile()` / `saveVoiceProfile()`. Deliberately NOT inside `master_cv` — that record is the evidence set the truth-verify pass and Layer 6 validator check claims against, and voice text in it would launder a sample's wording into a "supported" fact. Added in `009_voice_profile.sql`. |
 | `cv_file_url` | text | — | Storage URL |
 | `created_at` | timestamp | now() | |
 

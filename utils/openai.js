@@ -10,7 +10,7 @@ import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
 import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
-import { buildVoiceCheckPrompt, buildVoiceFixPrompt } from '../prompts/voice-check.js';
+import { buildVoiceFixPrompt } from '../prompts/voice-check.js';
 import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits } from './cv-validate.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
@@ -842,61 +842,44 @@ export async function buildVoiceProfile(samples) {
   };
 }
 
-// Check a finished letter against the profile, then repair only what missed.
+// Bring a finished letter back to the author's own voice: ONE call that finds
+// where the draft diverges from the profile and rewrites only those parts.
 //
-// This is where most of the voice actually comes from: a first draft drifts to
-// generic business prose however the prompt is written. Two calls on the
-// generation model, because judging cadence and rewriting in a person's manner
-// is prose work, not schema-checking.
+// This is where most of the voice actually comes from — a first draft drifts to
+// generic business prose however the prompt is written. It runs on the generation
+// model because judging cadence and rewriting in a person's manner is prose work,
+// not schema-checking.
 //
-// Non-fatal throughout: any failure returns the document untouched, because a
-// letter in the wrong voice still beats no letter. Corrections are applied by
-// literal string match (applyGenerationCorrections), so a fix that quotes text
-// the letter does not contain is discarded rather than trusted.
+// Non-fatal: any failure returns the document untouched, because a letter in the
+// wrong voice still beats no letter. Repairs are applied by literal string match
+// (applyGenerationCorrections), so a "repair" quoting text the letter does not
+// contain is discarded — which is what keeps a style pass from rewriting the
+// document out from under the fact-checker that runs after it.
 export async function applyVoice({ document, profile, docType = 'cover' }) {
   const usages = [];
-  const empty = { content: document, gemini_usages: usages, misses: [], applied: [] };
+  const empty = { content: document, gemini_usages: usages, applied: [] };
   if (!document || !profile) return empty;
 
-  // Nothing to check against: no List A, no translated List B, no user lines.
+  // Nothing to match against: no List A, no translated List B, no user lines.
   const hasProfile =
     (Array.isArray(profile.list_a) && profile.list_a.length > 0) ||
     (Array.isArray(profile.list_b) && profile.list_b.some((b) => String(b?.translation || '').trim())) ||
     String(profile.profile_text || '').trim().length > 0;
   if (!hasProfile) return empty;
 
-  let misses = [];
   try {
-    const checkMessages = buildVoiceCheckPrompt({ document, profile });
-    const checkData = await callGemini(GEMINI_GENERATION_MODEL, checkMessages, { reasoning_effort: 'low' });
-    const checkUsage = geminiUsage(`voice check ${docType}`, checkData, GEMINI_GENERATION_MODEL);
-    usages.push(checkUsage);
-    trackDailySpend(checkUsage.costUsd);
-    const parsed = JSON.parse(stripJsonFences(checkData.choices?.[0]?.message?.content || '{}'));
-    misses = (Array.isArray(parsed.misses) ? parsed.misses : []).filter((m) => String(m?.quote || '').trim());
-  } catch (e) {
-    logger.error(`voice check failed (${docType}, keeping document):`, e.message);
-    return { ...empty, gemini_usages: usages };
-  }
-
-  if (!misses.length) {
-    logger.info(`[voice ${docType}] draft matched the profile — no repairs`);
-    return { ...empty, gemini_usages: usages };
-  }
-
-  try {
-    const fixMessages = buildVoiceFixPrompt({ document, profile, misses });
-    const fixData = await callGemini(GEMINI_GENERATION_MODEL, fixMessages, { reasoning_effort: 'low', temperature: 0.4 });
-    const fixUsage = geminiUsage(`voice fix ${docType}`, fixData, GEMINI_GENERATION_MODEL);
-    usages.push(fixUsage);
-    trackDailySpend(fixUsage.costUsd);
-    const parsed = JSON.parse(stripJsonFences(fixData.choices?.[0]?.message?.content || '{}'));
+    const messages = buildVoiceFixPrompt({ document, profile });
+    const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
+    const gemini_usage = geminiUsage(`voice fix ${docType}`, data, GEMINI_GENERATION_MODEL);
+    usages.push(gemini_usage);
+    trackDailySpend(gemini_usage.costUsd);
+    const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
     const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
-    logger.info(`[voice ${docType}] ${misses.length} miss(es) found, ${applied.length} repaired`);
-    return { content, gemini_usages: usages, misses, applied };
+    logger.info(`[voice ${docType}] ${applied.length} divergence(s) brought back to the profile`);
+    return { content, gemini_usages: usages, applied };
   } catch (e) {
     logger.error(`voice fix failed (${docType}, keeping document):`, e.message);
-    return { ...empty, gemini_usages: usages, misses };
+    return { ...empty, gemini_usages: usages };
   }
 }
 
@@ -1077,6 +1060,6 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
       ...(verified.gemini_usage ? [verified.gemini_usage] : []),
       ...(repair.gemini_usage ? [repair.gemini_usage] : []),
     ],
-    voice_misses: voiced.misses || [],
+    voice_fixes: voiced.applied || [],
   };
 }

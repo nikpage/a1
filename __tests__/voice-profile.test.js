@@ -9,8 +9,9 @@
 //     instruction barring it from carrying facts has to be present and absolute.
 //   - the SEPARATION from the master: voice text must not be in the evidence set
 //     the truth-verify pass and Layer 6 validator check claims against.
-//   - the CHECK/FIX pass: it must report literal quotes and repair only those.
+//   - the FIX pass: one call, literal quotes, only the divergences repaired.
 //   - the ROUTE: session user only, samples too thin refused, hand edits kept.
+//   - NO LABEL QUESTION: the register is read off the text, never asked for.
 
 vi.hoisted(() => {
   process.env.JWT_SECRET = 'test-voice-profile-secret';
@@ -23,9 +24,8 @@ import {
   buildVoiceProfilePrompt,
   voiceProfileBlock,
   voiceExcerptBlock,
-  SAMPLE_LABELS,
 } from '../prompts/voice-profile.js';
-import { buildVoiceCheckPrompt, buildVoiceFixPrompt } from '../prompts/voice-check.js';
+import { buildVoiceFixPrompt } from '../prompts/voice-check.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 
 const PROFILE = {
@@ -39,23 +39,35 @@ const PROFILE = {
   ],
   profile_text: 'I never use exclamation marks.',
   options: { cleanup: false },
+  registers: [
+    { sample: 1, register: 'work email', distance: 'close to a letter' },
+    { sample: 2, register: 'personal message', distance: 'far' },
+  ],
   samples: [
-    { label: 'work_doc', text: 'We shipped the migration on Friday. It broke nothing. The team stayed late twice.' },
-    { label: 'personal', text: 'look mate the thing is fucking useless, i binned it' },
+    { text: 'We shipped the migration on Friday. It broke nothing. The team stayed late twice.' },
+    { text: 'look mate the thing is fucking useless, i binned it' },
   ],
 };
 
 describe('buildVoiceProfilePrompt', () => {
-  test('labels each sample and tells the model how far that register is from business prose', () => {
+  test('reads the register off the text instead of being told it', () => {
+    const [, user] = buildVoiceProfilePrompt({ samples: [{ text: 'hey so anyway' }] });
+    expect(user.content).toMatch(/work out FROM THE WRITING ITSELF what kind of writing it is/);
+    expect(user.content).toMatch(/Nobody has told you: infer it/);
+    expect(user.content).toContain('"registers"');
+  });
+
+  test('carries no label for the user to have set — the sample is just its text', () => {
     const [, user] = buildVoiceProfilePrompt({
       samples: [{ label: 'personal', text: 'hey so anyway' }],
     });
-    expect(user.content).toContain(SAMPLE_LABELS.personal);
-    expect(user.content).toMatch(/DISTANCE FROM BUSINESS PROSE: a lot/);
+    // A label passed in by an old caller must not become an instruction.
+    expect(user.content).not.toMatch(/WHAT IT IS:/);
+    expect(user.content).not.toMatch(/DISTANCE FROM BUSINESS PROSE:/);
   });
 
   test('demands 15-25 actionable observations, split into the two lists, and translations for List B', () => {
-    const [, user] = buildVoiceProfilePrompt({ samples: [{ label: 'public', text: 'x' }] });
+    const [, user] = buildVoiceProfilePrompt({ samples: [{ text: 'x' }] });
     expect(user.content).toMatch(/15 to 25 observations/);
     expect(user.content).toMatch(/LIST A — carries across registers/);
     expect(user.content).toMatch(/LIST B — register-bound\. NEVER applied directly/);
@@ -65,10 +77,8 @@ describe('buildVoiceProfilePrompt', () => {
   });
 
   test('says out loud when only one sample was given, so the model reports what it could not test', () => {
-    const [, one] = buildVoiceProfilePrompt({ samples: [{ label: 'public', text: 'x' }] });
-    const [, two] = buildVoiceProfilePrompt({
-      samples: [{ label: 'public', text: 'x' }, { label: 'work_doc', text: 'y' }],
-    });
+    const [, one] = buildVoiceProfilePrompt({ samples: [{ text: 'x' }] });
+    const [, two] = buildVoiceProfilePrompt({ samples: [{ text: 'x' }, { text: 'y' }] });
     expect(one.content).toMatch(/Only one sample was supplied/);
     expect(two.content).not.toMatch(/Only one sample was supplied/);
   });
@@ -128,14 +138,22 @@ describe('voiceExcerptBlock', () => {
     expect(out).toMatch(/the master record is right/);
   });
 
-  test('prefers the register closest to a letter', () => {
+  test('takes the samples in the order they were pasted', () => {
     const out = voiceExcerptBlock(PROFILE);
-    // work_doc outranks personal, so the work sample leads.
     expect(out.indexOf('We shipped the migration')).toBeLessThan(out.indexOf('look mate'));
   });
 
+  test('uses at most two samples', () => {
+    const out = voiceExcerptBlock({
+      samples: [{ text: 'first one' }, { text: 'second one' }, { text: 'third one' }],
+    });
+    expect(out).toContain('first one');
+    expect(out).toContain('second one');
+    expect(out).not.toContain('third one');
+  });
+
   test('truncates a long sample rather than pasting pages of it', () => {
-    const out = voiceExcerptBlock({ samples: [{ label: 'public', text: 'w '.repeat(2000) }] }, 100);
+    const out = voiceExcerptBlock({ samples: [{ text: 'w '.repeat(2000) }] }, 100);
     expect(out).toContain('…');
     expect(out.length).toBeLessThan(600);
   });
@@ -168,36 +186,41 @@ describe('buildCoverPrompt with a voice profile', () => {
   });
 });
 
-describe('voice check and fix prompts', () => {
-  test('the check numbers the profile lines and demands a verbatim quote per miss', () => {
-    const [, user] = buildVoiceCheckPrompt({ document: 'A letter.', profile: PROFILE });
+describe('the voice fix prompt — one call, find and repair', () => {
+  test('numbers the profile lines and never includes a raw register-bound trait', () => {
+    const [, user] = buildVoiceFixPrompt({ document: 'A letter.', profile: PROFILE });
     expect(user.content).toMatch(/1\. Averages 12-word sentences/);
-    // Translations are numbered too; raw traits are not present to be numbered.
     expect(user.content).toContain('States it flatly, with no hedging, when emphatic.');
     expect(user.content).not.toContain('Swears when emphatic');
-    expect(user.content).toMatch(/quotes the offending text EXACTLY/);
-    expect(user.content).toMatch(/An empty list is a valid and useful answer/);
   });
 
-  test('the check is told that drift to business prose is the target and mild informality is not a miss', () => {
-    const [, user] = buildVoiceCheckPrompt({ document: 'x', profile: PROFILE });
+  test('finds the divergences AND repairs them in the same call', () => {
+    const [, user] = buildVoiceFixPrompt({ document: 'A letter.', profile: PROFILE });
+    expect(user.content).toMatch(/Find every place the letter diverges from the profile and rewrite ONLY those parts/);
     expect(user.content).toMatch(/Drift toward generic business writing is the failure you exist to catch/);
-    expect(user.content).toMatch(/Mild informality is NOT a miss/);
   });
 
-  test('the fix pass repairs only the flagged spans and may not add a fact', () => {
-    const [, user] = buildVoiceFixPrompt({
-      document: 'A letter.',
-      profile: PROFILE,
-      misses: [{ profile_line: 2, miss: 'opens with setup', quote: 'I am writing to apply' }],
-    });
-    expect(user.content).toContain('TEXT: "I am writing to apply"');
+  test('repairs by literal span and may not add a fact', () => {
+    const [, user] = buildVoiceFixPrompt({ document: 'A letter.', profile: PROFILE });
     expect(user.content).toMatch(/must appear VERBATIM/);
     expect(user.content).toMatch(/never add a fact, a number, a skill, a duration or a claim/);
-    expect(user.content).toMatch(/Change nothing that was not flagged/);
-    // Same span/replacement contract as the truth-verify pass, so corrections
-    // can be applied by literal match and anything invented is discarded.
+    expect(user.content).toMatch(/Change nothing that does not diverge/);
+    // Same span/replacement contract as the truth-verify pass, so corrections are
+    // applied by literal match and anything invented is discarded.
     expect(user.content).toContain('"unsupported"');
+  });
+
+  test('lets the profile win over convention and does not police informality', () => {
+    const [, user] = buildVoiceFixPrompt({ document: 'x', profile: PROFILE });
+    expect(user.content).toMatch(/Mild informality is NOT a divergence/);
+    expect(user.content).toMatch(/THE PROFILE WINS/);
+  });
+
+  test('adds the tidy-up licence only when the user asked for it', () => {
+    const [, off] = buildVoiceFixPrompt({ document: 'x', profile: PROFILE });
+    const [, on] = buildVoiceFixPrompt({ document: 'x', profile: { ...PROFILE, options: { cleanup: true } } });
+    expect(off.content).not.toMatch(/tidied while keeping their voice/);
+    expect(on.content).toMatch(/tidied while keeping their voice/);
   });
 });
 
@@ -241,7 +264,12 @@ describe('POST /api/voice-profile', () => {
     mockGetVoiceProfile.mockResolvedValue(null);
     mockSaveVoiceProfile.mockResolvedValue([{ user_id: SESSION_USER }]);
     mockBuildVoiceProfile.mockResolvedValue({
-      profile: { list_a: ['Short sentences.'], list_b: [{ trait: 'swears', translation: 'flat assertion' }], confidence: 'One register only.' },
+      profile: {
+        registers: [{ sample: 1, register: 'work email', distance: 'close' }],
+        list_a: ['Short sentences.'],
+        list_b: [{ trait: 'swears', translation: 'flat assertion' }],
+        confidence: 'One register only.',
+      },
       gemini_usage: USAGE,
     });
   });
@@ -250,7 +278,7 @@ describe('POST /api/voice-profile', () => {
     const { res, done } = await call({
       action: 'extract',
       user_id: 'victim-user',
-      samples: [{ label: 'work_doc', text: LONG }],
+      samples: [{ text: LONG }],
     });
     await done;
 
@@ -258,7 +286,9 @@ describe('POST /api/voice-profile', () => {
     expect(mockSaveVoiceProfile.mock.calls[0][0]).toBe(SESSION_USER);
     const saved = mockSaveVoiceProfile.mock.calls[0][1];
     expect(saved.list_a).toEqual(['Short sentences.']);
-    expect(saved.samples[0].label).toBe('work_doc');
+    expect(saved.samples[0].text).toBe(LONG);
+    // The register comes from the extraction, not from the user.
+    expect(saved.registers).toEqual([{ sample: 1, register: 'work email', distance: 'close' }]);
 
     // The cost-logging rule has no exceptions: model, tokens, thinking tokens.
     expect(mockLogAiTransaction).toHaveBeenCalledWith(expect.objectContaining({
@@ -271,7 +301,7 @@ describe('POST /api/voice-profile', () => {
   });
 
   test('refuses a sample too thin to carry a pattern', async () => {
-    const { res, done } = await call({ action: 'extract', samples: [{ label: 'work_doc', text: 'Too short.' }] });
+    const { res, done } = await call({ action: 'extract', samples: [{ text: 'Too short.' }] });
     await done;
 
     expect(res.statusCode).toBe(400);
@@ -280,7 +310,7 @@ describe('POST /api/voice-profile', () => {
 
   test("keeps the user's hand-written lines across a re-extract", async () => {
     mockGetVoiceProfile.mockResolvedValue({ profile_text: 'I never use exclamation marks.', options: { cleanup: true } });
-    const { done } = await call({ action: 'extract', samples: [{ label: 'work_doc', text: LONG }] });
+    const { done } = await call({ action: 'extract', samples: [{ text: LONG }] });
     await done;
 
     const saved = mockSaveVoiceProfile.mock.calls[0][1];
@@ -289,10 +319,19 @@ describe('POST /api/voice-profile', () => {
   });
 
   test('save keeps the stored samples — an edit cannot rewrite what was pasted', async () => {
-    mockGetVoiceProfile.mockResolvedValue({ samples: [{ label: 'work_doc', text: LONG }] });
+    mockGetVoiceProfile.mockResolvedValue({
+      samples: [{ text: LONG }],
+      registers: [{ sample: 1, register: 'work email', distance: 'close' }],
+    });
     const { res, done } = await call({
       action: 'save',
-      profile: { list_a: ['Edited by hand.'], list_b: [], profile_text: 'No exclamation marks.', samples: [{ label: 'other', text: 'injected' }] },
+      profile: {
+        list_a: ['Edited by hand.'],
+        list_b: [],
+        profile_text: 'No exclamation marks.',
+        samples: [{ text: 'injected' }],
+        registers: [{ sample: 1, register: 'injected register', distance: 'x' }],
+      },
     });
     await done;
 
@@ -300,6 +339,8 @@ describe('POST /api/voice-profile', () => {
     const saved = mockSaveVoiceProfile.mock.calls[0][1];
     expect(saved.list_a).toEqual(['Edited by hand.']);
     expect(saved.samples[0].text).toBe(LONG);
+    // Neither the samples nor the read registers are editable from a save.
+    expect(saved.registers[0].register).toBe('work email');
   });
 
   test('save drops a List B row whose translation was emptied', async () => {

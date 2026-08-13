@@ -4,8 +4,9 @@
 // their own writing and then reviewed and edited by them.
 //
 // Two actions, one route:
-//   extract — samples (each with the user's label for what it is) → one AI call
-//             → List A / List B(+translations) → saved, and returned for review.
+//   extract — the samples → one AI call → the register of each sample read off
+//             the text, List A, List B(+translations) → saved, and returned for
+//             review. The user is never asked to classify their own writing.
 //   save    — the profile the user edited by hand. No AI call. Their edits are
 //             authoritative: they know how they write better than a model reading
 //             four samples does.
@@ -20,7 +21,6 @@
 import requireAuth from '../../lib/requireAuth';
 import { getVoiceProfile, saveVoiceProfile, logAiTransaction } from '../../utils/database';
 import { buildVoiceProfile } from '../../utils/openai';
-import { SAMPLE_LABELS } from '../../prompts/voice-profile';
 import { logger } from '../../lib/logger';
 
 // A sample thin enough to carry no pattern is worse than no sample: it produces
@@ -43,8 +43,7 @@ function cleanSamples(input) {
     if (text.length > MAX_SAMPLE_CHARS) {
       return { error: 'One of those samples is too long — trim it to a few pages.' };
     }
-    const label = Object.prototype.hasOwnProperty.call(SAMPLE_LABELS, s?.label) ? s.label : 'other';
-    samples.push({ label, text });
+    samples.push({ text });
   }
   if (!samples.length) return { error: 'Paste at least one sample of your own writing' };
   return { samples };
@@ -52,8 +51,15 @@ function cleanSamples(input) {
 
 // The stored profile shape, assembled defensively. Anything the client sends that
 // isn't part of the shape is dropped rather than written into the column.
-function cleanProfile({ list_a, list_b, confidence, profile_text, options, samples }) {
+function cleanProfile({ registers, list_a, list_b, confidence, profile_text, options, samples }) {
   return {
+    // What the extraction read each sample as. Shown back to the user, and the
+    // reason no label buttons exist: the writing says what it is.
+    registers: (Array.isArray(registers) ? registers : []).map((r) => ({
+      sample: Number(r?.sample) || 0,
+      register: String(r?.register || '').trim(),
+      distance: String(r?.distance || '').trim(),
+    })).filter((r) => r.register),
     list_a: (Array.isArray(list_a) ? list_a : []).map((o) => String(o || '').trim()).filter(Boolean),
     list_b: (Array.isArray(list_b) ? list_b : [])
       .map((b) => ({
@@ -67,7 +73,6 @@ function cleanProfile({ list_a, list_b, confidence, profile_text, options, sampl
     profile_text: String(profile_text || '').trim().slice(0, MAX_PROFILE_TEXT),
     options: { cleanup: options?.cleanup === true },
     samples: (Array.isArray(samples) ? samples : []).slice(0, MAX_SAMPLES).map((s) => ({
-      label: Object.prototype.hasOwnProperty.call(SAMPLE_LABELS, s?.label) ? s.label : 'other',
       text: String(s?.text || '').trim().slice(0, MAX_SAMPLE_CHARS),
     })),
     updated_at: new Date().toISOString(),
@@ -151,7 +156,13 @@ async function handler(req, res) {
       logger.error('voice-profile: could not read existing profile:', e.message);
     }
 
-    const profile = cleanProfile({ ...incoming, samples: existing?.samples || [] });
+    // Samples and the read registers are not editable here: the samples are what
+    // the user pasted, and the registers are what the extraction read off them.
+    const profile = cleanProfile({
+      ...incoming,
+      registers: existing?.registers || [],
+      samples: existing?.samples || [],
+    });
 
     try {
       await saveVoiceProfile(user_id, profile);
