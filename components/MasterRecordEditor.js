@@ -69,6 +69,7 @@ function StringList({ label, items, onChange }) {
 
 function RoleEditor({ role, onChange, onRemove }) {
   const achievements = Array.isArray(role.achievements) ? role.achievements : [];
+  const contracts = Array.isArray(role.contracts) ? role.contracts : [];
   const set = (patch) => onChange({ ...role, ...patch });
 
   return (
@@ -116,13 +117,41 @@ function RoleEditor({ role, onChange, onRemove }) {
         </button>
       </div>
 
-      {Array.isArray(role.contracts) && role.contracts.length > 0 && (
-        // Nested engagements of a merged role: shown so the user can see what is
-        // under it, edited through the flag fixer that created the merge.
-        <div className="mt-3 text-xs text-gray-500">
-          Contains {role.contracts.length} nested engagement{role.contracts.length === 1 ? '' : 's'} (edit via the questions panel).
+      {/*
+        Nested engagements of a merged role — the fractional/contract work that
+        sits under a consultancy. They are the same shape as a role, so they get
+        the same editor one level in: visible and editable here, not hidden
+        behind a count the user cannot open.
+      */}
+      <div className="mt-3">
+        <span className={labelClass}>
+          Engagements under this role{contracts.length > 0 ? ` (${contracts.length})` : ''}
+        </span>
+        <div className="ml-3 border-l-2 border-gray-200 pl-3">
+          {contracts.map((c, i) => (
+            <RoleEditor
+              key={i}
+              role={c}
+              onChange={(updated) => set({ contracts: replaceAt(contracts, i, updated) })}
+              onRemove={() => set({ contracts: contracts.filter((_, j) => j !== i) })}
+            />
+          ))}
+          <button
+            type="button"
+            className="mt-2 text-xs text-blue-700 underline"
+            onClick={() =>
+              set({
+                contracts: [
+                  ...contracts,
+                  { company: '', role: '', dates: '', location: '', core_tags: [], achievements: [] },
+                ],
+              })
+            }
+          >
+            + Add engagement
+          </button>
         </div>
-      )}
+      </div>
 
       <button type="button" className="mt-3 text-xs text-red-700" onClick={onRemove}>
         Remove this role
