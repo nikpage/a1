@@ -24,7 +24,6 @@
 
 import { useState } from 'react';
 import MasterProgressTracker from './MasterProgressTracker';
-import AddInfoPanel from './AddInfoPanel';
 
 // How many open questions render at once. As answers collapse the cascade
 // (utils/master-issues), the next-ranked ones surface into this window on their
@@ -348,14 +347,6 @@ export default function MasterFlagFixer({ flags = [], experience = [], rebuildin
     setBulkBusy(false);
   }
 
-  // A free-text addition rewrites the whole master server-side and returns the
-  // recomputed open questions — swap both in, exactly as a resolve does, so the
-  // skeleton shows the new role and any question it just settled or raised.
-  function handleAdded(master, newFlags) {
-    if (master && Array.isArray(master.experience)) setExp(master.experience);
-    if (Array.isArray(newFlags)) setFlagList(newFlags);
-  }
-
   function openWizard() {
     setWizardIdx(0);
     setMode('wizard');
@@ -584,11 +575,6 @@ export default function MasterFlagFixer({ flags = [], experience = [], rebuildin
         </div>
       )}
 
-      {/* Free-text top-up: work the CV never captured. Folding it in here means
-          the record is complete BEFORE the user starts generating from it. */}
-      <div className="mt-6">
-        <AddInfoPanel onUpdated={handleAdded} />
-      </div>
 
       <div className="mt-8">
         <button
