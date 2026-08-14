@@ -234,9 +234,35 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
   });
 
   test('a letter that answers none of the answerable requirements is reported', () => {
-    const text = letter('I enjoy building things and would bring energy and curiosity to your organisation every single day.');
+    // It names the employer, so the letter and the record demonstrably share a
+    // language — the warning means what it says.
+    const text = letter('I enjoy building things at wflow.com and would bring energy and curiosity to your organisation every day.');
     const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
     expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')?.params).toEqual({ available: 3 });
+  });
+
+  // THE REGRESSION. A real Czech ad answered by a real English letter reported
+  // "answers none of the 5 requirements" while the letter answered two of them:
+  // the check looked for the REQUIREMENT's words, and the requirement is quoted
+  // in the ad's language while the letter is written in the candidate's.
+  test('a Czech ad answered by an English letter is not reported as unanswered', () => {
+    const czechAd = {
+      requirement_evidence: [
+        { requirement: 'facilitujeme pětidenní design sprinty', evidence: 'Certified Google Design Sprint Master who has facilitated design sprints' },
+        { requirement: 'přepínání mezi více projekty naráz', evidence: 'coached four product managers at wflow.com across concurrent engagements' },
+      ],
+      concerns: [],
+    };
+    const text = letter('I am a Certified Google Design Sprint Master and have facilitated design sprints for years, having coached four product managers at wflow.com.');
+    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(czechAd) });
+    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+  });
+
+  test('a letter sharing no language with the record gets no verdict at all', () => {
+    // Nothing matches and nothing can be matched — silence beats a guess.
+    const text = letter('Vážený pane, dodával jsem projekty pro poradenské skupiny a řídil dodávku softwarových produktů.');
+    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
   });
 
   test('every requirement answered raises nothing', () => {

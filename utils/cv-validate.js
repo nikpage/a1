@@ -804,37 +804,49 @@ function halfPresent(haystack, tokens) {
 
 // 19. With a job ad, each requirement the record CAN answer is answered. Code
 //     cannot judge whether an answer persuades, but it can see whether one
-//     reached the page at all: a requirement counts as answered only when the
-//     letter carries something distinctive from BOTH halves — the requirement and
-//     the evidence the analysis found for it.
+//     reached the page at all.
+//
+//     ONLY THE EVIDENCE HALF IS MATCHED, never the requirement. This is an EU
+//     product and the two halves are routinely in different languages: the
+//     requirement is quoted verbatim from the ad ("facilitujeme pětidenní design
+//     sprinty") while the letter is written in the candidate's own ("I am a
+//     Certified Google Design Sprint Master"). Requiring words from both halves
+//     found nothing on EVERY cross-language application — a real Czech ad
+//     answered by a real English letter reported "answers none of the 5
+//     requirements" while the letter answered two of them. Only the evidence,
+//     drawn from the record in the record's own language, can be looked for.
 //
 //     The evidence pool is not a plan and its size is not a target: the writer
-//     chooses which requirements the letter argues, and one it left out because
-//     the argument had no room is a judgement, not a defect. What IS worth
-//     telling the candidate is that NONE of it reached the page — a letter that
-//     answers nothing the ad asked for is not tailored to the ad, whatever else
-//     it does well. Anything above zero is the writer exercising the choice this
-//     check exists to leave it.
+//     chooses which requirements the letter argues, and one left out because the
+//     argument had no room is a judgement, not a defect. What IS worth telling
+//     the candidate is that NONE of it reached the page. Steering does not
+//     suspend it: a candidate who demoted the evidence behind every requirement
+//     has an unanswered ad and is entitled to know.
 //
-//     Steering does not suspend it and no longer needs to: a candidate who
-//     demoted the evidence behind every requirement has an unanswered ad and is
-//     entitled to know, and where they demoted only some, the rest still answer.
-function checkCoverRequirements(body, analysis, warnings) {
+//     Where the letter shares no language with the record, nothing can be
+//     matched and the check reports nothing rather than a verdict it cannot
+//     support. A letter naming one of the master's employers is the cheap proof
+//     that the two share a vocabulary at all.
+function lettersShareLanguage(body, master) {
+  const employers = masterEmployers(master);
+  if (!employers.length) return false;
+  const text = plain(body).toLowerCase();
+  return employers.some((e) => namesEmployer(text, e));
+}
+
+function checkCoverRequirements(body, analysis, warnings, master) {
   const pool = analysis?.generation_framework?.cover_evidence?.requirement_evidence;
   if (!Array.isArray(pool) || pool.length === 0) return;
-  const text = body.toLowerCase();
-  const usable = pool.filter((p) => {
-    const req = distinctiveTokens(p?.requirement);
-    const ev = distinctiveTokens(p?.evidence);
-    return req.length && ev.length;
-  });
+  const text = plain(body).toLowerCase();
+  const usable = pool
+    .map((p) => distinctiveTokens(p?.evidence))
+    .filter((tokens) => tokens.length);
   if (!usable.length) return;
-  const answered = usable.filter((p) =>
-    halfPresent(text, distinctiveTokens(p.requirement)) && halfPresent(text, distinctiveTokens(p.evidence))
-  ).length;
-  if (answered === 0) {
-    warnings.push({ code: 'coverRequirementsUnanswered', params: { available: usable.length } });
-  }
+  const answered = usable.filter((tokens) => halfPresent(text, tokens)).length;
+  if (answered > 0) return;
+  // Nothing matched. Before reporting, make sure that means something.
+  if (!lettersShareLanguage(body, master)) return;
+  warnings.push({ code: 'coverRequirementsUnanswered', params: { available: usable.length } });
 }
 
 // 20. The salutation addresses the contact the job data names. A named contact
@@ -996,7 +1008,7 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
     hard.push(`The letter body runs to ${count} words; this market's ceiling is ${max}. Cut it to length without dropping the argument.`);
   }
 
-  checkCoverRequirements(body, analysis, warnings);
+  checkCoverRequirements(body, analysis, warnings, master);
   checkCoverSalutation(document, analysis, warnings);
   checkCoverObjections(body, analysis, warnings);
   checkCoverNumbers(body, m, warnings);

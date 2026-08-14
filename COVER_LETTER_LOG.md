@@ -108,6 +108,16 @@ average.
 
 ---
 
+## 2026-08-14 — defects found by using it, not by testing it
+
+| # | Found | Cause | Fix |
+|---|---|---|---|
+| 16 | **"The letter answers none of the 5 requirements"** on a letter that answered two | Check 19 looked for words from BOTH halves of a requirement→evidence pair. The requirement is quoted verbatim from the ad, in the AD's language; the letter is written in the candidate's. A Czech ad answered by an English letter shares no words with the requirement, so the check fired on every cross-language application — which, in an EU product, is most of them. | Match the EVIDENCE half only (it comes from the record, in the record's language), and stay silent where the letter shares no language with the record at all. Rule stated in `CV_RULES.md` check 19 first. Regression test is red on the old code. |
+| 17 | **Tone barely lands.** Friendly reads identical to Formal; Cocky is louder but nowhere near the swagger its own definition demands | Untested — the voice block now sits at the top of the writer's prompt with the candidate's samples under it and owns register and attitude; the tone line sits far below and loses. The samples are one register, so every tone comes out in that register. | **OPEN.** `CV_RULES.md` says the tone decides attitude and the voice decides cadence, but nothing enforces the split now that the voice writes the whole letter. |
+| 18 | **Cocky leaked "Over a decade in Prague"** — a derived tenure claim, and an unfinished sentence ("My UX leadership and AI product design experience isn't just a fit.") | The verify pass has a category for derived tenure (2a) and did not fire. Seen once, on the loudest tone. | **OPEN.** Watch for it. |
+
+---
+
 ## Rules changed along the way
 
 Every one of these went into `CV_RULES.md` FIRST and cascaded into code, per the

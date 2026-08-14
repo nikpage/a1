@@ -173,6 +173,8 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 
 18. The cover letter's word count sits inside its market band (Layer 5). Over the band is a block; under it is neither, since a finished argument is allowed to stop early.
 19. With a job ad: each of the ad's top requirements that the record can answer is answered in the letter, by an achievement the master evidences. A requirement left unanswered while the record holds evidence for it is reported to the user; a requirement the record cannot answer, or one whose evidence the candidate's steering demoted, is not a failure and is not reported.
+
+    **The evidence is what is matched, never the requirement.** This is an EU product and the two are routinely in different languages: the requirement is quoted verbatim from the ad ("facilitujeme pětidenní design sprinty") while the letter is written in the candidate's own ("I am a Certified Google Design Sprint Master"). Looking for the requirement's words in the letter therefore finds nothing on every cross-language application, and a check that fires on every Czech ad answered in English teaches the candidate to ignore the banner. Only the evidence half — drawn from the record, in the record's language — can be looked for. And where the letter shares no language with the record at all, the check reports nothing rather than a verdict it cannot support.
 20. The salutation addresses the contact the job data names, where it names one.
 21. At most one red-flag clause appears in the letter, and it carries a fact traceable to the master.
 22. No claim in the letter that the CV does not also support, where both documents were generated in the same run.
