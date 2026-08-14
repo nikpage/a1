@@ -82,7 +82,9 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
     - The opening is one concrete thing this candidate DID. Never a summary of their career or their interests ("My work has long centered on…" is brochure copy, not a person talking).
 ${voiceBlock}${excerptBlock}
 `
-    : '';
+    : `    # The tone they chose: "${tone}"
+    ${toneInstructions(tone)}
+`;
 
   const systemMessage = {
     role: 'system',

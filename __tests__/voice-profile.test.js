@@ -27,6 +27,7 @@ import {
 } from '../prompts/voice-profile.js';
 import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { toneInstructions } from '../prompts/tone.js';
 
 const PROFILE = {
   list_a: [
@@ -183,6 +184,25 @@ describe('buildCoverPrompt with a voice profile', () => {
     const [, user] = buildCoverPrompt('{}', analysis, 'Formal', '', '', 'auto', new Date(), null);
     expect(user.content).not.toMatch(/RHYTHM REFERENCE ONLY/);
     expect(user.content).not.toMatch(/The candidate's own writing voice/);
+  });
+});
+
+// The tone block used to sit at the bottom of the prompt, outside the voice
+// branch. Moving it up into "WHO IS WRITING THIS, AND IN WHAT MOOD" put it
+// inside `voiceOwnership`, which renders as '' when the user has no voice
+// profile — so every letter written without a profile went out with no tone
+// instruction at all. Pinned in BOTH directions.
+describe('the chosen tone reaches the letter prompt', () => {
+  const analysis = { job_match: {}, analysis: {} };
+
+  test('with a voice profile', () => {
+    const [, user] = buildCoverPrompt('{}', analysis, 'Cocky', '', '', 'auto', new Date(), PROFILE);
+    expect(user.content).toContain(toneInstructions('Cocky'));
+  });
+
+  test('without a voice profile', () => {
+    const [, user] = buildCoverPrompt('{}', analysis, 'Cocky', '', '', 'auto', new Date(), null);
+    expect(user.content).toContain(toneInstructions('Cocky'));
   });
 });
 
