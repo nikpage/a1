@@ -6,7 +6,7 @@ import { languageInstruction } from './language.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock } from './job-target.js';
 import { cvInvariants, coverMatchingRule, coverOpeningRules, coverRedFlagRule } from './cv-rules.js';
-import { generationBrief } from './analysis-brief.js';
+import { coverBrief } from './analysis-brief.js';
 import { coverEvidenceBlock, salutationName } from './cover-evidence.js';
 import { scenarioCoverRules } from './scenarios.js';
 import { coverLengthRule } from './market.js';
@@ -73,10 +73,11 @@ ${cvInvariants()}
     - Open with a specific hook tied to this candidate and this role — never a generic "I am writing to apply for...". Keep the opening to one or two short, punchy sentences; do NOT cram the whole pitch into a single dense, multi-clause first sentence.
     - Build a short narrative: why this candidate, why this role, what they bring. Use concrete proof from the master CV (real achievements, numbers, scope from \`experience[]\`), not adjectives.
     - **Never state a span of experience the record doesn't state.** No "14 years of AI solution design", no "a decade in fintech", no "X+ years" of anything. Durations are facts: the only ones that exist are those written in \`experience[].dates\`. Never sum roles into a career total, never stretch a domain label across roles that weren't in that domain. Lead with what they did, not with how long they've been doing it.
-    - **Match the candidate's own voice.**${voiceBlock ? ' Their writing voice is described in its own block below — that description is the authority on HOW this letter reads, and a letter that sounds slightly too casual is a better outcome than one that reads like a template.' : ''} The master CV's \`voice_samples\` are verbatim sentences in the candidate's real writing style — echo their cadence, vocabulary and register so the letter reads as written by them, not by a machine. Use them for tone only; never copy a sample wholesale or treat it as a fact about this role. If the master CV carries a \`voice_guide\`, it is the candidate's own written style guide — how THEY write, stated in their words. Follow it: it outranks any generic style habit of yours, and where it and the chosen tone pull apart, the tone decides the attitude while the guide decides the cadence, sentence shapes and vocabulary. It describes HOW to write, never WHAT is true — it can never license a fact the record does not carry.
+    - **Match the candidate's own voice — its SHAPE first.**${voiceBlock ? ' Their writing voice is described in its own block below — that description is the authority on HOW this letter reads, and a letter that sounds slightly too casual is a better outcome than one that reads like a template.' : ''} Voice is not only word choice. It is the spread of sentence lengths, how short the shortest sentence gets, how long a paragraph runs, whether the point lands first or last, and how the letter opens and closes. Uniform sentences and uniform paragraphs are what makes writing read as machine-written, and no vocabulary fixes them: VARY THE LENGTHS DELIBERATELY, go genuinely short at least once, and let paragraphs differ in weight. The master CV's \`voice_samples\` are verbatim sentences in the candidate's real writing style — echo their cadence, vocabulary and register so the letter reads as written by them. Use them for manner only; never copy a sample wholesale or treat it as a fact about this role. If the master CV carries a \`voice_guide\`, it is the candidate's own written style guide — how THEY write, stated in their words. Follow it: it outranks any generic style habit of yours, and where it and the chosen tone pull apart, the tone decides the attitude while the guide decides the cadence, sentence shapes and vocabulary. It describes HOW to write, never WHAT is true — it can never license a fact the record does not carry.
+    - **How far that voice travels is set by the AD'S OWN REGISTER.** Read how the employer writes above: how formal, how personal, how warm. A warm, informal, first-person ad earns this candidate's voice close to full strength — their narrative shape, their casual cadence, their way of opening. A terse, formal, corporate ad earns the same voice held closer in: the same rhythm, the same directness, less of the informality. Either way it stays THEIR voice; holding it in never means flattening it into business prose. Samples from a blog or a personal message are evidence of how they write, never proof that a blog's manner suits this application.
 ${redFlagRule}
     - Where the concern you chose to address (if any) is a gap or short tenure and the matching master \`experience[]\` entry carries a \`clarification\`, use the candidate's own words for it. Never invent a reason the clarification does not state; if there is no clarification, do not speculate about the gap.
-    - **The guidance is material, not a running order.** \`analysis.action_items["Cover Letter"]\` (Points to Address, Narrative Flow, Tone and Style) tells you what is worth proving and what evidence proves it. Mine it — do not walk it. One paragraph may answer several items; an item that does not advance the argument is dropped; nothing is included merely because it appears on the list. If any item arrives as a finished sentence or a quoted opening line, treat it as raw material only: rewrite it in this candidate's voice and this tone, at the length you actually have. Never paste it, and never restate an item the active scenario forbids you to say.
+    - **The guidance is material, not a running order.** \`analysis.cover_action_items\` (Points to Address, Narrative Flow, Tone and Style) tells you what is worth proving and what evidence proves it. Mine it — do not walk it. One paragraph may answer several items; an item that does not advance the argument is dropped; nothing is included merely because it appears on the list. If any item arrives as a finished sentence or a quoted opening line, treat it as raw material only: rewrite it in this candidate's voice and this tone, at the length you actually have. Never paste it, and never restate an item the active scenario forbids you to say.
 ${matchingRule}
 ${openingRules}
 
@@ -106,8 +107,8 @@ ${voiceBlock}
     ${currentDateReminder(now)}
     ${cv}
 
-    ## Analysis (the strategic brief — the plan to execute, not a review to answer):
-    ${JSON.stringify(generationBrief(analysis), null, 2)}
+    ## Analysis (background for the argument — not a list to work through):
+    ${JSON.stringify(coverBrief(analysis), null, 2)}
 
 ${excerptBlock}
     # Output

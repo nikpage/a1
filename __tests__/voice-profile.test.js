@@ -25,7 +25,7 @@ import {
   voiceProfileBlock,
   voiceExcerptBlock,
 } from '../prompts/voice-profile.js';
-import { buildVoiceFixPrompt } from '../prompts/voice-check.js';
+import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 
 const PROFILE = {
@@ -186,39 +186,76 @@ describe('buildCoverPrompt with a voice profile', () => {
   });
 });
 
-describe('the voice fix prompt — one call, find and repair', () => {
+describe('the voice rewrite prompt — one call, the whole letter', () => {
   test('numbers the profile lines and never includes a raw register-bound trait', () => {
-    const [, user] = buildVoiceFixPrompt({ document: 'A letter.', profile: PROFILE });
+    const [, user] = buildVoiceRewritePrompt({ document: 'A letter.', profile: PROFILE });
     expect(user.content).toMatch(/1\. Averages 12-word sentences/);
     expect(user.content).toContain('States it flatly, with no hedging, when emphatic.');
     expect(user.content).not.toContain('Swears when emphatic');
   });
 
-  test('finds the divergences AND repairs them in the same call', () => {
-    const [, user] = buildVoiceFixPrompt({ document: 'A letter.', profile: PROFILE });
-    expect(user.content).toMatch(/Find every place the letter diverges from the profile and rewrite ONLY those parts/);
-    expect(user.content).toMatch(/Drift toward generic business writing is the failure you exist to catch/);
+  // The whole reason this pass changed: a clause-level repair cannot reach the
+  // shape, and the shape is what reads as machine-written.
+  test('it asks for a real rewrite of the shape, not a light edit', () => {
+    const [, user] = buildVoiceRewritePrompt({ document: 'A letter.', profile: PROFILE });
+    expect(user.content).toMatch(/Rewrite it properly/);
+    expect(user.content).toMatch(/split or merge the paragraphs/);
+    expect(user.content).toMatch(/A light edit is the wrong answer/);
+    expect(user.content).toMatch(/Vary sentence length hard/);
+    // And it returns a letter, not the old span contract.
+    expect(user.content).toMatch(/Return the rewritten letter only/);
+    expect(user.content).not.toContain('"unsupported"');
+    expect(user.content).not.toMatch(/must appear VERBATIM/);
   });
 
-  test('repairs by literal span and may not add a fact', () => {
-    const [, user] = buildVoiceFixPrompt({ document: 'A letter.', profile: PROFILE });
-    expect(user.content).toMatch(/must appear VERBATIM/);
-    expect(user.content).toMatch(/never add a fact, a number, a skill, a duration or a claim/);
-    expect(user.content).toMatch(/Change nothing that does not diverge/);
-    // Same span/replacement contract as the truth-verify pass, so corrections are
-    // applied by literal match and anything invented is discarded.
-    expect(user.content).toContain('"unsupported"');
+  test('the facts are locked even though everything else may move', () => {
+    const [, user] = buildVoiceRewritePrompt({ document: 'A letter.', profile: PROFILE });
+    expect(user.content).toMatch(/The fact lock \(absolute\)/);
+    expect(user.content).toMatch(/Add nothing/);
+    expect(user.content).toMatch(/Do not sharpen a fact/);
+    expect(user.content).toMatch(/never invent a scene, a memory, a year or a mood/i);
+  });
+
+  test('the candidate’s own writing is included so the cadence can be heard', () => {
+    const [, user] = buildVoiceRewritePrompt({ document: 'A letter.', profile: PROFILE });
+    expect(user.content).toMatch(/RHYTHM REFERENCE/);
+    expect(user.content).toContain(PROFILE.samples[0].text.slice(0, 40));
+    // Manner only — the fence survives the change of mechanism.
+    expect(user.content).toMatch(/take NOTHING else from it/);
+  });
+
+  test('the ad sets how far the voice travels; with no ad the block is absent', () => {
+    const [, withAd] = buildVoiceRewritePrompt({ document: 'x', profile: PROFILE, jobText: 'We are informal and hate corporate speak.' });
+    expect(withAd.content).toMatch(/how far the voice travels/);
+    expect(withAd.content).toContain('hate corporate speak');
+    expect(withAd.content).toMatch(/Holding it in never means flattening it into business prose/);
+
+    const [, without] = buildVoiceRewritePrompt({ document: 'x', profile: PROFILE });
+    expect(without.content).not.toMatch(/how far the voice travels/);
+  });
+
+  test('measured shape faults are stated as numbers, not as advice', () => {
+    const [, user] = buildVoiceRewritePrompt({
+      document: 'x',
+      profile: PROFILE,
+      shapeFaults: ['The shortest sentence in the letter is 14 words.'],
+    });
+    expect(user.content).toMatch(/Measured faults in the draft's shape/);
+    expect(user.content).toContain('The shortest sentence in the letter is 14 words.');
+
+    const [, none] = buildVoiceRewritePrompt({ document: 'x', profile: PROFILE });
+    expect(none.content).not.toMatch(/Measured faults/);
   });
 
   test('lets the profile win over convention and does not police informality', () => {
-    const [, user] = buildVoiceFixPrompt({ document: 'x', profile: PROFILE });
-    expect(user.content).toMatch(/Mild informality is NOT a divergence/);
-    expect(user.content).toMatch(/THE PROFILE WINS/);
+    const [, user] = buildVoiceRewritePrompt({ document: 'x', profile: PROFILE });
+    expect(user.content).toMatch(/slightly too casual is a better outcome/);
+    expect(user.content).toMatch(/Do not sand it into business prose/);
   });
 
   test('adds the tidy-up licence only when the user asked for it', () => {
-    const [, off] = buildVoiceFixPrompt({ document: 'x', profile: PROFILE });
-    const [, on] = buildVoiceFixPrompt({ document: 'x', profile: { ...PROFILE, options: { cleanup: true } } });
+    const [, off] = buildVoiceRewritePrompt({ document: 'x', profile: PROFILE });
+    const [, on] = buildVoiceRewritePrompt({ document: 'x', profile: { ...PROFILE, options: { cleanup: true } } });
     expect(off.content).not.toMatch(/tidied while keeping their voice/);
     expect(on.content).toMatch(/tidied while keeping their voice/);
   });

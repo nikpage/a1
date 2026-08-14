@@ -35,6 +35,11 @@ export const BANNED_PHRASES = {
     'leverage my expertise', 'leveraging my expertise', 'paradigm shift',
     'a testament to', 'testament to my', 'navigate the complexities',
     'in the ever-evolving', 'ever-evolving landscape', 'digital landscape',
+    // Seen in real letters: the sentence whose job is to admire the employer,
+    // and the constructions that carry no fact.
+    'aligns directly with', 'aligns perfectly with', 'aligns with your mission',
+    'resonates with', 'positions me to', 'this ensures',
+    'i am confident that i can', 'i believe i can bring',
   ],
   // Czech tells are their OWN set, not these translated: "results-driven" has no
   // Czech equivalent anyone writes, while "v neposlední řadě" has no English one.

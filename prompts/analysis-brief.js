@@ -38,7 +38,14 @@
 //     — read directly off the full analysis object by prompts/market.js
 //       (targetCountry), never from the prompt text.
 
-// analysis.* keys the generator prompts name and act on.
+// TWO BRIEFS, NOT ONE. The CV and the letter are different documents and they
+// need different halves of the analysis. Handing both the same object is how the
+// letter ended up dumping the whole record onto the page: it received the CV's
+// keyword lists, the CV's quick wins, the CV's rewrite instructions and the
+// career arc, and a model given eight lists of material uses all eight — which
+// produces a letter that says everything and argues nothing.
+//
+// The CV keys the CV generator names and acts on.
 const ANALYSIS_KEYS = [
   'scenario_tags',          // cv-generator: drives what to emphasise
   'career_arc',             // cv-generator: the summary reflects it
@@ -70,8 +77,62 @@ function hasContent(value) {
   return true;
 }
 
-// The analysis as the generators are allowed to see it. Returns a plain object
-// so callers stringify it themselves (both generators already do).
+// What the LETTER is allowed to see. Deliberately short.
+//
+// Excluded, and why:
+//   ats_keywords_present / ats_keywords_missing, quick_wins, career_arc,
+//   parallel_experience, transferable_skills, action_items.cv_changes
+//     — every one of them is written FOR THE CV. A letter cannot act on a
+//       keyword list or a "move the certification above the fold"; what it does
+//       instead is mention them, one per sentence, which is the dump.
+//   cv_blueprint
+//     — section orders and bullet counts for a document the letter is not
+//       writing (CV_RULES.md, Layer 3).
+//   jobs_extracted
+//     — the master CV is already in the prompt, in full. This is the same career
+//       twice, and the second copy invites the letter to walk it.
+const COVER_ANALYSIS_KEYS = [
+  'scenario_tags',          // Layer 4 — how this candidate is framed
+  'red_flags',              // context for what the letter must not walk into
+  'action_items',           // its own "Cover Letter" slice, filtered below
+];
+
+export function coverBrief(analysis) {
+  if (!analysis || typeof analysis !== 'object') return {};
+
+  const brief = {};
+  if (hasContent(analysis.candidate_core)) brief.candidate_core = analysis.candidate_core;
+
+  // Positioning only — career_scenario and the keyword fields belong to the CV.
+  const strategy = analysis.job_match?.positioning_strategy;
+  if (hasContent(strategy)) brief.positioning_strategy = strategy;
+
+  // The evidence gathered for this letter. cover-evidence.js renders it as a
+  // block of its own; it rides here too so the writer sees it in context.
+  const evidence = analysis.generation_framework?.cover_evidence;
+  if (hasContent(evidence)) brief.cover_evidence = evidence;
+
+  const src = analysis.analysis;
+  if (src && typeof src === 'object') {
+    const kept = {};
+    for (const key of COVER_ANALYSIS_KEYS) {
+      if (!hasContent(src[key])) continue;
+      if (key === 'action_items') {
+        // ONLY the letter's own items. cv_changes is a rewrite plan for the CV.
+        const items = src.action_items?.['Cover Letter'];
+        if (hasContent(items)) kept.cover_action_items = items;
+        continue;
+      }
+      kept[key] = src[key];
+    }
+    if (Object.keys(kept).length) brief.analysis = kept;
+  }
+
+  return brief;
+}
+
+// The analysis as the CV generator is allowed to see it. Returns a plain object
+// so callers stringify it themselves.
 export function generationBrief(analysis) {
   if (!analysis || typeof analysis !== 'object') return {};
 

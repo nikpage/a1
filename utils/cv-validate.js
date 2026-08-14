@@ -1003,3 +1003,129 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
 
   return { ok: hard.length === 0, hard, warnings };
 }
+
+// ---- 24. the letter's SHAPE (CV_RULES.md Layer 6, check 24) -----------------
+//
+// What a reader recognises as machine writing is structural before it is
+// lexical: every sentence the same length, every paragraph the same weight, the
+// point always arriving in the same place. Word choice can be perfect and the
+// page still reads as a machine.
+//
+// Three things about shape are measurable, and only these three are claimed:
+//   shortest  — the shortest sentence in the letter. A human who writes with any
+//               rhythm goes short somewhere; a first draft never does.
+//   spread    — the standard deviation of sentence length. A draft that holds
+//               every sentence between 18 and 28 words has none.
+//   longest   — the longest paragraph. Uniform slabs are the machine's default.
+//
+// This measures flatness, NOT quality. A letter can pass every threshold here
+// and still be a bad letter; nothing in this file can tell you otherwise. It
+// exists to catch the obvious tell, and it is only applied where the candidate
+// has a recorded voice to be flat against.
+
+// Sentences of the letter's body, as word counts. Abbreviations are not worth
+// modelling here — one mis-split sentence moves a standard deviation by nothing.
+function sentenceLengths(body) {
+  return plain(body)
+    .split(/(?<=[.!?…])\s+/)
+    .map((s) => words(s).length)
+    .filter((n) => n > 0);
+}
+
+function paragraphLengths(body) {
+  return String(body || '')
+    .split(/\n\s*\n/)
+    .map((p) => words(p).length)
+    .filter((n) => n > 0);
+}
+
+function stdev(nums) {
+  if (nums.length < 2) return 0;
+  const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+  return Math.sqrt(nums.reduce((a, b) => a + (b - mean) ** 2, 0) / nums.length);
+}
+
+// The thresholds. Deliberately loose: they must fire on the flat draft every
+// time and never on a letter that genuinely varies, because the repair costs a
+// full rewrite. A letter with no sentence under 8 words has no rhythm at all;
+// a spread under 5 means every sentence is the same length; a paragraph over
+// 100 words is a slab whatever it says.
+const SHAPE_LIMITS = { shortestMax: 7, spreadMin: 5, longestParaMax: 100 };
+
+export function coverShape(document) {
+  const body = coverBody(document);
+  const sentences = sentenceLengths(body);
+  const paragraphs = paragraphLengths(body);
+  if (!sentences.length) return null;
+  return {
+    shortest: Math.min(...sentences),
+    longest: Math.max(...sentences),
+    spread: Number(stdev(sentences).toFixed(1)),
+    longestParagraph: paragraphs.length ? Math.max(...paragraphs) : 0,
+    sentences: sentences.length,
+  };
+}
+
+// The reasons this letter reads flat, in plain words the rewrite prompt can act
+// on. Empty means it does not. Returns [] when there is nothing to judge — a
+// letter with two sentences has no shape to measure.
+export function coverShapeFaults(document) {
+  const s = coverShape(document);
+  if (!s || s.sentences < 4) return [];
+  const faults = [];
+  if (s.shortest > SHAPE_LIMITS.shortestMax) {
+    faults.push(`The shortest sentence in the letter is ${s.shortest} words. Nothing in it ever goes short, so it has no rhythm — it reads at one unbroken pace from the first line to the last.`);
+  }
+  if (s.spread < SHAPE_LIMITS.spreadMin) {
+    faults.push(`Sentence lengths barely vary (spread ${s.spread}, shortest ${s.shortest}, longest ${s.longest}). Every sentence lands at the same weight, which is the clearest signal of machine writing there is.`);
+  }
+  if (s.longestParagraph > SHAPE_LIMITS.longestParaMax) {
+    faults.push(`The longest paragraph runs to ${s.longestParagraph} words — a slab. Paragraphs of one uniform size are a machine's default shape.`);
+  }
+  return faults;
+}
+
+// ---- 24b. the letter's BREADTH (CV_RULES.md Layer 3, depth not coverage) -----
+//
+// Every early run of the rewritten letter named five or six employers. That is a
+// career summary with a salutation on top: the CV already lists all of them, and
+// a letter that walks them proves nothing about any one of them.
+//
+// The rule is prose ("go deep on two"), so a model obeys it most of the time and
+// this is the part code can settle: count how many of the master's employers the
+// letter names. It is measured against the MASTER, so a company mentioned because
+// the ad names it (the employer being written to) is not counted — it is not in
+// the candidate's record.
+//
+// The fault feeds the same voice rewrite that fixes shape, because the remedy is
+// the same one: cut. Dropping an employer invents nothing.
+const BREADTH_MAX = 3;
+
+// The employer names the master records, long enough to be distinctive.
+function masterEmployers(master) {
+  const m = readMaster(master);
+  const out = [];
+  for (const e of Array.isArray(m.parsed?.experience) ? m.parsed.experience : []) {
+    const name = String(e?.company || '').trim();
+    if (name.length > 3) out.push(name);
+  }
+  return [...new Set(out)];
+}
+
+// A name counts as present when its most distinctive word appears in the letter —
+// "Salsita" for "Salsita Software", "spořitelna" for "Česká spořitelna" — so a
+// letter naming the company informally still counts.
+function namesEmployer(text, employer) {
+  const parts = employer.toLowerCase().split(/[\s,.]+/).filter((w) => w.length > 4);
+  const key = parts.sort((a, b) => b.length - a.length)[0];
+  return key ? text.includes(key) : false;
+}
+
+export function coverBreadthFault(document, master) {
+  const employers = masterEmployers(master);
+  if (employers.length <= BREADTH_MAX) return null;
+  const text = plain(coverBody(document)).toLowerCase();
+  const named = employers.filter((e) => namesEmployer(text, e));
+  if (named.length <= BREADTH_MAX) return null;
+  return `The letter names ${named.length} of this candidate's employers (${named.join(', ')}). That is a career summary — the CV already lists every one of them. Keep the TWO strongest for this job, prove those properly, and cut the rest: dropping them invents nothing and loses nothing, because they are still on the CV.`;
+}

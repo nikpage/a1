@@ -178,6 +178,15 @@ Still generated but **not displayed**: `analysis.career_arc`, `parallel_experien
 
 What remains on screen: scores, ATS keywords present/missing, `quick_wins`, `red_flags`, `action_items`, `positioning_strategy`, and the teaser's first-impression block (verdicts, snags, `hr_first_seconds`, `nuance_clarifications`).
 
+## Cover-letter quality — READ THE LOG BEFORE CHANGING ANYTHING
+
+`COVER_LETTER_LOG.md` records what has already been TRIED on letter quality and
+what it actually did to the output — including the dead ends, which git cannot
+show you because a failed experiment gets reverted and leaves no trace. Read it
+before proposing a fix, and add an entry after running one. An entry is only
+added once the change was RUN against a real record and a real ad and the letter
+was read; reasoning about what a change should do is not an entry.
+
 ## Sacred files — do not rewrite or inline
 
 ```

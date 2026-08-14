@@ -157,14 +157,18 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
   });
 
   // A real run opened "Vzpomínám si na jeden z prvních projektů…" — a remembered
-  // scene, which is neither the application act nor an identity claim, so the
-  // rule as written permitted it. It reads as an after-dinner speech and it
-  // invites colour the master does not record.
-  test('the opener rule bans the anecdote opening too', () => {
+  // scene the record does not hold. What is barred is the INVENTION, not the
+  // narrative: a candidate whose own recorded voice builds to its point may
+  // open that way, on facts (CV_RULES.md, Layer 3).
+  test('the opener rule bans invented scene-setting, not narrative itself', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toMatch(/ANECDOTE/);
+    expect(text).toMatch(/invented scene-setting/);
     expect(text).toMatch(/Vzpomínám si na/);
-    expect(text).toMatch(/Name the thing done, where it was done, and what came of it/);
+    expect(text).toMatch(/a story needs detail and a writer without detail invents it/);
+    // The narrative permission, and its condition.
+    expect(text).toMatch(/A build is allowed where the candidate's own voice builds/);
+    expect(text).toMatch(/every sentence it builds on is a fact from the record/);
+    expect(text).toMatch(/a build made of atmosphere is invention/);
   });
 });
 

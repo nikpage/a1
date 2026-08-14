@@ -8,10 +8,11 @@ import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
 import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
+import { targetJobBlock } from '../prompts/job-target.js';
 import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
 import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
-import { buildVoiceFixPrompt } from '../prompts/voice-check.js';
-import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits } from './cv-validate.js';
+import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
+import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
 import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
@@ -889,7 +890,7 @@ export async function buildVoiceProfile(samples) {
 // (applyGenerationCorrections), so a "repair" quoting text the letter does not
 // contain is discarded — which is what keeps a style pass from rewriting the
 // document out from under the fact-checker that runs after it.
-export async function applyVoice({ document, profile, docType = 'cover' }) {
+export async function applyVoice({ document, profile, docType = 'cover', jobText = '', master = '' }) {
   const usages = [];
   const empty = { content: document, gemini_usages: usages, applied: [] };
   if (!document || !profile) return empty;
@@ -901,18 +902,63 @@ export async function applyVoice({ document, profile, docType = 'cover' }) {
     String(profile.profile_text || '').trim().length > 0;
   if (!hasProfile) return empty;
 
-  try {
-    const messages = buildVoiceFixPrompt({ document, profile });
-    const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
-    const gemini_usage = geminiUsage(`voice fix ${docType}`, data, GEMINI_GENERATION_MODEL);
+  // ONE FULL REWRITE, then a SECOND only if the letter is still measurably flat
+  // (CV_RULES.md check 24). Capped at two: a third call spends real money to
+  // chase a metric, and the second already has the numbers in front of it.
+  //
+  // Facts are protected by ORDER, not by the size of the edit — this runs before
+  // verifyGeneratedDoc, which reads whatever text comes out of here.
+  const rewrite = async (draft, faults) => {
+    const messages = buildVoiceRewritePrompt({ document: draft, profile, jobText, shapeFaults: faults });
+    const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.9 });
+    const gemini_usage = geminiUsage(`voice rewrite ${docType}`, data, GEMINI_GENERATION_MODEL);
     usages.push(gemini_usage);
     trackDailySpend(gemini_usage.costUsd);
-    const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
-    const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
-    logger.info(`[voice ${docType}] ${applied.length} divergence(s) brought back to the profile`);
-    return { content, gemini_usages: usages, applied };
+    return String(data.choices?.[0]?.message?.content || '').trim();
+  };
+
+  // Shape (check 24) and breadth (Layer 3, depth not coverage) are both faults
+  // the rewrite fixes the same way — by cutting — so they travel together.
+  const faultsOf = (text) => {
+    const faults = coverShapeFaults(text);
+    const breadth = coverBreadthFault(text, master);
+    return breadth ? [breadth, ...faults] : faults;
+  };
+
+  // A rewrite that came back a fragment, an apology or a JSON object is not a
+  // letter. The draft is kept rather than shipping wreckage — this is the only
+  // judgement made about the rewrite's content, since everything else it could
+  // get wrong is caught by the truth passes that follow.
+  const usable = (candidate, draft) => {
+    if (!candidate || candidate.length < 200) return false;
+    if (/^[[{]/.test(candidate)) return false;
+    const ratio = candidate.split(/\s+/).length / Math.max(1, draft.split(/\s+/).length);
+    return ratio > 0.5 && ratio < 1.6;
+  };
+
+  try {
+    let content = document;
+    let faults = faultsOf(document);
+
+    const first = await rewrite(content, faults);
+    if (usable(first, content)) content = first;
+    else logger.error(`voice rewrite ${docType}: unusable output, keeping the draft`);
+
+    faults = faultsOf(content);
+    if (faults.length) {
+      logger.info(`[voice ${docType}] still flat after the rewrite, one more pass: ${faults.length} fault(s)`);
+      const second = await rewrite(content, faults);
+      if (usable(second, content)) {
+        // Keep the second only if it actually improved the shape — a rewrite
+        // that trades one flatness for another is churn.
+        if (faultsOf(second).length < faults.length) content = second;
+      }
+    }
+
+    logger.info(`[voice ${docType}] rewritten in the candidate's voice (${usages.length} call(s))`);
+    return { content, gemini_usages: usages, applied: [] };
   } catch (e) {
-    logger.error(`voice fix failed (${docType}, keeping document):`, e.message);
+    logger.error(`voice rewrite failed (${docType}, keeping document):`, e.message);
     return { ...empty, gemini_usages: usages };
   }
 }
@@ -1066,7 +1112,11 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile);
   // See generateCV: medium effort + low temperature keep the letter tied to the
   // record instead of drifting into a better-sounding version of it.
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
+  // The LETTER runs hotter than the CV. A CV is a record and 0.4 keeps it tied to
+  // one; a letter at 0.4 converges on the same four safe paragraphs for everyone,
+  // which is the flatness the voice pass then has to undo. Facts are protected by
+  // the verify pass that follows, not by a cold sampler.
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55 });
 
   const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
   const usages = [gemini_usage];
@@ -1083,6 +1133,11 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     document: processedContent.trim(),
     profile: voiceProfile,
     docType: 'cover',
+    // The ad itself, so the rewrite can judge how far this candidate's voice
+    // travels in THIS application (CV_RULES.md, Layer 2).
+    jobText: targetJobBlock(analysis),
+    // The record, so it can see how many of these employers the letter walked.
+    master: cv,
   });
 
   // Verify AFTER the date/placeholder cleanup, so the checker sees exactly the
@@ -1104,7 +1159,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   if (domainRepair.gemini_usage) usages.push(domainRepair.gemini_usage);
 
   let content = domainRepair.content;
-  let validation = validateCoverLetter(content, { master: cv, analysis, language, tweak });
+  let validation = validateCoverLetter(content, { master: cv, analysis, language });
 
   // The word band is a hard failure, so an over-length letter is regenerated
   // ONCE with the count fed back — the same shape as generateCV's retry, and the
@@ -1133,7 +1188,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     const reDomain = await repairUnsourcedDomains({ document: reRepair.content, master: cv });
     if (reDomain.gemini_usage) usages.push(reDomain.gemini_usage);
 
-    const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language, tweak });
+    const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language });
     if (revalidated.hard.length <= validation.hard.length) {
       content = reDomain.content;
       validation = revalidated;

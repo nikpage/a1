@@ -160,8 +160,11 @@ describe('Layer 3', () => {
   it('bounds coverage, and has the letter answer requirements without setting a quota', () => {
     expect(jobMatchingRules(true)).toMatch(/never quietly filled/);
     expect(coverMatchingRule(true)).toMatch(/Answer what the ad asks, with real evidence/i);
-    expect(coverMatchingRule(true)).toMatch(/around three/i);
-    expect(coverMatchingRule(true)).toMatch(/It is not a quota/i);
+    // Depth over coverage: two pieces of evidence argued properly, not five named.
+    expect(coverMatchingRule(true)).toMatch(/DEPTH, NOT COVERAGE/);
+    expect(coverMatchingRule(true)).toMatch(/Go DEEP on TWO of them/);
+    expect(coverMatchingRule(true)).toMatch(/a fourth means the argument has been lost/);
+    expect(coverMatchingRule(true)).toMatch(/Name the claim in the first paragraph/);
     // The rule says what to DO with a requirement it answers, never which ones
     // to answer or in what order — that is the writer's call at composition.
     expect(coverMatchingRule(true)).not.toMatch(/top three requirements against/i);
@@ -225,9 +228,15 @@ describe('Layer 5 — market', () => {
     const cz = coverLengthRule({ job_data: { Country: 'CZ' } });
     expect(cz).toMatch(/200-300 words/);
     expect(cz).not.toMatch(/250-350/);
-    expect(cz).toMatch(/only if it falls inside 200-300/);
     expect(cz).toMatch(/CEILING, not a quota/);
     expect(coverLengthRule({})).toMatch(/250-350 words/);
+
+    // The analysis's own number is clamped into the band and stated outright —
+    // the letter's brief no longer carries generation_framework for it to read.
+    const inside = coverLengthRule({ job_data: { Country: 'CZ' }, generation_framework: { target_cover_words: '260' } });
+    expect(inside).toMatch(/Aim for about 260 words/);
+    const outside = coverLengthRule({ job_data: { Country: 'CZ' }, generation_framework: { target_cover_words: '900' } });
+    expect(outside).toMatch(/Aim for about 250 words/);
   });
 
   it('falls back to the neutral default for an unknown market and never invents personal data', () => {

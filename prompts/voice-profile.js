@@ -161,7 +161,7 @@ ${cleanup ? `
 // Taken in the order the user pasted them: they put their best first, and there
 // is no label to sort by — register is something the extraction READS, not
 // something the user was asked to declare.
-export function voiceExcerptBlock(profile, maxChars = 700) {
+export function voiceExcerptBlock(profile, maxChars = 1400) {
   const samples = Array.isArray(profile?.samples) ? profile.samples : [];
   if (!samples.length) return '';
 

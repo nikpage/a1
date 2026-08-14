@@ -75,10 +75,15 @@ export function coverWordBand(analysis) {
 
 // The LENGTH rule for the cover-letter prompt. The band is deterministic here
 // (the analysis has already recorded the country), so the analysis's own
-// target_cover_words is CLAMPED into it rather than trusted blind: that field is
-// written by a pass that only guesses the market from the CV text.
+// target_cover_words is CLAMPED into it and stated as a NUMBER rather than as a
+// field to look up: that field is written by a pass that only guesses the market
+// from the CV text, and the letter's brief no longer carries the analysis's
+// generation_framework at all (prompts/analysis-brief.js — the letter sees only
+// what a letter needs).
 export function coverLengthRule(analysis) {
   const { min, max, target } = coverWordBand(analysis);
   const country = targetCountry(analysis);
-  return `- LENGTH (hard constraint): the letter body must be ${min}-${max} words total, in 3-4 short paragraphs, comfortably under one page${country ? ` — the convention for this target market (${country})` : ''}. This word budget does NOT include the date, salutation, or signature block. Use \`generation_framework.target_cover_words\` from the analysis when present, but only if it falls inside ${min}-${max}; if it is outside that range or absent, write to ~${target}. Before you return the letter, count the body against ${max} and cut if you are over. This is a CEILING, not a quota: a letter that finishes its argument in fewer words is finished — never pad to reach a number.`;
+  const asked = Number(String(analysis?.generation_framework?.target_cover_words || '').replace(/[^0-9]/g, ''));
+  const words = asked >= min && asked <= max ? asked : target;
+  return `- LENGTH (hard constraint): the letter body must be ${min}-${max} words total, in 3-4 short paragraphs, comfortably under one page${country ? ` — the convention for this target market (${country})` : ''}. Aim for about ${words} words. This word budget does NOT include the date, salutation, or signature block. Before you return the letter, count the body against ${max} and cut if you are over. This is a CEILING, not a quota: a letter that finishes its argument in fewer words is finished — never pad to reach a number.`;
 }

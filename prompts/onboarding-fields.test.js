@@ -150,9 +150,18 @@ describe('buildCoverPrompt — clarifications defuse in one clause; length budge
 
   test('honours generation_framework.target_cover_words when present', () => {
     const p = buildCoverPrompt(MASTER_JSON, analysisWithTarget, 'professional').find((m) => m.role === 'user').content;
-    expect(p).toMatch(/generation_framework\.target_cover_words/);
-    // the analysis object is also serialized into the prompt, so the value itself is present
-    expect(p).toContain('"target_cover_words": "260"');
+    // Stated as a NUMBER, not as a field to go and look up: the letter's brief no
+    // longer carries generation_framework, so a pointer to it would point at
+    // nothing (prompts/analysis-brief.js, coverBrief).
+    expect(p).toContain('Aim for about 260 words');
+    expect(p).not.toMatch(/Use `generation_framework\.target_cover_words`/);
+  });
+
+  test('a target outside the market band is ignored in favour of the band', () => {
+    const wild = { ...analysisWithTarget, generation_framework: { target_cover_words: '900' } };
+    const p = buildCoverPrompt(MASTER_JSON, wild, 'professional').find((m) => m.role === 'user').content;
+    expect(p).not.toContain('Aim for about 900 words');
+    expect(p).toMatch(/Aim for about \d{3} words/);
   });
 
   test('existing red_flags guidance is still present (guard against accidental deletion)', () => {
