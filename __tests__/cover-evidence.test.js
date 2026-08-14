@@ -1,0 +1,299 @@
+// __tests__/cover-evidence.test.js
+//
+// The letter's own EVIDENCE (CV_RULES.md, Layer 3: "The letter is composed, not
+// executed") and the rules that read off it. Two defects are pinned here. The
+// first: a real run produced generation_framework with cv_blueprint +
+// target_cover_words and NOTHING for the letter, so the cover letter executed a
+// plan written for the CV and addressed "Dear Hiring Manager" over a named
+// contact. The second, which the evidence block replaced the blueprint to fix:
+// the analysis chose the hook, the three pairs in order, the objection and the
+// close — the whole letter — before the candidate had typed a word of steering,
+// leaving the writer to arrange prose around a skeleton it had not chosen.
+//
+// Everything here calls the real modules: the real prompt builders, the real
+// renderer, the real validator. No Gemini call is needed — these are pure
+// functions over an analysis object.
+
+import { describe, test, expect } from 'vitest';
+import { coverEvidenceBlock, salutationName } from '../prompts/cover-evidence.js';
+import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { buildAnalysisPrompt } from '../prompts/analysis.js';
+import { validateCoverLetter, coverBody } from '../utils/cv-validate.js';
+
+const MASTER = JSON.stringify({
+  identity: { name: 'Nik Page' },
+  experience: [
+    { title: 'Head of Product', company: 'wflow.com', dates: '01/2022 - 06/2024', achievements: ['Consolidated 3 platforms into one'] },
+  ],
+});
+
+function analysisWith(coverEvidence, extra = {}) {
+  return {
+    job_extraction: { position_title: 'Head of Product', company: 'PLG Group', hr_contact: 'Deborah from People Team', must_have_requirements: ['lead a team of PMs'] },
+    job_data: { Country: 'Czechia' },
+    generation_framework: { cv_blueprint: {}, cover_evidence: coverEvidence, target_cover_words: 250 },
+    ...extra,
+  };
+}
+
+const EVIDENCE = {
+  requirement_evidence: [
+    { requirement: 'lead a team of product managers', evidence: 'coached four PMs at wflow.com' },
+    { requirement: 'multi-market platform consolidation', evidence: 'consolidated three platforms at wflow.com' },
+    { requirement: 'product operations', evidence: 'built the product operations function at Salsita' },
+  ],
+  concerns: [{ flag: 'consultancy vs permanence', answer_evidence: 'four years embedded full time at wflow.com' }],
+};
+
+describe('coverEvidenceBlock', () => {
+  test('renders the material: each requirement with the evidence that answers it, and the answerable concerns', () => {
+    const block = coverEvidenceBlock(analysisWith(EVIDENCE));
+    expect(block).toContain('"lead a team of product managers" ← coached four PMs at wflow.com');
+    expect(block).toContain('consultancy vs permanence');
+    expect(block).toContain('four years embedded full time at wflow.com');
+  });
+
+  // The whole point of the change: this block is material, and the letter's
+  // shape is the writer's to decide with the steering and tone in hand. A block
+  // that told the writer what to open on and what to ask for at the close would
+  // be the blueprint again under a new name.
+  test('it decides nothing about the letter — no hook, no order, no close, and the writer is told so', () => {
+    const block = coverEvidenceBlock(analysisWith(EVIDENCE));
+    expect(block).toMatch(/Material, not a plan/);
+    expect(block).toMatch(/YOU decide what this letter argues/);
+    expect(block).toMatch(/unranked and its order means nothing/);
+    expect(block).not.toMatch(/Execute this/);
+    expect(block).not.toMatch(/Open on:/);
+    expect(block).not.toMatch(/Close by asking for/);
+  });
+
+  test('the writer is told it may use fewer, and that one concern or none is the choice', () => {
+    const block = coverEvidenceBlock(analysisWith(EVIDENCE));
+    expect(block).toMatch(/left unanswered/);
+    expect(block).toMatch(/at most ONE may be addressed/);
+    expect(block).toMatch(/Addressing none is a common, correct answer/);
+  });
+
+  test('the candidate’s steering is stated as outranking the evidence', () => {
+    const block = coverEvidenceBlock(analysisWith(EVIDENCE));
+    expect(block).toMatch(/candidate's own instructions outrank every line of this/);
+  });
+
+  test('a requirement missing either half is not rendered', () => {
+    const block = coverEvidenceBlock(analysisWith({
+      ...EVIDENCE,
+      requirement_evidence: [{ requirement: 'lead a team of PMs', evidence: '' }, EVIDENCE.requirement_evidence[1]],
+    }));
+    expect(block).not.toContain('lead a team of PMs');
+    expect(block).toContain('multi-market platform consolidation');
+  });
+
+  test('a concern with no answering evidence is not passed to the writer', () => {
+    const block = coverEvidenceBlock(analysisWith({
+      ...EVIDENCE,
+      concerns: [{ flag: 'employment gap 2019', answer_evidence: '' }],
+    }));
+    expect(block).not.toContain('employment gap 2019');
+  });
+
+  test('no evidence (older analysis) renders nothing rather than an empty scaffold', () => {
+    expect(coverEvidenceBlock(analysisWith(undefined))).toBe('');
+    expect(coverEvidenceBlock(analysisWith({}))).toBe('');
+    expect(coverEvidenceBlock(null)).toBe('');
+  });
+});
+
+describe('salutationName', () => {
+  // The salutation is a fact off the job data, never a plan's pick: the ad
+  // printed a contact or it did not.
+  test('reads the ad’s own contact, cut to the name half', () => {
+    expect(salutationName(analysisWith(EVIDENCE))).toBe('Deborah');
+    expect(salutationName(analysisWith(undefined))).toBe('Deborah');
+    expect(salutationName({ job_extraction: { hr_contact: 'Jan Novák, HR' } })).toBe('Jan Novák');
+    expect(salutationName({ job_extraction: { hr_contact: 'Anna Kowalska at PLG Group' } })).toBe('Anna Kowalska');
+  });
+
+  test('no contact means no name — never a guess', () => {
+    expect(salutationName({ job_extraction: {} })).toBe('');
+    expect(salutationName({})).toBe('');
+  });
+});
+
+describe('buildCoverPrompt carries the letter-side rules', () => {
+  const promptText = (analysis) => buildCoverPrompt(MASTER, analysis, 'professional').map((m) => m.content).join('\n');
+
+  test('the named contact reaches the salutation rule, and the evidence reaches the writer', () => {
+    const text = promptText(analysisWith(EVIDENCE));
+    expect(text).toContain('"Dear Deborah"');
+    expect(text).toContain('coached four PMs at wflow.com');
+  });
+
+  // The letter must never be handed a plan — its own or the CV's.
+  test('the writer is told the letter’s shape is its own call', () => {
+    const text = promptText(analysisWith(EVIDENCE));
+    expect(text).toMatch(/Nothing below decides the letter's shape for you/);
+    expect(text).toMatch(/YOUR calls/);
+  });
+
+  test('with no contact the letter is told to use the neutral form and never guess', () => {
+    const text = promptText({ job_extraction: { position_title: 'Head of Product' } });
+    expect(text).toContain('Dear Hiring Manager');
+    expect(text).toMatch(/NEVER guess, infer or invent a name/);
+  });
+
+  test('the red-flag rule lets the writer pick one of the answerable concerns or none', () => {
+    const text = promptText(analysisWith(EVIDENCE));
+    expect(text).toContain('cover_evidence.concerns');
+    expect(text).not.toContain('objection_to_defuse');
+    expect(text).toMatch(/never address a second/i);
+    expect(text).toMatch(/NOT a list to answer/i);
+    expect(text).toMatch(/addressing NONE is the common answer/i);
+  });
+
+  test('the opener rule bans the application-act and identity openings', () => {
+    const text = promptText(analysisWith(EVIDENCE));
+    expect(text).toContain('I am writing to apply');
+    expect(text).toMatch(/As a seasoned leader/);
+  });
+
+  // A real run opened "Vzpomínám si na jeden z prvních projektů…" — a remembered
+  // scene, which is neither the application act nor an identity claim, so the
+  // rule as written permitted it. It reads as an after-dinner speech and it
+  // invites colour the master does not record.
+  test('the opener rule bans the anecdote opening too', () => {
+    const text = promptText(analysisWith(EVIDENCE));
+    expect(text).toMatch(/ANECDOTE/);
+    expect(text).toMatch(/Vzpomínám si na/);
+    expect(text).toMatch(/Name the thing done, where it was done, and what came of it/);
+  });
+});
+
+describe('the analysis pass gathers the letter its evidence, not its plan', () => {
+  const build = (jobText) => buildAnalysisPrompt('CV TEXT', jobText, Boolean(jobText && jobText.length > 20), null)
+    .map((m) => m.content).join('\n');
+
+  test('with a job ad it requests the answerable requirements and the answerable concerns', () => {
+    const text = build('Head of Product at PLG Group, Prague. Lead a team of product managers.');
+    expect(text).toContain('generation_framework.cover_evidence.requirement_evidence');
+    expect(text).toContain('generation_framework.cover_evidence.concerns');
+    expect(text).toContain('"cover_evidence"');
+    expect(text).toMatch(/up to FIVE objects \{ requirement, evidence \}/);
+    expect(text).toMatch(/This is a POOL, not a running order and not a plan/);
+  });
+
+  // The regression this file exists for: the analysis must not decide the
+  // letter. No hook, no ordering, no chosen objection, no close.
+  test('it asks for no hook, no order, no chosen objection and no close', () => {
+    const text = build('Head of Product at PLG Group, Prague. Lead a team of product managers.');
+    expect(text).not.toContain('hook_angle');
+    expect(text).not.toContain('close_ask');
+    expect(text).not.toContain('objection_to_defuse');
+    expect(text).not.toContain('matched_pairs');
+    expect(text).not.toContain('salutation_target');
+    expect(text).toMatch(/do not rank it/);
+    expect(text).toMatch(/you are not choosing for it/i);
+  });
+
+  test('with no job ad the requirement pool must be empty — there is nothing to answer', () => {
+    const text = build('');
+    expect(text).toContain('generation_framework.cover_evidence.requirement_evidence');
+    expect(text).toMatch(/MUST be an empty array/);
+  });
+});
+
+describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
+  const body = (words) => Array.from({ length: words }, (_, i) => `word${i % 7}`).join(' ');
+  const letter = (bodyText, salutation = 'Dear Deborah,') =>
+    `13.08.2026\n\n${salutation}\n\n${bodyText}\n\nSincerely,\n\n**Nik Page**\n+420 731 647`;
+
+  test('coverBody strips the date, salutation and signature block', () => {
+    const stripped = coverBody(letter('one two three'));
+    expect(stripped).toBe('one two three');
+  });
+
+  test('over the market ceiling is a hard failure, under it is not', () => {
+    const long = validateCoverLetter(letter(body(400)), { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(long.ok).toBe(false);
+    expect(long.hard.join(' ')).toMatch(/300/);
+
+    const short = validateCoverLetter(letter(body(150)), { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(short.ok).toBe(true);
+  });
+
+  // Check 19 counts ANSWERING, not compliance with a plan: the evidence pool is
+  // a pool, and a writer that argued two of three requirements made a judgement.
+  // Only a letter that answers NONE of them is untailored to the ad.
+  test('using fewer of the available requirements is a judgement, not a defect', () => {
+    const text = letter('I coached the product managers at wflow.com and consolidated three platforms across two markets there.');
+    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+  });
+
+  test('a letter that answers none of the answerable requirements is reported', () => {
+    const text = letter('I enjoy building things and would bring energy and curiosity to your organisation every single day.');
+    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')?.params).toEqual({ available: 3 });
+  });
+
+  test('every requirement answered raises nothing', () => {
+    const text = letter('Coached product managers at wflow.com, ran a multi-market consolidation of three platforms, and built product operations at Salsita.');
+    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+  });
+
+  // Steering used to suspend this check because a demoted pair looked like a
+  // failure to deliver the plan. There is no plan now, and the check no longer
+  // takes tweak at all — a letter answering something still passes.
+  test('steering does not change the verdict — the check reads the letter, not a plan', () => {
+    const text = letter('I coached the product managers at wflow.com and consolidated three platforms across two markets there.');
+    const { warnings } = validateCoverLetter(text, {
+      master: MASTER,
+      analysis: analysisWith(EVIDENCE),
+      tweak: 'Play down, condense or place late: wflow.com',
+    });
+    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+  });
+
+  test('a named contact left as "Dear Hiring Manager" is reported', () => {
+    const text = letter('Short body.', 'Dear Hiring Manager,');
+    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(warnings.find((w) => w.code === 'coverSalutation')?.params).toEqual({ name: 'Deborah' });
+  });
+
+  test('addressing the named contact raises nothing', () => {
+    const { warnings } = validateCoverLetter(letter('Short body.'), { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(warnings.find((w) => w.code === 'coverSalutation')).toBeFalsy();
+  });
+
+  test('numbers the record does not hold are reported', () => {
+    const { warnings } = validateCoverLetter(letter('I cut costs by 47 percent across 3 platforms.'), {
+      master: MASTER,
+      analysis: analysisWith(EVIDENCE),
+    });
+    expect(warnings.find((w) => w.code === 'coverNumber')?.params.list).toBe('47');
+  });
+
+  test('answering more than one concern is reported; answering one is not', () => {
+    const analysis = analysisWith(EVIDENCE, {
+      analysis: { red_flags: ['consultancy engagements read as fractional gig-working', 'fourteen-month employment gap in 2019'] },
+    });
+    const two = validateCoverLetter(
+      letter('My consultancy engagements were never fractional gig-working. The employment gap in 2019 was fourteen months of full-time study.'),
+      { master: MASTER, analysis },
+    );
+    expect(two.warnings.find((w) => w.code === 'coverManyObjections')?.params).toEqual({ count: 2 });
+
+    const one = validateCoverLetter(
+      letter('My consultancy engagements were never fractional gig-working. I led the consolidation at wflow.com.'),
+      { master: MASTER, analysis },
+    );
+    expect(one.warnings.find((w) => w.code === 'coverManyObjections')).toBeFalsy();
+  });
+
+  test('a check whose evidence is missing reports nothing rather than guessing', () => {
+    const { ok, warnings } = validateCoverLetter(letter('Short body.'), { master: '', analysis: null });
+    expect(ok).toBe(true);
+    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    expect(warnings.find((w) => w.code === 'coverNumber')).toBeFalsy();
+  });
+});

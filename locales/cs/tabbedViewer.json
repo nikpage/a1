@@ -57,7 +57,7 @@
     "earlierCareerTooManyBullets": "Dřívější kariéra uvádí {{count}} pozic; tiskne se nejvýše {{max}}, aby sekce nevracela čtenáře zpět celou kariérou.",
     "earlierCareerDated": "Dřívější kariéra uvádí data u {{count}} pozic — tato sekce je bez dat a roky znovu vysílají signál o věku.",
     "earlierCareerLocation": "Dřívější kariéra uvádí místo, které váš záznam neobsahuje: {{location}}. Ponechali jsme ho, ale zkontrolujte je — místo odvozené z názvu zaměstnavatele je vymyšlený údaj.",
-    "coverPairsMissing": "Dopis dokládá {{present}} z {{planned}} plánovaných dvojic požadavek–důkaz. Ta chybějící je nejsilnější argument, který nezazněl.",
+    "coverRequirementsUnanswered": "Dopis neodpovídá na žádný z {{available}} požadavků inzerátu, které váš záznam skutečně dokládá. Ať už dělá cokoli jiného dobře, na tuto pozici mířený není.",
     "coverSalutation": "Inzerát uvádí kontakt {{name}}, ale dopis se na tuto osobu neobrací. Oslovení jménem je první známkou, že dopis je psaný na míru.",
     "coverManyObjections": "Dopis se vyjadřuje k {{count}} výhradám. Jedna vysvětlená působí sebejistě, více jich působí jako přiznání.",
     "coverNumber": "Dopis uvádí čísla, která nejsou ve vašem záznamu: {{list}}. Zkontrolujte je — čísla si nevymýšlíme."

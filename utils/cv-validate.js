@@ -27,7 +27,7 @@
 import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js';
 import { bannedPhrases } from '../prompts/voice.js';
 import { coverWordBand } from '../prompts/market.js';
-import { salutationName } from '../prompts/cover-blueprint.js';
+import { salutationName } from '../prompts/cover-evidence.js';
 
 // ---- small parsing helpers --------------------------------------------------
 
@@ -802,32 +802,38 @@ function halfPresent(haystack, tokens) {
   return hits >= Math.min(2, tokens.length);
 }
 
-// 19. With a job ad, the letter carries its three matched pairs. Code cannot
-//     judge whether a pairing persuades, but it can see whether the pair reached
-//     the page at all: a pair counts only when the letter carries something
-//     distinctive from BOTH halves — the requirement and the evidence that
-//     answers it. Fewer than the blueprint planned is reported to the candidate.
+// 19. With a job ad, each requirement the record CAN answer is answered. Code
+//     cannot judge whether an answer persuades, but it can see whether one
+//     reached the page at all: a requirement counts as answered only when the
+//     letter carries something distinctive from BOTH halves — the requirement and
+//     the evidence the analysis found for it.
 //
-//     STEERING SUSPENDS THIS CHECK. The pairs were chosen during analysis, before
-//     the candidate typed anything; steering outranks the plan, so a candidate who
-//     demoted the very experience a pair rests on has DELETED that pair, not
-//     failed to deliver it. Warning them for obeying their own instruction is the
-//     check punishing the fix. With steering present the planned count is no
-//     longer the standard, so — as with any check whose evidence is gone — it
-//     reports nothing rather than guessing.
-function checkCoverPairs(body, analysis, warnings, steered) {
-  if (steered) return;
-  const pairs = analysis?.generation_framework?.cover_blueprint?.matched_pairs;
-  if (!Array.isArray(pairs) || pairs.length === 0) return;
+//     The evidence pool is not a plan and its size is not a target: the writer
+//     chooses which requirements the letter argues, and one it left out because
+//     the argument had no room is a judgement, not a defect. What IS worth
+//     telling the candidate is that NONE of it reached the page — a letter that
+//     answers nothing the ad asked for is not tailored to the ad, whatever else
+//     it does well. Anything above zero is the writer exercising the choice this
+//     check exists to leave it.
+//
+//     Steering does not suspend it and no longer needs to: a candidate who
+//     demoted the evidence behind every requirement has an unanswered ad and is
+//     entitled to know, and where they demoted only some, the rest still answer.
+function checkCoverRequirements(body, analysis, warnings) {
+  const pool = analysis?.generation_framework?.cover_evidence?.requirement_evidence;
+  if (!Array.isArray(pool) || pool.length === 0) return;
   const text = body.toLowerCase();
-  const present = pairs.filter((p) => {
+  const usable = pool.filter((p) => {
     const req = distinctiveTokens(p?.requirement);
     const ev = distinctiveTokens(p?.evidence);
-    if (!req.length || !ev.length) return false;
-    return halfPresent(text, req) && halfPresent(text, ev);
-  }).length;
-  if (present < pairs.length) {
-    warnings.push({ code: 'coverPairsMissing', params: { present, planned: pairs.length } });
+    return req.length && ev.length;
+  });
+  if (!usable.length) return;
+  const answered = usable.filter((p) =>
+    halfPresent(text, distinctiveTokens(p.requirement)) && halfPresent(text, distinctiveTokens(p.evidence))
+  ).length;
+  if (answered === 0) {
+    warnings.push({ code: 'coverRequirementsUnanswered', params: { available: usable.length } });
   }
 }
 
@@ -976,7 +982,7 @@ export function unsourcedDomainHits(document, { master = '' } = {}) {
 // on it, and a letter over its market's ceiling is the one defect the candidate
 // cannot see by reading. Under the band is not a failure — a finished argument
 // is allowed to stop early.
-export function validateCoverLetter(document, { master = '', analysis = null, language = 'auto', tweak = '' } = {}) {
+export function validateCoverLetter(document, { master = '', analysis = null, language = 'auto' } = {}) {
   const hard = [];
   const warnings = [];
   const m = readMaster(master);
@@ -990,7 +996,7 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
     hard.push(`The letter body runs to ${count} words; this market's ceiling is ${max}. Cut it to length without dropping the argument.`);
   }
 
-  checkCoverPairs(body, analysis, warnings, Boolean(String(tweak || '').trim()));
+  checkCoverRequirements(body, analysis, warnings);
   checkCoverSalutation(document, analysis, warnings);
   checkCoverObjections(body, analysis, warnings);
   checkCoverNumbers(body, m, warnings);

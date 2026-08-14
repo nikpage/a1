@@ -74,10 +74,12 @@ export function jobMatchingRules(hasJobText) {
 - **Selection:** choose bullets for relevance to THIS ad. An irrelevant true achievement is DROPPED, never reworded into relevance.`;
 }
 
-// Cover-letter side of Layer 3 — the matched-pairs rule.
+// Cover-letter side of Layer 3 — answering the ad's requirements. It says WHAT
+// the letter must do with a requirement it answers, never WHICH requirements to
+// answer or in what order: those are the writer's, chosen while it composes.
 export function coverMatchingRule(hasJobText) {
   if (!hasJobText) return '';
-  return `- **Three matched pairs (Layer 3).** Build the letter's evidence around three explicit pairings: the ad's top three requirements against the candidate's three strongest evidenced achievements. Pair them, do not list them. Make no claim in this letter that is absent from the CV, and never answer a requirement the master does not evidence — an unevidenced requirement is a gap reported to the candidate, not a sentence in the letter.`;
+  return `- **Answer what the ad asks, with real evidence (Layer 3).** The letter's argument rests on the ad's most important requirements answered by the candidate's strongest evidenced achievements — around three, as many as the record genuinely answers and the argument has room for. It is not a quota: pairing a fourth requirement to prove thoroughness pads the letter, and stopping at two because that is what the record and the candidate's instructions leave you is correct. PAIR them in the prose — the requirement and the evidence in the same breath — never list them and never give each its own paragraph. Make no claim in this letter that is absent from the CV, and never answer a requirement the master does not evidence: an unevidenced requirement is a gap reported to the candidate, not a sentence in the letter.`;
 }
 
 // The rest of the letter's Layer 3, which holds with or without an ad: the
@@ -94,13 +96,12 @@ export function coverOpeningRules(contact = '') {
 - **Never argue around a capability the record lacks (Layer 3).** A requirement the master does not evidence may appear ONLY as forward-looking interest, in the candidate's own register, and NEVER as a claim of present ability, an adjacent skill offered as a substitute, or the ad's phrasing borrowed to cover the hole. It is already reported to the candidate as a gap; the letter's job is not to fill it.`;
 }
 
-// Layer 4's letter-side red-flag rule. The analysis chooses the one objection
-// (generation_framework.cover_blueprint.objection_to_defuse) or chooses none;
-// this states what the writer may do with that choice, and what it may never do
-// on its own initiative.
+// Layer 4's letter-side red-flag rule. The analysis names the concerns that HAVE
+// an answering fact (generation_framework.cover_evidence.concerns); the writer
+// chooses one of them or none, and this states the terms of that choice.
 export function coverRedFlagRule() {
-  return `- **At most ONE concern is defused, and the analysis chose it (Layer 4).** \`cover_blueprint.objection_to_defuse\` names the single objection this letter may address, or is null — and null is a common, correct answer. You never pick one yourself, and you never address a second: two defences read as a defence, three read as an admission. \`analysis.red_flags\` is context for what the letter must not walk into, NOT a list to answer.
-- **One clause, once, carrying a fact.** The defusal lives inside the body of the argument — never the opening, never the close — stated flat and then passed. It carries a real fact from the record (the blueprint names it) or it is CUT: "confident I can adapt", "a fast learner", "eager to return" defuse nothing. Never restate the concern in its own language first — state the fact that makes it a non-issue. No apology, and no reason the master does not record.`;
+  return `- **At most ONE concern is defused, and addressing NONE is the common answer (Layer 4).** \`cover_evidence.concerns\` lists the objections this record can actually answer, with the fact that answers each. You may address ONE of them, or none — and you may never address a second: two defences read as a defence, three read as an admission. Choose one ONLY where a recruiter would otherwise resolve it against the candidate and the answer genuinely settles it; where the letter cannot improve the concern, silence is stronger, because naming it introduces an objection the reader had not raised. A concern that is NOT on that list is never raised — the record holds no answer for it. \`analysis.red_flags\` is context for what the letter must not walk into, NOT a list to answer.
+- **One clause, once, carrying a fact.** The defusal lives inside the body of the argument — never the opening, never the close — stated flat and then passed. It carries the real fact from the record that answers it or it is CUT: "confident I can adapt", "a fast learner", "eager to return" defuse nothing. Never restate the concern in its own language first — state the fact that makes it a non-issue. No apology, and no reason the master does not record.`;
 }
 
 // The full CV-side rule stack, in precedence order, for cv-generator.js.

@@ -28,13 +28,20 @@ separate background function. The parts that matter here:
 
 - `job_extraction` — the job ad, extracted into fields (title, company,
   must-haves, responsibilities, keywords). Prompt-bound to literal quotation.
-- `generation_framework.cover_blueprint` — **the plan for this letter**:
-  a salutation target, a hook angle, exactly three `matched_pairs`
-  (`{requirement, evidence}`), one optional `objection_to_defuse`, a close.
+- `generation_framework.cover_evidence` — **the material for this letter**, and
+  nothing more: `requirement_evidence[]` (up to five unranked
+  `{requirement, evidence}` — the ad's requirements the record genuinely answers)
+  and `concerns[]` (`{flag, answer_evidence}` — the objections the record can
+  answer). It names no hook, no ordering, no chosen objection and no close.
 - `analysis.scenario_tags`, `red_flags`, `action_items`, `positioning_strategy`.
 
-**Timing, which matters:** the analysis (and therefore the blueprint) is computed
-when the ad is submitted — *before* the user types any steering instructions.
+**Timing, which matters:** the analysis is computed when the ad is submitted —
+*before* the user types any steering instructions. That is why it supplies
+evidence rather than a plan: what the letter argues, in what order, is decided by
+the writing call, which is the first point at which the steering, the tone, the
+voice profile and the market's word band all exist. This is a deliberate reversal
+of an earlier design in which the analysis chose the hook, three ordered
+requirement→evidence pairs, the one objection and the close.
 
 ---
 
@@ -66,7 +73,7 @@ from these blocks, in this order:
 | Matched-pairs rule | `prompts/cv-rules.js` | prove three requirement→evidence pairs |
 | Opening rules | `prompts/cv-rules.js` | salutation, banned openings |
 | Red-flag rule | `prompts/cv-rules.js` | at most one objection, chosen upstream |
-| The blueprint | `prompts/cover-blueprint.js` | the plan above, rendered |
+| The evidence | `prompts/cover-evidence.js` | the material above, rendered, explicitly as the writer's to choose from |
 | Scenario rules | `prompts/scenarios.js` | max two career-scenario overrides |
 | Voice rules | `prompts/voice.js` | banned stock phrasing |
 | Length rule | `prompts/market.js` | market word band (CZ/PL 200–300, else 250–350) |
@@ -118,14 +125,16 @@ This distinction is the point of the review.
   ~55 domain terms (`fintech`, `bankovnictví`, `blockchain`, …), matched by
   diacritic-folded 6-character stems so Czech/Polish inflection resolves to one
   root, compared against the master only. Removed by stage 6.
-- Warnings, non-blocking: missing matched pairs, wrong salutation, more than one
-  objection defused, identity epithets.
+- Warnings, non-blocking: a letter answering NONE of the requirements the record
+  could answer, wrong salutation, more than one objection defused, identity
+  epithets. Using fewer of the available requirements than were offered is a
+  judgement, not a defect, and is not reported.
 
 **Prompt instruction only — not enforced anywhere:**
 
 - Which experience leads, and the whole of the user's steering.
 - The one-argument structure, opening on a fact, no anecdote opening.
-- The three matched pairs actually being argued.
+- Which requirements the letter argues, and whether it argues them well.
 - Not borrowing the ad's requirements as implied capability.
 - Tone and voice adherence.
 
@@ -137,14 +146,17 @@ intensifier. It is deliberately conservative — it does not flag when unsure.
 
 ## 6. Known structural weaknesses (observed, not theoretical)
 
-1. **The plan is computed before the user speaks.** `cover_blueprint.matched_pairs`
-   is chosen during analysis. If the ad asks for banking experience, the pairs will
-   name the candidate's banking work. A user who then types "play down all the
-   banks" is contradicted by: the blueprint, the target-job block ("make evidence
-   for each requirement visible and early"), and a validator warning if a planned
-   pair is missing. Observed result: the letter led with three banks despite the
-   instruction. The current mitigation is prompt text telling the writer that
-   steering deletes a pair — an instruction, not a constraint.
+1. **The plan used to be computed before the user speaks** — `cover_blueprint`
+   chose the hook, three ordered pairs, the objection and the close during
+   analysis. A user who then typed "play down all the banks" was contradicted by
+   the blueprint, by the target-job block ("make evidence for each requirement
+   visible and early") and by a validator warning when a planned pair went
+   missing. Observed result: the letter led with three banks despite the
+   instruction. **Fixed by removing the plan**: the analysis now supplies an
+   unranked evidence pool, the letter composes with the steering in hand, and
+   check 19 warns only when nothing at all was answered. What remains unenforced
+   is the same as everything else in the next list — that the writer honours the
+   steering is still an instruction, not a constraint.
 
 2. **A domain noun is not a claim.** The verify pass looks for claims. "My fintech
    background" carries no number, no date and no upgraded verb, so it passed every

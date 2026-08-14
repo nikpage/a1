@@ -157,9 +157,14 @@ describe('Layer 3', () => {
     expect(coverMatchingRule(false)).toBe('');
   });
 
-  it('bounds coverage and pairs three requirements in the letter', () => {
+  it('bounds coverage, and has the letter answer requirements without setting a quota', () => {
     expect(jobMatchingRules(true)).toMatch(/never quietly filled/);
-    expect(coverMatchingRule(true)).toMatch(/three matched pairs/i);
+    expect(coverMatchingRule(true)).toMatch(/Answer what the ad asks, with real evidence/i);
+    expect(coverMatchingRule(true)).toMatch(/around three/i);
+    expect(coverMatchingRule(true)).toMatch(/It is not a quota/i);
+    // The rule says what to DO with a requirement it answers, never which ones
+    // to answer or in what order — that is the writer's call at composition.
+    expect(coverMatchingRule(true)).not.toMatch(/top three requirements against/i);
   });
 });
 
@@ -259,10 +264,10 @@ describe('the prompts actually carry the rules', () => {
     expect(user.content).toContain('Layer 1 — Machine parseability');
   });
 
-  it('binds the cover letter to the invariants and the matched pairs', () => {
+  it('binds the cover letter to the invariants and to answering the ad', () => {
     const [, user] = buildCoverPrompt('MASTER', analysis, 'confident');
     expect(user.content).toContain('T1 — Never fabricate');
-    expect(user.content).toMatch(/three matched pairs/i);
+    expect(user.content).toMatch(/Answer what the ad asks, with real evidence/i);
   });
 
   it('carries the market word band into the cover prompt itself', () => {
@@ -294,9 +299,9 @@ describe('the prompts actually carry the rules', () => {
     expect(user.content).not.toContain('Layer 4 — Situational overrides');
   });
 
-  it('leaves the matched-pairs rule out of a letter with no job ad', () => {
+  it('leaves the requirement-answering rule out of a letter with no job ad', () => {
     const [, user] = buildCoverPrompt('MASTER', { analysis: {} }, 'confident');
-    expect(user.content).not.toMatch(/three matched pairs/i);
+    expect(user.content).not.toMatch(/Answer what the ad asks/i);
   });
 });
 
