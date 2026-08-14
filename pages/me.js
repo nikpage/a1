@@ -176,41 +176,41 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
     setPhase('');
   }
 
-  // The two documents are written in SEPARATE runs, one after the other.
+  // ONE DOCUMENT PER CALL, one button each. The CV and the cover letter are
+  // different documents with different rules: writing one never touches the
+  // other, a failure loses only what was asked for, and the letter can be
+  // rewritten against fresh steering while a CV that was already right stays on
+  // screen untouched. `type` doubles as the busy flag, so only the button that
+  // was pressed reads "Writing…".
   //
-  // They are different documents with different rules, and a single run tied
-  // them together in every way that matters: one failure lost both, neither
-  // could be rewritten without reprinting the other, and the letter could not
-  // be given its own tone or language. SEQUENTIAL, not parallel — the run holds
-  // a per-user Redis `gen_lock`, so a second request fired at the same time
-  // loses the race and comes back 429 (this is why the viewer's own regenerate
-  // loop is sequential too).
-  //
-  // The CV goes first and lands on screen before the letter is asked for, so a
-  // failed letter still leaves a finished CV in hand rather than nothing.
-  async function generate() {
+  // Both buttons are disabled while either runs — the run holds a per-user
+  // Redis `gen_lock`, so a second request fired during the first loses the race
+  // and comes back 429.
+  async function generate(type) {
     if (!analysis) return;
     setError('');
-    setBusy('generate');
-    const tweak = composeTweak({ emphasise, playDown, freeform });
-    const run = (type) => generateDocuments({ analysis, tone, type, language, tweak });
-
+    setBusy(type);
+    setPhase(type === 'cv'
+      ? 'Writing the CV, checking every fact against the record…'
+      : 'Writing the cover letter, checking every fact against the record…');
     try {
-      setPhase('Writing the CV, checking every fact against the record…');
-      const cvRun = await run('cv');
-      if (!cvRun.ok) throw new Error(cvRun.error || 'CV generation failed');
-      (cvRun.gemini_usage || []).forEach(logGemini);
-      setCv(cvRun.cv || '');
-      setWarnings(Array.isArray(cvRun.cv_warnings) ? cvRun.cv_warnings : []);
-      setActiveTab('cv');
-      window.dispatchEvent(new Event('header-stats-updated'));
-
-      setPhase('Writing the cover letter…');
-      const coverRun = await run('cover');
-      if (!coverRun.ok) throw new Error(coverRun.error || 'Cover letter generation failed');
-      (coverRun.gemini_usage || []).forEach(logGemini);
-      setCover(coverRun.cover || '');
-      setCoverWarnings(Array.isArray(coverRun.cover_warnings) ? coverRun.cover_warnings : []);
+      const data = await generateDocuments({
+        analysis,
+        tone,
+        type,
+        language,
+        tweak: composeTweak({ emphasise, playDown, freeform }),
+      });
+      if (!data.ok) throw new Error(data.error || 'Generation failed');
+      (data.gemini_usage || []).forEach(logGemini);
+      if (type === 'cv') {
+        setCv(data.cv || '');
+        setWarnings(Array.isArray(data.cv_warnings) ? data.cv_warnings : []);
+      } else {
+        setCover(data.cover || '');
+        setCoverWarnings(Array.isArray(data.cover_warnings) ? data.cover_warnings : []);
+      }
+      setActiveTab(type);
       window.dispatchEvent(new Event('header-stats-updated'));
     } catch (err) {
       setError(err.message);
@@ -421,15 +421,28 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                 />
               </label>
 
-              <button
-                onClick={generate}
-                disabled={running || !analysis}
-                className="mt-4 w-full px-4 py-2 text-sm rounded bg-blue-600 text-white font-medium disabled:opacity-50"
-              >
-                {busy === 'generate' ? 'Writing…' : docs ? 'Regenerate with this steering' : 'Write CV + cover letter'}
-              </button>
+              {/* One button per document. Each writes ONLY that document, in its
+                  own run, with whatever steering is in the boxes right now — so
+                  the letter can be rewritten against new instructions without
+                  reprinting a CV that was already right. */}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => generate('cv')}
+                  disabled={running || !analysis}
+                  className="px-4 py-2 text-sm rounded bg-blue-600 text-white font-medium disabled:opacity-50"
+                >
+                  {busy === 'cv' ? 'Writing…' : cv ? 'Rewrite CV' : 'Write CV'}
+                </button>
+                <button
+                  onClick={() => generate('cover')}
+                  disabled={running || !analysis}
+                  className="px-4 py-2 text-sm rounded bg-blue-600 text-white font-medium disabled:opacity-50"
+                >
+                  {busy === 'cover' ? 'Writing…' : cover ? 'Rewrite cover letter' : 'Write cover letter'}
+                </button>
+              </div>
               {!analysis && <p className="mt-2 text-sm text-gray-500">Analyse a job ad first.</p>}
-              {busy === 'generate' && <p className="mt-2 text-sm text-gray-600">{phase}</p>}
+              {(busy === 'cv' || busy === 'cover') && <p className="mt-2 text-sm text-gray-600">{phase}</p>}
             </div>
 
             {/* documents column — editable, and the edits are what download */}
@@ -468,7 +481,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                 </>
               ) : (
                 <div className="h-full min-h-[16rem] rounded border border-dashed border-gray-300 flex items-center justify-center px-6 text-center text-sm text-gray-500">
-                  {busy === 'generate'
+                  {busy === 'cv' || busy === 'cover'
                     ? phase
                     : 'The CV and cover letter appear here. Adjust the steering on the left and regenerate as often as needed — no new analysis is charged.'}
                 </div>
