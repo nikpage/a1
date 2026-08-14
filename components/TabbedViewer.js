@@ -31,7 +31,6 @@ import ThankYouModal from './ThankYouModal';
 import ToneDocModal from './ToneDocModal';
 import AnalysisDisplay from './AnalysisDisplay';
 import CvWarningBanner from './CvWarningBanner';
-import Regenerate from './Regenerate';
 import StartFreshModal from './StartFreshModal';
 import LoadingModal from './LoadingModal';
 import TokenPurchasePanel from './TokenPurchasePanel';

@@ -37,8 +37,9 @@ import { composeTweak } from '../utils/steering';
 import { verifyToken, getTokenFromReq } from '../lib/auth';
 import { getUserStats } from '../utils/database';
 import { GENERATION_LANGUAGES } from '../prompts/language';
+import { OFFERED_TONES as TONES } from '../prompts/tone';
 
-const TONES = ['Formal', 'Friendly', 'Enthusiastic', 'Cocky'];
+
 
 // The analysis arrives as the stored gen_data payload — a JSON string. Parsed
 // here only to label the fit header (position / company / score); the readout

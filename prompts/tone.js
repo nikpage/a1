@@ -4,6 +4,25 @@
 // Tone shapes the VOICE and word choice of the writing — it never changes the facts.
 // Imported by cv-generator.js and cover-letter.js so the tone definitions live in one place.
 
+// The tones the UI OFFERS. Not the same list as the ones defined below, and
+// deliberately so.
+//
+// Friendly, Enthusiastic and Cocky are hidden because they do not land. Tested
+// against a real record with a saved voice profile: Friendly came back
+// indistinguishable from Formal, and Cocky produced "We are shipping real AI
+// automation" where its own definition asks for swagger — and leaked a wrong
+// language level and a derived tenure claim on the way. The cause is structural:
+// the candidate's voice profile now owns the writing prompt, and a voice built
+// from that person's real prose is stronger than a line asking for a different
+// mood. Offering a tone that changes nothing is a lie told to the user, so it is
+// not offered.
+//
+// The DEFINITIONS below stay. A document generated before this change carries
+// its tone, and a regeneration of it must still be written in that tone rather
+// than silently switched. Re-offer a tone here only once it demonstrably differs
+// on a real run — see COVER_LETTER_LOG.md.
+export const OFFERED_TONES = ['Formal'];
+
 export function toneInstructions(tone) {
   switch ((tone || '').toLowerCase()) {
     case 'formal':

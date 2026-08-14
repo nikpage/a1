@@ -116,6 +116,20 @@ average.
 | 17 | **Tone barely lands.** Friendly reads identical to Formal; Cocky is louder but nowhere near the swagger its own definition demands | Untested — the voice block now sits at the top of the writer's prompt with the candidate's samples under it and owns register and attitude; the tone line sits far below and loses. The samples are one register, so every tone comes out in that register. | **OPEN.** `CV_RULES.md` says the tone decides attitude and the voice decides cadence, but nothing enforces the split now that the voice writes the whole letter. |
 | 18 | **Cocky leaked "Over a decade in Prague"** — a derived tenure claim, and an unfinished sentence ("My UX leadership and AI product design experience isn't just a fit.") | The verify pass has a category for derived tenure (2a) and did not fire. Seen once, on the loudest tone. | **OPEN.** Watch for it. |
 
+| 19 | **Tone moved above the voice block**, with the voice/tone split stated (voice = manner and fixed; tone = the mood chosen for THIS letter and not to be softened) | Cocky improved slightly — "We are shipping real AI automation. We are delivering." — but nowhere near its own definition. It also wrote "I speak Czech fluently" where the record says working proficiency, and that upgrade got past the verify pass. | **NOT ENOUGH.** |
+| 20 | **Hid Friendly, Enthusiastic and Cocky** (`OFFERED_TONES` in `prompts/tone.js`, imported by both UIs) | Only Formal is offered. Definitions kept so an older document regenerates in its own tone. | **DONE.** A tone that changes nothing must not be offered. Re-offer only after a real run shows a real difference. |
+
+### The tone finding
+
+Tone loses to voice, and the cause is structural rather than a prompt-ordering
+accident: the voice profile is built from this person's actual prose and now owns
+the writing prompt, so a line asking for a different mood cannot move it far. Any
+future attempt has to reckon with that, not just move the tone block again.
+
+Also seen on the Cocky runs and NOT fixed: an upgraded language level ("fluent"
+where the record says working proficiency) and a derived tenure claim ("Over a
+decade in Prague"), both past the verify pass.
+
 ---
 
 ## Rules changed along the way

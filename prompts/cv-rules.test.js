@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { cvInvariants, machineParseability, humanScannability, jobMatchingRules, coverMatchingRule, cvRulesBlock } from './cv-rules.js';
 import { marketConventions, targetCountry, coverWordBand, coverLengthRule } from './market.js';
+import { OFFERED_TONES, toneInstructions } from './tone.js';
 import { scenarioGenerationRules, SCENARIOS } from './scenarios.js';
 import { buildCvPrompt } from './cv-generator.js';
 import { buildCoverPrompt } from './cover-letter.js';
@@ -359,5 +360,33 @@ describe('section names per language', () => {
     expect(bulletBand('cs')).toEqual([12, 22]);
     expect(bulletBand('auto')).toEqual([15, 25]);
     expect(bulletBand('hu')).toEqual([15, 25]);
+  });
+});
+
+// ── Which tones are offered ─────────────────────────────────────────────────
+//
+// Friendly, Enthusiastic and Cocky are hidden: tested against a real record with
+// a saved voice profile, Friendly was indistinguishable from Formal and Cocky
+// produced none of the swagger its own definition asks for. A tone that changes
+// nothing must not be offered. Their DEFINITIONS stay, so a document generated
+// before the change still regenerates in the tone it was written in.
+describe('offered tones', () => {
+  it('offers only what demonstrably works', () => {
+    expect(OFFERED_TONES).toEqual(['Formal']);
+  });
+
+  it('keeps the hidden tones defined, so an old document regenerates in its own tone', () => {
+    for (const hidden of ['friendly', 'enthusiastic', 'cocky']) {
+      expect(toneInstructions(hidden).length).toBeGreaterThan(40);
+    }
+    // And they are still distinct from each other and from the default.
+    expect(toneInstructions('cocky')).not.toBe(toneInstructions('friendly'));
+    expect(toneInstructions('cocky')).toMatch(/SWAGGER/);
+  });
+
+  it('every offered tone has a real definition behind it', () => {
+    for (const tone of OFFERED_TONES) {
+      expect(toneInstructions(tone).length).toBeGreaterThan(40);
+    }
   });
 });

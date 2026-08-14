@@ -64,8 +64,13 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
   // exists, but only as a fallback when the finished letter measures flat
   // (utils/openai.js).
   const voiceOwnership = voiceBlock
-    ? `    # WHO IS WRITING THIS
-    You are writing AS this candidate, in their own voice, not as a professional letter service writing on their behalf. Their voice is described below and their own writing is quoted further down. Read both before you write a word, and write the whole letter that way from the first sentence — this is not a polish applied at the end, it is how the letter is composed.
+    ? `    # WHO IS WRITING THIS, AND IN WHAT MOOD
+    You are writing AS this candidate, in their own voice, not as a professional letter service writing on their behalf.
+
+    ## The tone they chose: "${tone}"
+    ${toneInstructions(tone)}
+
+    **Voice and tone are different things and both apply.** The VOICE is how this person writes — sentence shapes, rhythm, punctuation, vocabulary — and it is fixed: it is theirs. The TONE is the mood they have chosen for THIS letter, and it is a deliberate choice they made, not a default to be softened. Their voice does not override it: the same person writes warmly or bluntly depending on the letter, and you are writing the one they asked for. The samples below show HOW they write, in whatever mood they happened to be in when they wrote them — do not copy that mood, copy the manner. If the samples read reserved and the chosen tone is enthusiastic, the letter is enthusiastic, in their sentence shapes. Their voice is described below and their own writing is quoted further down. Read both before you write a word, and write the whole letter that way from the first sentence — this is not a polish applied at the end, it is how the letter is composed.
 
     Voice is SHAPE before it is vocabulary: the spread of sentence lengths, how short the shortest sentence gets, how long a paragraph runs, whether the point lands first or last. Uniform sentences in uniform paragraphs are what makes writing read as machine-made, and no word choice fixes them. Match the proportions their samples show — their long sentences as well as their short ones.
 
@@ -125,9 +130,6 @@ ${scenarioBlock}
     [Applicant's Telephone]
     [Applicant's Email]
     [Applicant's LinkedIn URL]
-
-    # Tone — "${tone}"
-    ${toneInstructions(tone)}
 
     # Inputs
     ## Master CV (the candidate's complete, structured career record — your sole factual source; includes \`voice_samples\` and, where present, \`voice_guide\` for the candidate's writing voice):

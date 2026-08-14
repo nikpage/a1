@@ -9,10 +9,13 @@
 // Settings are shown only for the documents actually selected, so the choice
 // is always explicit and there is no hidden state for a document being skipped.
 import BaseModal from './BaseModal';
+import { OFFERED_TONES } from '../prompts/tone';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const TONE_OPTIONS = ['formal', 'friendly', 'enthusiastic', 'cocky'];
+// The offered tones, lower-cased for the locale keys. Which tones are offered
+// is decided in prompts/tone.js, beside their definitions.
+const TONE_OPTIONS = OFFERED_TONES.map((t) => t.toLowerCase());
 // Values match prompts/language.js GENERATION_LANGUAGES; the server coerces
 // anything it doesn't recognise back to 'auto'.
 const LANGUAGE_OPTIONS = [['auto', 'langAuto'], ['en', 'langEn'], ['cs', 'langCs']];
