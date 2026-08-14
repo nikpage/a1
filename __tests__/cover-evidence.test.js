@@ -18,7 +18,7 @@ import { describe, test, expect } from 'vitest';
 import { coverEvidenceBlock, salutationName } from '../prompts/cover-evidence.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
-import { validateCoverLetter, coverBody } from '../utils/cv-validate.js';
+import { validateCoverLetter, coverBody, coverShapeFaults, coverBreadthFault } from '../utils/cv-validate.js';
 
 const MASTER = JSON.stringify({
   identity: { name: 'Nik Page' },
@@ -299,5 +299,101 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
     expect(ok).toBe(true);
     expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
     expect(warnings.find((w) => w.code === 'coverNumber')).toBeFalsy();
+  });
+});
+
+// ── Layer 6 checks 24 and 25: the letter's measured shape and breadth ────────
+//
+// Both are the app's own writing failing, so both are repaired before delivery
+// and neither is ever reported to the candidate. Code measures flatness and
+// breadth; it does not judge whether the letter is good, and CV_RULES.md does
+// not claim it does.
+describe('the letter’s measured shape (check 24)', () => {
+  const wrap = (body) => `14.08.2026\n\nDear Deborah,\n\n${body}\n\nSincerely,\n\n**Nik Page**`;
+
+  // The real defect: a letter whose every sentence lands at the same weight.
+  const FLAT = wrap([
+    'I founded the user experience function at a large retail bank in Prague and ran it for four years.',
+    'My work as a principal consultant has involved high impact engagements across several industries and sizes.',
+    'I grew monthly billing on the eBay account from under twenty thousand dollars to over one hundred thousand.',
+    'My approach centres on data driven decisions rather than intuition, which is why those numbers moved at all.',
+  ].join(' '));
+
+  const VARIED = wrap([
+    'I founded the user experience function at a large retail bank in Prague and ran it for four years.',
+    'That taught me one thing.',
+    'Discovery is cheap and rework is not, which is the argument I have made to every client since.',
+    'Billing on the eBay account went from under twenty thousand dollars to over one hundred thousand.',
+    'No magic. Data, and the discipline to act on it.',
+  ].join(' '));
+
+  test('a flat letter is named in numbers the writer can act on', () => {
+    const faults = coverShapeFaults(FLAT).join(' ');
+    expect(faults).toMatch(/shortest sentence in the letter is \d+ words/);
+    expect(faults).toMatch(/Sentence lengths barely vary/);
+  });
+
+  test('a letter with real rhythm reports nothing', () => {
+    expect(coverShapeFaults(VARIED)).toEqual([]);
+  });
+
+  test('a slab paragraph is a fault on its own', () => {
+    const slab = wrap(`Short one. ${'I rebuilt the product management process at the platform company and it worked. '.repeat(8)}`);
+    expect(coverShapeFaults(slab).join(' ')).toMatch(/longest paragraph runs to \d+ words/);
+  });
+
+  test('too little text to have a shape is not judged', () => {
+    expect(coverShapeFaults(wrap('Two sentences. That is all.'))).toEqual([]);
+    expect(coverShapeFaults('')).toEqual([]);
+  });
+});
+
+describe('the letter’s breadth (check 25)', () => {
+  // The master this check exists for: a standing consultancy carrying its
+  // engagements as NESTED contracts. Reading only the top level saw one
+  // employer where the letter had named five, so the check never fired.
+  const MASTER_NESTED = JSON.stringify({
+    experience: [
+      {
+        title: 'Principal Consultant',
+        company: 'Nik Page Ltd.',
+        contracts: [
+          { company: 'Salsita Software' },
+          { company: 'wflow.com' },
+          { company: 'SpecialAgents.pro' },
+        ],
+      },
+      { title: 'Head of UX', company: 'Česká spořitelna' },
+      { title: 'Product Manager', company: 'Monster Worldwide' },
+    ],
+  });
+  const wrap = (body) => `14.08.2026\n\nDear Deborah,\n\n${body}\n\nSincerely,\n\n**Nik Page**`;
+
+  test('a letter that walks the career is caught, nested engagements included', () => {
+    const fault = coverBreadthFault(
+      wrap('At Salsita Software I grew the eBay account. At wflow.com I rebuilt product management. At SpecialAgents.pro I build RAG systems. At Česká spořitelna I founded the UX function. At Monster Worldwide I led user studies.'),
+      MASTER_NESTED,
+    );
+    expect(fault).toMatch(/names 5 of this candidate's employers/);
+    expect(fault).toContain('Salsita Software');
+    // Nested children are the ones that used to be invisible.
+    expect(fault).toContain('SpecialAgents.pro');
+    expect(fault).toMatch(/Keep the TWO strongest/);
+  });
+
+  test('two employers argued properly is the target, not a defect', () => {
+    expect(coverBreadthFault(
+      wrap('At Salsita Software I grew the eBay account from under $20k to over $100k. At wflow.com I rebuilt product management and established market intelligence.'),
+      MASTER_NESTED,
+    )).toBeNull();
+  });
+
+  test('a record with three employers or fewer has nothing to measure', () => {
+    const thin = JSON.stringify({ experience: [{ company: 'Salsita Software' }, { company: 'wflow.com' }] });
+    expect(coverBreadthFault(wrap('Salsita Software. wflow.com.'), thin)).toBeNull();
+  });
+
+  test('no parseable record means no verdict rather than a guess', () => {
+    expect(coverBreadthFault(wrap('Anything at all.'), '')).toBeNull();
   });
 });

@@ -10,6 +10,8 @@ disagree, this document is the authority.
 
 **T1 — Never fabricate.** No skill, tool, title, metric, employer, date, or certification may appear unless it exists in the master CV. Keyword matching is done by reframing evidenced experience, never by inserting the term.
 
+A figure COMPUTED from real figures is fabricated too. "Grew billing from under $20k to over $100k" is the record; "a gain of over 400%", "a fivefold increase", "$1.2m a year" are not, however sound the arithmetic. The record states results, not the ratios between them, and a computed figure claims a precision the record does not carry — "under" and "over" are not endpoints anything can be divided by. The two real numbers already say it, and they say it better. The same reasoning bans a career total summed from role dates.
+
 **T2 — Never falsify the record.** Titles, employers, and dates are reproduced as recorded. Strategic layers change emphasis, ordering, wording, and what is shown — never what is claimed. Omission is permitted; alteration is not. Normalising a date's FORMAT to MM/YYYY is required; changing a date is forbidden. Year-only dates are never used to soften a gap.
 
 **T3 — No invented timeline entries.** Nothing appears in Work Experience that was not a role. Gaps are gaps.
@@ -178,10 +180,14 @@ Never generate a photo, a date of birth, or a consent statement the user did not
 
 24. Where a voice profile exists, the cover letter carries that voice's SHAPE and not merely its wording (Layer 2). Flatness is the measurable part and it is measured: the spread of sentence lengths across the letter, the length of its shortest sentence, and the length of its longest paragraph. A letter whose sentences all land within a narrow band, or which never once goes short, or which runs every paragraph to the same weight, has the machine's shape whatever its words say — and that is the shape a reader recognises before they have read a line. It is repaired before delivery and never reported to the user, on the same reasoning as checks 17 and 23: the app's writing failed, not the candidate's.
 
-The repair is a full rewrite of the letter in the recorded voice, not a patch over clauses. A shape defect cannot be fixed inside a clause — splitting a paragraph, landing a four-word sentence, moving where the point arrives are all changes no span replacement can make, which is why a clause-level style pass leaves the machine shape exactly as it found it. The rewrite is bound absolutely by the invariants and it changes no fact, no number, no name and no date; it runs BEFORE the truth passes, never after, so every fact in it is checked afterwards exactly as a first draft's would be.
+**The shape is the writer's job, and this check is the fallback.** The letter is composed in the candidate's voice from its first sentence — voice is not a coat of paint applied at the end, and a second model restyling the first one's draft produces fragments: orphan one-line paragraphs, stub sentences, one thought chopped into three. So the writer is given these measurements as targets before it writes, and this check exists for the letter that misses them anyway. A letter that arrives with its shape already right is the normal case and no repair runs.
+
+The repair, when it does run, is a full rewrite of the letter in the recorded voice, not a patch over clauses. A shape defect cannot be fixed inside a clause — splitting a paragraph, landing a four-word sentence, moving where the point arrives are all changes no span replacement can make, which is why a clause-level style pass leaves the machine shape exactly as it found it. The rewrite is bound absolutely by the invariants and it changes no fact, no number, no name and no date; it runs BEFORE the truth passes, never after, so every fact in it is checked afterwards exactly as a first draft's would be.
 
 Code measures the shape; it does not judge the writing. The metrics catch a letter that is obviously flat. They cannot tell whether the letter is good, and no check in this document claims to.
 
-A failure at 1–4, 10, 14 and 18 is a hard block. 5–9, 11–13, 15, 16 and 19–22 are warnings surfaced to the user. 17, 23 and 24 are neither: they are the app's own writing, repaired before delivery.
+25. The cover letter names at most THREE of the candidate's employers (Layer 3, depth not coverage). Counted against the master, so the company being written TO is not counted, and counted through nested engagements — a standing consultancy carries its clients as children of one entry, and those are exactly the names a letter walks. Over the limit is repaired by the same rewrite as check 24, by cutting: dropping an employer invents nothing, and every one dropped is still on the CV. Where the master itself records three employers or fewer there is nothing to measure and the check reports nothing.
+
+A failure at 1–4, 10, 14 and 18 is a hard block. 5–9, 11–13, 15, 16 and 19–22 are warnings surfaced to the user. 17, 23, 24 and 25 are neither: they are the app's own writing, repaired before delivery.
 
 A check whose evidence is missing (no parseable master, no section order) reports nothing rather than guessing.

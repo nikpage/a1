@@ -1125,12 +1125,25 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
 
   trackDailySpend(gemini_usage.costUsd);
 
-  // Voice BEFORE truth. A first draft drifts to generic business prose whatever
-  // the prompt says, so the profile is checked and the misses repaired — and then
-  // the fact-checker reads the repaired text, so a style rewrite can never
-  // smuggle a claim past it.
-  const voiced = await applyVoice({
-    document: processedContent.trim(),
+  // The voice rewrite is a FALLBACK now, not a stage.
+  //
+  // The writer composes in the candidate's voice from the first sentence
+  // (prompts/cover-letter.js), so a second model reshaping its output is a
+  // second owner for one document — and reshaping another model's letter is what
+  // produced fragments: orphan one-liners, stubs, a weak close. It runs ONLY
+  // when the finished letter measures flat or walks half the career, which is
+  // the case it was built for.
+  //
+  // Still before the truth passes, so anything it does is fact-checked after.
+  const draft = processedContent.trim();
+  const needsVoicePass = voiceProfile
+    ? coverShapeFaults(draft).length > 0 || Boolean(coverBreadthFault(draft, cv))
+    : false;
+  if (!needsVoicePass && voiceProfile) {
+    logger.info('[voice cover] draft already carries the voice — no rewrite needed');
+  }
+  const voiced = needsVoicePass ? await applyVoice({
+    document: draft,
     profile: voiceProfile,
     docType: 'cover',
     // The ad itself, so the rewrite can judge how far this candidate's voice
@@ -1138,7 +1151,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     jobText: targetJobBlock(analysis),
     // The record, so it can see how many of these employers the letter walked.
     master: cv,
-  });
+  }) : { content: draft, gemini_usages: [], applied: [] };
 
   // Verify AFTER the date/placeholder cleanup, so the checker sees exactly the
   // text the candidate will send.

@@ -1101,14 +1101,21 @@ export function coverShapeFaults(document) {
 // the same one: cut. Dropping an employer invents nothing.
 const BREADTH_MAX = 3;
 
-// The employer names the master records, long enough to be distinctive.
+// The employer names the master records — INCLUDING the nested contracts[] of a
+// merged parent entry. A standing consultancy carries its engagements as
+// children (Salsita, wflow.com, SpecialAgents.pro all hang under one Nik Page
+// Ltd. entry), and those are exactly the names a letter walks. Reading only the
+// top level found three employers where the letter had named five, so the check
+// never fired on the case it was written for.
 function masterEmployers(master) {
   const m = readMaster(master);
   const out = [];
-  for (const e of Array.isArray(m.parsed?.experience) ? m.parsed.experience : []) {
-    const name = String(e?.company || '').trim();
+  const take = (entry) => {
+    const name = String(entry?.company || entry?.client || '').trim();
     if (name.length > 3) out.push(name);
-  }
+    for (const child of Array.isArray(entry?.contracts) ? entry.contracts : []) take(child);
+  };
+  for (const e of Array.isArray(m.parsed?.experience) ? m.parsed.experience : []) take(e);
   return [...new Set(out)];
 }
 
@@ -1116,7 +1123,7 @@ function masterEmployers(master) {
 // "Salsita" for "Salsita Software", "spořitelna" for "Česká spořitelna" — so a
 // letter naming the company informally still counts.
 function namesEmployer(text, employer) {
-  const parts = employer.toLowerCase().split(/[\s,.]+/).filter((w) => w.length > 4);
+  const parts = employer.toLowerCase().split(/[\s,.]+/).filter((w) => w.length > 3);
   const key = parts.sort((a, b) => b.length - a.length)[0];
   return key ? text.includes(key) : false;
 }

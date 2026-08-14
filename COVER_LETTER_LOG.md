@@ -71,6 +71,43 @@ a fallback that fires only when the shape check fails.
 
 ---
 
+## 2026-08-14, later — the writer owns the letter
+
+The diagnosis above, tested. Voice moved into the WRITING prompt (at the top,
+above the rules, with the candidate's own writing quoted there), and the rewrite
+demoted to a fallback that fires only when the finished letter measures flat or
+walks the career.
+
+| # | Tried | Result | Verdict |
+|---|---|---|---|
+| 11 | **Writer composes in voice; rewrite demoted to fallback** | The fragments stopped. Coherent paragraphs, no orphan one-liners, keeps the strongest evidence. | **KEPT.** This was the right call. |
+| 12 | **Breadth check fixed to read nested `contracts[]`** | It had never fired: this candidate's engagements (Salsita, wflow.com, SpecialAgents.pro) hang as children under one consultancy entry, so reading only the top level saw three employers where the letter had named five. Now fires correctly. | **KEPT.** |
+| 13 | **Derived arithmetic added to the verify pass (2b)** | A run invented "a gain of over 400%" from two real numbers and every existing category let it through — nothing was fabricated, it was *computed*. Now flagged and cut. | **KEPT.** Also caught: "under $20k" and "over $100k" are not endpoints you can divide. |
+| 14 | **Rewrite fallback OFF, writer alone** (temporary, for comparison) | Coherent, no false attribution, keeps the best number — but FLAT (shortest sentence 9 words) and the opening was brochure copy. | **Informative.** The two configurations fail in opposite directions. |
+| 15 | **Shape targets stated in the WRITER's prompt** (one sentence ≤6 words, wide variation, no paragraph over ~90 words, no stub-chopping, open on a concrete thing done) | Best result of the session: spread 9.0, coherent, no rewrite needed at all. | **KEPT.** Fixing shape at the source beats repairing it afterwards. |
+
+### Where it stands
+
+Much better than the morning's baseline (four uniform slabs, no short sentence
+anywhere, brochure closing). Now: coherent, varied, opens on a real fact, and
+usually needs no second pass at all.
+
+**Not fixed: variance.** Run to run the same inputs give a good letter or a
+mediocre one — sometimes a stub fragment ("Ready to engage with diverse client
+needs."), sometimes a fourth employer, sometimes filler ("a significant
+increase"). One run in three or four still reads like an outline.
+
+**Seen once and worth watching: a false attribution.** A rewrite moved
+multinational user studies from Monster Worldwide to wflow.com — the fact was
+real, the employer was not. No pass caught it. If the rewrite fallback stays,
+this is the risk it carries, and it is a worse class of defect than flatness.
+
+**Untried.** Generating two drafts and keeping the better one against the shape
+metrics — the only remaining idea aimed squarely at variance rather than at the
+average.
+
+---
+
 ## Rules changed along the way
 
 Every one of these went into `CV_RULES.md` FIRST and cascaded into code, per the

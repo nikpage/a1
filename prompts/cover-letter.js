@@ -53,14 +53,42 @@ export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', lang
     - **NEVER invent a fact to satisfy any of this.** Steering reorders, reframes and cuts real content. It never adds. If they ask you to emphasise something the master does not evidence, foreground the closest thing the master DOES evidence and say no more.
 `
     : '';
+  // THE WRITER OWNS THE LETTER, VOICE INCLUDED.
+  //
+  // The letter used to be written cold and then restyled by a second call. Two
+  // models, neither owning the document: the first produced a career summary,
+  // the second reshaped someone else's outline, and reshaping an outline
+  // produces fragments — orphan one-line paragraphs, stub sentences, a weak
+  // close. So the voice is handed to the WRITER, at the top, before the rules,
+  // with the candidate's actual writing in front of it. The rewrite still
+  // exists, but only as a fallback when the finished letter measures flat
+  // (utils/openai.js).
+  const voiceOwnership = voiceBlock
+    ? `    # WHO IS WRITING THIS
+    You are writing AS this candidate, in their own voice, not as a professional letter service writing on their behalf. Their voice is described below and their own writing is quoted further down. Read both before you write a word, and write the whole letter that way from the first sentence — this is not a polish applied at the end, it is how the letter is composed.
+
+    Voice is SHAPE before it is vocabulary: the spread of sentence lengths, how short the shortest sentence gets, how long a paragraph runs, whether the point lands first or last. Uniform sentences in uniform paragraphs are what makes writing read as machine-made, and no word choice fixes them. Match the proportions their samples show — their long sentences as well as their short ones.
+
+    Concretely, and this is checked after you write:
+    - At least ONE sentence in the letter is SIX WORDS OR FEWER. Not as a trick — a short sentence lands a conclusion, a pivot, or a fact that needs no qualifying. A letter whose shortest sentence is nine words has no rhythm at all.
+    - Sentence lengths vary WIDELY across the letter. Some sentences run past twenty-five words. Others are four.
+    - No paragraph runs past about ninety words.
+    - Do NOT manufacture rhythm by chopping one thought into three stubs ("I apply AI." "I organize user research."): that is a list with full stops in it and it reads worse than a flat paragraph. Short sentences are for landing points, never for breaking up a thought that belongs together.
+    - The opening is one concrete thing this candidate DID. Never a summary of their career or their interests ("My work has long centered on…" is brochure copy, not a person talking).
+${voiceBlock}${excerptBlock}
+`
+    : '';
+
   const systemMessage = {
     role: 'system',
-    content: 'You are an expert cover-letter writer for CEE tech roles. You write tight, specific, persuasive letters — every sentence earns its place — and you follow formatting rules precisely.'
+    content: voiceBlock
+      ? 'You write a cover letter as the candidate themselves, in their own voice, from a description of how they write and samples of their actual writing. Every fact comes from their record and nothing is invented. You return the finished letter only.'
+      : 'You are an expert cover-letter writer for CEE tech roles. You write tight, specific, persuasive letters — every sentence earns its place — and you follow formatting rules precisely.'
   };
 
   const userMessage = {
     role: 'user',
-    content: `${tweakBlock}${coreBlock}
+    content: `${tweakBlock}${voiceOwnership}${coreBlock}
     ${currentDateBlock(now)}
 ${jobBlock}
 ${cvInvariants()}
@@ -101,7 +129,6 @@ ${scenarioBlock}
     # Tone — "${tone}"
     ${toneInstructions(tone)}
 
-${voiceBlock}
     # Inputs
     ## Master CV (the candidate's complete, structured career record — your sole factual source; includes \`voice_samples\` and, where present, \`voice_guide\` for the candidate's writing voice):
     ${currentDateReminder(now)}
@@ -110,7 +137,6 @@ ${voiceBlock}
     ## Analysis (background for the argument — not a list to work through):
     ${JSON.stringify(coverBrief(analysis), null, 2)}
 
-${excerptBlock}
     # Output
     Return only the cover letter. Start with the date, then salutation, body, and end with the signature block.
     `
