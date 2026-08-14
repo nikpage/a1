@@ -176,26 +176,41 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
     setPhase('');
   }
 
+  // The two documents are written in SEPARATE runs, one after the other.
+  //
+  // They are different documents with different rules, and a single run tied
+  // them together in every way that matters: one failure lost both, neither
+  // could be rewritten without reprinting the other, and the letter could not
+  // be given its own tone or language. SEQUENTIAL, not parallel — the run holds
+  // a per-user Redis `gen_lock`, so a second request fired at the same time
+  // loses the race and comes back 429 (this is why the viewer's own regenerate
+  // loop is sequential too).
+  //
+  // The CV goes first and lands on screen before the letter is asked for, so a
+  // failed letter still leaves a finished CV in hand rather than nothing.
   async function generate() {
     if (!analysis) return;
     setError('');
     setBusy('generate');
-    setPhase('Writing, checking every fact against the record…');
+    const tweak = composeTweak({ emphasise, playDown, freeform });
+    const run = (type) => generateDocuments({ analysis, tone, type, language, tweak });
+
     try {
-      const data = await generateDocuments({
-        analysis,
-        tone,
-        type: 'both',
-        language,
-        tweak: composeTweak({ emphasise, playDown, freeform }),
-      });
-      if (!data.ok) throw new Error(data.error || 'Generation failed');
-      (data.gemini_usage || []).forEach(logGemini);
-      setCv(data.cv || '');
-      setCover(data.cover || '');
-      setWarnings(Array.isArray(data.cv_warnings) ? data.cv_warnings : []);
-      setCoverWarnings(Array.isArray(data.cover_warnings) ? data.cover_warnings : []);
-      setActiveTab(data.cv ? 'cv' : 'cover');
+      setPhase('Writing the CV, checking every fact against the record…');
+      const cvRun = await run('cv');
+      if (!cvRun.ok) throw new Error(cvRun.error || 'CV generation failed');
+      (cvRun.gemini_usage || []).forEach(logGemini);
+      setCv(cvRun.cv || '');
+      setWarnings(Array.isArray(cvRun.cv_warnings) ? cvRun.cv_warnings : []);
+      setActiveTab('cv');
+      window.dispatchEvent(new Event('header-stats-updated'));
+
+      setPhase('Writing the cover letter…');
+      const coverRun = await run('cover');
+      if (!coverRun.ok) throw new Error(coverRun.error || 'Cover letter generation failed');
+      (coverRun.gemini_usage || []).forEach(logGemini);
+      setCover(coverRun.cover || '');
+      setCoverWarnings(Array.isArray(coverRun.cover_warnings) ? coverRun.cover_warnings : []);
       window.dispatchEvent(new Event('header-stats-updated'));
     } catch (err) {
       setError(err.message);
