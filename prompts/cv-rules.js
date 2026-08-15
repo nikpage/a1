@@ -69,7 +69,7 @@ export function humanScannability(language = 'auto') {
 export function jobMatchingRules(hasJobText) {
   if (!hasJobText) return '';
   return `# Layer 3 — Job matching (a job ad is present)
-- **Coverage, bounded:** the ad's required hard skills, tools and certifications are in \`job_extraction\` and \`job_match.inferred_keywords\`. Use the ad's EXACT term only where the master evidences the thing. A requirement the master does not evidence is reported to the candidate as a gap (it is already in \`analysis.ats_keywords_missing\`) — never quietly filled, never softened in, never covered with the ad's own wording.
+- **Coverage, bounded:** the ad's required hard skills, tools and certifications are in \`job_extraction\`. Use the ad's EXACT term only where the master evidences the thing. A requirement the master does not evidence is reported to the candidate as a gap (it is already in \`analysis.ats_keywords_missing\`) — never quietly filled, never softened in, never covered with the ad's own wording.
 - **Priority alignment:** within each role, order bullets so the ones answering the ad's top three requirements come first. Role order stays reverse-chronological.
 - **Selection:** choose bullets for relevance to THIS ad. An irrelevant true achievement is DROPPED, never reworded into relevance.`;
 }

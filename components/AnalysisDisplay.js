@@ -153,13 +153,6 @@ export default function AnalysisDisplay({ analysis }) {
                   <Field label={hasJobMatch ? t('overallMatchScore') : t('overallScore')} value={`${a.overall_score}/10`} />
                 )}
                 {!isEmpty(a.ats_score) && <Field label={t('atsScore')} value={`${a.ats_score}/10`} />}
-                {hasJobMatch && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t('keywordSkills')}</h4>
-                    <Field label={t('matches')} value={data.job_match?.keyword_match} />
-                    <Field label={t('suggestedAdditions')} value={data.job_match?.inferred_keywords} />
-                  </div>
-                )}
               </div>
               )}
               {hasAssessment && (

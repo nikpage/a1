@@ -13,15 +13,10 @@ describe('buildAnalysisPrompt — job_extraction schema', () => {
 
     expect(userPrompt).toContain('job_extraction');
     expect(userPrompt).toContain('position_title');
-    expect(userPrompt).toContain('hard_skills');
-    expect(userPrompt).toContain('soft_skills');
     expect(userPrompt).toContain('must_have_requirements');
     expect(userPrompt).toContain('nice_to_have');
-    expect(userPrompt).toContain('keywords_for_ats');
     expect(userPrompt).toContain('responsibilities');
     expect(userPrompt).toContain('language_requirements');
-    expect(userPrompt).toContain('employment_type');
-    expect(userPrompt).toContain('salary');
   });
 
   test('with hasJobText=true: prompt includes "never invent" instruction for job_extraction', () => {

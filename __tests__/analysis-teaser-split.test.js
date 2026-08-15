@@ -54,7 +54,7 @@ describe('buildAnalysisPrompt — delta mode (teaser supplied)', () => {
   test('still drives job_extraction when a job ad is present', () => {
     const p = userPrompt();
     expect(p).toContain('job_extraction');
-    expect(p).toContain('hard_skills');
+    expect(p).toContain('must_have_requirements');
   });
 
   test('no-teaser path is unchanged: full schema still emits carried fields', () => {

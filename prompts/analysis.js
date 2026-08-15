@@ -24,28 +24,6 @@ const COVER_ACTION_ITEMS_RULE = `- analysis.action_items["Cover Letter"]["Points
 - analysis.action_items["Cover Letter"]["Tone and Style"]: guidance that pushes the cover letter toward a natural human voice — varied sentence length, a short punchy opening (not one dense multi-clause sentence), and concrete proof over adjectives; explicitly steer away from AI-tell clichés.`;
 
 
-// The LETTER'S EVIDENCE (CV_RULES.md, Layer 3: "The letter is composed, not
-// executed"). This pass supplies the letter with MATERIAL — which of the ad's
-// requirements the record can genuinely answer, and with what; which recruiter
-// concerns have an answering fact behind them. It does NOT decide the letter.
-//
-// It used to. `cover_blueprint` named the hook, picked exactly three pairs in
-// their proving order, chose the one objection and set the close — which is the
-// whole of a cover letter, decided during analysis, before the candidate had
-// typed a word of steering, chosen a tone or had a voice profile in hand. The
-// writer was then arranging prose around a skeleton it had not chosen, and the
-// steering that arrived later could only redress a decision already taken. What
-// is left here is evidence: unranked, unordered, and no more binding than the
-// record itself. The writer picks, orders and argues.
-const coverEvidenceRule = (hasJobText) => `- generation_framework.cover_evidence.requirement_evidence: ${hasJobText ? `ARRAY of up to FIVE objects { requirement, evidence } — the ad's important requirements that this record can genuinely answer. \`requirement\` quotes the ad's own words. \`evidence\` names the real achievement that answers it AND the employer it came from, drawn from the record. This is a POOL, not a running order and not a plan: do not rank it, do not trim it to the three that read best, do not order it for a paragraph — the writer chooses which to use, in what order, with the candidate's own steering in hand. NEVER include a requirement the record cannot answer: an unevidenced requirement is a gap reported to the candidate, and listing it here invites the letter to fill it. Fewer is correct where the record answers fewer; an empty array is correct where it answers none.` : `MUST be an empty array. With no job ad there is no requirement to answer; the letter argues from the candidate's strongest evidenced work.`}
-- generation_framework.cover_evidence.concerns: ARRAY of up to THREE objects { flag, answer_evidence } — the recruiter concerns that HAVE a real answer in the record. \`flag\` names it in one short phrase, \`answer_evidence\` is the fact that settles it. Include only where mention could help: a gap over six months, the permanence question under a standing consultancy, a location or relocation mismatch, a required capability with a genuine adjacent answer. NEVER include what the letter cannot improve (age, salary, a seniority mismatch with no answer behind it) and NEVER one the record holds no answering fact for. An empty array is a common and correct answer. The writer addresses at most ONE of these, or none — you are not choosing for it.`;
-
-// Shared schema fragment, so both prompt bodies describe the same object.
-const COVER_EVIDENCE_SCHEMA = `    "cover_evidence": {
-      "requirement_evidence": [],
-      "concerns": []
-    },`;
-
 // NOTE: the onboarding "open questions" the user settles on the master are no
 // longer produced here. A model reading the master reconciles its gaps/overlaps
 // away and reports "clean", so those questions are computed deterministically
@@ -157,7 +135,6 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof (scope, scale, results). Plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer adapts this into the requested tone, so make it factual and dense, not stylised.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
 - generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority AND to the target market's convention (Layer 5): for a CZECH or POLISH target the letter is a short covering note — 200-300, default 250; for every other market 250-350, default 275. Pick the market from the job ad's country when there is one, otherwise the candidate's own.
-${coverEvidenceRule(hasJobText)}
 
 OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field above, and do NOT emit scores, commentary, quick_wins or action_items — another pass owns those):
 {
@@ -171,8 +148,6 @@ OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field abo
     "ats_keywords_missing": ""
   },
   "job_match": {
-    "keyword_match": "n/a",
-    "inferred_keywords": "n/a",
     "career_scenario": "n/a",
     "positioning_strategy": ""
   },
@@ -186,7 +161,6 @@ OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field abo
       "top_three_achievements": [],
       "skills_to_highlight": []
     },
-${COVER_EVIDENCE_SCHEMA}
     "target_cover_words": ""
   }${hasJobText ? `,
   "job_extraction": {
@@ -194,14 +168,9 @@ ${COVER_EVIDENCE_SCHEMA}
     "company": "",
     "location": "",
     "seniority": "",
-    "employment_type": "",
-    "salary": "",
-    "hard_skills": [],
-    "soft_skills": [],
     "must_have_requirements": [],
     "nice_to_have": [],
     "responsibilities": [],
-    "keywords_for_ats": [],
     "language_requirements": []
   }` : ''}
 }
@@ -310,7 +279,6 @@ ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extrac
 ${COVER_ACTION_ITEMS_RULE}
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance. NEVER pull from ats_keywords_missing — a skill the CV cannot prove must never appear here.
 - generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority AND to the target market's convention (Layer 5): for a CZECH or POLISH target the letter is a short covering note — 200-300, default 250; for every other market 250-350, default 275. Pick the market from the job ad's country when there is one, otherwise the candidate's own.
-${coverEvidenceRule(hasJobText)}
 
 JSON OUTPUT SCHEMA:
 {
@@ -342,8 +310,6 @@ JSON OUTPUT SCHEMA:
     }
   },
   "job_match": {
-    "keyword_match": "n/a",
-    "inferred_keywords": "n/a",
     "career_scenario": "n/a",
     "positioning_strategy": ""
   },
@@ -361,7 +327,6 @@ JSON OUTPUT SCHEMA:
       "top_three_achievements": [],
       "skills_to_highlight": []
     },
-${COVER_EVIDENCE_SCHEMA}
     "target_cover_words": ""
   }${hasJobText ? `,
   "job_extraction": {
@@ -369,14 +334,9 @@ ${COVER_EVIDENCE_SCHEMA}
     "company": "",
     "location": "",
     "seniority": "",
-    "employment_type": "",
-    "salary": "",
-    "hard_skills": [],
-    "soft_skills": [],
     "must_have_requirements": [],
     "nice_to_have": [],
     "responsibilities": [],
-    "keywords_for_ats": [],
     "language_requirements": []
   }` : ''}
 }

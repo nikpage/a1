@@ -194,36 +194,26 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
   });
 });
 
-describe('the analysis pass gathers the letter its evidence, not its plan', () => {
+describe('the analysis pass no longer gathers cover_evidence (2026-08-15)', () => {
+  // cover_evidence was computed by every analysis call and never read by
+  // buildCoverPrompt — coverEvidenceBlock()/coverBrief() are dead code, never
+  // imported by prompts/cover-letter.js. Removed to stop paying for it.
   const build = (jobText) => buildAnalysisPrompt('CV TEXT', jobText, Boolean(jobText && jobText.length > 20), null)
     .map((m) => m.content).join('\n');
 
-  test('with a job ad it requests the answerable requirements and the answerable concerns', () => {
+  test('the schema no longer asks for cover_evidence', () => {
     const text = build('Head of Product at PLG Group, Prague. Lead a team of product managers.');
-    expect(text).toContain('generation_framework.cover_evidence.requirement_evidence');
-    expect(text).toContain('generation_framework.cover_evidence.concerns');
-    expect(text).toContain('"cover_evidence"');
-    expect(text).toMatch(/up to FIVE objects \{ requirement, evidence \}/);
-    expect(text).toMatch(/This is a POOL, not a running order and not a plan/);
-  });
-
-  // The regression this file exists for: the analysis must not decide the
-  // letter. No hook, no ordering, no chosen objection, no close.
-  test('it asks for no hook, no order, no chosen objection and no close', () => {
-    const text = build('Head of Product at PLG Group, Prague. Lead a team of product managers.');
+    expect(text).not.toContain('cover_evidence');
     expect(text).not.toContain('hook_angle');
     expect(text).not.toContain('close_ask');
     expect(text).not.toContain('objection_to_defuse');
     expect(text).not.toContain('matched_pairs');
     expect(text).not.toContain('salutation_target');
-    expect(text).toMatch(/do not rank it/);
-    expect(text).toMatch(/you are not choosing for it/i);
   });
 
-  test('with no job ad the requirement pool must be empty — there is nothing to answer', () => {
+  test('same with no job ad', () => {
     const text = build('');
-    expect(text).toContain('generation_framework.cover_evidence.requirement_evidence');
-    expect(text).toMatch(/MUST be an empty array/);
+    expect(text).not.toContain('cover_evidence');
   });
 });
 
