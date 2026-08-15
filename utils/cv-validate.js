@@ -329,17 +329,22 @@ function checkDates(document, master, hard, yearOnly) {
 // 3. No Work Experience entry that was not a real role.
 function checkRolesReal(document, master, hard) {
   if (!master.lower) return;
+  // plain() strips "|" out of a printed heading, so a real multi-part title
+  // ("Product Strategy & UX Leader | Custom AI Solutions | Coach") no longer
+  // matches the master's copy of itself and the role reads as invented. Compare
+  // both sides with the separators removed.
+  const masterFlat = master.lower.replace(/[|]/g, ' ').replace(/\s+/g, ' ');
   const sections = splitSections(document);
   for (const s of sections) {
     for (const role of parseRoles(s)) {
       if (isEarlierCareer(role.title)) continue;
       const title = role.title.toLowerCase();
-      if (title && !master.lower.includes(title)) {
+      if (title && !masterFlat.includes(title.replace(/\s+/g, ' '))) {
         // The employer is the harder signal — a title may legitimately be
         // relabelled in wording only if the master states it, so check both and
         // fail only when neither is found.
         const company = plain(role.subtitle).split('|')[0].trim().toLowerCase();
-        if (!company || !master.lower.includes(company)) {
+        if (!company || !masterFlat.includes(company)) {
           hard.push(`Work Experience entry "${role.title}" matches no role in the master record.`);
         }
       }

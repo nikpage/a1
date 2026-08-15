@@ -698,3 +698,27 @@ describe('banned phrases are language-scoped', () => {
     expect(bannedPhraseHits('Ein ergebnisorientierter results-driven Leader.', 'de')).toEqual([]);
   });
 });
+
+// A real title can carry "|" as an internal separator ("Product Strategy & UX
+// Leader | Custom AI Solutions | Coach"). plain() strips that character out of
+// the printed heading, so comparing against the master's raw copy failed and the
+// candidate's own job title was reported as a role they never held.
+describe('check 3 — a multi-part job title is not an invented role', () => {
+  const PIPED = JSON.stringify({
+    work_experience: [
+      { company: 'Nik Page Ltd.', title: 'Product Strategy & UX Leader | Custom AI Solutions | Coach', start_date: '08/2016', end_date: 'Present', bullets: ['Built AI tooling for clients'], fractional_engagements: [] },
+    ],
+  });
+  const doc = '### **Summary**\nProduct leader.\n\n- As Product Strategy & UX Leader at Nik Page Ltd., built AI tooling\n\n### **Work Experience**\n\n#### **Product Strategy & UX Leader | Custom AI Solutions | Coach**\n**Nik Page Ltd.** | 08/2016 - Present | Prague\n- Built AI tooling for clients across enterprise and startup environments today\n';
+
+  it('accepts the role instead of hard-failing it', () => {
+    const r = validateCv(doc, { master: PIPED, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toMatch(/matches no role/);
+  });
+
+  it('still hard-fails a title the master really does not hold', () => {
+    const invented = doc.replace('Product Strategy & UX Leader | Custom AI Solutions | Coach', 'Chief Revenue Officer');
+    const r = validateCv(invented, { master: PIPED, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toMatch(/matches no role/);
+  });
+});
