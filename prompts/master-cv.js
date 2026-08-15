@@ -57,9 +57,47 @@ Output ONLY the requested clarifications or the valid JSON object.`;
 // branch is closed off and the model goes straight to Step 2.
 const NO_CLARIFICATIONS = `This runs unattended — there is no one to answer questions. Do not ask any. State "No clarifications needed" internally and output ONLY the valid JSON object, with no markdown fence and no commentary.`;
 
+// The INPUT is unknown — a CV, a LinkedIn PDF, a paste. The OUTPUT is not: every
+// consumer reads these exact keys, so the shape is pinned here rather than left
+// to the model. Sections the source does not evidence come back as [] or "".
+const EXACT_SHAPE = `EXACT OUTPUT SHAPE — emit every key below, always, in this shape. A section the source does not evidence is an empty array or an empty string, never a missing key and never a different name. Use "" for any field the source does not state — never guess, never infer a location from an employer's name.
+
+{
+  "profile": {
+    "name": "", "headline": "", "location": "", "summary": "",
+    "contact": { "phone": "", "email": "", "linkedin": "", "website": "" },
+    "top_skills": [], "languages": [{ "language": "", "proficiency": "" }],
+    "certifications": [], "honors_and_awards": []
+  },
+  "work_experience": [
+    {
+      "company": "", "title": "", "start_date": "", "end_date": "", "location": "",
+      "bullets": [],
+      "fractional_engagements": []
+    }
+  ],
+  "advisory_and_community": [
+    { "organization": "", "title": "", "start_date": "", "end_date": "", "location": "", "bullets": [] }
+  ],
+  "speaking_and_lecturing": [
+    { "event": "", "role": "", "topic": "", "location": "", "year": "" }
+  ],
+  "publications_and_patents": [],
+  "education": [
+    { "institution": "", "qualification": "", "dates": "", "location": "" }
+  ]
+}
+
+SHAPE RULES:
+- Every entry in "fractional_engagements" is the SAME object shape as a "work_experience" entry (company, title, start_date, end_date, location, bullets). Nest one level only — an engagement never carries its own "fractional_engagements".
+- "bullets" is ALWAYS an array of strings, one per responsibility or achievement, and it is the ONLY place role detail goes. Never emit "description", "responsibilities", "duties" or a prose blob in place of it; a single paragraph becomes a one-element array.
+- Dates are strings exactly as the source states them ("August 2016", "2011", "Present"). Do not reformat, do not compute a duration, do not fill a missing one.
+- "summary" is the person's OWN summary text from the source, verbatim. Write nothing of your own there; if the source has none, use "".
+- Emit no key that is not listed above.`;
+
 export function buildMasterCvPrompt({ rawInput = '', now = new Date() } = {}) {
   return [
-    { role: 'system', content: `${currentDateBlock(now)}\n\n${EXTRACTION_PROMPT}\n\n${NO_CLARIFICATIONS}` },
+    { role: 'system', content: `${currentDateBlock(now)}\n\n${EXTRACTION_PROMPT}\n\n${NO_CLARIFICATIONS}\n\n${EXACT_SHAPE}` },
     { role: 'user', content: `INPUT:\n${currentDateReminder(now)}\n${rawInput}`.trim() },
   ];
 }
