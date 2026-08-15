@@ -152,19 +152,15 @@ describe('check 23 — an industry the letter invented for itself', () => {
 describe('steering is in scope when the letter is composed', () => {
   const steering = 'Foreground and lead with: I really love Zlín\nPlay down, condense or place late: all the banks';
 
-  test('the letter is told demoted content is not evidence for a requirement either', () => {
-    const text = buildCoverPrompt(MASTER, analysis(), 'formal', steering).map((m) => m.content).join('\n');
+  // Steering still outranks everything and still says demoted content is not
+  // the lead — stated once now, in the steering block itself, rather than
+  // repeated inside an evidence block that no longer exists.
+  test('the letter is told demoted content is never the lead or the proof', () => {
+    const text = buildCoverPrompt('MASTER', { analysis: {} }, 'Formal', steering).find((m) => m.role === 'user').content;
     expect(text).toMatch(/HIGHEST PRIORITY/);
-    expect(text).toMatch(/Demoted content is not evidence/);
-    expect(text).toMatch(/leave that requirement unanswered/);
-    // The RULES for steering are contract clause C4, stated once at the top.
-    expect(text).toMatch(/C4 — Obey the candidate's steering/);
-    expect(text).toMatch(/is in the FIRST paragraph/);
-    expect(text).toMatch(/is NOT in the first paragraph at all/);
-    // And it still cannot buy the emphasis with an invented fact.
-    expect(text).toMatch(/steering never adds a fact/);
-    // There is no plan left for it to outrank.
-    expect(text).not.toMatch(/outrank the plan/);
+    expect(text).toMatch(/stays out of the opening entirely/);
+    expect(text).toMatch(/never the hook, the lead, or the proof you offer/);
+    expect(text).toMatch(/Steering never adds a fact/);
   });
 
   test('the CV carries the same precedence, since the same plan drives it', () => {

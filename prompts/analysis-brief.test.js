@@ -155,9 +155,18 @@ describe('the cover-letter prompt carries the brief, not the review', () => {
     for (const sentinel of WITHHELD) expect(prompt).not.toContain(sentinel);
   });
 
-  test('its own guidance and the red flags it defuses still reach it', () => {
-    expect(prompt).toContain('COVER_POINT_KEEP');
-    expect(prompt).toContain('RED_FLAG_KEEP');
+  // The letter no longer receives the analysis at all (2026-08-15). coverBrief
+  // was the careful projection of a document the letter now composes from the
+  // record and the ad directly, and every letter measurably improved when it
+  // stopped arriving. What the brief protected against — display copy reaching
+  // the writer — is protected absolutely now: NOTHING from the analysis object
+  // reaches the letter except the ad and the market word band.
+  test('no analysis guidance reaches the cover writer either — only the ad and the budget', () => {
+    expect(prompt).not.toContain('COVER_POINT_KEEP');
+    expect(prompt).not.toContain('RED_FLAG_KEEP');
+    expect(prompt).not.toContain('POSITIONING_KEEP');
+    expect(prompt).not.toContain('CV_CHANGE_KEEP');
+    // The word band still reaches it: length is furniture, not guidance.
     expect(prompt).toContain('275');
   });
 });

@@ -77,12 +77,15 @@ describe('the generators receive the ad', () => {
     expect(header).toBeLessThan(user.content.indexOf('## Analysis ('));
   });
 
-  it('states the target job to the cover-letter prompt, before the analysis dump', () => {
+  // The letter receives no analysis dump any more, so there is nothing to sit
+  // before: what matters is that the ad reaches it, ahead of the record it will
+  // be matched against.
+  it('states the target job to the cover-letter prompt, ahead of the job history', () => {
     const [, user] = buildCoverPrompt('MASTER-CV-TEXT', analysisWithJob, 'Formal');
     const header = user.content.indexOf('# The target job');
     expect(header).toBeGreaterThan(-1);
     expect(user.content.indexOf('Company: Northwind')).toBeGreaterThan(header);
-    expect(header).toBeLessThan(user.content.indexOf('## Analysis ('));
+    expect(header).toBeLessThan(user.content.indexOf('# Job History'));
   });
 
   it('leaves both prompts free of a target-job section when there is no ad', () => {

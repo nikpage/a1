@@ -131,15 +131,15 @@ describe('buildCoverPrompt — clarifications defuse in one clause; length budge
     generation_framework: {},
   };
 
-  test('instructs the writer that a clarification may defuse a relevant gap in one brief clause, never a whole paragraph', () => {
-    const p = buildCoverPrompt(MASTER_JSON, analysisWithTarget, 'professional').find((m) => m.role === 'user').content;
-    expect(p).toMatch(/clarification/);
-    // The "one clause, once" limit now lives in the Layer 4 red-flag rule
-    // (prompts/cv-rules.js coverRedFlagRule), which the letter always carries;
-    // the clarification rule below it supplies the candidate's own words.
-    expect(p).toMatch(/One clause, once, carrying a fact/);
-    expect(p).toMatch(/never the opening, never the close/);
-    expect(p).toMatch(/Never invent a reason the clarification does not state/);
+  // The clarification rule is gone from the prompt: a `clarification` in the
+  // record is text the CANDIDATE wrote about their own gap, and it reaches the
+  // writer as part of the record itself. Telling the writer how to spend it was
+  // part of the rule stack that lost (2026-08-15).
+  it('states the length budget and the letter furniture, without a clarification rule', () => {
+    const [, user] = buildCoverPrompt(MASTER_JSON, analysisWithTarget, 'Formal');
+    expect(user.content).toMatch(/LENGTH \(hard constraint\)/);
+    expect(user.content).toMatch(/Start with the date on its own line/);
+    expect(user.content).not.toMatch(/One clause, once, carrying a fact/);
   });
 
   test('states the 250-350 word hard budget and that it excludes date/salutation/signature', () => {
@@ -164,8 +164,12 @@ describe('buildCoverPrompt — clarifications defuse in one clause; length budge
     expect(p).toMatch(/Aim for about \d{3} words/);
   });
 
-  test('existing red_flags guidance is still present (guard against accidental deletion)', () => {
+  // The analysis no longer reaches the letter at all (2026-08-15), red_flags
+  // included. The guard is now the reverse: nothing from the analysis object
+  // may leak into the writer's context except the ad and the word band.
+  test('no analysis guidance reaches the letter — the guard is now the reverse', () => {
     const p = buildCoverPrompt(MASTER_JSON, analysisWithTarget, 'professional').find((m) => m.role === 'user').content;
-    expect(p).toContain('analysis.red_flags');
+    expect(p).not.toContain('analysis.red_flags');
+    expect(p).toMatch(/Aim for about \d{3} words/);
   });
 });

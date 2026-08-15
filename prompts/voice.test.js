@@ -28,8 +28,18 @@ describe('humanVoiceRules — identity epithets', () => {
     expect(text).toMatch(/Name facts, not identities/);
   });
 
-  it('reaches the cover-letter prompt', () => {
-    const text = JSON.stringify(buildCoverPrompt({ cv: 'x', analysis: {}, tone: 'Formal' }));
-    expect(text).toMatch(/Name facts, not identities/);
+  // The epithet ban applies to the CV, NOT the letter (2026-08-15). "As an
+  // experienced product leader" opened the letter Nik judged far better than
+  // anything the pipeline produced; banning it cost more than it saved. The
+  // letter keeps the BANNED PHRASE list, which is about empty boilerplate
+  // rather than about naming a category.
+  it('reaches the CV prompt but not the letter, which keeps only the banned-phrase list', () => {
+    const cv = JSON.stringify(buildCvPrompt('MASTER', { analysis: {} }, 'Formal'));
+    expect(cv).toMatch(/Name facts, not identities/);
+
+    const cover = JSON.stringify(buildCoverPrompt('MASTER', { analysis: {} }, 'Formal'));
+    expect(cover).not.toMatch(/Name facts, not identities/);
+    expect(cover).toMatch(/BANNED PHRASES/);
+    expect(cover).toMatch(/proven track record/);
   });
 });

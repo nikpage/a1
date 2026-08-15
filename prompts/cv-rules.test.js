@@ -274,10 +274,16 @@ describe('the prompts actually carry the rules', () => {
     expect(user.content).toContain('Layer 1 — Machine parseability');
   });
 
-  it('binds the cover letter to the invariants and to answering the ad', () => {
+  // The CV's rule stack no longer reaches the LETTER (2026-08-15). The letter
+  // exists to persuade and carries ONE absolute — nothing invented — stated in
+  // its own prompt rather than imported as T1-T4, because the rest of the stack
+  // measurably made letters worse. The CV keeps every layer.
+  it('states the no-invention absolute to the letter without importing the CV rule stack', () => {
     const [, user] = buildCoverPrompt('MASTER', analysis, 'confident');
-    expect(user.content).toContain('T1 — Never fabricate');
-    expect(user.content).toMatch(/Answer what the ad asks, with real evidence/i);
+    expect(user.content).toMatch(/never invent, never inflate/i);
+    expect(user.content).toMatch(/an unclaimed gap is honest/i);
+    expect(user.content).not.toContain('T1 — Never fabricate');
+    expect(user.content).not.toContain('Layer 1 — Machine parseability');
   });
 
   it('carries the market word band into the cover prompt itself', () => {
@@ -288,25 +294,26 @@ describe('the prompts actually carry the rules', () => {
     expect(uk.content).toMatch(/250-350 words/);
   });
 
-  it('tells the letter to make one argument, not to walk the guidance list', () => {
+  // What replaced "one argument": the four moves that were measured to persuade.
+  it('tells the letter what actually persuades', () => {
     const [, user] = buildCoverPrompt('MASTER', analysis, 'confident');
-    expect(user.content).toMatch(/makes ONE argument/);
-    expect(user.content).toMatch(/material, not a running order/i);
-    // The old instruction turned the action items into a checklist.
-    expect(user.content).not.toMatch(/Work through the guidance/);
+    expect(user.content).toMatch(/Answer what the ad says it does NOT want/);
+    expect(user.content).toMatch(/Open on THEIR problem/);
+    expect(user.content).toMatch(/Relevance beats recency/);
+    expect(user.content).toMatch(/Let the ad set the shape/);
+    expect(user.content).toMatch(/decides to call this person for an interview/);
   });
 
-  it('carries the active scenario into the cover letter, in its letter form', () => {
+  // Layer 4 reaches the CV only. A scenario is a CV mitigation — collapse early
+  // roles, strip graduation years, reorder sections — and none of it describes
+  // anything a letter does. Naming the scenario to the letter only taught it to
+  // write defensively about the very thing being managed.
+  it('keeps the scenario layer out of the letter entirely', () => {
     const [, user] = buildCoverPrompt('MASTER', { analysis: { scenario_tags: ['Older Applicant'] } }, 'confident');
-    expect(user.content).toContain('Layer 4 — Situational overrides');
-    expect(user.content).toContain('Older Applicant:');
-    // The CV mitigation is meaningless in a letter and must not appear.
-    expect(user.content).not.toMatch(/Strip graduation years|markdown structure/);
-  });
-
-  it('omits Layer 4 from the cover letter when no scenario is tagged', () => {
-    const [, user] = buildCoverPrompt('MASTER', { analysis: {} }, 'confident');
     expect(user.content).not.toContain('Layer 4 — Situational overrides');
+    expect(user.content).not.toContain('Older Applicant');
+    // And it still reaches the CV, which is what it was written for.
+    expect(scenarioGenerationRules(['Older Applicant'])).toContain('Older Applicant');
   });
 
   it('leaves the requirement-answering rule out of a letter with no job ad', () => {

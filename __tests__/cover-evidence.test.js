@@ -131,56 +131,66 @@ describe('salutationName', () => {
 describe('buildCoverPrompt carries the letter-side rules', () => {
   const promptText = (analysis) => buildCoverPrompt(MASTER, analysis, 'professional').map((m) => m.content).join('\n');
 
-  test('the named contact reaches the salutation rule, and the evidence reaches the writer', () => {
+  test('the named contact reaches the salutation rule', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toContain('"Dear Deborah"');
-    expect(text).toContain('coached four PMs at wflow.com');
+    expect(text).toContain('Dear Deborah');
+  });
+
+  // The gathered evidence no longer reaches the writer at all: the letter reads
+  // the RECORD and the AD directly (2026-08-15). Pre-chewed evidence lines were
+  // CV-speak with the story removed, and letters assembled from them read flat.
+  test('the pre-gathered evidence lines do NOT reach the writer', () => {
+    const text = promptText(analysisWith(EVIDENCE));
+    expect(text).not.toContain('coached four PMs at wflow.com');
+    expect(text).not.toContain('Evidence gathered for THIS letter');
   });
 
   // The letter must never be handed a plan — its own or the CV's.
-  test('the writer is told the letter’s shape is its own call', () => {
+  test('the writer is told the shape follows the ad, and is its own call', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toMatch(/Nothing below decides the letter's shape for you/);
-    expect(text).toMatch(/YOUR calls/);
+    expect(text).toMatch(/Let the ad set the shape/);
+    expect(text).toMatch(/Flowing paragraphs are a default, not a requirement/);
   });
 
   test('with no contact the letter is told to use the neutral form and never guess', () => {
     const text = promptText({ job_extraction: { position_title: 'Head of Product' } });
-    expect(text).toContain('Dear Hiring Manager');
+    expect(text).toContain('Dear Hiring Team');
     expect(text).toMatch(/NEVER guess, infer or invent a name/);
   });
 
-  test('the red-flag rule lets the writer pick one of the answerable concerns or none', () => {
+  // The red-flag rule is gone from the prompt (2026-08-15). Deciding whether a
+  // concern is worth raising is judgement the writer makes with the ad in front
+  // of it, and the letters that measured best raised the objection naturally
+  // ("I am not a machine learning researcher who invents fundamental algorithms
+  // from scratch") without being told to.
+  test('no concern-handling rule is stated to the writer', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toContain('cover_evidence.concerns');
-    expect(text).not.toContain('objection_to_defuse');
-    expect(text).toMatch(/never address a second/i);
-    expect(text).toMatch(/addressing NONE is the common answer/i);
-    // Contract C2: the letter reads the analysis's OWN flag list too, so an
-    // empty curated list no longer means no flag is ever addressed.
-    expect(text).toMatch(/C2 binds for every applicant/);
-    expect(text).not.toMatch(/NOT a list to answer/i);
+    expect(text).not.toMatch(/At most ONE concern is defused/);
+    expect(text).not.toContain('consultancy vs permanence');
   });
 
-  test('the opener rule bans the application-act and identity openings', () => {
+  // The opener BANS are gone, with one exception that survives as a banned
+  // PHRASE rather than a rule: "I am writing to apply" is on the banned-phrase
+  // list, which is checked and repaired in code. The identity ban is retired
+  // for the letter entirely (check 12 is a CV rule now).
+  test('the boilerplate opener stays banned as a phrase; the identity opener does not', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toContain('I am writing to apply');
-    expect(text).toMatch(/As a seasoned leader/);
+    expect(text).toMatch(/i am writing to apply/i);
+    expect(text).not.toMatch(/As a seasoned leader/);
+    expect(text).not.toMatch(/the epithet ban binds the letter/);
   });
 
   // A real run opened "Vzpomínám si na jeden z prvních projektů…" — a remembered
   // scene the record does not hold. What is barred is the INVENTION, not the
   // narrative: a candidate whose own recorded voice builds to its point may
   // open that way, on facts (CV_RULES.md, Layer 3).
-  test('the opener rule bans invented scene-setting, not narrative itself', () => {
+  // Invented scene-setting is covered by the one absolute the prompt keeps:
+  // nothing is invented. A remembered year the record does not hold is an
+  // invented fact, and it needs no rule of its own.
+  test('invented colour is covered by the no-invention absolute', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toMatch(/invented scene-setting/);
-    expect(text).toMatch(/Vzpomínám si na/);
-    expect(text).toMatch(/a story needs detail and a writer without detail invents it/);
-    // The narrative permission, and its condition.
-    expect(text).toMatch(/A build is allowed where the candidate's own voice builds/);
-    expect(text).toMatch(/every sentence it builds on is a fact from the record/);
-    expect(text).toMatch(/a build made of atmosphere is invention/);
+    expect(text).toMatch(/never invent, never inflate/);
+    expect(text).toMatch(/never claim a duration, a number, a skill or a role the record does not state/);
   });
 });
 

@@ -203,9 +203,9 @@ describe('existing key rules survive the date insertion (guard against accidenta
   test('cover-letter.js keeps its length budget and date/salutation format rules', () => {
     const user = buildCoverPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)
       .find((m) => m.role === 'user').content;
-    expect(user).toContain('# Task');
+    expect(user).toContain('# The letter\'s furniture');
     expect(user).toMatch(/250-350 words/);
-    expect(user).toContain('Start with only the date at the top');
+    expect(user).toContain('Start with the date on its own line at the top');
     expect(user).toContain('voice_samples');
   });
 });

@@ -35,7 +35,8 @@
 
 import { toneInstructions } from './tone.js';
 import { languageInstruction } from './language.js';
-import { currentDateBlock } from './current-date.js';
+import { currentDateBlock, currentDateReminder } from './current-date.js';
+import { bannedPhraseLine } from './voice.js';
 import { targetJobBlock, rawAdBlock } from './job-target.js';
 import { salutationName } from './cover-evidence.js';
 import { coverLengthRule } from './market.js';
@@ -116,6 +117,8 @@ One thing is absolute, and it is the only one: **never invent, never inflate, ne
 - **Relevance beats recency, every time.** The right evidence is whatever answers THIS ad, whether it happened last month or nine years ago. Reaching back for the right proof is the difference between a tailored letter and a career update.
 - **Let the ad set the shape.** Where the ad lists several distinct things it wants, answering them under short labelled themes is clearer than prose and entirely permitted. Flowing paragraphs are a default, not a requirement. Choose whatever makes the reader see the match fastest.
 - **Prove, never assert.** "Excellent communicator" is worth nothing; the workshop, the audience and what changed is worth everything.
+${bannedPhraseLine(language)}
+- **Never state a span of experience the record does not state.** No "14 years of AI solution design", no "a decade in fintech". Durations are facts: the only ones that exist are those written in the record's own dates. A multiple computed from two real figures is fine where the record's own bounds make it a floor ("under $20k to over $100k" IS more than fivefold); a duration nobody wrote down is not.
 ${steeringBlock}${voiceOwnership}${coreBlock}
 ${adBlock(analysis)}
 
@@ -135,6 +138,9 @@ Sincerely,
 - No placeholders of any kind — no "[Company Address]", no bracketed instructions, nothing for the candidate to fill in.
 
 # Job History
+${currentDateReminder(now)}
+A \`voice_guide\` in this record, where one exists, is the candidate's OWN written style guide: follow it over any style habit of yours. Like \`voice_samples\` it describes HOW to write, never WHAT is true — neither can license a fact the record does not carry.
+
 ${cv}
 
 # Job Description

@@ -219,39 +219,52 @@ describe('the contract is stated to the writer, once, at the top', () => {
     buildCoverPrompt(MASTER, analysisWith(), 'Formal', composeTweak({ emphasise: 'the Salsita work' }), '', 'cs', new Date('2026-08-14'), voiceProfile)
       .map((m) => m.content).join('\n');
 
-  test('all four clauses are present', () => {
-    const text = promptText();
-    expect(text).toMatch(/C1 — Answer the ad's requirements with the record's evidence/);
-    expect(text).toMatch(/C2 — Address a red flag/);
-    expect(text).toMatch(/C3 — Write in this candidate's voice/);
-    expect(text).toMatch(/C4 — Obey the candidate's steering/);
+  // The four-clause contract is gone (2026-08-15). It was the rule stack's last
+  // form and it lost to a four-line prompt. What replaced it is a PURPOSE and a
+  // single absolute, and the deterministic checks that mattered (language,
+  // steering, employer named, word band) still run in utils/cv-validate.js —
+  // enforcement moved to code, which is where it worked all along.
+  test('the purpose replaces the contract, and the one absolute is stated', () => {
+    const p = promptText();
+    expect(p).toMatch(/decides to call this person for an interview/);
+    expect(p).toMatch(/never invent, never inflate/);
+    expect(p).not.toMatch(/C1 —/);
+    expect(p).not.toMatch(/THE CONTRACT/);
   });
 
   // The PURPOSE now leads, and the contract follows it — the letter exists to
   // persuade, and a model reading rules first writes a compliant letter
   // (CV_RULES.md, "What the cover letter IS"). Nothing else may come before
   // them: the ordering is what keeps the rule stack from owning the document.
-  test('the purpose leads the prompt, the contract follows, nothing precedes them', () => {
+  test('the purpose leads the prompt — nothing is stated before it', () => {
     const user = buildCoverPrompt(MASTER, analysisWith(), 'Formal', '', '', 'auto').at(-1).content;
-    expect(user.trimStart().startsWith('# WHAT THIS LETTER IS FOR')).toBe(true);
-    expect(user.indexOf('# WHAT THIS LETTER IS FOR')).toBeLessThan(user.indexOf('# THE CONTRACT'));
-    // The four moves that actually persuade reach the writer.
+    const purpose = user.indexOf('# What this letter is for');
+    expect(purpose).toBeGreaterThan(-1);
+    // Only Nik's own two-line brief precedes it.
+    expect(user.slice(0, purpose)).toMatch(/^Write a tailored cover letter/);
+    // The four measured moves reach the writer.
     expect(user).toMatch(/Answer what the ad says it does NOT want/);
     expect(user).toMatch(/Open on THEIR problem/);
     expect(user).toMatch(/Relevance beats recency/);
-    // And the one thing persuasion never licenses.
-    expect(user).toMatch(/never invent, never inflate/);
+    expect(user).toMatch(/Let the ad set the shape/);
   });
 
   // C3's fallback: no voice profile is not permission to write like a brochure.
-  test('with no voice profile the plain-prose fallback is stated', () => {
-    expect(promptText()).toMatch(/deliberately plain human prose/);
+  test('with no voice profile the letter is still told to write like a person', () => {
+    const p = promptText();
+    expect(p).toMatch(/vary the sentence lengths deliberately/);
+    expect(p).toMatch(/go genuinely short at least once/);
   });
 
-  test('with a voice profile the recorded voice owns the letter instead', () => {
-    const withVoice = promptText({ list_a: ['Leads with the point, never builds to it.'], list_b: [], samples: ['I shipped it on the Friday. Nobody noticed, which was the point.'] });
-    expect(withVoice).toMatch(/Their recorded voice owns this letter from its first sentence/);
-    expect(withVoice).not.toMatch(/deliberately plain human prose/);
+  test('with a voice profile the recorded voice owns the letter from the first sentence', () => {
+    const p = buildCoverPrompt(MASTER, analysisWith(), 'Formal', '', '', 'auto', new Date(), {
+      list_a: ['leads with the point'],
+      samples: [{ text: 'I shipped it on a Tuesday. It worked.' }],
+    }).at(-1).content;
+    expect(p).toMatch(/YOU ARE WRITING AS THIS CANDIDATE, IN THEIR VOICE/);
+    expect(p).toMatch(/leads with the point/);
+    expect(p).toMatch(/I shipped it on a Tuesday/);
+    expect(p).toMatch(/Voice is SHAPE before it is vocabulary/);
   });
 
   // Stated ONCE: the language instruction used to appear in the Task block as

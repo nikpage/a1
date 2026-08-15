@@ -78,7 +78,7 @@ export function bannedPhrases(language = 'auto') {
 
 // Rendered into both prompts, so the writer is told exactly what the checker
 // will look for rather than a vague instruction to avoid clichés.
-function bannedPhraseLine(language) {
+export function bannedPhraseLine(language) {
   const list = bannedPhrases(language);
   if (!list.length) return '';
   return `- BANNED PHRASES (exact list, checked in code after generation and repaired before the candidate sees the document): ${list.map((p) => `"${p}"`).join(', ')}. Do not write any of them, in any capitalisation, in either document. They state nothing, and they are the phrases that mark a page as machine-written on sight. Say the specific thing instead.`;
