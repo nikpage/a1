@@ -1,4 +1,5 @@
 // pages/api/get-analysis.js
+import { roles } from '../../utils/master-read';
 import { logger } from '../../lib/logger';
 import { getLatestAnalysis, getMasterCv, getVoiceProfile } from '../../utils/database';
 import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
@@ -41,7 +42,7 @@ async function handler(req, res) {
     try {
       master = await getMasterCv(user_id);
       master_missing = !master;
-      if (master && Array.isArray(master.experience)) experience = master.experience;
+      if (master) experience = roles(master);
       // data.content is the stored gen_data payload — a JSON STRING today (the
       // background function always JSON.stringify()s before insert), but handled
       // defensively either way. Feeding it in lets issues carry the teaser's own

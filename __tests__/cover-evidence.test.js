@@ -22,9 +22,9 @@ import { coverRedFlagRule } from '../prompts/cv-rules.js';
 import { validateCoverLetter, coverBody, coverShapeFaults, coverBreadthFault } from '../utils/cv-validate.js';
 
 const MASTER = JSON.stringify({
-  identity: { name: 'Nik Page' },
-  experience: [
-    { title: 'Head of Product', company: 'wflow.com', dates: '01/2022 - 06/2024', achievements: ['Consolidated 3 platforms into one'] },
+  profile: { name: 'Nik Page' },
+  work_experience: [
+    { title: 'Head of Product', company: 'wflow.com', start_date: '01/2022', end_date: '06/2024', bullets: ['Consolidated 3 platforms into one'] },
   ],
 });
 
@@ -479,11 +479,11 @@ describe('the letter’s breadth (check 25)', () => {
   // engagements as NESTED contracts. Reading only the top level saw one
   // employer where the letter had named five, so the check never fired.
   const MASTER_NESTED = JSON.stringify({
-    experience: [
+    work_experience: [
       {
         title: 'Principal Consultant',
         company: 'Nik Page Ltd.',
-        contracts: [
+        fractional_engagements: [
           { company: 'Salsita Software' },
           { company: 'wflow.com' },
           { company: 'SpecialAgents.pro' },

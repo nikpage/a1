@@ -121,15 +121,21 @@ export async function getGenerationSource(user_id) {
 export async function saveMasterCv(user_id, master) {
   const statesGuide =
     master && typeof master === 'object' && Object.prototype.hasOwnProperty.call(master, 'voice_guide');
+  const statesClarifications =
+    master && typeof master === 'object' && Object.prototype.hasOwnProperty.call(master, 'clarifications');
   // The read is best-effort: losing the guide is bad, losing a paid master build
   // because a read failed is worse, so a failure here never blocks the write.
-  if (master && typeof master === 'object' && !statesGuide) {
+  // Both fields are the USER'S own writing and no extraction emits them, so a
+  // rebuild from a fresh CV upload would silently delete them.
+  if (master && typeof master === 'object' && (!statesGuide || !statesClarifications)) {
     try {
       const stored = await getMasterCv(user_id);
       const kept = String(stored?.voice_guide || '').trim();
-      if (kept) master = { ...master, voice_guide: kept };
+      if (!statesGuide && kept) master = { ...master, voice_guide: kept };
+      const notes = Array.isArray(stored?.clarifications) ? stored.clarifications : [];
+      if (!statesClarifications && notes.length) master = { ...master, clarifications: notes };
     } catch (e) {
-      logger.error('saveMasterCv: could not read stored voice_guide:', e.message);
+      logger.error('saveMasterCv: could not read stored voice_guide/clarifications:', e.message);
     }
   }
   const { data, error } = await getAdminSupabase()
@@ -437,20 +443,6 @@ export async function getCandidateCore(user_id) {
     .from('users').select('candidate_core').eq('user_id', user_id).single();
   if (error) throw error;
   return data?.candidate_core || '';
-}
-
-// Seed candidate_core from the AI draft, but ONLY if the user hasn't one yet —
-// never clobber a value the user has edited. Returns true if it wrote.
-export async function setCandidateCoreIfEmpty(user_id, core) {
-  if (!core || !core.trim()) return false;
-  const { data, error } = await getAdminSupabase()
-    .from('users')
-    .update({ candidate_core: core.trim() })
-    .eq('user_id', user_id)
-    .is('candidate_core', null)
-    .select('user_id');
-  if (error) throw error;
-  return Array.isArray(data) && data.length > 0;
 }
 
 // Top the free generation allowance back up after a successful download.

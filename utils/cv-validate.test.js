@@ -13,24 +13,29 @@ const codes = (r) => r.warnings.map((w) => w.code);
 const paramsFor = (r, code) => r.warnings.find((w) => w.code === code)?.params || {};
 
 const MASTER = JSON.stringify({
-  identity: { name: 'Jane Roe' },
-  experience: [
+  profile: { name: 'Jane Roe', certifications: [] },
+  work_experience: [
     {
       company: 'Acme Ltd',
-      role: 'Head of Delivery',
-      dates: '03/2019 - 08/2022',
-      achievements: [
-        { text: 'Cut release cycle from 42 days to 9 days across 4 product teams', metric: '9 days' },
-        { text: 'Ran a delivery org of 25 engineers', metric: '25' },
+      title: 'Head of Delivery',
+      start_date: '03/2019',
+      end_date: '08/2022',
+      bullets: [
+        'Cut release cycle from 42 days to 9 days across 4 product teams',
+        'Ran a delivery org of 25 engineers',
       ],
+      fractional_engagements: [],
     },
     {
       company: 'Borealis',
-      role: 'Delivery Manager',
-      dates: '01/2015 - 02/2019',
-      achievements: [{ text: 'Introduced CI pipelines using Jenkins', metric: '' }],
+      title: 'Delivery Manager',
+      start_date: '01/2015',
+      end_date: '02/2019',
+      bullets: ['Introduced CI pipelines using Jenkins'],
+      fractional_engagements: [],
     },
   ],
+  education: [],
 });
 
 // A document that satisfies every hard check, used as the baseline each test
@@ -308,7 +313,7 @@ describe('warnings (checks 5-9)', () => {
 describe('check 1b — certifications trace to the master (hard)', () => {
   const MASTER_WITH_CERT = JSON.stringify({
     ...JSON.parse(MASTER),
-    certifications: ['Certified Scrum Product Owner'],
+    profile: { ...JSON.parse(MASTER).profile, certifications: ['Certified Scrum Product Owner'] },
   });
   const withCerts = (entry) => `${GOOD}\n### **Certifications**\n- ${entry}\n`;
   const ANALYSIS_CERTS = {
@@ -383,8 +388,8 @@ describe('check 10 — Older Applicant (hard)', () => {
 //     stands and the candidate is told which one is incomplete.
 describe('check 13 — missing month', () => {
   const YEAR_ONLY_MASTER = JSON.stringify({
-    experience: [
-      { company: 'Acme Ltd', role: 'Head of Delivery', dates: '2019 - 2022', achievements: [{ text: 'Cut release cycle from 42 days to 9 days' }] },
+    work_experience: [
+      { company: 'Acme Ltd', title: 'Head of Delivery', start_date: '2019', end_date: '2022', bullets: ['Cut release cycle from 42 days to 9 days'], fractional_engagements: [] },
     ],
   });
   const doc = `### **Summary**\nDelivery leader who rebuilt how Acme ships.\n\n- As Head of Delivery at Acme Ltd, cut release cycle from 42 days to 9 days\n\n### **Work Experience**\n\n#### **Head of Delivery**\n**Acme Ltd** | 2019 - 2022 | London, United Kingdom\n- Cut release cycle from 42 days to 9 days across four product teams and two platform squads\n`;
@@ -449,8 +454,8 @@ describe('check 15 — skills evidenced only by work the CV does not show', () =
 
 describe('check 16 — a printed role whose record holds no numbers', () => {
   const NO_METRICS = JSON.stringify({
-    experience: [
-      { company: 'Acme Ltd', role: 'Head of Delivery', dates: '03/2019 - 08/2022', achievements: [{ text: 'Built the delivery organisation' }] },
+    work_experience: [
+      { company: 'Acme Ltd', title: 'Head of Delivery', start_date: '03/2019', end_date: '08/2022', bullets: ['Built the delivery organisation'], fractional_engagements: [] },
     ],
   });
 
@@ -546,9 +551,9 @@ describe('check 11 — Earlier Career names a real employer', () => {
 
   it('accepts a location the master does record', () => {
     const withLocation = JSON.stringify({
-      identity: { name: 'Jane Roe' },
-      experience: [
-        { company: 'Acme Ltd', role: 'Head of Delivery', dates: '03/2019 - 08/2022', location: 'San Francisco, USA', achievements: [] },
+      profile: { name: 'Jane Roe' },
+      work_experience: [
+        { company: 'Acme Ltd', title: 'Head of Delivery', start_date: '03/2019', end_date: '08/2022', location: 'San Francisco, USA', bullets: [], fractional_engagements: [] },
       ],
     });
     const r = validateCv(
@@ -617,7 +622,7 @@ describe('language', () => {
 
 describe('check 17 — banned phrasing', () => {
   const master = JSON.stringify({
-    experience: [{ title: 'Head of Ops', company: 'Acme', dates: '01/2019 - 12/2024', achievements: ['Cut fulfilment cost 18%'] }],
+    work_experience: [{ title: 'Head of Ops', company: 'Acme', start_date: '01/2019', end_date: '12/2024', bullets: ['Cut fulfilment cost 18%'], fractional_engagements: [] }],
   });
 
   it('finds every stock phrase, through markdown emphasis', () => {

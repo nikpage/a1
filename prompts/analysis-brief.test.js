@@ -56,7 +56,6 @@ const ANALYSIS = {
   },
   final_thought: 'FINAL_THOUGHT_SENTINEL',
   job_data: { Position: 'Operations Director', Country: 'Germany' },
-  candidate_core: 'CANDIDATE_CORE_KEEP',
   jobs_extracted: [{ title: 'Head of Ops', company: 'Acme GmbH' }],
   job_match: { positioning_strategy: 'POSITIONING_KEEP', career_scenario: 'Standard Career Progression' },
   generation_framework: {
@@ -85,7 +84,7 @@ const WITHHELD = [
 ];
 
 const KEPT = [
-  'CANDIDATE_CORE_KEEP', 'POSITIONING_KEEP', 'CAREER_ARC_KEEP', 'PARALLEL_KEEP',
+  'POSITIONING_KEEP', 'CAREER_ARC_KEEP', 'PARALLEL_KEEP',
   'TRANSFERABLE_KEEP', 'RED_FLAG_KEEP', 'KEYWORD_PRESENT_KEEP', 'KEYWORD_MISSING_KEEP',
   'QUICK_WIN_KEEP', 'CV_CHANGE_KEEP', 'COVER_POINT_KEEP', 'HEADLINE_DRAFT_KEEP',
   'SUMMARY_DRAFT_KEEP', 'ACHIEVEMENT_KEEP', 'SKILL_KEEP', 'INCLUDE_JOB_KEEP',
@@ -113,12 +112,10 @@ describe('generationBrief projection', () => {
 
   test('omits empty fields instead of emitting hollow keys', () => {
     const brief = generationBrief({
-      candidate_core: '   ',
       jobs_extracted: [],
       job_match: {},
       analysis: { red_flags: [], career_arc: 'REAL' },
     });
-    expect(brief).not.toHaveProperty('candidate_core');
     expect(brief).not.toHaveProperty('jobs_extracted');
     expect(brief).not.toHaveProperty('job_match');
     expect(brief.analysis).toEqual({ career_arc: 'REAL' });

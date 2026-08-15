@@ -16,7 +16,7 @@
 import * as Sentry from '@sentry/node';
 import { analyzeTeaser, analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
 import { withOlderApplicant } from '../../prompts/scenarios.js';
-import { saveGeneratedDoc, logAiTransaction, setCandidateCoreIfEmpty, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
+import { saveGeneratedDoc, logAiTransaction, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
 import { formatLayoutForPrompt } from '../../utils/cvLayout.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
@@ -257,15 +257,12 @@ export const handler = async (event) => {
       if (confirmedJob && typeof confirmedJob === 'object') {
         obj.job_extraction = confirmedJob;
       }
-      // Seed the user's persistent candidate-core profile from this analysis,
-      // but only if they don't have one yet (never overwrite a user edit).
-      if (obj.candidate_core) {
-        try {
-          await setCandidateCoreIfEmpty(user_id, obj.candidate_core);
-        } catch (e) {
-          logger.error('[analyse-bg] candidate_core seed failed:', e.message);
-        }
-      }
+      // candidate_core is the USER'S OWN statement of their durable value,
+      // written on /account. Nothing here seeds it: an AI-written sentence
+      // stored in that field was read downstream as the candidate's own claim,
+      // and "a seasoned product leader with over 25 years" — an epithet the CV
+      // rules ban, over a figure the record never stated — is what the writer
+      // then built on.
       toSave = JSON.stringify(obj);
     } catch { /* keep raw content if it isn't parseable */ }
 

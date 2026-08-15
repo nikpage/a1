@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { roles } from '../utils/master-read';
 import Header from '../components/Header';
 import TabbedViewer from '../components/TabbedViewer';
 import MasterFlagFixer from '../components/MasterFlagFixer';
@@ -65,7 +66,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
                 const fresh = await res.json();
                 setAnalysis(fresh.analysis || '');
                 setFlags(Array.isArray(fresh.flags) ? fresh.flags : []);
-                setExperience(Array.isArray(fresh.experience) ? fresh.experience : []);
+                setExperience(roles(fresh));
                 setMaster(fresh.master || null);
               }
             } catch (e) {
@@ -112,7 +113,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
               <AddInfoPanel onUpdated={(updated, newFlags) => {
                 if (updated) {
                   setMaster(updated);
-                  if (Array.isArray(updated.experience)) setExperience(updated.experience);
+                  if (updated) setExperience(roles(updated));
                 }
                 if (Array.isArray(newFlags)) setFlags(newFlags);
               }} />
@@ -126,7 +127,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
                   master={master}
                   onUpdated={(saved, newFlags) => {
                     setMaster(saved);
-                    if (Array.isArray(saved?.experience)) setExperience(saved.experience);
+                    if (saved) setExperience(roles(saved));
                     if (Array.isArray(newFlags)) setFlags(newFlags);
                   }}
                 />

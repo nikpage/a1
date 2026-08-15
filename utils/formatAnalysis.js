@@ -5,7 +5,6 @@
 // final_thought are no longer generated or displayed, so they are no longer
 // filled in here. Put the key back in this schema to revive one.
 const REQUIRED_SCHEMA = {
-  candidate_core: "",
   cv_data: {
     Name: "",
     Seniority: "",

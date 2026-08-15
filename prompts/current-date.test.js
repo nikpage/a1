@@ -9,7 +9,7 @@ import { describe, test, expect } from 'vitest';
 import { currentDateBlock, currentDateReminder, formatLongDate } from './current-date.js';
 import { buildAnalysisTeaserPrompt } from './analysis-teaser.js';
 import { buildAnalysisPrompt } from './analysis.js';
-import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from './master-cv.js';
+import { buildMasterCvPrompt } from './master-cv.js';
 import { buildCvPrompt } from './cv-generator.js';
 import { buildCoverPrompt } from './cover-letter.js';
 
@@ -87,27 +87,13 @@ describe('every time-reasoning prompt carries the injected current date', () => 
   });
 
   test('master CV build and merge prompts', () => {
-    expect(joined(buildMasterCvPrompt({ mode: 'build', rawInput: CV_TEXT, now: FIXED })))
+    expect(joined(buildMasterCvPrompt({ rawInput: CV_TEXT, now: FIXED })))
       .toContain(`TODAY'S DATE IS ${TODAY}`);
-    expect(joined(buildMasterCvPrompt({ mode: 'merge', rawInput: CV_TEXT, existingMaster: MASTER, now: FIXED })))
-      .toContain(`TODAY'S DATE IS ${TODAY}`);
-  });
-
-  test('master CV verify prompt (it judges gaps, so it must know today)', () => {
-    expect(joined(buildMasterVerifyPrompt({ master: MASTER, sourceText: CV_TEXT, now: FIXED })))
+    expect(joined(buildMasterCvPrompt({ rawInput: CV_TEXT, now: FIXED })))
       .toContain(`TODAY'S DATE IS ${TODAY}`);
   });
 
-  test('master CV augment prompt (it places loose user text on the timeline)', () => {
-    const augment = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: FIXED }));
-    expect(augment).toContain(`TODAY'S DATE IS ${TODAY}`);
-    expect(augment).toMatch(/is in the PAST/);
 
-    // A different injected clock really changes the output — the date is not a constant.
-    const other = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: new Date(2026, 7, 10) }));
-    expect(other).toContain("TODAY'S DATE IS 10 August 2026");
-    expect(other).not.toContain(TODAY);
-  });
 
   test('CV generator', () => {
     expect(joined(buildCvPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)))
@@ -123,9 +109,7 @@ describe('every time-reasoning prompt carries the injected current date', () => 
     const today = formatLongDate(new Date());
     expect(joined(buildAnalysisTeaserPrompt(CV_TEXT, '', false))).toContain(today);
     expect(joined(buildAnalysisPrompt(MASTER_JSON, '', false))).toContain(today);
-    expect(joined(buildMasterCvPrompt({ mode: 'build', rawInput: CV_TEXT }))).toContain(today);
-    expect(joined(buildMasterVerifyPrompt({ master: MASTER, sourceText: CV_TEXT }))).toContain(today);
-    expect(joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.' }))).toContain(today);
+    expect(joined(buildMasterCvPrompt({ rawInput: CV_TEXT }))).toContain(today);
     expect(joined(buildCvPrompt(MASTER_JSON, ANALYSIS, 'professional'))).toContain(today);
     expect(joined(buildCoverPrompt(MASTER_JSON, ANALYSIS, 'professional'))).toContain(today);
   });
@@ -165,30 +149,14 @@ describe('existing key rules survive the date insertion (guard against accidenta
     expect(user).toContain(CV_TEXT);
   });
 
-  test('master-cv.js keeps never-fabricate, self-consistency, the schema and the verify checks', () => {
-    const build = joined(buildMasterCvPrompt({ mode: 'build', rawInput: CV_TEXT, now: FIXED }));
-    expect(build).toContain('NEVER-FABRICATE');
-    expect(build).toContain('SELF-CONSISTENCY');
-    expect(build).toContain('NO STRUCTURAL INFERENCE');
-    expect(build).toContain('role_overlap');
-    expect(build).toContain('MASTER CV JSON SCHEMA');
-    expect(build).toContain('"voice_samples"');
-
-    const merge = joined(buildMasterCvPrompt({ mode: 'merge', rawInput: CV_TEXT, existingMaster: MASTER, now: FIXED }));
-    expect(merge).toContain('TASK — MERGE');
-    expect(merge).toContain('EXISTING MASTER:');
-
-    const verify = joined(buildMasterVerifyPrompt({ master: MASTER, sourceText: CV_TEXT, now: FIXED }));
-    expect(verify).toContain('BAD GAPS');
-    expect(verify).toContain('UNSUPPORTED SKILLS');
-    expect(verify).toContain('INVENTED DATES');
-    expect(verify).toContain('"remove_gaps"');
-
-    const augment = joined(buildMasterAugmentPrompt({ master: MASTER, text: 'I also did six months in Berlin.', now: FIXED }));
-    expect(augment).toContain('NEVER-FABRICATE');
-    expect(augment).toContain('SELF-CONSISTENCY');
-    expect(augment).toContain('TASK — ADD');
-    expect(augment).toContain('PRESERVE EVERYTHING ELSE');
+  test('master-cv.js keeps the extraction task and the pinned output shape', () => {
+    const build = joined(buildMasterCvPrompt({ rawInput: CV_TEXT, now: FIXED }));
+    expect(build).toContain('precise data extraction specialist');
+    expect(build).toContain('EXACT OUTPUT SHAPE');
+    expect(build).toContain('"work_experience"');
+    expect(build).toContain('"fractional_engagements"');
+    expect(build).toContain('Do not ask any.');
+    expect(build).toContain(CV_TEXT);
   });
 
   test('cv-generator.js keeps its red-flag, blueprint and no-fabrication rules', () => {
@@ -237,9 +205,7 @@ describe('currentDateReminder sits next to the dated text', () => {
     expect(has(buildAnalysisPrompt('CV', '', false, null, 'blueprint', PAST))).toBe(true);
     expect(has(buildCvPrompt('CV', {}, 'direct', '', '', 'auto', PAST))).toBe(true);
     expect(has(buildCoverPrompt('CV', {}, 'direct', '', '', 'auto', PAST))).toBe(true);
-    expect(has(buildMasterCvPrompt({ mode: 'build', rawInput: 'raw cv', now: PAST }))).toBe(true);
-    expect(has(buildMasterVerifyPrompt({ master: {}, sourceText: 'x', now: PAST }))).toBe(true);
-    expect(has(buildMasterAugmentPrompt({ master: {}, text: 'x', now: PAST }))).toBe(true);
+    expect(has(buildMasterCvPrompt({ rawInput: 'raw cv', now: PAST }))).toBe(true);
   });
 
   it('the teaser states the date in the SYSTEM message too, not only the instructions', () => {

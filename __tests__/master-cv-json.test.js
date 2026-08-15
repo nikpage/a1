@@ -43,18 +43,17 @@ beforeEach(() => vi.clearAllMocks());
 
 describe('buildOrMergeMaster — tolerant JSON parse', () => {
   test('rescues a valid master wrapped in a lite-model preamble and trailing note', async () => {
-    // "led checkout redesign" is a real substring of the source, so the verify
-    // pass's verbatim guard keeps it — proving we got the real parsed object back.
-    const masterJson = '{"candidate_core":"PM","voice_samples":["led checkout redesign"]}';
+    // A lite model wraps its JSON in chat. The parse has to find the object
+    // inside the prose, and the object it returns has to be the real one.
+    const masterJson = '{"work_experience":[{"company":"Acme","title":"PM"}]}';
     mockAxiosPost
       .mockResolvedValueOnce(
         geminiResp('Sure! Here is the JSON you asked for:\n' + masterJson + '\nLet me know if you need changes.')
-      )
-      .mockResolvedValueOnce(geminiResp('{}')); // verify pass: no corrections
+      );
 
     const { output } = await buildOrMergeMaster('Jane Roe led checkout redesign at Acme');
 
-    expect(output).toEqual({ candidate_core: 'PM', voice_samples: ['led checkout redesign'] });
+    expect(output).toEqual({ work_experience: [{ company: 'Acme', title: 'PM' }] });
   });
 
   test('still throws when every retry returns output with no JSON at all', async () => {

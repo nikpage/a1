@@ -4,7 +4,7 @@
 // teaser already produced by prompts/analysis-teaser.js), this prompt does NOT
 // recompute or re-emit the fields the teaser already nailed — it is GIVEN them
 // as established facts and asked only for the DELTA: the heavier fields the
-// teaser holds back (candidate_core, generation_framework, action_items, the
+// teaser holds back (generation_framework, action_items, the
 // full red-flag list, ATS keyword breakdown, job extraction, …). The caller
 // (utils/openai.js analyzeCvJob) merges teaser + delta into one object, so the
 // full call only spends output tokens on what's new. With no teaser the prompt
@@ -138,8 +138,7 @@ ${scenarioBlock}
 
 ${noJobBlock}FIELD INSTRUCTIONS:
 ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the ad — quote exact phrasing where possible. Use empty arrays where the ad is silent. NEVER invent, infer, or embellish.
-` : ''}- candidate_core: 2-3 sentences capturing WHO THIS CANDIDATE IS across any job — the durable through-line of what they bring (the kind of value, leadership, or domain depth that travels with them), drawn ONLY from real evidence in the CV. Job-agnostic: do not mention the target job. This becomes the candidate's editable profile and a steering principle for future documents — identity-level and true, never aspirational or invented.
-- jobs_extracted: ARRAY of every role { title, company, dates, location, achievements }, most-recent first, concurrency marked.
+` : ''}- jobs_extracted: ARRAY of every role { title, company, dates, location, achievements }, most-recent first, concurrency marked.
 - analysis.career_arc: 1-3 sentences telling the trajectory in plain factual terms — what they did, in what order. No hype.
 - analysis.parallel_experience: side facts from the CV only (speaking, teaching, certifications, advisory), stated plainly.
 - analysis.transferable_skills: skills from past roles that support the target direction; quote the exact CV phrases that prove them.
@@ -162,7 +161,6 @@ ${coverEvidenceRule(hasJobText)}
 
 OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field above, and do NOT emit scores, commentary, quick_wins or action_items — another pass owns those):
 {
-  "candidate_core": "",
   "jobs_extracted": [],
   "analysis": {
     "career_arc": "",
@@ -234,7 +232,7 @@ ${noJobBlock}FIELD INSTRUCTIONS:
 ${COVER_ACTION_ITEMS_RULE}
 - job_data: the target job's details from the ad${hasJobText ? '' : ' — "n/a" everywhere, no job ad was given'}.
 
-OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field above, and do NOT emit generation_framework, jobs_extracted, candidate_core or job_extraction — another pass owns those):
+OUTPUT EXACTLY THIS SHAPE — nothing else (do NOT include any carried field above, and do NOT emit generation_framework, jobs_extracted or job_extraction — another pass owns those):
 {
   "job_data": { "Position": "${hasJobText ? '' : 'n/a'}", "Seniority": "${hasJobText ? '' : 'n/a'}", "Company": "${hasJobText ? '' : 'n/a'}", "Industry": "${hasJobText ? '' : 'n/a'}", "Country": "${hasJobText ? '' : 'n/a'}", "HR Contact": "" },
   "analysis": {
@@ -292,7 +290,6 @@ No job description was given, so there is NO target role, company, location, ind
 ` : ''}FIELD INSTRUCTIONS (apply when filling the schema below):
 ${hasJobText ? `- job_extraction: Populate ONLY when job text is present. Extract ONLY what is literally stated in the ad — quote exact phrasing where possible. Use empty arrays where the ad is silent. NEVER invent, infer, or embellish.
 ` : ''}
-- candidate_core: 2-3 sentences capturing WHO THIS CANDIDATE IS across any job — the durable through-line of what they bring (e.g. the kind of value, leadership, or domain depth that travels with them), drawn ONLY from real evidence in the CV. Job-agnostic: do not mention the target job. This becomes the candidate's editable profile and a steering principle for future documents — so make it identity-level and true, never aspirational or invented.
 - analysis.career_arc: 1-4 sentences telling the honest-but-flattering story of this candidate's trajectory — where they've been heading and why it's compelling.
 - analysis.parallel_experience: side projects, teaching, speaking, volunteering, certifications drawn ONLY from the CV that strengthen the candidate.
 - analysis.transferable_skills: skills from past roles that support the target direction; quote the exact CV phrases that prove them.
@@ -317,7 +314,6 @@ ${coverEvidenceRule(hasJobText)}
 
 JSON OUTPUT SCHEMA:
 {
-  "candidate_core": "",
   "cv_data": { "Name": "", "Seniority": "", "Industry": "", "Country": "" },
   "job_data": { "Position": "n/a", "Seniority": "n/a", "Company": "n/a", "Industry": "n/a", "Country": "n/a", "HR Contact": "" },
   "jobs_extracted": [],

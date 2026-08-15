@@ -19,6 +19,8 @@
 // (utils/master-flags applyClarification). Because resolution sets that note, a
 // re-scan skips anything already answered — the scan is idempotent.
 
+import { roles } from './master-read.js';
+
 const MONTHS = {
   jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
   may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9,
@@ -216,18 +218,6 @@ function snippetMatchesEntry(snippetLower, entry) {
 // "this isn't actually an issue" cue.
 const RESOLVED_CUE = /already explain|not a (?:real |genuine )?(?:gap|concern|issue|red flag)|no (?:real |genuine )?gap|non-issue/i;
 
-// Does the sentence propose "delivered under the umbrella" (merge) or "held
-// separately" (separate) for an overlap issue?
-function suggestForOverlap(text) {
-  // Merge cues checked FIRST: a sentence can say "...delivered under X rather
-  // than held separately" — the affirmative clause is the actual proposal, and
-  // a bare "separat(e/ely)" can show up inside its own negation.
-  if (/delivered under|held under|contracts? under|worked under/i.test(text)) return 'merge';
-  if (/\bunder\b/i.test(text) && /(consultanc|engagement|umbrella|own business|own company)/i.test(text)) return 'merge';
-  if (/separat/i.test(text)) return 'separate';
-  return null;
-}
-
 // Does the sentence contain one of the deterministic reason options verbatim?
 // If so, that's the confident suggestion — never a paraphrase, never invented.
 function suggestForClarify(text, options) {
@@ -248,9 +238,7 @@ function enrichWithAnalysis(issues, experience, analysisContent) {
   const out = [];
   for (const issue of issues) {
     try {
-      const indexes = issue.kind === 'overlap'
-        ? [issue.target.index, ...(issue.merge?.child_indexes || [])]
-        : [issue.target.index];
+      const indexes = [issue.target.index];
       const entries = indexes.map((i) => experience[i]).filter(Boolean);
       if (entries.length === 0) {
         out.push(issue);
@@ -271,9 +259,7 @@ function enrichWithAnalysis(issues, experience, analysisContent) {
       }
 
       const next = { ...issue, context: matched };
-      const suggestion = issue.kind === 'overlap'
-        ? suggestForOverlap(matched)
-        : suggestForClarify(matched, issue.kind === 'short_tenure' ? TENURE_OPTIONS : GAP_OPTIONS);
+      const suggestion = suggestForClarify(matched, issue.kind === 'short_tenure' ? TENURE_OPTIONS : GAP_OPTIONS);
       if (suggestion) next.suggestion = suggestion;
       out.push(next);
     } catch {
@@ -295,7 +281,11 @@ export function computeMasterIssues(master, opts = {}) {
   const now = isDateArg ? opts : (opts?.now instanceof Date ? opts.now : new Date());
   const analysisContent = isDateArg ? null : (opts?.analysis || null);
 
-  const experience = Array.isArray(master?.experience) ? master.experience : [];
+  // The flat role list, umbrella entries and their engagements alike. An index
+  // into it is stable for the life of one record: roles() walks the record in
+  // order, so the same record always yields the same positions.
+  const experience = roles(master);
+  const clarifications = Array.isArray(master?.clarifications) ? master.clarifications : [];
   const nowIndex = now.getFullYear() * 12 + now.getMonth();
   const cutoff = (now.getFullYear() - RECENT_WINDOW_YEARS) * 12; // older than this: don't ask
 
@@ -314,39 +304,22 @@ export function computeMasterIssues(master, opts = {}) {
   const ongoing = recent.filter((s) => s.ongoing);
 
   const issues = [];
-  const answered = (i) => !!String(experience[i]?.clarification || '').trim();
+  // A question is answered when the user's own note for that role is stored.
+  // Notes live in a top-level `clarifications` array rather than on the role:
+  // the role objects are what the extraction writes, and a user answer sitting
+  // inside one would be read as record content by everything downstream.
+  const answered = (i) => clarifications.some((c) => c && c.index === i && String(c.note || '').trim());
 
-  // --- Overlap (ongoing role spanning others) → a MERGE decision --------------
-  // The ambiguity is the RELATIONSHIP, not the dates: are these roles delivered
-  // UNDER the ongoing role, or held concurrently as separate jobs? Only the user
-  // knows. We ask it as a structural merge — "add them under this" (they become
-  // nested contracts and drop out of the timeline) vs "separate" (recorded as a
-  // clarification on the ongoing role, which leaves the short stints standalone
-  // and therefore still in need of their own explanation below).
-  //
-  // A child is suppressed from the short-tenure check ONLY while its overlap is
-  // still OPEN. Once the user says "separate" (the ongoing role gets a
-  // clarification), the suppression lifts and the short stints surface. Once
-  // merged, the children are nested away and never scanned again.
+  // The overlap question is GONE. It asked whether concurrent roles were
+  // delivered under an ongoing engagement — a structural call the extraction now
+  // makes itself, nesting a client engagement in the consultancy's
+  // `fractional_engagements`. Asking again would ask the user to re-decide
+  // something the record already states, and the old code parked the answer in a
+  // conflicts queue nothing read.
   const suppressedShort = new Set();
-  for (const o of ongoing) {
-    const children = recent.filter((r) => r.index !== o.index && rolesOverlap(o, r));
-    if (children.length === 0) continue;
-    if (answered(o.index)) continue; // user already chose "separate" → don't re-ask, don't suppress
-    children.forEach((c) => suppressedShort.add(c.index));
-    const names = children.map((c) => c.entry?.company || c.entry?.role).filter(Boolean).join(', ');
-    issues.push({
-      id: `overlap-${o.index}`,
-      type: 'structural',
-      kind: 'overlap',
-      target: { section: 'experience', index: o.index },
-      question: `Your ${roleLabel(o.entry)} (${o.entry?.dates}) runs across ${children.length} other role${children.length === 1 ? '' : 's'}${names ? ` — ${names}` : ''}. Were those delivered under it, or held separately at the same time?`,
-      merge: {
-        parent: { company: o.entry?.company || '', role: o.entry?.role || '', dates: o.entry?.dates || '', location: o.entry?.location || '' },
-        child_indexes: children.map((c) => c.index),
-      },
-    });
-  }
+  // An engagement nested under an umbrella is explained BY that nesting: its
+  // short span is the shape of client work, not a tenure to answer for.
+  experience.forEach((r, i) => { if (r.via) suppressedShort.add(i); });
 
   // --- Short tenure → one clarify on the role ---------------------------------
   for (const s of recent) {
@@ -403,9 +376,8 @@ export function computeMasterIssues(master, opts = {}) {
     });
   }
 
-  // Rank: overlap (structural, highest-leverage — answering it can remove the
-  // gap/short-tenure questions below it) first, then gap, then short_tenure.
-  const KIND_RANK = { overlap: 0, gap: 1, short_tenure: 2 };
+  // Rank: a gap is the bigger question a reader has, so it is asked first.
+  const KIND_RANK = { gap: 0, short_tenure: 1 };
   const ordered = [...issues].sort((a, b) => (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9));
 
   if (!analysisContent) return ordered;

@@ -33,7 +33,6 @@ describe('deep pass is split into blueprint + review', () => {
     expect(p).toContain('"summary_draft"');
     expect(p).toContain('"skills_to_highlight"');
     expect(p).toContain('"job_selection"');
-    expect(p).toContain('"candidate_core"');
     expect(p).toContain('"jobs_extracted"');
     expect(p).toContain('"positioning_strategy"');
     expect(p).toContain('"red_flags"');
@@ -68,9 +67,8 @@ describe('deep pass is split into blueprint + review', () => {
     expect(p).not.toContain('"summary_draft"');
     expect(p).not.toContain('"skills_to_highlight"');
     expect(p).not.toContain('"jobs_extracted"');
-    expect(p).not.toContain('"candidate_core"');
     expect(p).not.toContain('"job_extraction"');
-    expect(p).toMatch(/do NOT emit generation_framework, jobs_extracted, candidate_core or job_extraction/);
+    expect(p).toMatch(/do NOT emit generation_framework, jobs_extracted or job_extraction/);
   });
 
   test('neither half re-emits the fields carried from the teaser', () => {
@@ -97,7 +95,6 @@ describe('deep pass is split into blueprint + review', () => {
 
   test('merging teaser + both halves yields one complete analysis with no half clobbering the other', () => {
     const blueprint = {
-      candidate_core: 'Ops leader.',
       jobs_extracted: [{ title: 'Head of Ops', company: 'Acme GmbH' }],
       analysis: { career_arc: 'Ops through-line.', red_flags: ['none'], ats_keywords_present: 'lean' },
       job_match: { positioning_strategy: 'Lead with cost reduction.', career_scenario: 'Standard Career Progression' },
@@ -112,7 +109,6 @@ describe('deep pass is split into blueprint + review', () => {
     const merged = mergeTeaserAndDelta(TEASER, mergeTeaserAndDelta(blueprint, review));
 
     // blueprint half survived
-    expect(merged.candidate_core).toBe('Ops leader.');
     expect(merged.generation_framework.cv_blueprint.summary_draft).toBe('Cut fulfilment cost 18%.');
     expect(merged.job_match.positioning_strategy).toBe('Lead with cost reduction.');
     expect(merged.analysis.career_arc).toBe('Ops through-line.');

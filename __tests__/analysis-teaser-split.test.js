@@ -38,7 +38,6 @@ describe('buildAnalysisPrompt — delta mode (teaser supplied)', () => {
   test('asks only for delta fields, NOT the carried teaser fields', () => {
     const p = userPrompt();
     // delta fields requested
-    expect(p).toContain('candidate_core');
     expect(p).toContain('generation_framework');
     expect(p).toContain('skills_to_highlight');
     expect(p).toContain('action_items');
@@ -73,7 +72,6 @@ describe('buildAnalysisPrompt — delta mode (teaser supplied)', () => {
 
 describe('mergeTeaserAndDelta', () => {
   const DELTA = {
-    candidate_core: 'Backend engineer with cloud depth.',
     summary: 'Python engineer ready for senior backend.',
     analysis: {
       scenario_tags: ['Standard Career Progression'],
@@ -93,7 +91,6 @@ describe('mergeTeaserAndDelta', () => {
   });
 
   test('adds the delta top-level fields', () => {
-    expect(merged.candidate_core).toBe('Backend engineer with cloud depth.');
     expect(merged.summary).toBe('Python engineer ready for senior backend.');
     expect(merged.generation_framework.cv_blueprint.target_length_pages).toBe('1 page');
   });

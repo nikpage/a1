@@ -13,7 +13,6 @@ const mockAnalyzeCvJob = vi.hoisted(() => vi.fn());
 const mockBuildOrMergeMaster = vi.hoisted(() => vi.fn());
 const mockGetMasterCv = vi.hoisted(() => vi.fn());
 const mockSaveMasterCv = vi.hoisted(() => vi.fn());
-const mockSetCandidateCore = vi.hoisted(() => vi.fn());
 const mockSaveGeneratedDoc = vi.hoisted(() => vi.fn());
 const mockLogAiTransaction = vi.hoisted(() => vi.fn());
 const mockSupabaseFrom = vi.hoisted(() => vi.fn());
@@ -31,7 +30,6 @@ vi.mock('../utils/openai.js', () => ({
 vi.mock('../utils/database.js', () => ({
   saveGeneratedDoc: mockSaveGeneratedDoc,
   logAiTransaction: mockLogAiTransaction,
-  setCandidateCoreIfEmpty: mockSetCandidateCore,
   getMasterCv: mockGetMasterCv,
   saveMasterCv: mockSaveMasterCv,
   supabase: {
@@ -72,7 +70,6 @@ describe('analyse-background — auth gate', () => {
     mockBuildOrMergeMaster.mockReset();
     mockGetMasterCv.mockReset();
     mockSaveMasterCv.mockReset();
-    mockSetCandidateCore.mockReset();
     mockGetMasterCv.mockResolvedValue(null);
     mockBuildOrMergeMaster.mockResolvedValue({ master: null, usages: [] });
     stubTeaser();
@@ -159,7 +156,6 @@ describe('analyse-background — confirmed job override', () => {
     mockBuildOrMergeMaster.mockReset();
     mockGetMasterCv.mockReset();
     mockSaveMasterCv.mockReset();
-    mockSetCandidateCore.mockReset();
     mockGetMasterCv.mockResolvedValue(null);
     mockBuildOrMergeMaster.mockResolvedValue({ master: null, usages: [] });
     stubTeaser();

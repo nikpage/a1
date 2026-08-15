@@ -5,251 +5,168 @@
 // test is pure.
 
 import { describe, it, expect } from 'vitest';
-import {
-  applySingleFix,
-  applyStructuralMerge,
-  applyClarification,
-  resolveFlag,
-} from './master-flags.js';
+import { applySingleFix, applyClarification, resolveFlag } from './master-flags.js';
+
+const role = (company, title, start_date, end_date, location = 'Prague, CZ', engagements = []) => ({
+  company, title, start_date, end_date, location,
+  bullets: [`Worked at ${company}`],
+  fractional_engagements: engagements,
+});
 
 function sampleMaster() {
   return {
-    identity: { country: 'Czechia', contact: { email: 'a@b.cz' } },
-    candidate_core: 'A product leader.',
-    experience: [
-      { company: 'Salsita', role: 'PM', dates: 'Nov 2022 – Oct 2023', location: 'Prague', achievements: [{ text: 'Shipped X' }] },
-      { company: 'Client X', role: 'Consultant', dates: '2020 – 2021', location: 'Remote', achievements: [{ text: 'Did Y' }] },
-      { company: 'Client Y', role: 'Consultant', dates: '2019 – 2020', location: 'Remote', achievements: [{ text: 'Did Z' }] },
+    profile: { name: 'Nik Page', headline: 'Product leader', location: 'Prague, CZ', contact: { email: 'a@b.cz' } },
+    work_experience: [
+      role('Salsita', 'PM', 'November 2022', 'October 2023'),
+      role('Client X', 'Consultant', '2020', '2021', 'Remote'),
+      role('Client Y', 'Consultant', '2019', '2020', 'Remote'),
     ],
-    voice_samples: ['I build things that ship.', 'No fluff.'],
   };
 }
 
-// An ongoing umbrella role (index 0) spanning two shorter stints — the exact
-// shape the overlap question is asked about.
-function overlapMaster() {
+// An umbrella role with its client engagements nested inside it — the shape the
+// extraction produces, and the one an index into the flat list must respect.
+function nestedMaster() {
   return {
-    identity: { country: 'Czechia' },
-    experience: [
-      { company: 'Acme Consulting', role: 'Principal', dates: 'Jan 2019 – Present', location: 'Prague', core_tags: ['consulting'], achievements: [{ text: 'Grew the practice' }] },
-      { company: 'ShortCo', role: 'PM', dates: 'Mar 2022 – Jan 2023', achievements: [{ text: 'Shipped A' }] },
-      { company: 'OtherCo', role: 'PM', dates: 'Feb 2023 – Dec 2023', achievements: [{ text: 'Shipped B' }] },
+    profile: { name: 'Nik Page', location: 'Prague, CZ' },
+    work_experience: [
+      role('Acme Consulting', 'Principal', 'January 2019', 'Present', 'Prague, CZ', [
+        role('ShortCo', 'PM', 'March 2022', 'January 2023'),
+        role('OtherCo', 'PM', 'February 2023', 'December 2023'),
+      ]),
+      role('Bank', 'Head of UX', 'January 2014', 'December 2018'),
     ],
-    voice_samples: ['I build things that ship.'],
   };
 }
 
 describe('applyClarification', () => {
-  it('attaches the answer to the targeted role and leaves others untouched', () => {
-    const before = sampleMaster();
-    const after = applyClarification(before, { index: 0, note: 'Contract ended' });
-    expect(after.experience[0].clarification).toBe('Contract ended');
-    expect(after.experience[1].clarification).toBeUndefined();
-    expect(before.experience[0].clarification).toBeUndefined(); // input not mutated
+  it('records the answer against the targeted role', () => {
+    const after = applyClarification(sampleMaster(), { index: 0, note: 'Contract ended' });
+    expect(after.clarifications).toHaveLength(1);
+    expect(after.clarifications[0]).toMatchObject({ index: 0, company: 'Salsita', note: 'Contract ended' });
   });
 
-  it('throws on an out-of-range index', () => {
-    expect(() => applyClarification(sampleMaster(), { index: 9, note: 'x' }))
-      .toThrow(/out of range/);
-  });
-
-  it('throws on an empty note', () => {
-    expect(() => applyClarification(sampleMaster(), { index: 0, note: '   ' }))
-      .toThrow(/note is required/);
-  });
-});
-
-describe('resolveFlag clarify', () => {
-  it('stores the chosen option onto the right experience entry', () => {
-    const flag = { type: 'clarify', target: { section: 'experience', index: 0 }, options: ['Contract ended', 'Better opportunity'] };
-    const after = resolveFlag(sampleMaster(), flag, { decision: 'option', value: 'Better opportunity' });
-    expect(after.experience[0].clarification).toBe('Better opportunity');
-  });
-
-  it('reject leaves the master unchanged', () => {
-    const flag = { type: 'clarify', target: { section: 'experience', index: 0 } };
-    const after = resolveFlag(sampleMaster(), flag, { decision: 'reject' });
-    expect(after.experience[0].clarification).toBeUndefined();
-  });
-
-  it('throws when the clarify flag has no target index', () => {
-    const flag = { type: 'clarify', target: { section: 'experience' } };
-    expect(() => resolveFlag(sampleMaster(), flag, { decision: 'option', value: 'x' }))
-      .toThrow(/missing target.index/);
-  });
-});
-
-describe('applySingleFix', () => {
-  it('sets exactly the targeted experience field and nothing else', () => {
-    const before = sampleMaster();
-    const after = applySingleFix(before, { section: 'experience', index: 0, field: 'role' }, 'Senior Product Manager');
-
-    expect(after.experience[0].role).toBe('Senior Product Manager');
-    // every other field on that entry is unchanged
-    expect(after.experience[0].company).toBe('Salsita');
-    expect(after.experience[0].dates).toBe('Nov 2022 – Oct 2023');
-    // other entries untouched
-    expect(after.experience[1]).toEqual(before.experience[1]);
-    // voice samples never touched
-    expect(after.voice_samples).toEqual(before.voice_samples);
+  // The role objects are what the extraction wrote. A user's sentence about why
+  // a job ended, stored inside one, is read as record content by every consumer
+  // downstream — and lands on the CV as a bullet.
+  it('never writes the answer into work_experience', () => {
+    const after = applyClarification(sampleMaster(), { index: 0, note: 'Contract ended' });
+    expect(JSON.stringify(after.work_experience)).not.toContain('Contract ended');
+    expect(after.work_experience[0].bullets).toEqual(['Worked at Salsita']);
   });
 
   it('does not mutate the input master', () => {
     const before = sampleMaster();
-    applySingleFix(before, { section: 'identity', field: 'country' }, 'Poland');
-    expect(before.identity.country).toBe('Czechia');
+    applyClarification(before, { index: 0, note: 'Contract ended' });
+    expect(before.clarifications).toBeUndefined();
   });
 
-  it('corrects identity.country', () => {
-    const after = applySingleFix(sampleMaster(), { section: 'identity', field: 'country' }, 'Poland');
-    expect(after.identity.country).toBe('Poland');
+  it('answering the same role twice replaces the earlier answer', () => {
+    const once = applyClarification(sampleMaster(), { index: 0, note: 'First answer' });
+    const twice = applyClarification(once, { index: 0, note: 'Actually, redundancy' });
+    expect(twice.clarifications).toHaveLength(1);
+    expect(twice.clarifications[0].note).toBe('Actually, redundancy');
   });
 
-  it('throws on an out-of-range experience index', () => {
-    expect(() => applySingleFix(sampleMaster(), { section: 'experience', index: 9, field: 'role' }, 'x'))
-      .toThrow(/out of range/);
+  // The index comes from roles(), which walks umbrella-then-engagements. An
+  // answer landing on the wrong company is worse than no answer.
+  it('resolves an index that points at a nested engagement', () => {
+    const after = applyClarification(nestedMaster(), { index: 1, note: 'A client project' });
+    expect(after.clarifications[0].company).toBe('ShortCo');
   });
 
-  it('refuses to edit a non-whitelisted experience field (e.g. achievements)', () => {
-    expect(() => applySingleFix(sampleMaster(), { section: 'experience', index: 0, field: 'achievements' }, 'x'))
-      .toThrow(/not editable/);
+  it('throws on an out-of-range index rather than silently doing nothing', () => {
+    expect(() => applyClarification(sampleMaster(), { index: 9, note: 'x' })).toThrow(/out of range/);
+  });
+
+  it('throws on an empty note', () => {
+    expect(() => applyClarification(sampleMaster(), { index: 0, note: '   ' })).toThrow(/note is required/);
   });
 });
 
-describe('applyStructuralMerge', () => {
-  it('nests the two consultancy stints under one parent and deletes nothing', () => {
+describe('applySingleFix', () => {
+  it('sets exactly the targeted field and nothing else', () => {
     const before = sampleMaster();
-    const after = applyStructuralMerge(before, {
-      parent: { company: 'Independent Consulting', role: 'Founder', dates: '2019 – 2021' },
-      childIndexes: [1, 2],
-      note: 'Both were contracts under my consulting practice.',
-    });
-
-    // Salsita (index 0) survives as its own entry; the two stints collapse to one parent.
-    expect(after.experience).toHaveLength(2);
-    const parent = after.experience.find((e) => e.company === 'Independent Consulting');
-    expect(parent).toBeTruthy();
-    // the two originals are preserved verbatim underneath
-    expect(parent.contracts).toHaveLength(2);
-    expect(parent.contracts[0].company).toBe('Client X');
-    expect(parent.contracts[1].company).toBe('Client Y');
-    // the user's clarification is carried for the generator
-    expect(parent.merge_note).toMatch(/consulting practice/);
-    // voice samples untouched
-    expect(after.voice_samples).toEqual(before.voice_samples);
+    const after = applySingleFix(before, { section: 'experience', index: 0, field: 'end_date' }, 'December 2023');
+    expect(after.work_experience[0].end_date).toBe('December 2023');
+    expect(after.work_experience[0].start_date).toBe('November 2022');
+    expect(after.work_experience[1]).toEqual(before.work_experience[1]);
   });
 
-  it('throws if the merge hint has no parent company', () => {
-    expect(() => applyStructuralMerge(sampleMaster(), { parent: {}, childIndexes: [1] }))
-      .toThrow(/parent/);
+  it('reaches a nested engagement through the flat index', () => {
+    const after = applySingleFix(nestedMaster(), { section: 'experience', index: 2, field: 'company' }, 'OtherCo Ltd');
+    expect(after.work_experience[0].fractional_engagements[1].company).toBe('OtherCo Ltd');
+    // The umbrella itself is untouched.
+    expect(after.work_experience[0].company).toBe('Acme Consulting');
   });
 
-  // REGRESSION: the merge used to insert a brand-new parent row while leaving the
-  // parent's OWN existing row in place, so every overlap answer duplicated the
-  // umbrella role — one copy holding the real achievements, the other holding the
-  // contracts. Two rows for one employer, and the fuller one with nothing nested.
-  it('folds into the parent\'s existing row instead of duplicating it', () => {
-    const before = overlapMaster();
-    const after = applyStructuralMerge(before, {
-      parent: { company: 'Acme Consulting', role: 'Principal', dates: 'Jan 2019 – Present' },
-      parentIndex: 0,
-      childIndexes: [1, 2],
-      note: 'Both delivered under Acme.',
-    });
-
-    const acme = after.experience.filter((e) => e.company === 'Acme Consulting');
-    expect(acme).toHaveLength(1);                        // not two
-    expect(acme[0].achievements).toEqual([{ text: 'Grew the practice' }]); // its own content kept
-    expect(acme[0].core_tags).toEqual(['consulting']);
-    expect(acme[0].contracts.map((c) => c.company)).toEqual(['ShortCo', 'OtherCo']);
-    expect(acme[0].merge_note).toBe('Both delivered under Acme.');
-    expect(after.experience).toHaveLength(1);
+  it('does not mutate the input master', () => {
+    const before = sampleMaster();
+    applySingleFix(before, { section: 'experience', index: 0, field: 'company' }, 'Renamed');
+    expect(before.work_experience[0].company).toBe('Salsita');
   });
 
-  it('throws if the parent index is also listed as a child', () => {
-    expect(() => applyStructuralMerge(overlapMaster(), {
-      parent: { company: 'Acme Consulting' },
-      parentIndex: 1,
-      childIndexes: [1, 2],
-    })).toThrow(/cannot also be a child/);
+  it('corrects a profile field', () => {
+    const after = applySingleFix(sampleMaster(), { section: 'profile', field: 'location' }, 'Warsaw, PL');
+    expect(after.profile.location).toBe('Warsaw, PL');
   });
 
-  it('throws on an out-of-range parent index', () => {
-    expect(() => applyStructuralMerge(overlapMaster(), {
-      parent: { company: 'Acme Consulting' },
-      parentIndex: 9,
-      childIndexes: [1],
-    })).toThrow(/parent index 9 out of range/);
+  it('refuses a field that is not on the whitelist', () => {
+    expect(() =>
+      applySingleFix(sampleMaster(), { section: 'experience', index: 0, field: 'bullets' }, 'nope')
+    ).toThrow(/not editable/);
+  });
+
+  it('throws on an out-of-range index', () => {
+    expect(() =>
+      applySingleFix(sampleMaster(), { section: 'experience', index: 9, field: 'company' }, 'x')
+    ).toThrow(/out of range/);
+  });
+
+  it('throws on an unknown section', () => {
+    expect(() => applySingleFix(sampleMaster(), { section: 'nonsense' }, 'x')).toThrow(/unsupported section/);
   });
 });
 
 describe('resolveFlag', () => {
-  it('accept on a single flag applies the AI proposed_value', () => {
-    const flag = { type: 'single', target: { section: 'experience', index: 0, field: 'role' }, proposed_value: 'Senior PM' };
-    const after = resolveFlag(sampleMaster(), flag, { decision: 'accept' });
-    expect(after.experience[0].role).toBe('Senior PM');
+  const singleFlag = {
+    type: 'single',
+    target: { section: 'experience', index: 0, field: 'end_date' },
+    proposed_value: 'December 2023',
+  };
+
+  it('accept applies the proposed value', () => {
+    const after = resolveFlag(sampleMaster(), singleFlag, { decision: 'accept' });
+    expect(after.work_experience[0].end_date).toBe('December 2023');
   });
 
-  it('edit on a single flag applies the user value, not the proposal', () => {
-    const flag = { type: 'single', target: { section: 'experience', index: 0, field: 'role' }, proposed_value: 'Senior PM' };
-    const after = resolveFlag(sampleMaster(), flag, { decision: 'edit', value: 'Lead PM' });
-    expect(after.experience[0].role).toBe('Lead PM');
+  it('edit applies the user value, not the proposal', () => {
+    const after = resolveFlag(sampleMaster(), singleFlag, { decision: 'edit', value: 'January 2024' });
+    expect(after.work_experience[0].end_date).toBe('January 2024');
   });
 
-  it('reject on a single flag leaves the record unchanged', () => {
+  it('reject changes nothing', () => {
     const before = sampleMaster();
-    const flag = { type: 'single', target: { section: 'experience', index: 0, field: 'role' }, proposed_value: 'Senior PM' };
-    const after = resolveFlag(before, flag, { decision: 'reject' });
+    const after = resolveFlag(before, singleFlag, { decision: 'reject' });
     expect(after).toEqual(before);
   });
 
-  it('merge on a structural flag nests using the merge hint and the free-text note', () => {
-    const flag = {
-      type: 'structural',
-      merge: { parent: { company: 'Independent Consulting', dates: '2019 – 2021' }, child_indexes: [1, 2] },
-    };
-    const after = resolveFlag(sampleMaster(), flag, { decision: 'merge', value: 'My consulting practice.' });
-    const parent = after.experience.find((e) => e.company === 'Independent Consulting');
-    expect(parent.contracts).toHaveLength(2);
-    expect(parent.merge_note).toBe('My consulting practice.');
+  it('stores a clarify answer against the flagged role', () => {
+    const flag = { type: 'clarify', kind: 'short_tenure', target: { section: 'experience', index: 0 } };
+    const after = resolveFlag(sampleMaster(), flag, { decision: 'option', value: 'Contract / fixed-term role ended' });
+    expect(after.clarifications[0]).toMatchObject({ index: 0, note: 'Contract / fixed-term role ended' });
   });
 
-  // REGRESSION: resolveFlag must hand the parent's own row position through, or
-  // the merge duplicates the umbrella role. This is the shape computeMasterIssues
-  // actually emits — target.index is the ongoing role, child_indexes are the others.
-  it('merge passes the flag target index through so the umbrella role is not duplicated', () => {
-    const flag = {
-      type: 'structural',
-      target: { section: 'experience', index: 0 },
-      merge: {
-        parent: { company: 'Acme Consulting', role: 'Principal', dates: 'Jan 2019 – Present' },
-        child_indexes: [1, 2],
-      },
-    };
-    const after = resolveFlag(overlapMaster(), flag, { decision: 'merge', value: 'Delivered under Acme.' });
-    expect(after.experience).toHaveLength(1);
-    expect(after.experience[0].company).toBe('Acme Consulting');
-    expect(after.experience[0].achievements).toEqual([{ text: 'Grew the practice' }]);
-    expect(after.experience[0].contracts).toHaveLength(2);
+  it('rejects a clarify with no answer', () => {
+    const flag = { type: 'clarify', target: { section: 'experience', index: 0 } };
+    expect(() => resolveFlag(sampleMaster(), flag, { decision: 'option', value: '' })).toThrow(/answer is required/);
   });
 
-  it('separate on a structural flag records a clarification on the ongoing role (no merge)', () => {
-    const before = sampleMaster();
-    const flag = {
-      type: 'structural',
-      target: { section: 'experience', index: 0 },
-      merge: { parent: { company: 'X' }, child_indexes: [1, 2] },
-    };
-    const after = resolveFlag(before, flag, { decision: 'separate', value: 'Held these concurrently.' });
-    // The note lands on the ongoing role; nothing is nested, the array is intact.
-    expect(after.experience[0].clarification).toBe('Held these concurrently.');
-    expect(after.experience).toHaveLength(before.experience.length);
-    expect(after.experience.some((e) => Array.isArray(e.contracts))).toBe(false);
-  });
-
-  it('separate falls back to a default note when none is typed', () => {
-    const flag = { type: 'structural', target: { section: 'experience', index: 0 }, merge: { parent: { company: 'X' }, child_indexes: [1] } };
-    const after = resolveFlag(sampleMaster(), flag, { decision: 'separate' });
-    expect(after.experience[0].clarification).toMatch(/separate/i);
+  // The structural merge is gone: the extraction nests a client engagement under
+  // its consultancy itself, so a merge on top of that would fold an already
+  // nested record a second time.
+  it('refuses a structural flag rather than silently doing nothing', () => {
+    const flag = { type: 'structural', target: { section: 'experience', index: 0 } };
+    expect(() => resolveFlag(sampleMaster(), flag, { decision: 'merge' })).toThrow(/unknown flag type/);
   });
 });

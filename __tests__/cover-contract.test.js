@@ -19,19 +19,19 @@ import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { composeTweak, parseTweak } from '../utils/steering.js';
 
 const MASTER = JSON.stringify({
-  identity: { name: 'Nik Page' },
-  experience: [
+  profile: { name: 'Nik Page' },
+  work_experience: [
     {
       title: 'Head of Product',
       company: 'wflow.com',
-      dates: '01/2022 - 06/2024',
-      achievements: ['Consolidated three platforms into one', 'Coached four product managers'],
+      start_date: '01/2022', end_date: '06/2024',
+      bullets: ['Consolidated three platforms into one', 'Coached four product managers'],
     },
     {
       title: 'Product Owner',
       company: 'Salsita Software',
-      dates: '01/2019 - 12/2021',
-      achievements: ['Built the product operations function'],
+      start_date: '01/2019', end_date: '12/2021',
+      bullets: ['Built the product operations function'],
     },
   ],
 });

@@ -101,13 +101,18 @@ describe('scenarioGenerationRules', () => {
 // The real case this was written for: a 1994→Present career whose teaser tags were
 // [Senior Portfolio / Independent Consultant, Employment Gap] — two slots, both
 // taken, so the age mitigations never reached the generator.
-const seniorMaster = {
-  experience: [
-    { company: 'Own practice', dates: '08/2016 - Present' },
-    { company: 'Bank', dates: '07/2014 - 08/2016' },
-    { company: 'Various Employers', dates: '01/1994 - 09/2012' },
-  ],
-};
+// The record nests and dates live in start_date/end_date, so fixtures are
+// written the way the extraction emits them.
+const wx = (list) => ({ work_experience: list.map((r) => {
+  const [start = '', end = ''] = String(r.dates || '').split(/\s*-\s*/);
+  return { company: r.company, title: r.title || '', start_date: start, end_date: end, bullets: [], fractional_engagements: [] };
+}) });
+
+const seniorMaster = wx([
+  { company: 'Own practice', dates: '08/2016 - Present' },
+  { company: 'Bank', dates: '07/2014 - 08/2016' },
+  { company: 'Various Employers', dates: '01/1994 - 09/2012' },
+]);
 
 describe('detectOlderApplicant', () => {
   const now = new Date('2026-08-11T00:00:00Z');
@@ -117,29 +122,27 @@ describe('detectOlderApplicant', () => {
   });
 
   it('treats an ongoing role as ending now', () => {
-    const m = { experience: [{ company: 'X', dates: '2005 - Present' }] };
+    const m = wx([{ company: 'X', dates: '2005 - Present' }]);
     expect(detectOlderApplicant(m, now)).toBe(true);
   });
 
   it('does not fire on a span of exactly 15 years', () => {
-    const m = {
-      experience: [
+    const m = wx([
         { company: 'B', dates: '03/2015 - 06/2020' },
         { company: 'A', dates: '01/2005 - 02/2015' },
-      ],
-    };
+      ]);
     expect(detectOlderApplicant(m, now)).toBe(false);
   });
 
   it('does not fire on a short recent history', () => {
-    const m = { experience: [{ company: 'X', dates: '01/2021 - Present' }] };
+    const m = wx([{ company: 'X', dates: '01/2021 - Present' }]);
     expect(detectOlderApplicant(m, now)).toBe(false);
   });
 
   it('returns false when there is no usable master', () => {
     expect(detectOlderApplicant(null, now)).toBe(false);
-    expect(detectOlderApplicant({ experience: [] }, now)).toBe(false);
-    expect(detectOlderApplicant({ experience: [{ company: 'X', dates: '' }] }, now)).toBe(false);
+    expect(detectOlderApplicant(wx([]), now)).toBe(false);
+    expect(detectOlderApplicant(wx([{ company: 'X', dates: '' }]), now)).toBe(false);
   });
 });
 
@@ -160,7 +163,7 @@ describe('withOlderApplicant', () => {
   });
 
   it('leaves the tags untouched when the dates do not trigger it', () => {
-    const m = { experience: [{ company: 'X', dates: '01/2021 - Present' }] };
+    const m = wx([{ company: 'X', dates: '01/2021 - Present' }]);
     expect(withOlderApplicant(['Career Pivot'], m, now)).toEqual(['Career Pivot']);
   });
 

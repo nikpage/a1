@@ -1,3 +1,4 @@
+import { roles } from '../utils/master-read.js';
 // prompts/scenarios.js
 //
 // The CAREER-SCENARIO layer. Until now "scenario" was only a bare tag the model
@@ -159,7 +160,10 @@ function yearsIn(dates) {
 // the generator never applied the age mitigations the analysis had just advised.
 // The date test needs no judgement, so nothing is gained by asking for it.
 export function detectOlderApplicant(master, now = new Date()) {
-  const experience = Array.isArray(master?.experience) ? master.experience : [];
+  // roles() flattens the record's nesting: a career whose early roles sit inside
+  // a consultancy's fractional_engagements is still that person's career, and
+  // reading only the top level would miss the earliest date entirely.
+  const experience = roles(master);
   if (!experience.length) return false;
 
   const currentYear = now.getFullYear();

@@ -29,6 +29,7 @@ import { bannedPhrases } from '../prompts/voice.js';
 import { coverWordBand } from '../prompts/market.js';
 import { salutationName } from '../prompts/cover-evidence.js';
 import { parseTweak } from './steering.js';
+import { roles, education as educationOf, isMaster } from './master-read.js';
 
 // ---- small parsing helpers --------------------------------------------------
 
@@ -98,16 +99,35 @@ function isEarlierCareer(heading) {
   return isSlot('earlierCareer', heading);
 }
 
-// The master as searchable text, plus its parsed form when it is JSON.
+// The master as searchable text, plus a flat view of it for the checks that
+// walk roles. The record nests a client engagement inside the consultancy it ran
+// under, so `roles()` (utils/master-read.js) is what flattens it — a check that
+// read work_experience directly would judge a CV against half the career and
+// call the other half invented.
+//
+// `parsed.experience` carries the flat roles under the field names the checks
+// use, achievements included: a bullet in the record is an achievement to a
+// check asking whether a printed role has any evidence behind it.
 function readMaster(master) {
   const text = typeof master === 'string' ? master : JSON.stringify(master || '');
-  let parsed = null;
+  let raw = null;
   try {
-    parsed = typeof master === 'string' ? JSON.parse(master) : master;
+    raw = typeof master === 'string' ? JSON.parse(master) : master;
   } catch {
-    parsed = null;
+    raw = null;
   }
-  return { text, lower: text.toLowerCase(), parsed: parsed && typeof parsed === 'object' ? parsed : null };
+  if (!isMaster(raw)) {
+    return { text, lower: text.toLowerCase(), parsed: null };
+  }
+  const parsed = {
+    ...raw,
+    experience: roles(raw).map((r) => ({
+      ...r,
+      achievements: r.bullets.map((text) => ({ text, metric: '', skills_utilized: [] })),
+    })),
+    education: educationOf(raw),
+  };
+  return { text, lower: text.toLowerCase(), parsed };
 }
 
 function scenarioTags(analysis) {
@@ -1295,12 +1315,12 @@ const BREADTH_MAX = 3;
 function masterEmployers(master) {
   const m = readMaster(master);
   const out = [];
-  const take = (entry) => {
-    const name = String(entry?.company || entry?.client || '').trim();
+  // parsed.experience is already flat — readMaster walked the nesting — so an
+  // engagement's employer counts as its own name, not the consultancy's.
+  for (const e of Array.isArray(m.parsed?.experience) ? m.parsed.experience : []) {
+    const name = String(e?.company || '').trim();
     if (name.length > 3) out.push(name);
-    for (const child of Array.isArray(entry?.contracts) ? entry.contracts : []) take(child);
-  };
-  for (const e of Array.isArray(m.parsed?.experience) ? m.parsed.experience : []) take(e);
+  }
   return [...new Set(out)];
 }
 

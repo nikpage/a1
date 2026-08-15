@@ -45,8 +45,17 @@ vi.mock('../lib/requireAuth', () => ({ default: (handler) => handler }));
 import handler from '../pages/api/master-add-info.js';
 
 const SESSION_USER = 'user-session-1';
-const MASTER = { experience: [{ company: 'Beta Ltd', role: 'PM', dates: '2019-2022' }] };
-const UPDATED = { experience: [{ company: 'Acme', role: 'Contractor', dates: '2023' }, ...MASTER.experience] };
+const MASTER = {
+  work_experience: [
+    { company: 'Beta Ltd', title: 'PM', start_date: '2019', end_date: '2022', bullets: [], fractional_engagements: [] },
+  ],
+};
+const UPDATED = {
+  work_experience: [
+    { company: 'Beta Ltd', title: 'PM', start_date: '2019', end_date: '2022', bullets: [], fractional_engagements: [] },
+    { company: 'Acme', title: 'Contractor', start_date: '2023', end_date: '2023', bullets: [], fractional_engagements: [] },
+  ],
+};
 const USAGE = { label: 'master-cv augment', model: 'gemini-2.5-flash-lite', inputTokens: 100, outputTokens: 40, thinkingTokens: 10, costUsd: 0.0001 };
 
 function call(body, user_id = SESSION_USER) {
@@ -69,8 +78,8 @@ beforeEach(() => {
 });
 
 describe('POST /api/master-add-info', () => {
-  test('saves the augmented master and reports what changed', async () => {
-    mockAugmentMaster.mockResolvedValue({ output: UPDATED, questions: [], changes: ['Added Acme — Contractor, 2023'], usages: [USAGE] });
+  test('saves the re-extracted master and hands it back', async () => {
+    mockAugmentMaster.mockResolvedValue({ output: UPDATED, usages: [USAGE] });
 
     const { res, done } = await call({ text: 'Six months contracting at Acme in 2023.' });
     await done;
@@ -78,13 +87,13 @@ describe('POST /api/master-add-info', () => {
     expect(res.statusCode).toBe(200);
     const data = res._getJSONData();
     expect(data.ok).toBe(true);
-    expect(data.changes).toEqual(['Added Acme — Contractor, 2023']);
+    expect(data.master.work_experience).toHaveLength(2);
     expect(mockSaveMasterCv).toHaveBeenCalledWith(SESSION_USER, UPDATED);
     expect(Array.isArray(data.flags)).toBe(true);
   });
 
   test('uses the SESSION user_id, never the one in the body', async () => {
-    mockAugmentMaster.mockResolvedValue({ output: UPDATED, questions: [], changes: [], usages: [USAGE] });
+    mockAugmentMaster.mockResolvedValue({ output: UPDATED, usages: [USAGE] });
 
     const { done } = await call({ text: 'Six months contracting at Acme in 2023.', user_id: 'victim-user' });
     await done;
@@ -95,24 +104,21 @@ describe('POST /api/master-add-info', () => {
     expect(mockSaveMasterCv).not.toHaveBeenCalledWith('victim-user', expect.anything());
   });
 
-  test('returns questions and saves NOTHING when the fact cannot be placed', async () => {
-    mockAugmentMaster.mockResolvedValue({ output: UPDATED, questions: ['Which company was this at?'], changes: [], usages: [USAGE] });
+  // The stored record and the new text are re-extracted TOGETHER, so there is
+  // no "cannot place it" branch left to answer: placement is the extraction's
+  // own job, made with the whole record in front of it.
+  test('re-extracts against the stored record rather than patching it', async () => {
+    mockAugmentMaster.mockResolvedValue({ output: UPDATED, usages: [USAGE] });
 
-    const { res, done } = await call({ text: 'I did a big turnaround project once.' });
+    const { done } = await call({ text: 'Six months contracting at Acme in 2023.' });
     await done;
 
-    expect(res.statusCode).toBe(200);
-    const data = res._getJSONData();
-    expect(data.ok).toBe(false);
-    expect(data.questions).toEqual(['Which company was this at?']);
-    expect(mockSaveMasterCv).not.toHaveBeenCalled();
-    // The call was still paid for, so it is still cost-logged.
-    expect(mockLogAiTransaction).toHaveBeenCalledTimes(1);
+    expect(mockAugmentMaster).toHaveBeenCalledWith(MASTER, 'Six months contracting at Acme in 2023.');
   });
 
   test('cost-logs every AI call with the model and token split from the usage', async () => {
     const verifyUsage = { ...USAGE, label: 'master-cv verify', model: 'gemini-2.5-flash-lite', inputTokens: 200, outputTokens: 5, thinkingTokens: 2 };
-    mockAugmentMaster.mockResolvedValue({ output: UPDATED, questions: [], changes: [], usages: [USAGE, verifyUsage] });
+    mockAugmentMaster.mockResolvedValue({ output: UPDATED, usages: [USAGE, verifyUsage] });
 
     const { done } = await call({ text: 'Six months contracting at Acme in 2023.' });
     await done;
@@ -135,7 +141,7 @@ describe('POST /api/master-add-info', () => {
   });
 
   test('rejects a second submission while one is in flight, and releases the lock after', async () => {
-    mockAugmentMaster.mockResolvedValue({ output: UPDATED, questions: [], changes: [], usages: [USAGE] });
+    mockAugmentMaster.mockResolvedValue({ output: UPDATED, usages: [USAGE] });
     const { done } = await call({ text: 'Six months contracting at Acme in 2023.' });
     await done;
     expect(mockRedisDel).toHaveBeenCalledWith(`master_add_lock:${SESSION_USER}`);
@@ -165,7 +171,7 @@ describe('POST /api/master-add-info', () => {
   // stranded the user with a record nothing could ever be added to.
   test('builds the master on the spot when it is missing, then augments it', async () => {
     mockGetMasterCv.mockResolvedValue(null);
-    mockAugmentMaster.mockResolvedValue({ output: UPDATED, questions: [], changes: ['Added Acme'], usages: [USAGE] });
+    mockAugmentMaster.mockResolvedValue({ output: UPDATED, usages: [USAGE] });
 
     const { res, done } = await call({ text: 'Six months contracting at Acme in 2023.' });
     await done;
@@ -174,7 +180,7 @@ describe('POST /api/master-add-info', () => {
     expect(mockBuildOrMergeMaster).toHaveBeenCalledWith('Jane Roe — Product Manager, Beta Ltd 2019-2022');
     // The freshly built master is persisted, then the augmented one on top.
     expect(mockSaveMasterCv).toHaveBeenNthCalledWith(1, SESSION_USER, MASTER);
-    expect(mockAugmentMaster).toHaveBeenCalledWith(MASTER, 'Six months contracting at Acme in 2023.', []);
+    expect(mockAugmentMaster).toHaveBeenCalledWith(MASTER, 'Six months contracting at Acme in 2023.');
     expect(mockSaveMasterCv).toHaveBeenNthCalledWith(2, SESSION_USER, UPDATED);
     // The build's calls are cost-logged too, not just the augment's.
     expect(mockLogAiTransaction).toHaveBeenCalledTimes(2);

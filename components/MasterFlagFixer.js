@@ -8,8 +8,8 @@
 //   - single flag  : the AI's proposed fix → Accept / Edit / Reject
 //   - clarify flag : a recruiter red flag only the candidate can explain → quick
 //                    options or free text
-//   - structural   : a grouping question (are these one consultancy?) → free-text
-//                    confirmation of a merge
+// The structural (grouping) question is gone: the extraction nests a client
+// engagement under its consultancy itself, so there is nothing left to ask.
 //
 // Each flag's actions are attached to the experience block it concerns, so the
 // user sees the question in context. When there are 3+ open questions we offer a
@@ -23,6 +23,7 @@
 // user's decision to the server, which mutates the master.
 
 import { useState } from 'react';
+import { roles } from '../utils/master-read';
 import MasterProgressTracker from './MasterProgressTracker';
 
 // How many open questions render at once. As answers collapse the cascade
@@ -35,17 +36,15 @@ const OPEN_QUESTION_CAP = 4;
 //                  accept blind. Index-stable (edits a field in place, never
 //                  reorders experience[]), which is what makes a sequential bulk
 //                  "accept all" safe.
-//   - structural : utils/master-issues textually matched the stored analysis to a
-//                  clear "delivered under"/"held separately" cue and set
-//                  flag.suggestion to 'merge' | 'separate'.
+
 //   - clarify    : utils/master-issues matched the analysis text to one of the
 //                  deterministic reason options verbatim and set flag.suggestion
 //                  to that option string.
-// clarify/structural flags with NO matched suggestion still need the user's own
-// knowledge and are never auto-applied.
+// clarify flags with NO matched suggestion still need the user's own knowledge
+// and are never auto-applied.
 function hasSuggestion(flag) {
   if (flag.type === 'single') return !!(flag.proposed_value && flag.proposed_value.trim());
-  if (flag.type === 'structural' || flag.type === 'clarify') {
+  if (flag.type === 'clarify') {
     return !!(flag.suggestion && String(flag.suggestion).trim());
   }
   return false;
@@ -56,19 +55,14 @@ function hasSuggestion(flag) {
 // button in FlagCard sends.
 function suggestionResolution(flag) {
   if (flag.type === 'single') return { decision: 'accept' };
-  if (flag.type === 'structural') return { decision: flag.suggestion }; // 'merge' | 'separate'
   if (flag.type === 'clarify') return { decision: 'option', value: flag.suggestion };
   return null;
 }
 
-// Which experience[] block (if any) a flag concerns — used to slot its action
-// card under the right row of the skeleton. identity/candidate_core fixes return
-// null and render in a separate "Profile details" group.
+// Which role (if any) a flag concerns — used to slot its action card under the
+// right row of the skeleton. Profile fixes return null and render in a separate
+// "Profile details" group.
 function flagExpIndex(flag) {
-  if (flag.type === 'structural') {
-    const idxs = flag.merge?.child_indexes;
-    return Array.isArray(idxs) && idxs.length ? idxs[0] : null;
-  }
   if (flag.target?.section === 'experience' && typeof flag.target.index === 'number') {
     return flag.target.index;
   }
@@ -191,27 +185,6 @@ function FlagCard({ flag, onResolved }) {
         </div>
       )}
 
-      {flag.type === 'structural' && (
-        <div className="mt-3">
-          <div className="flex flex-wrap gap-2">
-            <button disabled={busy} onClick={() => send('merge', draft.trim())}
-              className="px-3 py-1.5 text-sm rounded bg-green-600 text-white disabled:opacity-50">
-              Group them under this
-            </button>
-            <button disabled={busy} onClick={() => send('separate', draft.trim())}
-              className="px-3 py-1.5 text-sm rounded border border-gray-300 bg-white text-gray-600">
-              No — separate roles
-            </button>
-          </div>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={2}
-            className="mt-2 w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-            placeholder="Optional: in your own words — e.g. these were contracts under my consulting business"
-          />
-        </div>
-      )}
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
@@ -271,7 +244,7 @@ function SkeletonBlock({ entry, openFlags, doneFlags, onResolved }) {
 export default function MasterFlagFixer({ flags = [], experience = [], rebuilding = false, onComplete }) {
   // The LIVE open-issue list — recomputed server-side (utils/master-issues) after
   // every resolve and swapped in wholesale here. This is what makes the cascade
-  // work: answering a structural overlap removes the short-tenure/gap questions
+  // work: answering a question can settle the ones behind it
   // it was suppressing or made moot, because the server literally stops emitting
   // them — we just need to keep displaying whatever it hands back, not a snapshot
   // frozen at page load.
@@ -298,12 +271,12 @@ export default function MasterFlagFixer({ flags = [], experience = [], rebuildin
       const snapshot = flagList.find((f) => f.id === id) || flags.find((f) => f.id === id);
       return snapshot ? [...h, snapshot] : h;
     });
-    if (master && Array.isArray(master.experience)) setExp(master.experience);
+    if (master) setExp(roles(master));
     if (Array.isArray(newFlags)) setFlagList(newFlags);
   }
 
   // Every currently-open question (server truth, minus anything the user already
-  // answered this session), ranked overlap-first by the server. Only the top
+  // answered this session), ranked gap-first by the server. Only the top
   // OPEN_QUESTION_CAP are actually rendered — the rest surface on their own as
   // answers collapse the ones ahead of them.
   const openAll = flagList.filter((f) => !resolved[f.id]);
@@ -318,9 +291,8 @@ export default function MasterFlagFixer({ flags = [], experience = [], rebuildin
 
   // Apply every confident suggestion in sequence. Sequential (not parallel)
   // because each resolve-flag call reads-modifies-writes the whole master.
-  // Single fixes are index-stable (never reorder experience[]); a structural
-  // merge DOES reorder it, but each iteration re-fetches flagList/exp from the
-  // server's response before the next call, so later indexes are always current.
+  // Neither fix reorders the record, so an index stays valid across the loop;
+  // each iteration still re-reads flagList/exp from the server's response.
   async function applyAllSuggested() {
     setBulkBusy(true);
     setBulkError('');
@@ -338,7 +310,7 @@ export default function MasterFlagFixer({ flags = [], experience = [], rebuildin
         if (!res.ok) throw new Error(data.error || 'Could not save');
         setResolved((r) => ({ ...r, [f.id]: resolution.decision }));
         setHistory((h) => (h.some((x) => x.id === f.id) ? h : [...h, f]));
-        if (data.master && Array.isArray(data.master.experience)) setExp(data.master.experience);
+        if (data.master) setExp(roles(data.master));
         if (Array.isArray(data.flags)) setFlagList(data.flags);
       }
     } catch (e) {

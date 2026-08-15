@@ -7,33 +7,58 @@
 // master, runs the relevant function here, and saves the result.
 //
 // Two kinds of resolution:
-//   - SINGLE   : correct one field on one existing entry (a date, a title, a
-//                location). Deterministic field set.
-//   - STRUCTURAL (merge): collapse several experience entries under one canonical
-//                parent, keeping the originals NESTED underneath as `contracts`
-//                (nothing is deleted; never two competing histories of one span).
+//   - SINGLE  : correct one field on one existing entry (a date, a title, a
+//               location). Deterministic field set.
+//   - CLARIFY : the user's own answer to a question about their timeline — why
+//               a short role ended, what happened in a gap.
+//
+// The old STRUCTURAL merge is gone. It asked whether concurrent roles were
+// delivered under an ongoing engagement and then folded them together; the
+// extraction now makes that call itself, nesting a client engagement inside the
+// consultancy's `fractional_engagements`. Merging on top of that would fold an
+// already-nested record a second time.
 //
 // Invariants enforced here:
-//   - voice_samples are NEVER touched.
-//   - A structural merge deletes no real detail — children are nested, not dropped.
+//   - A clarification is stored OUTSIDE work_experience. The role objects are
+//     what the extraction wrote; a user's answer sitting inside one would be
+//     read as record content by every consumer, and a sentence about why a job
+//     ended would reach the CV as though it were a bullet.
 //   - Unknown / out-of-range targets throw, so a bad flag can't silently corrupt
 //     the record.
+
+import { roles } from './master-read.js';
 
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-const EDITABLE_EXPERIENCE_FIELDS = new Set([
+const EDITABLE_ROLE_FIELDS = new Set([
   'company',
-  'role',
-  'dates',
+  'title',
+  'start_date',
+  'end_date',
   'location',
 ]);
 
+// Walk to the role an index from `roles()` refers to, inside the real record, so
+// a fix writes to the stored object rather than to the flat copy. Returns the
+// live entry or null.
+function roleAt(master, index) {
+  let i = 0;
+  for (const entry of Array.isArray(master?.work_experience) ? master.work_experience : []) {
+    if (i === index) return entry;
+    i += 1;
+    for (const sub of Array.isArray(entry?.fractional_engagements) ? entry.fractional_engagements : []) {
+      if (i === index) return sub;
+      i += 1;
+    }
+  }
+  return null;
+}
+
 // Apply a SINGLE-FIX resolution: set one field on one entry to `value`.
-// target = { section: 'experience', index: <n>, field: 'dates' }
-//        | { section: 'identity', field: 'country' }
-//        | { section: 'candidate_core' }  (whole-string field)
+// target = { section: 'experience', index: <n>, field: 'start_date' }
+//        | { section: 'profile', field: 'location' | 'name' | 'headline' }
 export function applySingleFix(master, target, value) {
   if (!master || typeof master !== 'object') {
     throw new Error('applySingleFix: master is required');
@@ -48,125 +73,36 @@ export function applySingleFix(master, target, value) {
   const next = clone(master);
   const { section, index, field } = target;
 
-  if (section === 'candidate_core') {
-    next.candidate_core = value;
+  if (section === 'profile') {
+    if (!next.profile || typeof next.profile !== 'object') {
+      throw new Error('applySingleFix: master has no profile block');
+    }
+    if (!['name', 'headline', 'location'].includes(field)) {
+      throw new Error(`applySingleFix: unsupported profile field "${field}"`);
+    }
+    next.profile[field] = value;
     return next;
   }
 
-  if (section === 'identity') {
-    if (!next.identity || typeof next.identity !== 'object') {
-      throw new Error('applySingleFix: master has no identity block');
-    }
-    if (field === 'country') {
-      next.identity.country = value;
-      return next;
-    }
-    throw new Error(`applySingleFix: unsupported identity field "${field}"`);
-  }
-
   if (section === 'experience') {
-    const list = next.experience;
-    if (!Array.isArray(list) || index < 0 || index >= list.length) {
+    const entry = roleAt(next, index);
+    if (!entry) {
       throw new Error(`applySingleFix: experience index ${index} out of range`);
     }
-    if (!EDITABLE_EXPERIENCE_FIELDS.has(field)) {
+    if (!EDITABLE_ROLE_FIELDS.has(field)) {
       throw new Error(`applySingleFix: experience field "${field}" is not editable`);
     }
-    list[index][field] = value;
+    entry[field] = value;
     return next;
   }
 
   throw new Error(`applySingleFix: unsupported section "${section}"`);
 }
 
-// Apply a STRUCTURAL MERGE: collapse experience entries at `childIndexes` under
-// a single canonical parent entry. The children are kept NESTED under the parent
-// as `contracts` (their full original detail survives). `note` is the user's
-// free-text clarification, stored on the parent as `merge_note` so the generator
-// understands why the grouping exists.
-//
-// `parentIndex` is the position of the parent's OWN existing entry in
-// experience[] (the ongoing role the overlap question was asked about). When it
-// is supplied, that row is merged IN PLACE — it keeps its achievements, core_tags
-// and every other field it already had, and simply gains the nested contracts.
-// Without it we would insert a second, near-empty copy of the parent alongside
-// the original: one row holding the real content, another holding the children.
-// Omit it only for callers that genuinely have no existing parent row.
-export function applyStructuralMerge(master, { parent, parentIndex, childIndexes, note = '' }) {
-  if (!master || typeof master !== 'object') {
-    throw new Error('applyStructuralMerge: master is required');
-  }
-  if (!parent || typeof parent !== 'object' || !parent.company) {
-    throw new Error('applyStructuralMerge: parent { company, role, dates } is required');
-  }
-  if (!Array.isArray(childIndexes) || childIndexes.length < 1) {
-    throw new Error('applyStructuralMerge: childIndexes must be a non-empty array');
-  }
-
-  const next = clone(master);
-  const list = next.experience;
-  if (!Array.isArray(list)) {
-    throw new Error('applyStructuralMerge: master has no experience array');
-  }
-
-  const sorted = [...new Set(childIndexes)].sort((a, b) => a - b);
-  for (const i of sorted) {
-    if (i < 0 || i >= list.length) {
-      throw new Error(`applyStructuralMerge: child index ${i} out of range`);
-    }
-  }
-
-  // The parent's own existing row, when the caller told us where it is. It must
-  // not also be one of the children — a role cannot be nested under itself.
-  let basePos = null;
-  if (typeof parentIndex === 'number') {
-    if (parentIndex < 0 || parentIndex >= list.length) {
-      throw new Error(`applyStructuralMerge: parent index ${parentIndex} out of range`);
-    }
-    if (sorted.includes(parentIndex)) {
-      throw new Error('applyStructuralMerge: parent index cannot also be a child index');
-    }
-    basePos = parentIndex;
-  }
-
-  // Pull the children out, preserving their full detail as nested contracts.
-  const children = sorted.map((i) => list[i]);
-  const firstPos = sorted[0];
-
-  // Build the canonical parent ON TOP of its existing row so nothing it already
-  // held (achievements, core_tags, clarification, …) is dropped. The flag's
-  // parent fields describe the same role, so they only fill blanks.
-  const base = basePos === null ? {} : clone(list[basePos]);
-  const parentEntry = {
-    ...base,
-    company: parent.company,
-    role: parent.role || base.role || '',
-    dates: parent.dates || base.dates || '',
-    location: parent.location || base.location || '',
-    core_tags: base.core_tags || parent.core_tags || [],
-    achievements: base.achievements || parent.achievements || [],
-    merge_note: note,
-    // The originals, untouched, nested under the canonical parent. Nothing lost.
-    contracts: children.map((c) => clone(c)),
-  };
-
-  // Remove the children AND the parent's old row, then reinsert the merged
-  // parent at the earliest position any of them occupied so the timeline order
-  // is preserved.
-  const removed = basePos === null ? sorted : [...sorted, basePos];
-  const anchor = basePos === null ? firstPos : Math.min(firstPos, basePos);
-  const remaining = list.filter((_, i) => !removed.includes(i));
-  const insertAt = remaining.length === 0 ? 0
-    : Math.min(anchor, remaining.length);
-  remaining.splice(insertAt, 0, parentEntry);
-  next.experience = remaining;
-
-  return next;
-}
-
-// Apply a CLARIFICATION: attach the user's answer to ONE existing experience
-// entry as `clarification` (e.g. why a short tenure ended, what a gap was). This
-// adds context for the generator; it deletes and overwrites nothing else.
+// Apply a CLARIFICATION: store the user's answer about ONE role (why a short
+// tenure ended, what a gap was) in the top-level `clarifications` array. It adds
+// context for the generator; it deletes and overwrites nothing in the record
+// itself. Answering the same role twice replaces the earlier answer.
 export function applyClarification(master, { index, note }) {
   if (!master || typeof master !== 'object') {
     throw new Error('applyClarification: master is required');
@@ -175,18 +111,24 @@ export function applyClarification(master, { index, note }) {
     throw new Error('applyClarification: a note is required');
   }
   const next = clone(master);
-  const list = next.experience;
-  if (!Array.isArray(list) || index < 0 || index >= list.length) {
+  const flat = roles(next);
+  if (typeof index !== 'number' || index < 0 || index >= flat.length) {
     throw new Error(`applyClarification: experience index ${index} out of range`);
   }
-  list[index].clarification = note.trim();
+  const role = flat[index];
+  const existing = Array.isArray(next.clarifications) ? next.clarifications : [];
+  // The company and dates ride along so the note survives a rebuild: the index
+  // is only meaningful against the record it was answered on.
+  next.clarifications = [
+    ...existing.filter((c) => c?.index !== index),
+    { index, company: role.company, title: role.role, dates: role.dates, note: note.trim() },
+  ];
   return next;
 }
 
 // Orchestrator the API route calls. Returns the NEW master.
 //   resolution.decision: 'accept' | 'edit' | 'reject'  (single)
-//                       | 'merge'                       (structural)
-//   resolution.value:    the corrected string (edit) or free-text note (merge)
+//                       | any non-reject               (clarify)
 export function resolveFlag(master, flag, resolution) {
   if (!flag || typeof flag !== 'object') throw new Error('resolveFlag: flag required');
   if (!resolution || typeof resolution !== 'object') throw new Error('resolveFlag: resolution required');
@@ -213,33 +155,6 @@ export function resolveFlag(master, flag, resolution) {
       throw new Error('resolveFlag: clarify flag is missing target.index');
     }
     return applyClarification(master, { index, note });
-  }
-
-  if (flag.type === 'structural') {
-    if (decision === 'reject') return clone(master); // dismissed without a decision; no change
-    // "separate" — the user says the overlapping roles were NOT delivered under
-    // the ongoing role. Persist that as a clarification on the ongoing role so the
-    // question isn't re-asked and the short stints are no longer suppressed.
-    if (decision === 'separate') {
-      const index = flag.target?.index;
-      if (typeof index !== 'number') {
-        throw new Error('resolveFlag: separate decision needs target.index');
-      }
-      const note = (typeof resolution.value === 'string' && resolution.value.trim())
-        ? resolution.value.trim()
-        : 'Held concurrently as separate roles — not delivered under this engagement.';
-      return applyClarification(master, { index, note });
-    }
-    if (!flag.merge) throw new Error('resolveFlag: structural flag is missing its merge hint');
-    // flag.target.index is the parent's own row (the ongoing role the overlap
-    // question was asked about) — pass it so the merge folds into that row
-    // instead of adding a second copy of it.
-    return applyStructuralMerge(master, {
-      parent: flag.merge.parent,
-      parentIndex: flag.target?.index,
-      childIndexes: flag.merge.child_indexes,
-      note: resolution.value || '',
-    });
   }
 
   throw new Error(`resolveFlag: unknown flag type "${flag.type}"`);

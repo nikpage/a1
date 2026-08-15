@@ -21,6 +21,7 @@
 // cookie decides whose record this is, so /me is always the signed-in user's own.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { roles } from '../utils/master-read';
 import Head from 'next/head';
 import Header from '../components/Header';
 import MasterFlagFixer from '../components/MasterFlagFixer';
@@ -273,7 +274,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                   master={master}
                   onUpdated={(saved, newFlags) => {
                     setMaster(saved);
-                    if (Array.isArray(saved?.experience)) setExperience(saved.experience);
+                    if (saved) setExperience(roles(saved));
                     if (Array.isArray(newFlags)) setFlags(newFlags);
                   }}
                 />
@@ -294,7 +295,7 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                 <AddInfoPanel onUpdated={(updated, newFlags) => {
                   if (updated) {
                     setMaster(updated);
-                    if (Array.isArray(updated.experience)) setExperience(updated.experience);
+                    if (updated) setExperience(roles(updated));
                   }
                   if (Array.isArray(newFlags)) setFlags(newFlags);
                 }} />

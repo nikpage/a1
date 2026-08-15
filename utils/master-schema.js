@@ -19,6 +19,11 @@
 // what was submitted.
 const PRESERVED_STRINGS = ['voice_guide'];
 
+// The user's own answers about their timeline (why a short role ended, what a
+// gap was), written through the flag fixer. The editor renders no field for
+// them, so an editor save must never be able to change or delete them.
+const PRESERVED = ['clarifications'];
+
 // Scalars coerce; an object or array does NOT. `String({})` is "[object Object]",
 // which is truthy, survives every filter, and silently replaces real content with
 // a placeholder. A shape this schema did not expect is dropped instead, so the
@@ -114,6 +119,10 @@ export function normaliseMaster(edited, stored = null) {
       .filter((e) => e.institution || e.qualification),
   };
 
+  for (const key of PRESERVED) {
+    const kept = arr(stored?.[key]);
+    if (kept.length) out[key] = kept;
+  }
   for (const key of PRESERVED_STRINGS) {
     const kept = str(stored?.[key]);
     if (kept) out[key] = kept;
@@ -122,4 +131,4 @@ export function normaliseMaster(edited, stored = null) {
   return out;
 }
 
-export { PRESERVED_STRINGS };
+export { PRESERVED, PRESERVED_STRINGS };

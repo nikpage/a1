@@ -31,7 +31,6 @@ vi.mock('../utils/openai.js', () => ({
 vi.mock('../utils/database.js', () => ({
   saveGeneratedDoc: mockSaveGeneratedDoc,
   logAiTransaction: vi.fn().mockResolvedValue(undefined),
-  setCandidateCoreIfEmpty: vi.fn().mockResolvedValue(undefined),
   getMasterCv: mockGetMasterCv,
   saveMasterCv: vi.fn().mockResolvedValue(undefined),
   supabase: {

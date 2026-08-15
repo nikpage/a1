@@ -61,7 +61,6 @@ const ANALYSIS_KEYS = [
 
 // Top-level keys, in the order a writer reads them.
 const TOP_KEYS = [
-  'candidate_core',         // who this person is, job-agnostic
   'jobs_extracted',         // the roles, most-recent first
   'job_match',              // positioning_strategy, career_scenario, keywords
   'generation_framework',   // cv_blueprint + target_cover_words
@@ -101,8 +100,6 @@ export function coverBrief(analysis) {
   if (!analysis || typeof analysis !== 'object') return {};
 
   const brief = {};
-  if (hasContent(analysis.candidate_core)) brief.candidate_core = analysis.candidate_core;
-
   // Positioning only — career_scenario and the keyword fields belong to the CV.
   const strategy = analysis.job_match?.positioning_strategy;
   if (hasContent(strategy)) brief.positioning_strategy = strategy;

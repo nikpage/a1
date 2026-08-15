@@ -88,9 +88,10 @@ export async function runGeneration({
     // tokens. Tokens are spent at download time, not generation.
     if (user.generations_left <= 0) throw new GenerationError('NO_GENERATIONS_LEFT', 403);
 
-    // The user's saved candidate-core profile steers every document. Prefer the
-    // (possibly user-edited) saved value; fall back to the draft in the analysis.
-    const core = (user.candidate_core && user.candidate_core.trim()) || analysis?.candidate_core || '';
+    // The user's own statement of their durable value, written by them on
+    // /account. There is no AI fallback: the analysis used to draft one and it
+    // reached both writers as though the candidate had claimed it.
+    const core = (user.candidate_core && user.candidate_core.trim()) || '';
 
     // The MASTER CV is the source generation builds from — the complete,
     // structured source-of-truth. Fall back to the raw CV text only for users
