@@ -99,7 +99,7 @@ describe('normaliseMaster', () => {
     expect(out.master_cv).toBeUndefined();
     expect(out.candidate_core).toBeUndefined();
     expect(Object.keys(out).sort()).toEqual(
-      ['advisory_and_community', 'education', 'profile', 'publications_and_patents', 'speaking_and_lecturing', 'voice_guide', 'work_experience'].sort()
+      ['advisory_and_community', 'education', 'profile', 'publications_and_patents', 'role_overlaps', 'speaking_and_lecturing', 'voice_guide', 'work_experience'].sort()
     );
   });
 

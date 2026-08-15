@@ -5,10 +5,18 @@
 // the candidate from scratch.
 //
 // The prompt is Nik's, verbatim. It was run against a long, messy LinkedIn
-// profile PDF and produced a clean record with titles, dates, locations and
-// nested fractional engagements — everything the previous 250-line rule stack
-// failed to produce (it emitted ten roles with every title and every date
-// null). Do not add rules to it without a run showing the output is better.
+// profile PDF and produced a clean record with titles, dates, locations —
+// everything the previous 250-line rule stack failed to produce (it emitted ten
+// roles with every title and every date null). Do not add rules to it without a
+// run showing the output is better.
+//
+// The build DOES NOT NEST. Dates alone cannot tell a client engagement under
+// the person's own practice from a salaried job held over the same months, and
+// the model guessed differently on consecutive runs of the SAME text (six
+// engagements one run, four the next — temperature 0 did not settle it, Gemini
+// is not deterministic). So the build reports each overlapping pair in
+// `role_overlaps` and /me asks the person; their answer, and only their answer,
+// moves a role into an umbrella's `fractional_engagements`.
 //
 // Step 1's clarifying questions cannot be answered in an unattended pipeline,
 // so the model is told to skip straight to the JSON.
@@ -30,7 +38,7 @@ STEP 2: JSON EXTRACTION REQUIREMENTS
 
 1. ARCHITECTURE & ROLE NESTING
 - Core Career History ("work_experience"): Capture standard employment history chronologically.
-- Umbrella & Fractional Roles ("fractional_engagements"): If a primary consulting entity, agency, or self-employed practice exists, nest concurrent advisory, fractional, or client-based projects directly inside a \`"fractional_engagements"\` array within that primary company object.
+- Umbrella & Fractional Roles: Do NOT nest anything. Every role stays at the top level exactly as the source presents it. Where a role's dates fall inside the span of the person's own consulting entity, agency or practice, report the pair in \`"role_overlaps"\` so the person can be asked about it — the answer is theirs, not yours.
 - Independent Sections: Extract high-volume or distinct activities into dedicated top-level arrays:
   * \`"speaking_and_lecturing"\` (keynote talks, panels, guest lectures)
   * \`"advisory_and_community"\` (volunteer, board, or non-profit roles)
@@ -45,7 +53,8 @@ STEP 2: JSON EXTRACTION REQUIREMENTS
 3. EXPECTED JSON SCHEMA
 Ensure the final output conforms to the following top-level keys:
 - "profile": Contact details, summary, headline, locations, languages, skills, honors/awards.
-- "work_experience": Main employment history, including nested \`"fractional_engagements"\` where applicable.
+- "work_experience": Main employment history, flat — one entry per role the source states.
+- "role_overlaps": Pairs of roles whose dates overlap the person's own practice, as index pairs into "work_experience". A question for the person, never a decision.
 - "advisory_and_community": Non-profit, board, or volunteer positions.
 - "speaking_and_lecturing": Itemized talks containing event name, role/topic, location, and year.
 - "publications_and_patents": Listed works.
@@ -76,6 +85,9 @@ const EXACT_SHAPE = `EXACT OUTPUT SHAPE — emit every key below, always, in thi
       "fractional_engagements": []
     }
   ],
+  "role_overlaps": [
+    { "umbrella_index": 0, "role_index": 0 }
+  ],
   "advisory_and_community": [
     { "organization": "", "title": "", "start_date": "", "end_date": "", "location": "", "bullets": [] }
   ],
@@ -91,11 +103,11 @@ const EXACT_SHAPE = `EXACT OUTPUT SHAPE — emit every key below, always, in thi
 SHAPE RULES:
 - Every entry in "fractional_engagements" is the SAME object shape as a "work_experience" entry (company, title, start_date, end_date, location, bullets). Nest one level only — an engagement never carries its own "fractional_engagements".
 
-NESTING — apply this test to EVERY role before you emit the array, it is not optional:
-1. Find the UMBRELLA: a role at the person's own consultancy, agency, studio or self-employed practice — the entry whose employer is their own entity (often their own name, often "Present" as its end date) and whose span is long and ongoing.
-2. For every OTHER role, ask one question: do its dates fall INSIDE the umbrella's span? If yes, it is a client engagement delivered under that practice — put it in the umbrella's "fractional_engagements" and NOWHERE else. It does not also appear at the top level.
-3. Roles that started and ended BEFORE the umbrella began are ordinary employment and stay at the top level.
-NEVER nest for any other reason. Two roles at the SAME employer, one after the other, are a promotion or a title change — they are two separate top-level entries, never one nested inside the other. Nesting means "delivered under a practice", nothing else.
+NESTING — you never do it. Every "fractional_engagements" array you emit is empty, always, without exception:
+1. Every role the source states is its own top-level "work_experience" entry, in the source's order. A role is never moved inside another role and never removed because another role explains it.
+2. Instead, REPORT the overlap. Find the UMBRELLA: a role at the person's own consultancy, agency, studio or self-employed practice — the entry whose employer is their own entity (often their own name, often "Present" as its end date) and whose span is long and ongoing. For every OTHER role whose dates fall INSIDE that span, add one entry to "role_overlaps": { "umbrella_index": <its index in work_experience>, "role_index": <the other role's index> }.
+3. Report nothing else there. Two roles at the SAME employer, one after the other, are a promotion or a title change — not an overlap. Roles that started and ended BEFORE the umbrella began are not an overlap either. No umbrella in the source means "role_overlaps" is [].
+4. Dates that overlap do NOT tell you whether the role was client work under the practice or a salaried job held at the same time. You cannot know that from the source, so you do not decide it — you report the pair and the person answers.
 - "bullets" is ALWAYS an array of strings, one per responsibility or achievement, and it is the ONLY place role detail goes. Never emit "description", "responsibilities", "duties" or a prose blob in place of it; a single paragraph becomes a one-element array.
 - Dates are strings exactly as the source states them ("August 2016", "2011", "Present"). Do not reformat, do not compute a duration, do not fill a missing one.
 - "summary" is the person's OWN summary text from the source, verbatim. Write nothing of your own there; if the source has none, use "".

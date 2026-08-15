@@ -55,6 +55,23 @@ function normaliseRole(role, depth = 0) {
   return out;
 }
 
+// One `role_overlaps` entry: two indexes into work_experience plus the person's
+// answer once they have given one. `answer` is "" while the question is still
+// open, "nested" if the role was client work under the umbrella, "separate" if
+// it was a job of its own. An entry without two usable indexes is dropped —
+// there is no question to ask.
+const ANSWERS = ['nested', 'separate'];
+const idx = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+function normaliseOverlaps(v) {
+  return arr(v)
+    .map((o) => ({
+      umbrella_index: idx(o?.umbrella_index),
+      role_index: idx(o?.role_index),
+      answer: ANSWERS.includes(o?.answer) ? o.answer : '',
+    }))
+    .filter((o) => o.umbrella_index !== null && o.role_index !== null && o.umbrella_index !== o.role_index);
+}
+
 // `edited` is what the user submitted; `stored` is the record currently saved
 // (the source of the preserved fields). Returns a new object — neither input is
 // mutated. Unknown keys are dropped: the shape is the extraction prompt's
@@ -109,6 +126,14 @@ export function normaliseMaster(edited, stored = null) {
       }))
       .filter((t) => t.event || t.topic),
     publications_and_patents: strList(edited.publications_and_patents),
+    // Overlap QUESTIONS, not structure: the build reports the pairs and the
+    // person answers them on /me. Absent from the submission entirely (the
+    // record editor renders no field for them) → the stored ones are kept, so
+    // an ordinary edit cannot silently drop pending questions. Present → the
+    // submission wins, which is how an answer is recorded.
+    role_overlaps: normaliseOverlaps(
+      edited.role_overlaps === undefined ? stored?.role_overlaps : edited.role_overlaps,
+    ),
     education: arr(edited.education)
       .map((e) => ({
         institution: str(e?.institution),
@@ -129,6 +154,57 @@ export function normaliseMaster(edited, stored = null) {
   }
 
   return out;
+}
+
+// Answer one overlap question. `answer` is "nested" (the role was client work
+// delivered under the umbrella) or "separate" (a job of its own, held at the
+// same time). This is the ONLY thing that nests: the build reports the pair and
+// never moves a role itself.
+//
+// "nested" removes the role from work_experience and appends it to the
+// umbrella's fractional_engagements, so every OTHER overlap's indexes have to
+// move with it — an index that still pointed at the old array would ask the
+// next question about the wrong role. "separate" changes no structure; it
+// records the answer so the question is not asked again.
+//
+// Returns a new record; the input is not mutated. An out-of-range or already
+// answered question returns the record unchanged.
+export function applyOverlapAnswer(master, questionIndex, answer) {
+  if (!ANSWERS.includes(answer)) throw new Error('applyOverlapAnswer: answer must be "nested" or "separate"');
+  const overlaps = normaliseOverlaps(master?.role_overlaps);
+  const q = overlaps[questionIndex];
+  const experience = arr(master?.work_experience);
+  if (!q || q.answer) return master;
+  if (q.umbrella_index >= experience.length || q.role_index >= experience.length) return master;
+
+  if (answer === 'separate') {
+    return {
+      ...master,
+      role_overlaps: overlaps.map((o, i) => (i === questionIndex ? { ...o, answer } : o)),
+    };
+  }
+
+  const moved = normaliseRole(experience[q.role_index], 1);
+  const nextExperience = experience
+    .filter((_, i) => i !== q.role_index)
+    .map((r, i) => {
+      const wasIndex = i < q.role_index ? i : i + 1;
+      if (wasIndex !== q.umbrella_index) return r;
+      return { ...r, fractional_engagements: [...arr(r?.fractional_engagements), moved] };
+    });
+
+  // Indexes shift down by one for every role that sat after the one removed.
+  const shift = (i) => (i > q.role_index ? i - 1 : i);
+  const nextOverlaps = overlaps
+    // The moved role is no longer at the top level, so any OTHER question that
+    // pointed at it has nothing left to ask about and is dropped rather than
+    // left dangling on a role that is now nested.
+    .filter((o, i) => i === questionIndex || (o.role_index !== q.role_index && o.umbrella_index !== q.role_index))
+    .map((o) => (o === q
+      ? { ...o, answer }
+      : { ...o, umbrella_index: shift(o.umbrella_index), role_index: shift(o.role_index) }));
+
+  return { ...master, work_experience: nextExperience, role_overlaps: nextOverlaps };
 }
 
 export { PRESERVED, PRESERVED_STRINGS };

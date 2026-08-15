@@ -237,7 +237,10 @@ export async function buildOrMergeMaster(rawInput) {
   let lastData;
   let parseErr;
   for (let attempt = 1; attempt <= MAX_PARSE_ATTEMPTS; attempt++) {
-    lastData = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
+    // temperature 0: the build is pure extraction, so the same CV text must
+    // yield the same record. The endpoint default of 1.0 made nesting vary
+    // run to run (six client engagements one run, four the next).
+    lastData = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low', temperature: 0 });
     const gu = geminiUsage(`master-cv ${mode}`, lastData, GEMINI_MASTER_MODEL);
     attemptUsages.push(gu);
     trackDailySpend(gu.costUsd);
