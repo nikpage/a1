@@ -6,9 +6,9 @@
 // or clumsy achievement wording could not be fixed at all.
 //
 // Edits are local until Save; Save POSTs the whole record to /api/update-master,
-// which normalises it onto the schema and writes it. voice_samples and conflicts
-// are not editable here — the first are code-grounded verbatim quotes, the
-// second belong to the flag fixer — and the route carries both over untouched.
+// which normalises it onto the schema (prompts/master-cv.js, EXACT_SHAPE) and
+// writes it. Every field the record holds is editable here except voice_guide,
+// which has its own panel and is carried over untouched.
 
 import { useState } from 'react';
 
@@ -34,7 +34,7 @@ function TextRow({ label, value, onChange, placeholder }) {
   );
 }
 
-// A list of plain strings (parallel_experience, gaps, links, tags, skills).
+// A list of plain strings (skills, certifications, awards, publications, bullets).
 function StringList({ label, items, onChange }) {
   const list = Array.isArray(items) ? items : [];
   return (
@@ -67,91 +67,62 @@ function StringList({ label, items, onChange }) {
   );
 }
 
-function RoleEditor({ role, onChange, onRemove }) {
-  const achievements = Array.isArray(role.achievements) ? role.achievements : [];
-  const contracts = Array.isArray(role.contracts) ? role.contracts : [];
+function RoleEditor({ role, onChange, onRemove, nested = false }) {
+  const engagements = Array.isArray(role.fractional_engagements) ? role.fractional_engagements : [];
   const set = (patch) => onChange({ ...role, ...patch });
 
   return (
     <div className="mt-4 rounded border border-gray-200 p-3">
       <div className="grid grid-cols-2 gap-2">
-        <TextRow label="Role" value={role.role} onChange={(v) => set({ role: v })} />
+        <TextRow label="Title" value={role.title} onChange={(v) => set({ title: v })} />
         <TextRow label="Company" value={role.company} onChange={(v) => set({ company: v })} />
-        <TextRow label="Dates" value={role.dates} onChange={(v) => set({ dates: v })} placeholder="2018 - Present" />
-        <TextRow label="Location" value={role.location} onChange={(v) => set({ location: v })} placeholder="Prague, Czech Republic" />
+        <TextRow label="Start" value={role.start_date} onChange={(v) => set({ start_date: v })} placeholder="August 2016" />
+        <TextRow label="End" value={role.end_date} onChange={(v) => set({ end_date: v })} placeholder="Present" />
+        <TextRow label="Location" value={role.location} onChange={(v) => set({ location: v })} placeholder="Prague, CZ" />
       </div>
 
       <div className="mt-3">
-        <span className={labelClass}>Achievements</span>
-        {achievements.map((a, i) => (
-          <div key={i} className="mt-2 flex gap-2">
-            <div className="flex-1 space-y-1">
-              <textarea
-                className={inputClass}
-                rows={2}
-                value={a.text || ''}
-                onChange={(e) => set({ achievements: replaceAt(achievements, i, { ...a, text: e.target.value }) })}
-              />
-              <input
-                className={inputClass}
-                value={a.metric || ''}
-                placeholder="Metric, only if it's real (e.g. cut drop-off 20%)"
-                onChange={(e) => set({ achievements: replaceAt(achievements, i, { ...a, metric: e.target.value }) })}
-              />
-            </div>
-            <button
-              type="button"
-              className="text-xs text-red-700 shrink-0"
-              onClick={() => set({ achievements: achievements.filter((_, j) => j !== i) })}
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="mt-2 text-xs text-blue-700 underline"
-          onClick={() => set({ achievements: [...achievements, { text: '', metric: '', skills_utilized: [] }] })}
-        >
-          + Add achievement
-        </button>
+        <StringList label="Bullets" items={role.bullets} onChange={(bullets) => set({ bullets })} />
       </div>
 
       {/*
-        Nested engagements of a merged role — the fractional/contract work that
-        sits under a consultancy. They are the same shape as a role, so they get
-        the same editor one level in: visible and editable here, not hidden
-        behind a count the user cannot open.
+        Fractional engagements — the client or advisory work that ran under this
+        consultancy. Same shape as a role, so the same editor one level in:
+        visible and editable here, not hidden behind a count. One level only,
+        which is why a nested editor renders no engagements of its own.
       */}
-      <div className="mt-3">
-        <span className={labelClass}>
-          Engagements under this role{contracts.length > 0 ? ` (${contracts.length})` : ''}
-        </span>
-        <div className="ml-3 border-l-2 border-gray-200 pl-3">
-          {contracts.map((c, i) => (
-            <RoleEditor
-              key={i}
-              role={c}
-              onChange={(updated) => set({ contracts: replaceAt(contracts, i, updated) })}
-              onRemove={() => set({ contracts: contracts.filter((_, j) => j !== i) })}
-            />
-          ))}
-          <button
-            type="button"
-            className="mt-2 text-xs text-blue-700 underline"
-            onClick={() =>
-              set({
-                contracts: [
-                  ...contracts,
-                  { company: '', role: '', dates: '', location: '', core_tags: [], achievements: [] },
-                ],
-              })
-            }
-          >
-            + Add engagement
-          </button>
+      {!nested && (
+        <div className="mt-3">
+          <span className={labelClass}>
+            Engagements under this role{engagements.length > 0 ? ` (${engagements.length})` : ''}
+          </span>
+          <div className="ml-3 border-l-2 border-gray-200 pl-3">
+            {engagements.map((c, i) => (
+              <RoleEditor
+                key={i}
+                role={c}
+                nested
+                onChange={(updated) => set({ fractional_engagements: replaceAt(engagements, i, updated) })}
+                onRemove={() => set({ fractional_engagements: engagements.filter((_, j) => j !== i) })}
+              />
+            ))}
+            <button
+              type="button"
+              className="mt-2 text-xs text-blue-700 underline"
+              onClick={() =>
+                set({
+                  fractional_engagements: [
+                    ...engagements,
+                    { company: '', title: '', start_date: '', end_date: '', location: '', bullets: [] },
+                  ],
+                })
+              }
+            >
+              + Add engagement
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <button type="button" className="mt-3 text-xs text-red-700" onClick={onRemove}>
         Remove this role
@@ -165,15 +136,15 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const identity = draft.identity || {};
-  const contact = identity.contact || {};
-  const experience = Array.isArray(draft.experience) ? draft.experience : [];
+  const profile = draft.profile || {};
+  const contact = profile.contact || {};
+  const experience = Array.isArray(draft.work_experience) ? draft.work_experience : [];
   const education = Array.isArray(draft.education) ? draft.education : [];
-  const certifications = Array.isArray(draft.certifications) ? draft.certifications : [];
-  const notes = Array.isArray(draft.transferable_notes) ? draft.transferable_notes : [];
+  const community = Array.isArray(draft.advisory_and_community) ? draft.advisory_and_community : [];
+  const talks = Array.isArray(draft.speaking_and_lecturing) ? draft.speaking_and_lecturing : [];
 
-  const setIdentity = (patch) => setDraft({ ...draft, identity: { ...identity, ...patch } });
-  const setContact = (patch) => setIdentity({ contact: { ...contact, ...patch } });
+  const setProfile = (patch) => setDraft({ ...draft, profile: { ...profile, ...patch } });
+  const setContact = (patch) => setProfile({ contact: { ...contact, ...patch } });
 
   async function save() {
     setSaving(true);
@@ -201,26 +172,28 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <TextRow label="Name" value={identity.name} onChange={(v) => setIdentity({ name: v })} />
-        <TextRow label="Country" value={identity.country} onChange={(v) => setIdentity({ country: v })} />
+        <TextRow label="Name" value={profile.name} onChange={(v) => setProfile({ name: v })} />
+        <TextRow label="Location" value={profile.location} onChange={(v) => setProfile({ location: v })} />
         <TextRow label="Email" value={contact.email} onChange={(v) => setContact({ email: v })} />
         <TextRow label="Phone" value={contact.phone} onChange={(v) => setContact({ phone: v })} />
-        <TextRow label="Location" value={contact.location} onChange={(v) => setContact({ location: v })} />
-      </div>
-
-      <div className="mt-3">
-        <StringList label="Links" items={contact.links} onChange={(links) => setContact({ links })} />
+        <TextRow label="LinkedIn" value={contact.linkedin} onChange={(v) => setContact({ linkedin: v })} />
+        <TextRow label="Website" value={contact.website} onChange={(v) => setContact({ website: v })} />
+        <TextRow label="Headline" value={profile.headline} onChange={(v) => setProfile({ headline: v })} />
       </div>
 
       <label className="mt-4 block">
-        <span className={labelClass}>Core (the durable through-line)</span>
+        <span className={labelClass}>Summary (your own words)</span>
         <textarea
           className={inputClass}
           rows={3}
-          value={draft.candidate_core || ''}
-          onChange={(e) => setDraft({ ...draft, candidate_core: e.target.value })}
+          value={profile.summary || ''}
+          onChange={(e) => setProfile({ summary: e.target.value })}
         />
       </label>
+
+      <div className="mt-3">
+        <StringList label="Skills" items={profile.top_skills} onChange={(top_skills) => setProfile({ top_skills })} />
+      </div>
 
       <div className="mt-5">
         <span className={labelClass}>Experience</span>
@@ -228,8 +201,8 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
           <RoleEditor
             key={i}
             role={role}
-            onChange={(updated) => setDraft({ ...draft, experience: replaceAt(experience, i, updated) })}
-            onRemove={() => setDraft({ ...draft, experience: experience.filter((_, j) => j !== i) })}
+            onChange={(updated) => setDraft({ ...draft, work_experience: replaceAt(experience, i, updated) })}
+            onRemove={() => setDraft({ ...draft, work_experience: experience.filter((_, j) => j !== i) })}
           />
         ))}
         <button
@@ -238,7 +211,7 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
           onClick={() =>
             setDraft({
               ...draft,
-              experience: [{ company: '', role: '', dates: '', location: '', core_tags: [], achievements: [] }, ...experience],
+              work_experience: [{ company: '', title: '', start_date: '', end_date: '', location: '', bullets: [], fractional_engagements: [] }, ...experience],
             })
           }
         >
@@ -253,7 +226,7 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
             <TextRow label="Qualification" value={e.qualification} onChange={(v) => setDraft({ ...draft, education: replaceAt(education, i, { ...e, qualification: v }) })} />
             <TextRow label="Institution" value={e.institution} onChange={(v) => setDraft({ ...draft, education: replaceAt(education, i, { ...e, institution: v }) })} />
             <TextRow label="Dates" value={e.dates} onChange={(v) => setDraft({ ...draft, education: replaceAt(education, i, { ...e, dates: v }) })} />
-            <TextRow label="Notes" value={e.notes} onChange={(v) => setDraft({ ...draft, education: replaceAt(education, i, { ...e, notes: v }) })} />
+            <TextRow label="Location" value={e.location} onChange={(v) => setDraft({ ...draft, education: replaceAt(education, i, { ...e, location: v }) })} />
             <button type="button" className="text-xs text-red-700 justify-self-start" onClick={() => setDraft({ ...draft, education: education.filter((_, j) => j !== i) })}>
               Remove
             </button>
@@ -262,48 +235,45 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
         <button
           type="button"
           className="mt-2 text-xs text-blue-700 underline"
-          onClick={() => setDraft({ ...draft, education: [...education, { institution: '', qualification: '', dates: '', notes: '' }] })}
+          onClick={() => setDraft({ ...draft, education: [...education, { institution: '', qualification: '', dates: '', location: '' }] })}
         >
           + Add education
         </button>
       </div>
 
       <div className="mt-5">
-        <span className={labelClass}>Certifications</span>
-        {certifications.map((c, i) => (
-          <div key={i} className="mt-2 grid grid-cols-3 gap-2 rounded border border-gray-200 p-3">
-            <TextRow label="Name" value={c.name} onChange={(v) => setDraft({ ...draft, certifications: replaceAt(certifications, i, { ...c, name: v }) })} />
-            <TextRow label="Issuer" value={c.issuer} onChange={(v) => setDraft({ ...draft, certifications: replaceAt(certifications, i, { ...c, issuer: v }) })} />
-            <TextRow label="Date" value={c.date} onChange={(v) => setDraft({ ...draft, certifications: replaceAt(certifications, i, { ...c, date: v }) })} />
-            <button type="button" className="text-xs text-red-700 justify-self-start" onClick={() => setDraft({ ...draft, certifications: certifications.filter((_, j) => j !== i) })}>
-              Remove
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="mt-2 text-xs text-blue-700 underline"
-          onClick={() => setDraft({ ...draft, certifications: [...certifications, { name: '', issuer: '', date: '' }] })}
-        >
-          + Add certification
-        </button>
-      </div>
-
-      <div className="mt-5">
         <StringList
-          label="Alongside work (side projects, teaching, volunteering)"
-          items={draft.parallel_experience}
-          onChange={(parallel_experience) => setDraft({ ...draft, parallel_experience })}
+          label="Certifications"
+          items={profile.certifications}
+          onChange={(certifications) => setProfile({ certifications })}
         />
       </div>
 
       <div className="mt-5">
-        <span className={labelClass}>Transferable strengths</span>
-        {notes.map((n, i) => (
+        <StringList
+          label="Honors and awards"
+          items={profile.honors_and_awards}
+          onChange={(honors_and_awards) => setProfile({ honors_and_awards })}
+        />
+      </div>
+
+      <div className="mt-5">
+        <StringList
+          label="Publications and patents"
+          items={draft.publications_and_patents}
+          onChange={(publications_and_patents) => setDraft({ ...draft, publications_and_patents })}
+        />
+      </div>
+
+      <div className="mt-5">
+        <span className={labelClass}>Advisory and community</span>
+        {community.map((c, i) => (
           <div key={i} className="mt-2 grid grid-cols-2 gap-2 rounded border border-gray-200 p-3">
-            <TextRow label="Observation" value={n.observation} onChange={(v) => setDraft({ ...draft, transferable_notes: replaceAt(notes, i, { ...n, observation: v }) })} />
-            <TextRow label="Evidence" value={n.evidence} onChange={(v) => setDraft({ ...draft, transferable_notes: replaceAt(notes, i, { ...n, evidence: v }) })} />
-            <button type="button" className="text-xs text-red-700 justify-self-start" onClick={() => setDraft({ ...draft, transferable_notes: notes.filter((_, j) => j !== i) })}>
+            <TextRow label="Organization" value={c.organization} onChange={(v) => setDraft({ ...draft, advisory_and_community: replaceAt(community, i, { ...c, organization: v }) })} />
+            <TextRow label="Title" value={c.title} onChange={(v) => setDraft({ ...draft, advisory_and_community: replaceAt(community, i, { ...c, title: v }) })} />
+            <TextRow label="Start" value={c.start_date} onChange={(v) => setDraft({ ...draft, advisory_and_community: replaceAt(community, i, { ...c, start_date: v }) })} />
+            <TextRow label="End" value={c.end_date} onChange={(v) => setDraft({ ...draft, advisory_and_community: replaceAt(community, i, { ...c, end_date: v }) })} />
+            <button type="button" className="text-xs text-red-700 justify-self-start" onClick={() => setDraft({ ...draft, advisory_and_community: community.filter((_, j) => j !== i) })}>
               Remove
             </button>
           </div>
@@ -311,9 +281,32 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
         <button
           type="button"
           className="mt-2 text-xs text-blue-700 underline"
-          onClick={() => setDraft({ ...draft, transferable_notes: [...notes, { observation: '', evidence: '', useful_for: [] }] })}
+          onClick={() => setDraft({ ...draft, advisory_and_community: [...community, { organization: '', title: '', start_date: '', end_date: '', location: '', bullets: [] }] })}
         >
-          + Add strength
+          + Add
+        </button>
+      </div>
+
+      <div className="mt-5">
+        <span className={labelClass}>Speaking and lecturing</span>
+        {talks.map((t, i) => (
+          <div key={i} className="mt-2 grid grid-cols-2 gap-2 rounded border border-gray-200 p-3">
+            <TextRow label="Event" value={t.event} onChange={(v) => setDraft({ ...draft, speaking_and_lecturing: replaceAt(talks, i, { ...t, event: v }) })} />
+            <TextRow label="Topic" value={t.topic} onChange={(v) => setDraft({ ...draft, speaking_and_lecturing: replaceAt(talks, i, { ...t, topic: v }) })} />
+            <TextRow label="Role" value={t.role} onChange={(v) => setDraft({ ...draft, speaking_and_lecturing: replaceAt(talks, i, { ...t, role: v }) })} />
+            <TextRow label="Location" value={t.location} onChange={(v) => setDraft({ ...draft, speaking_and_lecturing: replaceAt(talks, i, { ...t, location: v }) })} />
+            <TextRow label="Year" value={t.year} onChange={(v) => setDraft({ ...draft, speaking_and_lecturing: replaceAt(talks, i, { ...t, year: v }) })} />
+            <button type="button" className="text-xs text-red-700 justify-self-start" onClick={() => setDraft({ ...draft, speaking_and_lecturing: talks.filter((_, j) => j !== i) })}>
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="mt-2 text-xs text-blue-700 underline"
+          onClick={() => setDraft({ ...draft, speaking_and_lecturing: [...talks, { event: '', role: '', topic: '', location: '', year: '' }] })}
+        >
+          + Add
         </button>
       </div>
 

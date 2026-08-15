@@ -13,6 +13,7 @@
 import { useState } from 'react';
 import MasterRecordEditor from './MasterRecordEditor';
 import VoiceGuidePanel from './VoiceGuidePanel';
+import { roles, advisory, speaking, education as educationOf, profile as profileOf } from '../utils/master-read';
 
 function Field({ label, children }) {
   if (!children) return null;
@@ -38,35 +39,18 @@ function joinParts(parts) {
   return parts.filter((p) => p && String(p).trim()).join(' | ');
 }
 
-// One role, with every field the record carries for it: the tags it was
-// classified under, the skills each achievement evidences, any clarification or
-// merge note the flag fixer attached, and nested engagements under a merged
-// parent. Recursive, because `contracts` entries are roles.
-function Role({ role, nested = false }) {
-  const achievements = Array.isArray(role.achievements) ? role.achievements : [];
-  const tags = Array.isArray(role.core_tags) ? role.core_tags : [];
-  const contracts = Array.isArray(role.contracts) ? role.contracts : [];
+// One role as the record holds it. `via` is set on an engagement that ran under
+// an umbrella consultancy — shown so a client engagement is never mistaken for
+// direct employment.
+function Role({ role }) {
   return (
-    <div className={nested ? 'mt-3 border-l-2 border-gray-200 pl-3' : 'mt-3'}>
+    <div className={role.via ? 'mt-3 border-l-2 border-gray-200 pl-3' : 'mt-3'}>
       <div className="text-sm font-semibold text-gray-900">
         {joinParts([role.role, role.company]) || 'Untitled role'}
       </div>
       <div className="text-xs text-gray-500">{joinParts([role.dates, role.location])}</div>
-      {tags.length > 0 && <div className="text-xs text-gray-500">{tags.join(', ')}</div>}
-      <List
-        items={achievements}
-        render={(a) => (
-          <>
-            {joinParts([a.text, a.metric])}
-            {Array.isArray(a.skills_utilized) && a.skills_utilized.length > 0 && (
-              <span className="text-xs text-gray-500"> — {a.skills_utilized.join(', ')}</span>
-            )}
-          </>
-        )}
-      />
-      <Field label="Clarification">{role.clarification || null}</Field>
-      <Field label="Merge note">{role.merge_note || null}</Field>
-      {contracts.map((c, i) => <Role key={i} role={c} nested />)}
+      {role.via && <div className="text-xs text-gray-500">via {role.via}</div>}
+      <List items={role.bullets} render={(b) => b} />
     </div>
   );
 }
@@ -90,27 +74,24 @@ export default function MasterRecordPanel({ master, onUpdated }) {
     );
   }
 
-  const identity = master.identity || {};
-  const contact = identity.contact || {};
-  const experience = Array.isArray(master.experience) ? master.experience : [];
-  const education = Array.isArray(master.education) ? master.education : [];
-  const certifications = Array.isArray(master.certifications) ? master.certifications : [];
-  const parallel = Array.isArray(master.parallel_experience) ? master.parallel_experience : [];
-  const notes = Array.isArray(master.transferable_notes) ? master.transferable_notes : [];
-  const voice = Array.isArray(master.voice_samples) ? master.voice_samples : [];
+  const profile = profileOf(master);
+  const contact = profile.contact;
+  const experience = roles(master);
+  const education = educationOf(master);
+  const community = advisory(master);
+  const talks = speaking(master);
+  const publications = Array.isArray(master.publications_and_patents) ? master.publications_and_patents : [];
   // Everything the record holds is shown. A field rendered nowhere is a field
   // the user cannot see is wrong — and this panel is the only view of the
   // record the CV and cover letter are written from.
-  const gaps = Array.isArray(master.gaps) ? master.gaps : [];
-  const conflicts = Array.isArray(master.conflicts) ? master.conflicts : [];
-  const languages = Array.isArray(identity.languages) ? identity.languages : [];
-  const links = Array.isArray(contact.links) ? contact.links : [];
+  const languages = profile.languages;
+  const links = [contact.linkedin, contact.website].filter(Boolean);
 
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm text-gray-600">
-          {joinParts([identity.name, identity.country]) || 'Master record'}
+          {joinParts([profile.name, profile.location]) || 'Master record'}
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <button onClick={() => setEditing(true)} className="text-sm text-blue-700 underline">
@@ -130,17 +111,21 @@ export default function MasterRecordPanel({ master, onUpdated }) {
         <div className="mt-2 divide-y divide-gray-100">
           <div className="pb-3">
             <Field label="Contact">
-              {joinParts([contact.email, contact.phone, contact.location]) || null}
+              {joinParts([contact.email, contact.phone, profile.location]) || null}
             </Field>
             {links.length > 0 && (
               <Field label="Links">{links.join(', ')}</Field>
             )}
             {languages.length > 0 && (
               <Field label="Languages">
-                {languages.map((l) => joinParts([l.language, l.level])).filter(Boolean).join(', ')}
+                {languages.map((l) => joinParts([l.language, l.proficiency])).filter(Boolean).join(', ')}
               </Field>
             )}
-            <Field label="Core">{master.candidate_core || null}</Field>
+            <Field label="Headline">{profile.headline || null}</Field>
+            <Field label="Summary">{profile.summary || null}</Field>
+            {profile.top_skills.length > 0 && (
+              <Field label="Skills">{profile.top_skills.join(', ')}</Field>
+            )}
           </div>
 
           {experience.length > 0 && (
@@ -155,36 +140,43 @@ export default function MasterRecordPanel({ master, onUpdated }) {
               <div className="text-xs uppercase tracking-wide text-gray-500">Education</div>
               <List
                 items={education}
-                render={(e) => joinParts([e.qualification, e.institution, e.dates, e.notes])}
+                render={(e) => joinParts([e.qualification, e.institution, e.dates, e.location])}
               />
             </div>
           )}
 
-          {certifications.length > 0 && (
+          {community.length > 0 && (
+            <div className="py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Advisory and community</div>
+              {community.map((role, i) => <Role key={i} role={role} />)}
+            </div>
+          )}
+
+          {talks.length > 0 && (
+            <div className="py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Speaking and lecturing</div>
+              <List items={talks} render={(t) => joinParts([t.event, t.topic || t.role, t.location, t.year])} />
+            </div>
+          )}
+
+          {publications.length > 0 && (
+            <div className="py-3">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Publications and patents</div>
+              <List items={publications} render={(w) => (typeof w === 'string' ? w : joinParts(Object.values(w || {})))} />
+            </div>
+          )}
+
+          {profile.certifications.length > 0 && (
             <div className="py-3">
               <div className="text-xs uppercase tracking-wide text-gray-500">Certifications</div>
-              <List items={certifications} render={(c) => joinParts([c.name, c.issuer, c.date])} />
+              <List items={profile.certifications} render={(c) => c} />
             </div>
           )}
 
-          {parallel.length > 0 && (
+          {profile.honors_and_awards.length > 0 && (
             <div className="py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Alongside work</div>
-              <List items={parallel} render={(p) => (typeof p === 'string' ? p : joinParts(Object.values(p || {})))} />
-            </div>
-          )}
-
-          {notes.length > 0 && (
-            <div className="py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Transferable strengths</div>
-              <List items={notes} render={(n) => joinParts([n.observation, n.evidence])} />
-            </div>
-          )}
-
-          {voice.length > 0 && (
-            <div className="py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Your own words</div>
-              <List items={voice} render={(v) => <span className="italic">“{v}”</span>} />
+              <div className="text-xs uppercase tracking-wide text-gray-500">Honors and awards</div>
+              <List items={profile.honors_and_awards} render={(h) => h} />
             </div>
           )}
 
@@ -195,34 +187,6 @@ export default function MasterRecordPanel({ master, onUpdated }) {
             onUpdated={(saved) => onUpdated?.(saved)}
           />
 
-          {gaps.length > 0 && (
-            <div className="py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Gaps and unknowns</div>
-              {/* Tolerant of an object gap for the same reason as conflicts
-                  below: rendering one raw prints "[object Object]" at the user,
-                  which is how the shape mismatch stayed invisible. */}
-              <List
-                items={gaps}
-                render={(g) =>
-                  typeof g === 'string' ? g : joinParts([g?.field, g?.where, g?.note])
-                }
-              />
-            </div>
-          )}
-
-          {conflicts.length > 0 && (
-            <div className="py-3">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Open questions</div>
-              <List
-                items={conflicts}
-                render={(c) =>
-                  typeof c === 'string'
-                    ? c
-                    : joinParts([c.field, c.where, c.old_value, c.new_value])
-                }
-              />
-            </div>
-          )}
         </div>
       )}
     </div>

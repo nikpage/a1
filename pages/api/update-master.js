@@ -55,7 +55,7 @@ async function handler(req, res) {
   }
 
   // An edit that empties the career record is a client bug, not an intention.
-  if (updated.experience.length === 0 && Array.isArray(stored.experience) && stored.experience.length > 0) {
+  if (updated.work_experience.length === 0 && Array.isArray(stored.work_experience) && stored.work_experience.length > 0) {
     return res.status(400).json({ error: 'That edit would remove every role from your record' });
   }
 

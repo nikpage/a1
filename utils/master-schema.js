@@ -13,28 +13,16 @@
 // values: a date they typed is the date. What it protects is SHAPE, plus the
 // two things the editor has no business rewriting (see PRESERVED below).
 
-// Fields the editor may not touch, carried over from the stored record:
-//   voice_samples — verbatim quotes, grounded in code against the source CV
-//                   (pruneVoiceSamples); hand-editing them breaks that guarantee.
-//   conflicts     — the open-questions queue, owned by the flag fixer.
-// `gaps` sits here for the same reason as `conflicts`: the editor renders no
-// field for it, so an editor save must never be able to change it. It used to be
-// coerced through strList instead, and because the build prompt left the element
-// type open the model wrote gaps as objects — one save turned every one of them
-// into the string "[object Object]" and the real content was gone.
-const PRESERVED = ['voice_samples', 'conflicts', 'gaps'];
-
-// The user's own written style guide for their cover letters. Prose, not a list,
-// and authored by the user (or by the owner on their behalf) — no AI pass writes
-// or rewrites it, so it is carried over from the stored record like PRESERVED,
-// but as a string rather than an array.
+// The only field the editor may not touch: the user's own written style guide
+// for their cover letters. No AI pass writes it and the editor renders no field
+// for it, so it is carried over from the stored record rather than taken from
+// what was submitted.
 const PRESERVED_STRINGS = ['voice_guide'];
 
 // Scalars coerce; an object or array does NOT. `String({})` is "[object Object]",
 // which is truthy, survives every filter, and silently replaces real content with
-// a placeholder — the exact way a record's gaps were destroyed. A shape this
-// schema did not expect is dropped instead, so the caller sees an empty field
-// rather than a lie.
+// a placeholder. A shape this schema did not expect is dropped instead, so the
+// caller sees an empty field rather than a lie.
 const str = (v) => {
   if (typeof v === 'string') return v.trim();
   if (v == null) return '';
@@ -44,114 +32,88 @@ const str = (v) => {
 const arr = (v) => (Array.isArray(v) ? v : []);
 const strList = (v) => arr(v).map(str).filter(Boolean);
 
-function normaliseAchievement(a) {
-  return {
-    // Carry every field through, then coerce the ones we know. A field the
-    // editor never rendered must survive the round-trip untouched — dropping it
-    // silently deleted real content from the stored record.
-    ...(a && typeof a === 'object' && !Array.isArray(a) ? a : {}),
-    text: str(a?.text),
-    metric: str(a?.metric),
-    skills_utilized: strList(a?.skills_utilized),
-  };
-}
-
-function normaliseRole(role) {
+// One work_experience entry. `depth` stops a client engagement carrying its own
+// engagements: the record nests exactly one level, and a deeper level submitted
+// by a client is flattened away rather than stored.
+function normaliseRole(role, depth = 0) {
   const out = {
-    ...(role && typeof role === 'object' && !Array.isArray(role) ? role : {}),
     company: str(role?.company),
-    role: str(role?.role),
-    dates: str(role?.dates),
+    title: str(role?.title),
+    start_date: str(role?.start_date),
+    end_date: str(role?.end_date),
     location: str(role?.location),
-    core_tags: strList(role?.core_tags),
-    achievements: arr(role?.achievements).map(normaliseAchievement).filter((a) => a.text),
+    bullets: strList(role?.bullets),
   };
-  // A merged parent keeps its nested engagements — dropping them would delete
-  // real detail and resurrect the job-hopping signal the merge removed.
-  if (Array.isArray(role?.contracts) && role.contracts.length) {
-    out.contracts = role.contracts.map(normaliseRole);
-  } else {
-    delete out.contracts;
-  }
-  // Clarifications steer generation and are set by the flag fixer; keep them.
-  if (str(role?.clarification)) out.clarification = str(role.clarification);
-  if (str(role?.merge_note)) out.merge_note = str(role.merge_note);
+  out.fractional_engagements = depth === 0
+    ? arr(role?.fractional_engagements).map((r) => normaliseRole(r, 1)).filter((r) => r.company || r.title)
+    : [];
   return out;
 }
 
 // `edited` is what the user submitted; `stored` is the record currently saved
 // (the source of the preserved fields). Returns a new object — neither input is
-// mutated.
+// mutated. Unknown keys are dropped: the shape is the extraction prompt's
+// contract (prompts/master-cv.js, EXACT_SHAPE) and the editor cannot widen it.
 export function normaliseMaster(edited, stored = null) {
   if (!edited || typeof edited !== 'object' || Array.isArray(edited)) {
     throw new Error('normaliseMaster: a master object is required');
   }
 
-  // Same one-record rule one level down: identity/contact keys the editor never
-  // rendered come through from the stored record instead of being deleted.
   const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
-  const identity = obj(edited.identity);
-  const contact = obj(identity.contact);
-  // Unknown identity/contact keys, like unknown top-level keys, come from the
-  // stored record only — never from what was submitted.
-  const storedIdentity = obj(stored?.identity);
-  const storedContact = obj(storedIdentity.contact);
+  const profile = obj(edited.profile);
+  const contact = obj(profile.contact);
 
   const out = {
-    identity: {
-      ...storedIdentity,
-      name: str(identity.name),
+    profile: {
+      name: str(profile.name),
+      headline: str(profile.headline),
+      location: str(profile.location),
+      summary: str(profile.summary),
       contact: {
-        ...storedContact,
-        email: str(contact.email),
         phone: str(contact.phone),
-        location: str(contact.location),
-        links: strList(contact.links),
+        email: str(contact.email),
+        linkedin: str(contact.linkedin),
+        website: str(contact.website),
       },
-      country: str(identity.country),
-      languages: arr(identity.languages)
-        .map((l) => ({ language: str(l?.language), level: str(l?.level) }))
+      top_skills: strList(profile.top_skills),
+      languages: arr(profile.languages)
+        .map((l) => ({ language: str(l?.language), proficiency: str(l?.proficiency) }))
         .filter((l) => l.language),
+      certifications: strList(profile.certifications),
+      honors_and_awards: strList(profile.honors_and_awards),
     },
-    candidate_core: str(edited.candidate_core),
     // A role with neither employer nor title is an empty row from the editor.
-    experience: arr(edited.experience).map(normaliseRole).filter((r) => r.company || r.role),
+    work_experience: arr(edited.work_experience).map((r) => normaliseRole(r)).filter((r) => r.company || r.title),
+    advisory_and_community: arr(edited.advisory_and_community)
+      .map((e) => ({
+        organization: str(e?.organization) || str(e?.company),
+        title: str(e?.title),
+        start_date: str(e?.start_date),
+        end_date: str(e?.end_date),
+        location: str(e?.location),
+        bullets: strList(e?.bullets),
+      }))
+      .filter((e) => e.organization || e.title),
+    speaking_and_lecturing: arr(edited.speaking_and_lecturing)
+      .map((t) => ({
+        event: str(t?.event),
+        role: str(t?.role),
+        topic: str(t?.topic),
+        location: str(t?.location),
+        year: str(t?.year),
+      }))
+      .filter((t) => t.event || t.topic),
+    publications_and_patents: strList(edited.publications_and_patents),
     education: arr(edited.education)
       .map((e) => ({
         institution: str(e?.institution),
         qualification: str(e?.qualification),
         dates: str(e?.dates),
-        notes: str(e?.notes),
+        location: str(e?.location),
       }))
       .filter((e) => e.institution || e.qualification),
-    certifications: arr(edited.certifications)
-      .map((c) => ({ name: str(c?.name), issuer: str(c?.issuer), date: str(c?.date) }))
-      .filter((c) => c.name),
-    parallel_experience: strList(edited.parallel_experience),
-    transferable_notes: arr(edited.transferable_notes)
-      .map((n) => ({
-        observation: str(n?.observation),
-        evidence: str(n?.evidence),
-        useful_for: strList(n?.useful_for),
-      }))
-      .filter((n) => n.observation),
   };
 
-  // Any field the STORED record carries that this schema does not name — a
-  // field the editor never rendered and therefore never posted back. It is
-  // carried through rather than deleted, so the record on screen and the record
-  // in the database stay ONE record. Deliberately from `stored` only: an
-  // unknown key in what the user SUBMITTED is still rejected, so the editor
-  // cannot be used to write arbitrary keys into the row.
-  for (const key of Object.keys(stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {})) {
-    if (!(key in out) && !PRESERVED.includes(key) && !PRESERVED_STRINGS.includes(key)) {
-      out[key] = stored[key];
-    }
-  }
-
-  for (const key of PRESERVED) {
-    out[key] = arr(stored?.[key]);
-  }
   for (const key of PRESERVED_STRINGS) {
     const kept = str(stored?.[key]);
     if (kept) out[key] = kept;
@@ -160,4 +122,4 @@ export function normaliseMaster(edited, stored = null) {
   return out;
 }
 
-export { PRESERVED, PRESERVED_STRINGS };
+export { PRESERVED_STRINGS };
