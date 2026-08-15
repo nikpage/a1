@@ -722,3 +722,26 @@ describe('check 3 — a multi-part job title is not an invented role', () => {
     expect(r.hard.join(' ')).toMatch(/matches no role/);
   });
 });
+
+// A digit with letters on both sides belongs to a word — "B2B", "Web3", "S3" —
+// and is not a claim about a quantity. Counting the 2 in "B2B SaaS" as an
+// unsourced metric hard-failed a real CV over a product category, and a hard
+// failure buys a full regeneration.
+describe('check 1 — a digit inside a word is not a number claim', () => {
+  const M = JSON.stringify({
+    work_experience: [
+      { company: 'wflow.com', title: 'Head of Product', start_date: '01/2022', end_date: '10/2022', bullets: ['Built market intelligence methods'], fractional_engagements: [] },
+    ],
+  });
+  const doc = (bullet) => `### **Summary**\nProduct leader.\n\n- As Head of Product at wflow.com, built market intelligence methods\n\n### **Work Experience**\n\n#### **Head of Product**\n**wflow.com** | 01/2022 - 10/2022 | Prague\n- ${bullet}\n`;
+
+  it('does not fail on B2B', () => {
+    const r = validateCv(doc('Formalised product management processes for B2B SaaS platforms and teams'), { master: M, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toMatch(/Number "2"/);
+  });
+
+  it('still fails a real number the master does not hold', () => {
+    const r = validateCv(doc('Formalised product management processes and cut churn by 40% across accounts'), { master: M, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toMatch(/Number "40"/);
+  });
+});

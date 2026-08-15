@@ -51,7 +51,15 @@ function words(text) {
 // Digit runs, with thousand separators normalised away so "1,200" in the CV
 // matches "1200" in the master and vice versa.
 function digitRuns(text) {
-  return (String(text || '').replace(/(\d)[.,\s](?=\d{3}\b)/g, '$1').match(/\d+/g) || []);
+  return (
+    String(text || '')
+      .replace(/(\d)[.,\s](?=\d{3}\b)/g, '$1')
+      // A digit with letters on BOTH sides is part of a word, not a claim:
+      // "B2B", "Web3", "S3". Counting the 2 in "B2B SaaS" as an unsourced metric
+      // hard-failed a CV over a product category and paid for a regeneration.
+      .replace(/[A-Za-z]\d+[A-Za-z]/g, ' ')
+      .match(/\d+/g) || []
+  );
 }
 
 // The document split into its `###` sections, each with its heading and body.

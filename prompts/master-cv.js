@@ -90,6 +90,12 @@ const EXACT_SHAPE = `EXACT OUTPUT SHAPE — emit every key below, always, in thi
 
 SHAPE RULES:
 - Every entry in "fractional_engagements" is the SAME object shape as a "work_experience" entry (company, title, start_date, end_date, location, bullets). Nest one level only — an engagement never carries its own "fractional_engagements".
+
+NESTING — apply this test to EVERY role before you emit the array, it is not optional:
+1. Find the UMBRELLA: a role at the person's own consultancy, agency, studio or self-employed practice — the entry whose employer is their own entity (often their own name, often "Present" as its end date) and whose span is long and ongoing.
+2. For every OTHER role, ask one question: do its dates fall INSIDE the umbrella's span? If yes, it is a client engagement delivered under that practice — put it in the umbrella's "fractional_engagements" and NOWHERE else. It does not also appear at the top level.
+3. Roles that started and ended BEFORE the umbrella began are ordinary employment and stay at the top level.
+NEVER nest for any other reason. Two roles at the SAME employer, one after the other, are a promotion or a title change — they are two separate top-level entries, never one nested inside the other. Nesting means "delivered under a practice", nothing else.
 - "bullets" is ALWAYS an array of strings, one per responsibility or achievement, and it is the ONLY place role detail goes. Never emit "description", "responsibilities", "duties" or a prose blob in place of it; a single paragraph becomes a one-element array.
 - Dates are strings exactly as the source states them ("August 2016", "2011", "Present"). Do not reformat, do not compute a duration, do not fill a missing one.
 - "summary" is the person's OWN summary text from the source, verbatim. Write nothing of your own there; if the source has none, use "".
