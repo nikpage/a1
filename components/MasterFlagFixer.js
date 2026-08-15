@@ -148,6 +148,23 @@ function FlagCard({ flag, onResolved }) {
         </div>
       )}
 
+      {/* An overlap: the one question the dates cannot answer. Two options,
+          no free text — a typed answer has nothing to apply. */}
+      {flag.type === 'overlap' && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {flag.options.map((opt, i) => (
+            <button
+              key={opt}
+              disabled={busy}
+              onClick={() => send(flag.answers[i])}
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
       {flag.type === 'clarify' && (
         <div className="mt-3">
           {Array.isArray(flag.options) && flag.options.length > 0 && (

@@ -13,6 +13,7 @@
 import requireAuth from '../../lib/requireAuth';
 import { getMasterCv, saveMasterCv, getLatestAnalysis } from '../../utils/database';
 import { resolveFlag } from '../../utils/master-flags';
+import { applyOverlapAnswer } from '../../utils/master-schema';
 import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
 
 async function handler(req, res) {
@@ -23,7 +24,7 @@ async function handler(req, res) {
   const { user_id } = req.user;
   const { flag, decision, value } = req.body || {};
 
-  const VALID_TYPES = new Set(['single', 'structural', 'clarify']);
+  const VALID_TYPES = new Set(['single', 'structural', 'clarify', 'overlap']);
   if (!flag || typeof flag !== 'object' || !VALID_TYPES.has(flag.type)) {
     return res.status(400).json({ error: 'A valid flag { type } is required' });
   }
@@ -43,7 +44,13 @@ async function handler(req, res) {
 
   let updated;
   try {
-    updated = resolveFlag(master, flag, { decision, value });
+    // An overlap question is answered by the one function that nests a role.
+    // The pair itself is re-read from the user's OWN stored record by index, so
+    // a crafted flag can only choose WHICH open question is answered, never
+    // which roles move.
+    updated = flag.type === 'overlap'
+      ? applyOverlapAnswer(master, flag.question_index, decision)
+      : resolveFlag(master, flag, { decision, value });
   } catch (err) {
     // A bad target / out-of-range index / missing value lands here — never a 500.
     return res.status(400).json({ error: err.message });

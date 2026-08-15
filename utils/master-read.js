@@ -111,6 +111,49 @@ export function isMaster(master) {
   return !!master && typeof master === 'object' && Array.isArray(master.work_experience);
 }
 
+// The record as a PROMPT sees it. The user's answers about a gap or a short
+// tenure are stored in a top-level `clarifications` array — deliberately, so a
+// role object holds only what the extraction wrote — but the analysis and CV
+// prompts read the answer off `experience[].clarification`. Attaching it here
+// is what closes that gap: without it the answers are serialized into every
+// prompt as tokens the instructions never point at.
+//
+// Returns a copy; the stored record is never given a field the schema does not
+// hold. An entry whose company/dates no longer match the answered role keeps no
+// note — the index alone is only meaningful against the record it was answered
+// on, and a wrong note is worse than none.
+export function masterForPrompt(master) {
+  if (!isMaster(master)) return master;
+  const notes = list(master?.clarifications).filter((c) => c && str(c.note));
+  if (notes.length === 0) return master;
+
+  const flat = roles(master);
+  const byIndex = new Map();
+  for (const c of notes) {
+    const r = flat[c.index];
+    if (!r) continue;
+    // The answer named the role it was given about; a rebuild can reorder the
+    // record underneath the index, so the identity has to still agree.
+    if (str(c.company) && str(c.company) !== r.company) continue;
+    if (str(c.dates) && str(c.dates) !== r.dates) continue;
+    byIndex.set(c.index, str(c.note));
+  }
+  if (byIndex.size === 0) return master;
+
+  let i = 0;
+  const withNotes = (entry) => {
+    const note = byIndex.get(i++);
+    return note ? { ...entry, clarification: note } : entry;
+  };
+  const work_experience = list(master.work_experience).map((entry) => {
+    const top = withNotes(entry);
+    const subs = list(entry?.fractional_engagements);
+    if (subs.length === 0) return top;
+    return { ...top, fractional_engagements: subs.map(withNotes) };
+  });
+  return { ...master, work_experience };
+}
+
 // Every date string the record states, for checks that must confirm a document
 // only carries dates the record holds.
 export function allDates(master) {

@@ -136,6 +136,55 @@ function roleLabel(entry) {
   return `${role}${company}`;
 }
 
+// `role_overlaps` indexes into `master.work_experience`; every flag targets a
+// position in the FLAT list `roles()` produces (umbrella entries and their
+// nested engagements alike). This maps one to the other: a top-level entry sits
+// after every engagement nested under the entries before it.
+function flatIndexes(master) {
+  const out = [];
+  let flat = 0;
+  const top = Array.isArray(master?.work_experience) ? master.work_experience : [];
+  for (const entry of top) {
+    out.push(flat);
+    flat += 1 + (Array.isArray(entry?.fractional_engagements) ? entry.fractional_engagements.length : 0);
+  }
+  return out;
+}
+
+// The open overlap questions, as flags the Flag Fixer renders like any other.
+// Answering one is applied by applyOverlapAnswer() (utils/master-schema) — the
+// only thing in the app that nests a role — through /api/resolve-flag.
+function overlapQuestions(master, experience) {
+  const overlaps = Array.isArray(master?.role_overlaps) ? master.role_overlaps : [];
+  const top = Array.isArray(master?.work_experience) ? master.work_experience : [];
+  const flat = flatIndexes(master);
+  const out = [];
+  overlaps.forEach((o, i) => {
+    if (!o || o.answer) return;
+    const role = top[o.role_index];
+    const umbrella = top[o.umbrella_index];
+    if (!role || !umbrella) return;
+    const index = flat[o.role_index];
+    const entry = experience[index];
+    if (!entry) return;
+    const practice = umbrella.company || 'your own practice';
+    out.push({
+      id: `overlap-${i}`,
+      type: 'overlap',
+      kind: 'overlap',
+      // Which `role_overlaps` question this is — what the server answers. The
+      // client never sends indexes of its own; they are re-read from the record.
+      question_index: i,
+      target: { section: 'experience', index },
+      question: `Your ${roleLabel(entry)} (${entry.dates}) ran while ${practice} was active. Was it client work delivered under ${practice}, or a separate job?`,
+      options: [`Client work under ${practice}`, 'A separate job'],
+      // What each option means to applyOverlapAnswer, in option order.
+      answers: ['nested', 'separate'],
+    });
+  });
+  return out;
+}
+
 // The stored `gen_data.content` column holds the analysis as a JSON STRING (the
 // background function always JSON.stringify()s before insert — see
 // netlify/functions/analyse-background.mjs). Callers (get-analysis.js,
@@ -310,13 +359,19 @@ export function computeMasterIssues(master, opts = {}) {
   // inside one would be read as record content by everything downstream.
   const answered = (i) => clarifications.some((c) => c && c.index === i && String(c.note || '').trim());
 
-  // The overlap question is GONE. It asked whether concurrent roles were
-  // delivered under an ongoing engagement — a structural call the extraction now
-  // makes itself, nesting a client engagement in the consultancy's
-  // `fractional_engagements`. Asking again would ask the user to re-decide
-  // something the record already states, and the old code parked the answer in a
-  // conflicts queue nothing read.
-  const suppressedShort = new Set();
+  // --- Overlaps: asked from the RECORD, never from date arithmetic ------------
+  // The build reports every role whose dates fall inside the person's own
+  // practice in `master.role_overlaps` and nests nothing. Those pairs are the
+  // question, so this scan reads them rather than re-deriving concurrency from
+  // the `dates` strings: two systems asking the same thing off two different
+  // sources is how /me ended up with two question panels. One list, one source.
+  for (const q of overlapQuestions(master, experience)) issues.push(q);
+
+  // A role whose overlap is still open is explained by that pending answer —
+  // don't also ask why the stint was short until it is settled.
+  const suppressedShort = new Set(
+    issues.filter((i) => i.kind === 'overlap').map((i) => i.target.index),
+  );
   // An engagement nested under an umbrella is explained BY that nesting: its
   // short span is the shape of client work, not a tenure to answer for.
   experience.forEach((r, i) => { if (r.via) suppressedShort.add(i); });
@@ -377,7 +432,9 @@ export function computeMasterIssues(master, opts = {}) {
   }
 
   // Rank: a gap is the bigger question a reader has, so it is asked first.
-  const KIND_RANK = { gap: 0, short_tenure: 1 };
+  // An overlap is structural: answering it can move a role out of the timeline
+  // and settle the questions behind it, so it is asked first.
+  const KIND_RANK = { overlap: -1, gap: 0, short_tenure: 1 };
   const ordered = [...issues].sort((a, b) => (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9));
 
   if (!analysisContent) return ordered;

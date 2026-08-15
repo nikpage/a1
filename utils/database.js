@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
 import crypto from 'crypto';
+import { masterForPrompt } from './master-read.js';
 
 let _supabase;
 function getSupabase() {
@@ -95,7 +96,9 @@ export async function getGenerationSource(user_id) {
   } catch (masterErr) {
     logger.error('Master CV fetch error:', masterErr.message);
   }
-  return master ? JSON.stringify(master) : (cvRecord?.cv_data || null);
+  // Serialised through masterForPrompt so the user's own clarifications sit on
+  // the roles they answered about — where prompts/cv-generator.js reads them.
+  return master ? JSON.stringify(masterForPrompt(master)) : (cvRecord?.cv_data || null);
 }
 
 // Persist the per-user MASTER CV (service-role write). Stored as JSONB.

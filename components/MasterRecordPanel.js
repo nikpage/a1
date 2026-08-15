@@ -12,7 +12,6 @@
 
 import { useState } from 'react';
 import MasterRecordEditor from './MasterRecordEditor';
-import RoleOverlapQuestions from './RoleOverlapQuestions';
 import VoiceGuidePanel from './VoiceGuidePanel';
 import { roles, advisory, speaking, education as educationOf, profile as profileOf } from '../utils/master-read';
 
@@ -128,10 +127,6 @@ export default function MasterRecordPanel({ master, onUpdated }) {
               <Field label="Skills">{profile.top_skills.join(', ')}</Field>
             )}
           </div>
-
-          {/* Asked ABOVE the timeline: until they are answered the roles below
-              are shown flat, which is what the record actually holds. */}
-          <RoleOverlapQuestions master={master} onUpdated={onUpdated} />
 
           {experience.length > 0 && (
             <div className="py-3">
