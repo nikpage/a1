@@ -95,7 +95,7 @@ function geminiErrorMessage(error) {
   return error.message || 'unknown error';
 }
 
-async function callGemini(model, messages, options = {}) {
+export async function callGemini(model, messages, options = {}) {
   const totalKeys = keyManager.keys.filter(k => k !== null).length;
   // Up to 6 attempts with exponential backoff so a transient 503 (model
   // overloaded) is ridden out. The heavy callers (master build/verify, analysis)

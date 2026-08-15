@@ -648,8 +648,18 @@ describe('check 17 — banned phrasing', () => {
 });
 
 describe('validateCoverLetter', () => {
-  it('catches an identity epithet in the letter', () => {
-    const { warnings } = validateCoverLetter('Dear Hiring Manager,\n\nA seasoned technology leader writes to you.');
+  // Check 12 governs the CV only. In a letter these are ordinary persuasive
+  // English: "As an experienced product leader, I…" opened the letter Nik judged
+  // far better than this pipeline's output, and warning on it taught nothing.
+  // The letter exists to persuade (CV_RULES.md, "What the cover letter IS").
+  it('leaves an identity epithet in the letter alone — it is the CV that bans them', () => {
+    const { warnings, ok } = validateCoverLetter('Dear Hiring Manager,\n\nA seasoned technology leader writes to you.');
+    expect(warnings.find((x) => x.code === 'identityEpithet')).toBeFalsy();
+    expect(ok).toBe(true);
+  });
+
+  it('still bans the same epithet on the CV', () => {
+    const { warnings } = validateCv('# Jane Roe\n**A seasoned technology leader**\n\n### Summary\nBuilt payments.');
     expect(warnings.find((x) => x.code === 'identityEpithet')).toBeTruthy();
   });
 

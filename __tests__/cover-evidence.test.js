@@ -236,7 +236,7 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
     // requirements are contract checks now, so they are removed here to leave
     // the word band as the only thing under test.
     const bare = analysisWith({ requirement_evidence: [], concerns: [] });
-    const short = validateCoverLetter(letter(body(150)), { master: MASTER, analysis: bare });
+    const short = validateCoverLetter(letter(`I would bring this to PLG Group. ${body(150)}`), { master: MASTER, analysis: bare });
     expect(short.ok).toBe(true);
   });
 
@@ -337,6 +337,52 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
     // And a different name entirely is not accepted as this contact.
     expect(validateCoverLetter(cz('Vážený pane Dvořáku,'), { master: MASTER, analysis: withContact('Petr Novák') })
       .warnings.find((w) => w.code === 'coverSalutation')?.params).toEqual({ name: 'Petr Novák' });
+  });
+
+  // CHECK 31 — REGRESSION. A real run produced a competent, entirely generic
+  // letter for an EdTech company called KUBO that never said "KUBO" once. Every
+  // other check passed it. Red on the old code, which had no such check.
+  describe('check 31 — the letter names the employer', () => {
+    const withCompany = (extraction, jobData) => ({
+      ...analysisWith(EVIDENCE),
+      job_extraction: { hr_contact: 'Deborah', ...extraction },
+      ...(jobData ? { job_data: jobData } : {}),
+    });
+
+    test('a letter that never names the employer is a hard failure', () => {
+      const { hard } = validateCoverLetter(letter('I consolidated three platforms across two markets.'), {
+        master: MASTER,
+        analysis: withCompany({ company: 'KUBO' }),
+      });
+      expect(hard.join(' ')).toMatch(/never names the employer/);
+      expect(hard.join(' ')).toMatch(/KUBO/);
+    });
+
+    test('naming them clears it, and Czech inflection still counts', () => {
+      expect(validateCoverLetter(letter('I consolidated three platforms for KUBO across two markets.'), {
+        master: MASTER, analysis: withCompany({ company: 'KUBO' }),
+      }).hard.join(' ')).not.toMatch(/never names the employer/);
+
+      expect(validateCoverLetter(letter('Rád bych přinesl své zkušenosti do Seznamu a jeho doporučovacího systému.'), {
+        master: MASTER, analysis: withCompany({ company: 'Seznam.cz a.s.' }),
+      }).hard.join(' ')).not.toMatch(/never names the employer/);
+    });
+
+    test('the company is read off job_data when the extraction lost it', () => {
+      const { hard } = validateCoverLetter(letter('I consolidated three platforms across two markets.'), {
+        master: MASTER,
+        analysis: withCompany({ company: '' }, { Company: 'KUBO' }),
+      });
+      expect(hard.join(' ')).toMatch(/never names the employer/);
+    });
+
+    test('no employer on the record demands no name', () => {
+      const { hard } = validateCoverLetter(letter('I consolidated three platforms across two markets.'), {
+        master: MASTER,
+        analysis: withCompany({ company: '' }),
+      });
+      expect(hard.join(' ')).not.toMatch(/never names the employer/);
+    });
   });
 
   test('numbers the record does not hold are reported', () => {

@@ -44,14 +44,21 @@ export function rawAdBlock(analysis) {
   const raw = typeof analysis?.job_text === 'string' ? analysis.job_text.trim() : '';
   if (!raw) return '';
   const job = analysis?.job_extraction || {};
+  // The company on TWO records, because the extraction routinely leaves it
+  // blank while the analysis's own job_data carries it — a real run applied to
+  // KUBO with `job_extraction.company: ""`, so the one field naming the
+  // employer was empty and the letter never named them.
+  const company = String(job.company || analysis?.job_data?.Company || '').trim();
   const head =
     labelledValue('Position', job.position_title) +
-    labelledValue('Company', job.company) +
+    labelledValue('Company', company) +
     labelledValue('Location', job.location);
 
   return `
 # The ad, exactly as the employer wrote it
 This is the job. Read it the way a person would — what they are building, what they say they need, and HOW they say it. The letter you write is the answer to THIS text, not to a generic vacancy of this title.${head}
+
+- **NAME THE EMPLOYER AND THE ROLE IN THE LETTER.**${company ? ` This application is to **${company}**` : ''}${job.position_title ? `, for the role of **${job.position_title}**` : ''}. A letter that never names who it is written to is a letter that was written to nobody, and it reads exactly like one — it is the single clearest tell that a document was generated rather than written. Name them early and naturally, in the prose; never as a header line, never as "I am writing to apply for the position of…".
 
 """
 ${raw}

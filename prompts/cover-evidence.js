@@ -62,12 +62,67 @@ function concernLines(concerns) {
 // name half belongs in a salutation, so it is cut at the first separator and
 // capped at two words. Returns '' when there is nothing usable — the prompt then
 // states the neutral form, and no name is ever guessed at.
+// Words that are never a personal name, however the ad capitalised them. Job
+// titles are inventive now — "Chief Happiness Officer", "People & Culture Lead",
+// "Talent Partner" — so the old approach of cutting at a separator and taking
+// two words returned "Chief Happiness" and addressed a letter to it. Matching
+// titles by keyword cannot work either: the list of inventive titles is open.
+// So the test is inverted — a token is a NAME unless it is one of these
+// structural words, and the whole contact is rejected unless what survives
+// actually looks like a person.
+const NOT_A_NAME = new Set([
+  // roles and departments, EN
+  'hr', 'human', 'resources', 'people', 'culture', 'talent', 'recruitment', 'recruiting',
+  'recruiter', 'hiring', 'manager', 'lead', 'leader', 'head', 'director', 'officer',
+  'chief', 'partner', 'specialist', 'coordinator', 'consultant', 'assistant', 'team',
+  'department', 'operations', 'ops', 'admin', 'office', 'happiness', 'acquisition',
+  'business', 'ceo', 'cto', 'coo', 'founder', 'owner', 'contact', 'person', 'support',
+  'careers', 'career', 'jobs', 'job', 'apply', 'application', 'info', 'general',
+  // CZ / PL
+  'personální', 'personalni', 'oddělení', 'oddeleni', 'nábor', 'nabor', 'náborář',
+  'naborar', 'vedoucí', 'vedouci', 'ředitel', 'reditel', 'ředitelka', 'reditelka',
+  'manažer', 'manazer', 'manažerka', 'manazerka', 'specialista', 'specialistka',
+  'kadry', 'rekrutacja', 'rekruter', 'kierownik', 'dyrektor', 'zespół', 'zespol',
+]);
+
+const fold = (w) => w.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+
+// A token that could be a person's given or family name: capitalised in the
+// original, alphabetic, not a structural word, not an acronym, long enough to be
+// a name rather than an initial or a particle.
+function looksLikeName(token) {
+  const bare = token.replace(/[^\p{L}'-]/gu, '');
+  if (bare.length < 2) return false;
+  if (bare === bare.toUpperCase() && bare.length <= 3) return false; // HR, CEO, IT
+  if (!/^\p{Lu}/u.test(bare)) return false;                          // must be capitalised
+  const f = fold(bare);
+  if (!f) return false;
+  return !NOT_A_NAME.has(f);
+}
+
+// Who the letter is addressed to. A fact off the job data, never a plan: the
+// ad's own contact line as the ad wrote it. Returns '' when nothing in it looks
+// like a person — the prompt then states the neutral form, and no name is ever
+// guessed at. Addressing a letter to "Dear Chief Happiness," is worse than
+// addressing it to nobody.
 export function salutationName(analysis) {
   const raw = analysis?.job_extraction?.hr_contact;
   if (typeof raw !== 'string' || !raw.trim()) return '';
-  const head = raw.split(/[,(]| from | at | — |[-–—] /i)[0].trim();
-  const parts = head.split(/\s+/).filter(Boolean).slice(0, 2);
-  return parts.join(' ');
+  // Anything after a separator is a title, a department or a company.
+  const head = raw.split(/[,(|/]| from | at | — |[-–—] /i)[0].trim();
+  // An email address is a contact, not a salutation.
+  if (/@/.test(head)) return '';
+  const parts = head.split(/\s+/).filter(Boolean);
+  // Stop at the first structural word: "Jana Nováková HR" keeps "Jana Nováková",
+  // "People Team Jana" yields nothing, which is the correct refusal — a name
+  // buried behind a department is not reliably a name.
+  const names = [];
+  for (const p of parts) {
+    if (!looksLikeName(p)) break;
+    names.push(p.replace(/[^\p{L}'-]/gu, ''));
+    if (names.length === 2) break;
+  }
+  return names.join(' ');
 }
 
 // The analysis's OWN red flags, in full (CV_RULES.md, Layer 4: "The letter reads

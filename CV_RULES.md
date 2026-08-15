@@ -22,6 +22,53 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Steering is in scope when the document is composed.** The candidate's own instructions — what to emphasise, what to play down — are held by the writer at the moment it decides what the document says, not handed to it after the decision was taken elsewhere. **Content the candidate demoted is not evidence**: it cannot be the hook, the lead, a top-three achievement or the proof offered for a requirement in the ad, however well it answers it, and where the record offers no other evidence for that requirement, the requirement goes unanswered rather than the instruction ignored. **Content the candidate emphasised leads and is proved** with the facts the record holds for it; an emphasis reduced to one passing clause has been ignored, not applied. Demotion is never deletion — the timeline keeps every role and date (T2), and demoted content may still appear once, late and plainly, where leaving it out would make the story incoherent. And steering never adds: it reorders, reframes and cuts real content only. Where it asks for something the record does not evidence, the closest evidenced thing is foregrounded and nothing more is said.
 
+## What the cover letter IS (read this before any rule below)
+
+**The letter exists to PERSUADE. Its single job is to make the reader decide to
+call this person for an interview.** Everything else in this document about the
+letter — every clause, every check, every ban — exists only insofar as it makes
+that outcome more likely. A rule that makes a letter more compliant and less
+persuasive is a defect in this document and is removed, not obeyed.
+
+The letter is NOT a contract, a compliance artefact, or a record. The CV is the
+record; its constraint is accuracy. The letter argues, and argument is the point.
+Two consequences follow, and both were established by a real comparison:
+
+- **Optimising against tells is not the same as optimising for persuasion.** A
+  letter written for KUBO by a plain prompt — the master record, the ad, and
+  "highlight what aligns, professional tone" — beat this pipeline's output
+  decisively in Nik's reading, while breaking three of this document's rules
+  (a boilerplate opener, a derived tenure claim, an identity epithet). The bans
+  were removing what made letters land while the letters stayed unpersuasive.
+  A rule earns its place by being shown to help a letter persuade; absent that,
+  it goes.
+- **The only limits that hold unconditionally are the invariants.** Never
+  fabricate, never falsify, never claim a duration the record does not state.
+  Those are not style rules — a letter that invents is worthless whatever it
+  achieves. Everything else is subordinate to persuasion.
+
+**How a letter persuades, concretely** (all four observed in the letter that
+won, and absent from this pipeline's output):
+
+1. **It answers what the ad says it does NOT want.** The KUBO ad asked for
+   someone who builds relationships, explicitly "ne někoho, kdo celý den
+   obvolává studené kontakty". The winning letter answered that directly — the
+   same growth number reframed as "not through aggressive sales tactics, but by
+   providing exceptional service". An ad's negative space states the employer's
+   real fear, and answering it is the most persuasive move available. Read the
+   ad for what it rejects, and answer it where the record can.
+2. **It opens on the employer's problem, not the candidate's latest job.** The
+   reader cares about their own mission first. A letter opening on the
+   applicant's most recent role reads as a self-description that happens to have
+   been posted to them.
+3. **Relevance beats recency in choosing evidence.** The winning letter reached
+   back nine years for a university lectureship because the ad is about
+   presenting to educators, and left the newest AI work in a supporting role.
+   Most recent is not most persuasive.
+4. **The shape follows the ad.** Where an ad lists distinct asks, answering them
+   under short labelled themes is clearer than prose and is permitted. Flowing
+   paragraphs are a default, never a requirement.
+
 ## The cover letter's contract (four clauses, enforced in code)
 
 Everything else about the letter is judgement. These four are not. They are the

@@ -57,7 +57,7 @@ const letter = (body) => `13.08.2026\n\nDear Deborah,\n\n${body}\n\nSincerely,\n
 // A letter that satisfies every clause, used as the control: each test below
 // breaks exactly one thing about it, so a failure names the check that fired.
 const GOOD = letter(
-  'I coached four product managers at wflow.com and consolidated three platforms into one. That was four years embedded full time at wflow.com, not a series of short engagements. The work needed judgement about what to cut.\n\nI built the product operations function at Salsita Software before that. It shipped.'
+  'I coached four product managers at wflow.com and consolidated three platforms into one, which is the work PLG Group is hiring for. That was four years embedded full time at wflow.com, not a series of short engagements. The work needed judgement about what to cut.\n\nI built the product operations function at Salsita Software before that. It shipped.'
 );
 
 describe('the control letter satisfies the whole contract', () => {
@@ -125,7 +125,7 @@ describe('check 27 — the letter answers at least one answerable requirement', 
 
   test('no evidence pool means nothing to answer and no verdict', () => {
     const bare = analysisWith({ requirement_evidence: [], concerns: [] });
-    const { ok } = validateCoverLetter(letter('Short body about nothing in particular.'), { master: MASTER, analysis: bare, language: 'en' });
+    const { ok } = validateCoverLetter(letter('Short body about nothing in particular, addressed to PLG Group.'), { master: MASTER, analysis: bare, language: 'en' });
     expect(ok).toBe(true);
   });
 });
@@ -227,9 +227,20 @@ describe('the contract is stated to the writer, once, at the top', () => {
     expect(text).toMatch(/C4 — Obey the candidate's steering/);
   });
 
-  test('the contract leads the prompt — nothing is stated before it', () => {
+  // The PURPOSE now leads, and the contract follows it — the letter exists to
+  // persuade, and a model reading rules first writes a compliant letter
+  // (CV_RULES.md, "What the cover letter IS"). Nothing else may come before
+  // them: the ordering is what keeps the rule stack from owning the document.
+  test('the purpose leads the prompt, the contract follows, nothing precedes them', () => {
     const user = buildCoverPrompt(MASTER, analysisWith(), 'Formal', '', '', 'auto').at(-1).content;
-    expect(user.trimStart().startsWith('# THE CONTRACT')).toBe(true);
+    expect(user.trimStart().startsWith('# WHAT THIS LETTER IS FOR')).toBe(true);
+    expect(user.indexOf('# WHAT THIS LETTER IS FOR')).toBeLessThan(user.indexOf('# THE CONTRACT'));
+    // The four moves that actually persuade reach the writer.
+    expect(user).toMatch(/Answer what the ad says it does NOT want/);
+    expect(user).toMatch(/Open on THEIR problem/);
+    expect(user).toMatch(/Relevance beats recency/);
+    // And the one thing persuasion never licenses.
+    expect(user).toMatch(/never invent, never inflate/);
   });
 
   // C3's fallback: no voice profile is not permission to write like a brochure.

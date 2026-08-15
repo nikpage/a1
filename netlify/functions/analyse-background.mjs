@@ -93,6 +93,18 @@ export const handler = async (event) => {
     return { statusCode: 400 };
   }
 
+  // THE AD AS THE EMPLOYER WROTE IT, kept before anything replaces it.
+  //
+  // The line below hands ANALYSIS the user-corrected job, which is right: the
+  // analysis reasons over facts and the user's corrections are the better facts.
+  // But it destroys the ad. The COVER LETTER needs the opposite thing — the
+  // employer's own sentences and register, which a re-serialised
+  // "Position: … Required Skills: …" list does not carry. A real run proved it:
+  // an ad for KUBO produced a letter that never named KUBO, because by the time
+  // the writer saw the "ad" it was a bullet list. Kept here, ridden through to
+  // the saved record as `job_text`, read by prompts/job-target.js.
+  const rawAd = typeof jobText === 'string' ? jobText.trim() : '';
+
   // Use the confirmed job object (serialised to text) as the job input when present.
   // This ensures the analysis runs on the user-corrected data, not the raw ad.
   if (confirmedJob && typeof confirmedJob === 'object') {
@@ -238,9 +250,10 @@ export const handler = async (event) => {
       }
       // Why the record is teaser-shaped, saved alongside it. Absent on a good run.
       if (deepSkipped) obj._deep_skipped = deepSkipped;
-      // The ad's own words (obj.job_text) are attached by analyzeCvJob itself,
-      // so every caller of it gets them — see utils/openai.js. Nothing to do
-      // here beyond letting them ride into the saved record.
+      // analyzeCvJob attached whatever job input it was given as `job_text`,
+      // which on this path is the CONFIRMED job serialised back into a list.
+      // The letter needs the employer's own words, so the ad kept above wins.
+      if (rawAd) obj.job_text = rawAd.slice(0, 8000);
       if (confirmedJob && typeof confirmedJob === 'object') {
         obj.job_extraction = confirmedJob;
       }

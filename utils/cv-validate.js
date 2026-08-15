@@ -958,6 +958,37 @@ function checkCoverSteering(body, tweak, master, hard) {
   }
 }
 
+// 31. THE LETTER NAMES THE EMPLOYER IT IS WRITTEN TO.
+//
+//     A real run produced a competent, entirely generic letter for an EdTech
+//     company called KUBO that never once said "KUBO". Every other check passed
+//     it: the evidence was real, the argument held, the voice was there. What
+//     was missing is the one thing that makes a letter an application rather
+//     than a self-description, and it is trivially checkable.
+//
+//     Hard, because the fix is a word and the defect is fatal to the document.
+//     Silent where the record names no employer (a standalone review, or an
+//     extraction that lost it) — the check never demands a name that does not
+//     exist. Matched on the diacritic-folded stem, so Czech inflection ("v
+//     KUBO", "do Seznamu") still counts as naming them.
+function checkCoverNamesEmployer(body, analysis, hard) {
+  const raw = String(
+    analysis?.job_extraction?.company || analysis?.job_data?.Company || ''
+  ).trim();
+  if (!raw) return;
+  // A legal-form suffix is not the name: "Seznam.cz a.s." is named by "Seznam".
+  const core = raw.replace(/\b(a\.?\s?s\.?|s\.?\s?r\.?\s?o\.?|z\.?\s?ú\.?|sp\.? z o\.?o\.?|ltd\.?|inc\.?|gmbh|b\.?v\.?)\b/gi, '').trim();
+  // The FIRST word of the name, which is the distinctive one: "PLG Group" is
+  // named by "PLG", "Seznam.cz a.s." by "Seznam". stem() folds a whole string
+  // into one token, so a multi-word name run through it ("plggro") could never
+  // match anything the letter actually wrote.
+  const root = stem((core || raw).split(/\s+/)[0]);
+  if (!root) return;
+  const said = plain(body).split(/\s+/).map(stem).filter(Boolean);
+  if (said.some((w) => w.startsWith(root.slice(0, Math.min(4, root.length))))) return;
+  hard.push(`The letter never names the employer it is addressed to (${raw}). Name them in the prose, early and naturally — a letter that names nobody reads as written for nobody. Do not add a header line and do not open with "I am writing to apply for the position of…".`);
+}
+
 // 20. The salutation addresses the contact the job data names. A named contact
 //     left as "Dear Hiring Manager" is the cheapest tell in the letter.
 function checkCoverSalutation(document, analysis, warnings) {
@@ -1125,7 +1156,17 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
   const m = readMaster(master);
   const body = coverBody(document);
 
-  checkEpithets(document, warnings);
+  // CHECK 12 DOES NOT RUN ON THE LETTER.
+  //
+  // On the CV an epithet is a category asserted where evidence belongs, and the
+  // check earns its place. In a LETTER the same words are ordinary persuasive
+  // English — "As an experienced product leader, I…" opens a letter that Nik
+  // judged far better than anything this pipeline produced, and warning about
+  // it taught nothing. The letter exists to persuade (CV_RULES.md, "What the
+  // cover letter IS"); a rule that makes it more compliant and less persuasive
+  // is removed rather than obeyed. The invariants still bind: an epithet that
+  // states a FACT the record lacks ("expert in Kubernetes") is caught by the
+  // verify pass, which is where a truth problem belongs.
 
   const { max } = coverWordBand(analysis);
   const count = words(body).length;
@@ -1140,6 +1181,7 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
   checkCoverSteering(body, tweak, master, hard);
 
   checkCoverRequirements(body, analysis, hard, master);
+  checkCoverNamesEmployer(body, analysis, hard);
   checkCoverSalutation(document, analysis, warnings);
   checkCoverObjections(body, analysis, warnings);
   checkCoverNumbers(body, m, warnings);
