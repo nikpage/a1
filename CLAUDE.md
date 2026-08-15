@@ -69,6 +69,64 @@ The **voice profile** makes a cover letter sound like the person applying instea
 - **The CV is not promised voice.** Bullets are bullets and the constraint there is accuracy; the UI says so. `voice_guide` (see the master-CV section) still reaches the CV as Layer 2.
 - Tests: `__tests__/voice-profile.test.js`, `__tests__/apply-voice.test.js`.
 
+## The cover letter (READ THIS BEFORE TOUCHING prompts/cover-letter.js)
+
+**The letter exists to PERSUADE — one job: the reader decides to call this
+person for an interview.** It is not a compliance artefact. The CV is the
+record and its constraint is accuracy; the letter argues, and argument is the
+point. `CV_RULES.md`, "What the cover letter IS", is the binding statement of
+this and wins over any rule that disagrees.
+
+**The rule stack was removed on 2026-08-15, and the removal is evidence-based.**
+`prompts/cover-letter.js` produced a 51,721-character prompt of which ~33,000
+characters were byte-identical for every user and every job. Nik's own four-line
+prompt — the master record, the ad, "highlight the achievements that align with
+the requirements, professional tone, 250-400 words" — beat it decisively on the
+same model, the same record and the same ads, while breaking three of the rules
+this file enforced. The stack is now Nik's prompt plus only what earns its
+place: the candidate's VOICE, their STEERING, the output LANGUAGE, and the
+letter's furniture (date, salutation, signature, length).
+
+**Do not restore a rule to that prompt without a run that shows the letter is
+better with it.** Every rule the stack contained was plausible; together they
+made the letter worse, and no test in this repo could see it. The measurements
+that condemned them:
+
+- the letter opened on the candidate's most recent job, because a rule said
+  "open on a fact the candidate did" — a reader cares about their OWN mission
+- it never answered what the ad said it did NOT want. An ad states its fear in
+  the negative ("ne někoho, kdo celý den obvolává studené kontakty"), and
+  answering that with a real fact is the most persuasive move available. No
+  rule mentioned it existed.
+- it chose recent evidence over RELEVANT evidence — a 2017 lectureship is the
+  right proof for a job about presenting to teachers.
+- it wrote flowing prose where labelled themes show the match faster, because
+  the shape was prescribed rather than chosen.
+
+**What persuasion never licenses:** invention. The one absolute in the writing
+prompt is that nothing is invented, inflated, or claimed beyond the record.
+Truth is enforced downstream, where it demonstrably works — the verify pass and
+`utils/cv-validate.js`, both of which ran clean over the minimal prompt's
+output.
+
+**Rules deliberately dropped, with the run that condemned each:**
+
+- **Check 12 (identity epithets) does not run on the letter.** "As an
+  experienced product leader" opened the letter Nik judged far better than
+  anything the pipeline produced. It still binds on the CV.
+- **Derived arithmetic from bounded numbers is legitimate.** "under $20k to
+  over $100k" IS more than fivefold — the bounds make the multiple a FLOOR, so
+  the claim is accurate and conservative. Flagging it flagged a true,
+  understated number as fabrication.
+
+**The salutation recognises a NAME, not a title** (`salutationName()` in
+`prompts/cover-evidence.js`). Job titles are inventive now — "Chief Happiness
+Officer", "People & Culture Lead" — so a keyword list of titles cannot work.
+The test is inverted: a token is a name unless it is a structural word, and the
+whole contact is refused unless a person survives. "Dear Chief Happiness," is
+impossible, an email address is never a salutation, and no name is ever
+guessed. Czech and Polish decline it into the VOCATIVE ("Vážený pane Nováku,").
+
 ## CV rules (the layer stack)
 
 **`CV_RULES.md` at the repo root is the SOURCE OF TRUTH (binding).** It is the prose statement of what a generated CV must be, and it wins over any code that disagrees with it.
@@ -89,7 +147,7 @@ The **voice profile** makes a cover letter sound like the person applying instea
 
 - **T2 in practice:** omission is permitted, alteration is not. Normalising a date's FORMAT to MM/YYYY is required; changing a date is forbidden. Year-only dates are never used to soften a gap — the "Earlier Career" line is the only undated entry a CV may carry.
 - **The impact zone** is the Summary section: headline, a 2–3 sentence value proposition, then UP TO three achievement bullets that each name the role and employer they came from, all inside the first ~120 words. They come from `generation_framework.cv_blueprint.top_three_achievements`. Three is a **ceiling, not a quota** — a thin record prints fewer. Their repetition under the roles is **deliberate**: a recruiter who reads only the top block still sees the strongest results. Pinned by tests in both directions (Summary must carry bullets; Summary must not exceed the ceiling).
-- **Openers name facts, not identities.** "veteran", "seasoned", "accomplished", "industry expert", "technology leader" and equivalents are banned in the Summary and headline — a category asserted in place of evidence, and an age signal under an Older Applicant override. Check 12 warns; `voice.js` covers the cover letter.
+- **Openers name facts, not identities — ON THE CV.** "veteran", "seasoned", "accomplished", "industry expert", "technology leader" and equivalents are banned in the Summary and headline — a category asserted in place of evidence, and an age signal under an Older Applicant override. Check 12 warns. **It does NOT run on the cover letter**: there the same words are ordinary persuasive English, and the ban was costing more than it saved (see "The cover letter" above).
 - **Layer 1 forbids layout HTML.** Skills render as a single-column bullet list; the validator hard-blocks any `div` / `table` / `ul` / `img` in the output. `utils/exportDocxFormatted.js` flattens such tags anyway, so a column grid buys nothing and costs parsing.
 - **Layer 5** keys off the job's country when there is a job ad, otherwise the candidate's own (`targetCountry()`). An unrecognised country falls back to the neutral default. It never generates a photo, date of birth or consent line the candidate did not supply.
 - Unit tests: `prompts/cv-rules.test.js` (all layers, both prompts), `utils/cv-validate.test.js`.

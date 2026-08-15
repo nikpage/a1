@@ -246,3 +246,86 @@ ask. `gemini-3.5-pro` and `gemini-3.6-pro` do not exist on the API (404).
   **produkt** collides with a domain label and the repair errors on every
   Czech run.
 - Analysis is still on 3.5-flash and untested against 3.6.
+
+---
+
+## 2026-08-15 (later) — the rule stack was the problem
+
+**The comparison that settled it.** Nik ran his own prompt against the same
+record and the same ad, outside this app:
+
+> Write a tailored cover letter in English (250–400 words) using the job
+> history and job description provided below. Highlight the key achievements
+> and skills from my history that directly align with the core requirements,
+> responsibilities, and qualifications listed in the job description. Maintain
+> a professional tone.
+
+Four lines. It beat this pipeline's 51,721-character prompt decisively, in his
+reading, on the KUBO ad. `scripts/minimal-cover.mjs` reproduces that control
+experiment — same model, same record, same ad, no rule stack — so the two can
+be compared directly, with `--voice`, `--emphasise`, `--play-down` and
+`--check` (the real truth passes run over the result).
+
+**What his letter did that ours never did:**
+
+1. **Answered the ad's NEGATIVE SPACE.** KUBO asked for a partner to schools,
+   "ne někoho, kdo celý den obvolává studené kontakty". His letter: "not
+   through aggressive sales tactics, but by providing exceptional service" —
+   the same $20k→$100k number turned from a sales brag into proof of exactly
+   what they asked for. Nothing in 33k characters of rules mentioned that an
+   ad's negative space is where the employer states its fear.
+2. **Opened on the employer's mission**, not on his most recent job.
+3. **Chose relevance over recency** — a 2017 Charles University lectureship
+   led, because the job is presenting to educators; the newest AI work
+   supported.
+4. **Used labelled themes** matching the ad's three asks.
+
+**And it broke three of our rules while doing it:** a boilerplate opener ("I am
+writing to express…"), a derived tenure claim ("my 25-year career"), and an
+identity epithet ("As an experienced product leader"). Our stack would have
+blocked or stripped the parts of the better letter.
+
+**The control run, measured** (KUBO, gemini-3.6-flash, same record):
+
+| | minimal prompt | the pipeline |
+|---|---|---|
+| opens on | KUBO's mission | the candidate's Salsita job |
+| negative space answered | yes | weakly |
+| names KUBO | 4× | 2×, one the raw headline including the emoji |
+| prompt size | 12,445 chars | 51,721 chars |
+
+With `--voice on` the minimal prompt kept every voice trait (em-dashes,
+single-sentence pivots, "School principals and teachers do not need a sales
+pitch."), and with steering it led on teaching and demoted RAG to a late
+clause — **with no code enforcement at all**. The truth passes then ran clean
+over it: one "proven" cut as an unearned intensifier, no banned phrases, no
+unsourced domains, `validateCoverLetter` ok.
+
+**What was rebuilt.** `prompts/cover-letter.js` is now Nik's prompt + purpose +
+voice + steering + language + furniture. Removed: the contract block, the
+opener bans, the matching rule, the evidence block's usage rules, the scenario
+block, the red-flag rule, the analysis brief. Result on KUBO with steering and
+voice: opens "KUBO does not need a cold-calling salesperson", leads on
+teaching, demotes AI, carries his voice ("True account management is not about
+aggressive pitching. It is about trust."). On Seznam: opens on THEIR problem
+("inferring what millions of daily visitors want without relying on explicit
+feedback"), disarms the depth objection honestly ("I am not a machine learning
+researcher who invents fundamental algorithms from scratch"), one call, $0.018.
+
+**Two rules retired outright:**
+
+- **Check 12 on the letter.** Identity epithets are ordinary persuasive English
+  in a letter. Kept on the CV.
+- **Derived arithmetic where the inputs are bounds.** "under $20k to over
+  $100k" is strictly MORE than fivefold, so "fivefold" is accurate and
+  conservative. The rule was flagging a true, understated number.
+
+**Trap for the next person:** every rule in that stack was individually
+plausible and none of them was tested against an alternative. A rule that has
+never been compared with its own absence is not a rule, it is a guess with a
+comment above it. The comparison costs $0.02.
+
+**Open after this entry:** 22 tests still pin the removed rules and are red on
+purpose; a Czech-language run with a named contact is untested against the new
+prompt; the `produkt` / DOMAIN_TERMS collision stands; the CV path still ships
+hard failures.
