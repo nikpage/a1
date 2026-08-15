@@ -22,6 +22,57 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Steering is in scope when the document is composed.** The candidate's own instructions — what to emphasise, what to play down — are held by the writer at the moment it decides what the document says, not handed to it after the decision was taken elsewhere. **Content the candidate demoted is not evidence**: it cannot be the hook, the lead, a top-three achievement or the proof offered for a requirement in the ad, however well it answers it, and where the record offers no other evidence for that requirement, the requirement goes unanswered rather than the instruction ignored. **Content the candidate emphasised leads and is proved** with the facts the record holds for it; an emphasis reduced to one passing clause has been ignored, not applied. Demotion is never deletion — the timeline keeps every role and date (T2), and demoted content may still appear once, late and plainly, where leaving it out would make the story incoherent. And steering never adds: it reorders, reframes and cuts real content only. Where it asks for something the record does not evidence, the closest evidenced thing is foregrounded and nothing more is said.
 
+## The cover letter's contract (four clauses, enforced in code)
+
+Everything else about the letter is judgement. These four are not. They are the
+things a letter must do to be a letter at all, and a letter that misses one is
+not a weaker letter — it is the wrong document. They are therefore stated ONCE,
+at the top of the writing prompt, and checked deterministically after the letter
+is written (Layer 6, checks 26–30). A failure regenerates the letter with the
+specific failure named, on the same mechanism as the market word band, which is
+the one enforcement in this pipeline that demonstrably works.
+
+They are stated once because repetition is not enforcement. The same requirement
+restated in three blocks with three different emphases does not bind three times
+harder; it dilutes, and it crowds out the room the writer needs to actually
+compose. Guidance that repeats a contract clause is deleted, not softened.
+
+**C1 — It answers the ad's requirements with the record's evidence.** Where there
+is an ad and the record can answer at least one of its requirements, the letter
+answers at least one, with an achievement the master evidences. Not the ad's
+words restated, not an assertion of fit: the evidence. Where the record answers
+nothing the ad asks, the clause is inert and the letter argues from what the
+record does hold.
+
+**C2 — It addresses a red flag when one exists, for every applicant.** If the
+analysis records a concern a recruiter would raise and the record holds a fact
+that answers it, the letter addresses it — once, flat, inside the argument, under
+the Layer 4 rules for how (at most one, never the opening, never the close,
+carrying a master fact, never restating the doubt). This applies to every
+applicant, not only to the visibly difficult cases. A flag left unaddressed
+because no upstream step pre-approved it is the letter failing silently: the
+analysis names concerns, and the letter reads that list itself rather than
+waiting to be handed a curated subset of it. The exceptions stay exactly as Layer
+4 states them — a flag the letter cannot improve (age, salary, a bare seniority
+mismatch) is left alone, and where the record holds no answering fact there is
+nothing to address.
+
+**C3 — It is in the candidate's voice, or in deliberately plain human prose.**
+Where voice samples exist, the letter is composed in that voice from its first
+sentence (Layer 2). Where none exist, the fallback is not the model's default
+register: it is deliberately plain human prose — short words, varied sentence
+lengths, the point first, no throat-clearing, no stock phrase. The absence of a
+voice profile is not permission to write like a brochure.
+
+**C4 — It obeys the steering, and it is in the requested language.** The
+candidate's emphasise and play-down instructions bind as the invariants' steering
+paragraph states: emphasised content leads — it is present in the FIRST
+paragraph, proved with a master fact — and demoted content is absent from the
+first paragraph entirely. And the letter is written in the language the candidate
+requested; where they requested none, in the language the record and the ad
+imply. A letter in the wrong language is not a quality defect, it is an
+undeliverable document.
+
 ## Layer 1 — Machine parseability
 
 **Headers.** Standard names only, taken from the section-name registry for the CV's output language (en/cs/pl today). Each slot has one canonical name plus accepted market variants; a heading standard in any registered language is valid. Projects renders only when the Under-qualified or Career Pivot override is active, and only from evidenced master entries. No creative section names.
@@ -86,7 +137,13 @@ A skill whose only evidence lies outside the recency window — in the "Earlier 
 
 **The letter must not be handed the CV's plan.** The CV blueprint — section orders, bullet counts, rewrite notes — governs a document the letter is not writing. A letter given it answers it the only way it can, by narrating the CV back.
 
+**The letter reads the ad ITSELF, in the employer's own words.** The extraction — position, requirements, responsibilities as a labelled list — is the right input for the CV, which is a coverage and ordering problem. It is the wrong input for the letter. An ad has a register, and a letter that reads as written for THIS job is one that answered that register: "nebojí se computer science", "neexistuje žádný univerzální recept" are the employer talking, and none of it survives extraction. Every letter written from the same de-natured list reads the same, which is precisely what happened. So the ad's raw text rides on the analysis record and reaches the writer verbatim; the extraction remains the fallback for records saved before this and for standalone reviews.
+
 **The salutation is a fact, not a formula.** Where the ad names a person, the letter addresses that person. "Dear Hiring Manager" over a named contact is not neutral politeness — the name was on the page, and using it is the first evidence that the letter was written for this application. The name comes from the extracted job data; where the ad names no one, the neutral form is correct and no name is guessed at.
+
+**And the name is DECLINED into the salutation's own language.** This is an EU product and Czech and Polish salutations take the vocative: *Vážený pane Nováku,* — never *Vážený pane Novák,* — *Vážená paní Nováková,*, *Szanowny Panie Kowalski,*. A nominative name in that slot is a grammatical error in the first line of the document, visible to every native reader, and it undoes the credit that using the name at all was meant to buy. Where the gender or declension is genuinely unclear, the neutral form for that language is correct — a wrong ending is worse than no name. The honorific (*pane* / *paní*, *Panie* / *Pani*) is part of the salutation, not a title, and is required. Check 20 compares the name and the salutation on their diacritic-folded stems, and on EITHER name part, because Czech addresses the surname where English addresses the given name.
+
+**The close is the candidate speaking, and the opening is never a general truth.** The last line is first-person and asks for the next step; what it asks for is the writer's call. A THIRD-PERSON MAXIM about the role or the industry — "Managing a recommendation engine requires a product leader who can ground algorithmic complexity in human behaviour" — is barred at BOTH ends of the letter. It is a thesis about the job rather than a fact about the applicant, it would open or close fifty other candidates' letters for the same ad, and the reader learns nothing from it. Banned at the close only, it simply migrates to the opening; it is banned in both positions for that reason.
 
 **The letter opens on something real.** The opening rests on a fact the record holds — something the candidate did, built or ran that this role needs. What is banned is the opening that rests on nothing: the act of applying ("I am writing to apply"), an identity asserted in place of evidence ("As a seasoned leader"), and **invented scene-setting** — a remembered scene, a mood, a moment of realisation, any colour the master does not record. That last one is the real defect behind the anecdote: not that a letter tells a story, but that a story needs detail, and a writer with no detail invents it. "I remember one of my first projects…" and "It was 2019 when…" are barred where the record holds no such project and no such year.
 
@@ -103,6 +160,8 @@ Maximum two active at once. Every rule below reframes, reorders, relabels or cut
 **The overrides reach the cover letter too.** The scenario that shapes the CV shapes the letter, but not with the same instructions: a letter has no sections to reorder, no dates to format and no bullets to cap, so a CV mitigation transplanted into it is noise. Each override therefore carries a second, letter-specific rule governing what the letter leads on, what it may address in the candidate's own recorded words, and what it must not claim. The same cap of two applies, and the invariants and Layer 3's requirement-answering still outrank it. Where an override forbids a fact on the CV — a cumulative career total under Older Applicant, years of experience under Under-qualified — it is forbidden in the letter as well; the letter is not a place to say what the CV was not allowed to.
 
 **Red flags are defused in the letter, at most one, and only where silence costs more.** The analysis names the concerns a recruiter would raise; the letter addresses at most one of them, or none, and none is a common and legitimate answer. Only a flag a recruiter will otherwise resolve against the candidate qualifies: a gap over six months, the permanence question under a standing consultancy, a location or relocation mismatch, a required capability the candidate has a genuine adjacent answer to. A flag the letter cannot improve is left alone — age, salary, a seniority mismatch with no answer behind it. Naming those introduces the objection to a reader who had not yet raised it, and the CV's own overrides already do what can be done about them.
+
+**The letter reads the flag list itself.** The concerns available to the letter are the ones the analysis recorded, in full — not only those an upstream step pre-selected and paired with an answer. A curated subset that comes back empty means no red flag is ever addressed for that applicant, which turns C2 into a rule that fires only when something else happened to permit it. So the letter is handed the analysis's own red flags alongside any pre-paired concerns, and it decides — under the qualifying test above and the invariants — which one, if any, it answers. Deciding to answer none remains legitimate; never having been offered the choice does not.
 
 One flag, one clause, once — inside the body of the argument, never the opening and never the close, stated flat and then passed. Two defences read as a defence and three read as an admission. The clause carries a fact from the master or it is cut: reassurance that the candidate is confident, adaptable or a fast learner defuses nothing, and where the record holds no evidence the flag is not addressed at all. It is never restated in the concern's own language — the letter states the positive fact that makes it a non-issue rather than repeating the doubt first — and it carries no apology and no explanation of motive the master does not record, which the invariants forbid in any case.
 
@@ -190,6 +249,50 @@ Code measures the shape; it does not judge the writing. The metrics catch a lett
 
 25. The cover letter names at most THREE of the candidate's employers (Layer 3, depth not coverage). Counted against the master, so the company being written TO is not counted, and counted through nested engagements — a standing consultancy carries its clients as children of one entry, and those are exactly the names a letter walks. Over the limit is repaired by the same rewrite as check 24, by cutting: dropping an employer invents nothing, and every one dropped is still on the CV. Where the master itself records three employers or fewer there is nothing to measure and the check reports nothing.
 
-A failure at 1–4, 10, 14 and 18 is a hard block. 5–9, 11–13, 15, 16 and 19–22 are warnings surfaced to the user. 17, 23, 24 and 25 are neither: they are the app's own writing, repaired before delivery.
+### The contract checks (26–30)
+
+These five implement the four contract clauses above. Each is computed from the
+analysis, the master and the finished letter — no AI call, no judgement of
+quality, only the presence or absence of the thing the contract requires. Each
+failure is a hard block that regenerates the letter ONCE with that specific
+failure named, exactly as the word band does; the retry is kept only if it fails
+no more checks than the draft it replaces. A check whose evidence is missing
+reports nothing rather than guessing, as everywhere else in this document.
+
+26. **Language (C4).** The letter is in the language the candidate requested.
+    Where they requested `auto`, the check reports nothing — there is no stated
+    target to measure against. Measured on the letter's body prose, not the
+    salutation or the signature block, and by the letter's own script and
+    function words rather than by any single word, so a company name or a job
+    title quoted from the ad in another language does not fail it.
+
+27. **At least one evidenced requirement answered (C1).** With a job ad and at
+    least one requirement the record can answer, the letter carries the evidence
+    for at least one of them. Matched on the EVIDENCE half only, for the reason
+    check 19 states, and silent where the letter shares no language with the
+    record. Check 19 remains the warning for the requirements left unanswered
+    beyond the first; this check is the floor beneath it, and the floor blocks.
+
+28. **A red flag is addressed when one exists (C2).** Where the analysis records
+    at least one qualifying concern that the master holds an answering fact for,
+    the letter carries that answering fact. Where the analysis records no
+    concern, where every recorded concern is one Layer 4 says to leave alone, or
+    where the record holds no fact that answers any of them, the check reports
+    nothing — the letter is correct to say nothing, and a check that demanded a
+    clause anyway would force the letter to invent one.
+
+29. **Emphasised content leads (C4).** Where the candidate's steering names
+    something to emphasise, the letter's FIRST paragraph carries it. Matched
+    against the master's own words for the emphasised content, not the
+    candidate's phrasing of the instruction, since the two are routinely
+    different words for the same thing.
+
+30. **Demoted content is out of the first paragraph (C4).** Where the steering
+    names something to play down, the letter's first paragraph does not name it.
+    Later, plain, single mention stays permitted by the invariants — this check
+    governs the opening only, which is the position that contradicts a demotion
+    outright.
+
+A failure at 1–4, 10, 14, 18 and 26–30 is a hard block. 5–9, 11–13, 15, 16 and 19–22 are warnings surfaced to the user. 17, 23, 24 and 25 are neither: they are the app's own writing, repaired before delivery.
 
 A check whose evidence is missing (no parseable master, no section order) reports nothing rather than guessing.

@@ -28,6 +28,7 @@ import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js'
 import { bannedPhrases } from '../prompts/voice.js';
 import { coverWordBand } from '../prompts/market.js';
 import { salutationName } from '../prompts/cover-evidence.js';
+import { parseTweak } from './steering.js';
 
 // ---- small parsing helpers --------------------------------------------------
 
@@ -834,7 +835,13 @@ function lettersShareLanguage(body, master) {
   return employers.some((e) => namesEmployer(text, e));
 }
 
-function checkCoverRequirements(body, analysis, warnings, master) {
+//     CONTRACT CLAUSE C1 (check 27): this is no longer a warning. A letter that
+//     answers NONE of the requirements the record can answer has not done the one
+//     thing a cover letter exists to do, so it is a hard failure that regenerates
+//     with the failure named — the mechanism the word band already uses. The
+//     silences are unchanged: no pool, no usable evidence, or no shared language
+//     still reports nothing, because none of those is the letter's fault.
+function checkCoverRequirements(body, analysis, hard, master) {
   const pool = analysis?.generation_framework?.cover_evidence?.requirement_evidence;
   if (!Array.isArray(pool) || pool.length === 0) return;
   const text = plain(body).toLowerCase();
@@ -846,7 +853,109 @@ function checkCoverRequirements(body, analysis, warnings, master) {
   if (answered > 0) return;
   // Nothing matched. Before reporting, make sure that means something.
   if (!lettersShareLanguage(body, master)) return;
-  warnings.push({ code: 'coverRequirementsUnanswered', params: { available: usable.length } });
+  hard.push(`The letter answers none of the ${usable.length} requirements this record can genuinely answer. Take the strongest ONE or TWO of the evidence items you were given and prove them in the prose — what the situation was, what the candidate did, what changed. Invent nothing: use the evidence as recorded.`);
+}
+
+// ---- The contract checks (CV_RULES.md checks 26-30) -------------------------
+//
+// Five deterministic checks over the finished letter, one per thing the contract
+// requires. Each is computed from the analysis, the master and the letter — no
+// AI call and no judgement of quality, only whether the required thing is on the
+// page. Each failure is hard and regenerates the letter once with that failure
+// named, exactly as the word band does.
+
+// The letter's first paragraph — the position the steering checks govern, since
+// it is the one place that either carries an emphasis or contradicts a demotion.
+function firstParagraph(body) {
+  return String(body || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)[0] || '';
+}
+
+// 26. Language (C4). Judged on FUNCTION WORDS, not content: a letter quoting an
+//     English job title inside Czech prose is Czech, and one distinctive noun
+//     decides nothing. Czech is additionally evidenced by its own diacritics.
+//     Only 'en' and 'cs' can be requested today (prompts/language.js), and the
+//     check stays silent on 'auto' — there is no stated target to measure.
+const LANG_MARKERS = {
+  en: ['the', 'and', 'with', 'that', 'for', 'have', 'this', 'from', 'which', 'their', 'been', 'would'],
+  cs: ['a', 'se', 'na', 'v', 'je', 'pro', 'které', 'jsem', 'že', 've', 'k', 'jako', 'byl'],
+};
+
+function markerScore(text, markers) {
+  const tokens = plain(text).toLowerCase().split(/[^a-zá-ž]+/i).filter(Boolean);
+  if (!tokens.length) return 0;
+  const hits = tokens.filter((t) => markers.includes(t)).length;
+  return hits / tokens.length;
+}
+
+function checkCoverLanguage(body, language, hard) {
+  const want = LANG_MARKERS[language];
+  if (!want) return;
+  const text = plain(body);
+  // Too little prose to judge: a two-sentence body gives no reliable ratio.
+  if (words(text).length < 40) return;
+  const wanted = markerScore(text, want);
+  const others = Object.entries(LANG_MARKERS)
+    .filter(([code]) => code !== language)
+    .map(([code, markers]) => ({ code, score: markerScore(text, markers) }));
+  const diacritics = /[ěščřžýáíéůúťďňó]/i.test(text);
+  const best = others.sort((a, b) => b.score - a.score)[0];
+  // Czech carries a second, independent signal: its diacritics. An English
+  // letter is not merely low on Czech function words, it has no háčky either.
+  const wantedOk = language === 'cs' ? wanted > 0 && diacritics : wanted > 0;
+  if (wantedOk && (!best || wanted >= best.score)) return;
+  hard.push(`The letter is not written in the requested language (${language}). Rewrite the ENTIRE body in ${language === 'cs' ? 'Czech' : 'English'} — proper nouns stay as they are.`);
+}
+
+// 28. A red flag is addressed when one exists (C2). The computable case is the
+//     concern the analysis paired with an answering fact from the record: the
+//     letter must carry that fact. Where no concern carries an answer, code has
+//     no evidence to look for and reports nothing — demanding a clause anyway
+//     would force the letter to invent one, which the invariants forbid.
+function checkCoverRedFlag(body, analysis, hard) {
+  const concerns = analysis?.generation_framework?.cover_evidence?.concerns;
+  if (!Array.isArray(concerns) || !concerns.length) return;
+  const usable = concerns
+    .map((c) => distinctiveTokens(c?.answer_evidence))
+    .filter((tokens) => tokens.length);
+  if (!usable.length) return;
+  const text = plain(body).toLowerCase();
+  if (usable.some((tokens) => halfPresent(text, tokens))) return;
+  hard.push(`The letter addresses none of the ${usable.length} recruiter concerns this record can answer. Take ONE of them and settle it in a single flat clause inside the body — never in the opening, never in the close — carrying the fact from the record that makes it a non-issue. Do not restate the doubt itself.`);
+}
+
+// 29/30. Steering (C4). Emphasised content leads: it is in the first paragraph.
+//        Demoted content is absent from it — later, plain, single mention stays
+//        permitted by the invariants, so only the opening is governed.
+//
+//        Matched on the steering text's own distinctive words, extended with the
+//        master employer names that text refers to, because a candidate writes
+//        "the Salsita work" where the letter writes "Salsita Software".
+function steeringTokens(text, master) {
+  const own = distinctiveTokens(text);
+  if (!own.length) return [];
+  const lower = plain(text).toLowerCase();
+  const named = masterEmployers(master).filter((e) => namesEmployer(lower, e));
+  return [...new Set([...own, ...named.flatMap((e) => distinctiveTokens(e))])];
+}
+
+function checkCoverSteering(body, tweak, master, hard) {
+  const { emphasise, playDown } = parseTweak(tweak);
+  const opening = plain(firstParagraph(body)).toLowerCase();
+  if (!opening) return;
+
+  if (emphasise) {
+    const tokens = steeringTokens(emphasise, master);
+    if (tokens.length && !halfPresent(opening, tokens)) {
+      hard.push(`The candidate asked you to lead with: "${emphasise}". The first paragraph does not carry it. Open on that, proved with the facts the record holds for it — an emphasis reduced to a passing clause later on has been ignored, not applied.`);
+    }
+  }
+
+  if (playDown) {
+    const tokens = steeringTokens(playDown, master);
+    if (tokens.length && halfPresent(opening, tokens)) {
+      hard.push(`The candidate asked you to play down: "${playDown}". It is in the first paragraph, which is the one position that contradicts that outright. Open on other real evidence instead; the demoted content may still appear once, later and plainly, but it is not what this letter leads on.`);
+    }
+  }
 }
 
 // 20. The salutation addresses the contact the job data names. A named contact
@@ -856,8 +965,24 @@ function checkCoverSalutation(document, analysis, warnings) {
   if (!name) return;
   const line = String(document || '').split('\n').find((l) => /^\s*(dear|vážen|szanown)/i.test(l));
   if (!line) return;
-  const first = name.split(/\s+/)[0].toLowerCase();
-  if (!plain(line).toLowerCase().includes(first)) {
+  // A CZECH OR POLISH SALUTATION DECLINES THE NAME.
+  //
+  // "Vážený pane Nováku," is Novák in the vocative, and it is the CORRECT form —
+  // a substring match on "novák" misses it and the check would then warn that
+  // the letter ignored a contact it addressed properly. So the name and the
+  // words in the salutation are compared on their diacritic-folded STEMS, which
+  // is what an inflected pair shares: novak/novaku, petr/petre, jan/jane.
+  // EITHER part of the name counts. English addresses the given name ("Dear
+  // Deborah"), Czech and Polish address the SURNAME with the honorific ("Vážený
+  // pane Nováku,", "Szanowny Panie Kowalski,") — a check that only looked at the
+  // first word reported every correctly addressed Czech letter as generic.
+  const roots = name.split(/\s+/)
+    .map(stem)
+    .filter(Boolean)
+    .map((p) => p.slice(0, Math.min(4, p.length)));
+  if (!roots.length) return;
+  const said = plain(line).split(/\s+/).map(stem).filter(Boolean);
+  if (!said.some((w) => roots.some((r) => w.startsWith(r)))) {
     warnings.push({ code: 'coverSalutation', params: { name } });
   }
 }
@@ -994,7 +1119,7 @@ export function unsourcedDomainHits(document, { master = '' } = {}) {
 // on it, and a letter over its market's ceiling is the one defect the candidate
 // cannot see by reading. Under the band is not a failure — a finished argument
 // is allowed to stop early.
-export function validateCoverLetter(document, { master = '', analysis = null, language = 'auto' } = {}) {
+export function validateCoverLetter(document, { master = '', analysis = null, language = 'auto', tweak = '' } = {}) {
   const hard = [];
   const warnings = [];
   const m = readMaster(master);
@@ -1008,7 +1133,13 @@ export function validateCoverLetter(document, { master = '', analysis = null, la
     hard.push(`The letter body runs to ${count} words; this market's ceiling is ${max}. Cut it to length without dropping the argument.`);
   }
 
-  checkCoverRequirements(body, analysis, warnings, master);
+  // The contract (checks 26-30) — hard, on the same regeneration mechanism as
+  // the word band above.
+  checkCoverLanguage(body, language, hard);
+  checkCoverRedFlag(body, analysis, hard);
+  checkCoverSteering(body, tweak, master, hard);
+
+  checkCoverRequirements(body, analysis, hard, master);
   checkCoverSalutation(document, analysis, warnings);
   checkCoverObjections(body, analysis, warnings);
   checkCoverNumbers(body, m, warnings);

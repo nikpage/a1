@@ -238,6 +238,9 @@ export const handler = async (event) => {
       }
       // Why the record is teaser-shaped, saved alongside it. Absent on a good run.
       if (deepSkipped) obj._deep_skipped = deepSkipped;
+      // The ad's own words (obj.job_text) are attached by analyzeCvJob itself,
+      // so every caller of it gets them — see utils/openai.js. Nothing to do
+      // here beyond letting them ride into the saved record.
       if (confirmedJob && typeof confirmedJob === 'object') {
         obj.job_extraction = confirmedJob;
       }

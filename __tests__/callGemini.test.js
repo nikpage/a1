@@ -27,7 +27,7 @@ vi.mock('../prompts/analysis.js', () => ({
   buildAnalysisPrompt: () => [{ role: 'user', content: 'analyse this' }],
 }));
 
-import { generateCV } from '../utils/openai.js';
+import { generateCV, GEMINI_GENERATION_MODEL } from '../utils/openai.js';
 
 const SUCCESS_RESPONSE = {
   data: {
@@ -54,7 +54,7 @@ function make500Error() {
 // tests are about, so they count the WRITING calls only — the verify call runs
 // on its own model and must not be mistaken for a retry.
 const writingCalls = () =>
-  mockAxiosPost.mock.calls.filter(([, body]) => body?.model === 'gemini-2.5-flash').length;
+  mockAxiosPost.mock.calls.filter(([, body]) => body?.model === GEMINI_GENERATION_MODEL).length;
 
 // A clean verify verdict: nothing unsupported, document passes through as-is.
 const CLEAN_VERIFY_RESPONSE = {

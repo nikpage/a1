@@ -23,7 +23,7 @@ vi.mock('../prompts/cv-generator.js', () => ({
   buildCvPrompt: () => [{ role: 'user', content: 'write cv' }],
 }));
 
-import { applyGenerationCorrections, verifyGeneratedDoc, generateCV } from '../utils/openai.js';
+import { applyGenerationCorrections, verifyGeneratedDoc, generateCV, dressCv } from '../utils/openai.js';
 
 function geminiResp(content, model = 'gemini-2.5-flash-lite') {
   return {
@@ -70,6 +70,59 @@ describe('applyGenerationCorrections — deterministic, exact-match only', () =>
     ]);
     expect(content).toBe(doc);
     expect(applied).toHaveLength(0);
+  });
+
+  // REGRESSION. A real run shipped this to the page:
+  //   "While my recent roles have focused on product strategy and experience
+  //    design, ."
+  // The verify pass cut the tail of the sentence and the removal left the comma,
+  // the space and the full stop behind. Red on the old code (which cleaned only
+  // emptied bullets and blank-line runs), green now.
+  test('cleans the punctuation and spacing a mid-sentence deletion orphans', () => {
+    const doc = 'While my recent roles have focused on product strategy and experience design, I led the ML platform team.';
+    const { content } = applyGenerationCorrections(doc, [
+      { quote: ' I led the ML platform team', replacement: '', reason: 'invented fact' },
+    ]);
+    expect(content).toBe('While my recent roles have focused on product strategy and experience design.');
+    expect(content).not.toMatch(/,\s*\./);
+    expect(content).not.toMatch(/\s+\./);
+  });
+
+  test('removes the double space and leading indent a deleted span leaves', () => {
+    const doc = 'I build RAG systems. Absolutely world-class work. This requires precision.\n\n  I would welcome a conversation.';
+    const { content } = applyGenerationCorrections(doc, [
+      { quote: 'Absolutely world-class work. ', replacement: '', reason: 'unearned intensifier' },
+    ]);
+    expect(content).toBe('I build RAG systems. This requires precision.\n\nI would welcome a conversation.');
+    expect(content).not.toMatch(/ {2,}/);
+  });
+
+  test('a correction that only replaces text does not lose a legitimate space', () => {
+    const doc = '- Led the migration to AWS with the platform team';
+    const { content } = applyGenerationCorrections(doc, [
+      { quote: 'Led', replacement: 'Contributed to', reason: 'upgraded claim' },
+    ]);
+    expect(content).toBe('- Contributed to the migration to AWS with the platform team');
+  });
+
+  // REGRESSION. A real run shipped "…a multidisciplinary group of twelve
+  // Earlier, at Česká spořitelna…" — the checker's quote ran to the end of the
+  // sentence, so deleting it deleted the full stop and welded the next sentence
+  // on. Red on the old code, green now.
+  test('a deletion whose span ends the sentence keeps the terminator', () => {
+    const doc = 'I scaled the team to twelve engineers and ran the whole programme. Earlier, at the bank, I led research.';
+    const { content } = applyGenerationCorrections(doc, [
+      { quote: ' and ran the whole programme.', replacement: '', reason: 'invented fact' },
+    ]);
+    expect(content).toBe('I scaled the team to twelve engineers. Earlier, at the bank, I led research.');
+  });
+
+  test('the terminator is not doubled when one already precedes the cut', () => {
+    const doc = 'I build RAG systems. World-class results every time. Precision matters.';
+    const { content } = applyGenerationCorrections(doc, [
+      { quote: ' World-class results every time.', replacement: '', reason: 'unearned intensifier' },
+    ]);
+    expect(content).toBe('I build RAG systems. Precision matters.');
   });
 
   test('leaves a clean document byte-identical', () => {
@@ -185,5 +238,39 @@ describe('generateCV', () => {
     const res = await generateCV({ cv: '{"experience":[]}', analysis: {}, tone: 'Formal' });
     expect(res.content).toBe('- Wrote the deploy runbook');
     expect(res.gemini_usages).toHaveLength(1);
+  });
+});
+
+// dressCv — the CV's counterpart to dressLetter. prompts/cv-generator.js states
+// its template with <!-- BLOCK:START --> markers; a real 3.6-flash run copied
+// them into the document and they reached the page. Red on the old code (no
+// dressCv existed and the raw content went straight to verify), green now.
+describe('dressCv — the prompt template never reaches the page', () => {
+  test('strips the BLOCK scaffolding comments and the blank lines they leave', () => {
+    const raw = [
+      '### **Summary**',
+      'Product architect who ships AI systems.',
+      '<!-- BLOCK:START -->',
+      '- As AI Solutions Lead at SpecialAgents.pro, built custom RAG systems.',
+      '<!-- BLOCK:END -->',
+      '',
+      '---',
+    ].join('\n');
+    const out = dressCv(raw);
+    expect(out).not.toMatch(/BLOCK:(START|END)/);
+    expect(out).not.toMatch(/<!--/);
+    expect(out).toContain('- As AI Solutions Lead at SpecialAgents.pro, built custom RAG systems.');
+    expect(out).toContain('### **Summary**');
+    expect(out).not.toMatch(/\n{3,}/);
+  });
+
+  test('an inline comment is removed without taking the real text with it', () => {
+    expect(dressCv('- Managed a QA team <!-- keep short --> on a 3.5bn Kč programme'))
+      .toBe('- Managed a QA team  on a 3.5bn Kč programme');
+  });
+
+  test('a clean CV is returned unchanged apart from trimming', () => {
+    const clean = '# Nik Page\n\n### **Summary**\nBuilt RAG systems.';
+    expect(dressCv(clean)).toBe(clean);
   });
 });

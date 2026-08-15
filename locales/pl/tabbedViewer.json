@@ -57,7 +57,6 @@
     "earlierCareerTooManyBullets": "Wcześniejsza kariera wymienia {{count}} stanowisk; drukowanych jest najwyżej {{max}}, aby sekcja nie cofała czytelnika przez całą karierę.",
     "earlierCareerDated": "Wcześniejsza kariera podaje daty przy {{count}} stanowiskach — ta sekcja jest bez dat, a lata ponownie wysyłają sygnał o wieku.",
     "earlierCareerLocation": "Wcześniejsza kariera podaje lokalizację, której nie ma w Twoim rekordzie: {{location}}. Zostawiliśmy ją, ale sprawdź — lokalizacja wywnioskowana z nazwy pracodawcy to zmyślony fakt.",
-    "coverRequirementsUnanswered": "List nie odpowiada na żaden z {{available}} wymogów ogłoszenia, które twój zapis faktycznie potwierdza. Cokolwiek robi dobrze, nie jest dopasowany do tej oferty.",
     "coverSalutation": "Ogłoszenie podaje kontakt {{name}}, ale list nie jest do tej osoby skierowany. Zwrot po imieniu to pierwszy dowód, że list napisano pod tę aplikację.",
     "coverManyObjections": "List odnosi się do {{count}} wątpliwości. Jedno wyjaśnienie brzmi pewnie, kilka brzmi jak przyznanie się.",
     "coverNumber": "List podaje liczby, których nie ma w Twoim zapisie: {{list}}. Sprawdź je — nie wymyślamy liczb."

@@ -57,7 +57,6 @@
     "earlierCareerTooManyBullets": "Earlier Career lists {{count}} roles; at most {{max}} are printed so the section does not drag the reader back through the whole career.",
     "earlierCareerDated": "Earlier Career carries dates on {{count}} of its roles — that section is undated, and the years are what re-emit the age signal.",
     "earlierCareerLocation": "Earlier Career states a location your record does not hold: {{location}}. It was left in, but check it — a location inferred from the employer's name is a fabricated fact.",
-    "coverRequirementsUnanswered": "The letter answers none of the {{available}} requirements the ad raised that your record can actually prove. Whatever else it does well, it is not tailored to this job.",
     "coverSalutation": "The ad names {{name}}, but the letter does not open to them. Using the name is the first sign the letter was written for this application.",
     "coverManyObjections": "The letter answers {{count}} concerns. One defence reads as confidence; several read as an admission.",
     "coverNumber": "The letter uses figures your record does not hold: {{list}}. Check them — we will not invent numbers for you."

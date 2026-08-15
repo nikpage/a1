@@ -49,9 +49,11 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat
 // them off the overloaded flash-lite pool.
 const GEMINI_EXTRACTION_MODEL  = 'gemini-2.5-flash-lite'; // job-ad parsing, verifiable against the ad
 const GEMINI_MASTER_MODEL      = 'gemini-2.5-flash-lite'; // master build/merge — once per user, backstopped by verify
-const GEMINI_VERIFY_MODEL      = 'gemini-2.5-flash-lite'; // master verify — a checker, low creativity
+const GEMINI_VERIFY_MODEL      = 'gemini-3.5-flash-lite'; // master verify — a checker, low creativity
 const GEMINI_ANALYSIS_MODEL    = 'gemini-3.5-flash';      // strategic brain that drives every downstream doc
-const GEMINI_GENERATION_MODEL  = 'gemini-2.5-flash';      // CV/cover prose — writing quality + voice are visible
+// Exported so tests can count writing calls without a second copy of the model
+// string drifting out of step with this one.
+export const GEMINI_GENERATION_MODEL = 'gemini-3.6-flash'; // CV/cover prose — writing quality + voice are visible
 
 // Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
 const PRICING = {
@@ -59,6 +61,8 @@ const PRICING = {
   'gemini-2.5-flash':      { input: 0.30,  output: 2.50  },
   'gemini-2.5-pro':        { input: 1.25,  output: 10.00 },
   'gemini-3.5-flash':      { input: 1.50,  output: 9.00  },
+  'gemini-3.5-flash-lite': { input: 0.30,  output: 2.50  },
+  'gemini-3.6-flash':      { input: 0.75,  output: 3.75  },
 };
 
 function geminiUsage(label, data, modelHint) {
@@ -685,6 +689,12 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
       ? mergeTeaserAndDelta(blueprint.parsed, review.parsed)
       : (blueprint || review).parsed;
     const merged = mergeTeaserAndDelta(teaserObj, delta);
+    // The ad's own words ride on the analysis record, attached HERE rather than
+    // in the Netlify worker so every caller of this function gets them — the
+    // worker, the local harness, and anything added later. The cover letter
+    // reads them via prompts/job-target.js (rawAdBlock); the extraction stays
+    // the fallback for records saved before this existed.
+    if (typeof jobText === 'string' && jobText.trim()) merged.job_text = jobText.trim().slice(0, 8000);
     // Cost-log every call that actually completed — see the AI cost logging rule.
     const gemini_usages = [blueprint?.gemini_usage, review?.gemini_usage].filter(Boolean);
     const primary = blueprint || review;
@@ -732,7 +742,20 @@ export function applyGenerationCorrections(document, corrections) {
   for (const c of Array.isArray(corrections) ? corrections : []) {
     const quote = typeof c?.quote === 'string' ? c.quote.trim() : '';
     if (!quote || !out.includes(quote)) continue;
-    const replacement = typeof c?.replacement === 'string' ? c.replacement.trim() : '';
+    let replacement = typeof c?.replacement === 'string' ? c.replacement.trim() : '';
+    // A DELETION MUST NOT EAT THE SENTENCE BOUNDARY.
+    //
+    // The checker quotes what it wants gone, and its quote routinely runs to the
+    // end of the sentence — punctuation included. Removing it outright welds the
+    // next sentence onto the previous one: a real run shipped "…a group of
+    // twelve Earlier, at Česká spořitelna…", two sentences with the full stop
+    // between them deleted. The span is still cut; only its terminator is kept,
+    // and only when the deletion would otherwise leave the sentence unterminated.
+    if (!replacement && /[.!?]\s*$/.test(quote)) {
+      const terminator = quote.trim().slice(-1);
+      const before = out.slice(0, out.indexOf(quote));
+      if (!/[.!?]["')\]]?\s*$/.test(before)) replacement = terminator;
+    }
     out = out.split(quote).join(replacement);
     applied.push({ quote, replacement, reason: c?.reason || '' });
   }
@@ -749,6 +772,29 @@ export function applyGenerationCorrections(document, corrections) {
         return !(t === '' && i > 0 && arr[i - 1].trim() === '' && arr[i - 2]?.trim() === '');
       })
       .join('\n');
+
+    // THE PUNCTUATION THE DELETIONS ORPHANED.
+    //
+    // Corrections are applied by literal string removal, so cutting the tail of
+    // a sentence leaves its punctuation and spacing behind. A real run shipped
+    // "…product strategy and experience design, ." to the page: a comma, a
+    // space and a full stop with nothing between them. It is the removal's own
+    // debris, not the model's prose, so it is cleaned deterministically — no
+    // second AI call, and nothing here can touch a character the writer wrote
+    // except the whitespace and punctuation left stranded around the hole.
+    out = out
+      // ", ." / " ;." / ",  ," — a separator immediately followed by a
+      // terminator or another separator: keep the last one only.
+      .replace(/[,;:]\s*(?=[.!?,;:])/g, '')
+      // " ." / " ," — space before punctuation, from a cut that ended a clause.
+      .replace(/\s+([.!?,;:])/g, '$1')
+      // "word  word" — a double space where a span used to be.
+      .replace(/[^\S\n]{2,}/g, ' ')
+      // ".." / ".?" from cutting a whole sentence out of the middle.
+      .replace(/([.!?])[.!?]+/g, '$1')
+      // Leading whitespace a cut left at the head of a paragraph.
+      .split('\n').map((line) => (line.trim() ? line.replace(/^[^\S\n]+/, '') : line)).join('\n')
+      .trim();
   }
 
   return { content: out, applied };
@@ -963,6 +1009,24 @@ export async function applyVoice({ document, profile, docType = 'cover', jobText
   }
 }
 
+// The CV as it leaves the model, dressed for reading — the counterpart to
+// dressLetter.
+//
+// prompts/cv-generator.js states its template with <!-- BLOCK:START --> /
+// <!-- BLOCK:END --> markers around the repeatable parts. They are scaffolding
+// for the model's eyes and nothing consumes them. One writing model dropped
+// them; another copied them into the document, and they went all the way to the
+// page — a CV with HTML comments in it. Which model is in the constant is not
+// the question: template punctuation is the prompt's, never the document's, so
+// it is removed here for every model, forever.
+export function dressCv(rawContent) {
+  return String(rawContent || '')
+    .replace(/^[^\S\n]*<!--[\s\S]*?-->[^\S\n]*\n?/gm, '') // a comment on its own line: take the line
+    .replace(/<!--[\s\S]*?-->/g, '')                      // any that were inline
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export async function generateCV({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
   const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language);
   // medium effort: 'low' is exactly where a writing model drops the constraints
@@ -976,7 +1040,7 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
 
   // Safety net over the prose: strip anything the master doesn't evidence.
   let verified = await verifyGeneratedDoc({
-    document: data.choices?.[0]?.message?.content || '',
+    document: dressCv(data.choices?.[0]?.message?.content || ''),
     master: cv,
     docType: 'cv',
     language,
@@ -1001,7 +1065,9 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
     usages.push(retryUsage);
 
     const reVerified = await verifyGeneratedDoc({
-      document: retry.choices?.[0]?.message?.content || '',
+      // Dressed identically to the draft it may replace — a retry judged on text
+      // the candidate would never receive is judged on the wrong document.
+      document: dressCv(retry.choices?.[0]?.message?.content || ''),
       master: cv,
       docType: 'cv',
       language,
@@ -1135,23 +1201,20 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // the case it was built for.
   //
   // Still before the truth passes, so anything it does is fact-checked after.
+  // ONE OWNER. The rewrite is gone from this path entirely.
+  //
+  // It was kept as a fallback for a draft that measured flat. Run against a real
+  // record and a real ad it did the opposite: handed a thin draft, it satisfied
+  // the shape measurement literally and produced a five-word orphan paragraph
+  // ("Data must drive the algorithm.") — a second model reshaping the first
+  // model's letter, which is the defect the writer-owns-the-voice change already
+  // established. A flat draft is a writing-prompt problem and it is fixed in
+  // prompts/cover-letter.js, not by a call that re-cuts the wreckage.
+  //
+  // The shape measurements themselves survive as Layer 6 checks — they tell the
+  // candidate what the letter is, which is what they were good for.
   const draft = processedContent.trim();
-  const needsVoicePass = voiceProfile
-    ? coverShapeFaults(draft).length > 0 || Boolean(coverBreadthFault(draft, cv))
-    : false;
-  if (!needsVoicePass && voiceProfile) {
-    logger.info('[voice cover] draft already carries the voice — no rewrite needed');
-  }
-  const voiced = needsVoicePass ? await applyVoice({
-    document: draft,
-    profile: voiceProfile,
-    docType: 'cover',
-    // The ad itself, so the rewrite can judge how far this candidate's voice
-    // travels in THIS application (CV_RULES.md, Layer 2).
-    jobText: targetJobBlock(analysis),
-    // The record, so it can see how many of these employers the letter walked.
-    master: cv,
-  }) : { content: draft, gemini_usages: [], applied: [] };
+  const voiced = { content: draft, gemini_usages: [], applied: [] };
 
   // Verify AFTER the date/placeholder cleanup, so the checker sees exactly the
   // text the candidate will send.
@@ -1172,7 +1235,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   if (domainRepair.gemini_usage) usages.push(domainRepair.gemini_usage);
 
   let content = domainRepair.content;
-  let validation = validateCoverLetter(content, { master: cv, analysis, language });
+  let validation = validateCoverLetter(content, { master: cv, analysis, language, tweak });
 
   // The word band is a hard failure, so an over-length letter is regenerated
   // ONCE with the count fed back — the same shape as generateCV's retry, and the
@@ -1201,7 +1264,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     const reDomain = await repairUnsourcedDomains({ document: reRepair.content, master: cv });
     if (reDomain.gemini_usage) usages.push(reDomain.gemini_usage);
 
-    const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language });
+    const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language, tweak });
     if (revalidated.hard.length <= validation.hard.length) {
       content = reDomain.content;
       validation = revalidated;

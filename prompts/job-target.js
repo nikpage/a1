@@ -28,6 +28,40 @@ function labelledValue(label, value) {
   return value && String(value).trim() ? `\n${label}: ${String(value).trim()}` : '';
 }
 
+// THE AD ITSELF, verbatim — the letter's version of the target-job block.
+//
+// The extraction below is the right shape for the CV: a list of requirements to
+// order and cover. It is the wrong shape for a LETTER. An ad has a register —
+// "nebojí se computer science", "neexistuje žádný univerzální recept" — and a
+// letter that reads as written for THIS job is a letter that answered that
+// register. None of it survives extraction, which is why every letter read the
+// same: every letter was written from the same de-natured bullet list.
+//
+// `analysis.job_text` is written by netlify/functions/analyse-background.mjs.
+// Absent on older analyses and on standalone reviews; the caller then falls
+// back to targetJobBlock(), exactly as before.
+export function rawAdBlock(analysis) {
+  const raw = typeof analysis?.job_text === 'string' ? analysis.job_text.trim() : '';
+  if (!raw) return '';
+  const job = analysis?.job_extraction || {};
+  const head =
+    labelledValue('Position', job.position_title) +
+    labelledValue('Company', job.company) +
+    labelledValue('Location', job.location);
+
+  return `
+# The ad, exactly as the employer wrote it
+This is the job. Read it the way a person would — what they are building, what they say they need, and HOW they say it. The letter you write is the answer to THIS text, not to a generic vacancy of this title.${head}
+
+"""
+${raw}
+"""
+
+- It is the TARGET, never evidence about the candidate: nothing here is a fact about them until the master CV proves it.
+- Answer its register as well as its requirements. A warm, informal, first-person ad is answered in kind; a terse corporate one is answered plainly. Never borrow its phrasing to cover experience the record does not hold.
+`;
+}
+
 // The job the documents are being written FOR, as the ad itself stated it.
 export function targetJobBlock(analysis) {
   const job = analysis?.job_extraction;

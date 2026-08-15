@@ -153,3 +153,96 @@ law in `CLAUDE.md`.
 - **Check 24 — the letter's measured shape**, repaired before delivery, never
   reported to the user. Code measures flatness; it does not judge quality, and
   nothing in the rules claims it does.
+
+---
+
+## 2026-08-15 — the writer never saw the ad
+
+**Complaint:** three days of changes and every letter still read like a form
+letter, with no visible influence from the job ad, the steering or the voice
+profile.
+
+**How it was found:** by RUNNING it, which none of the preceding attempts had
+done. `scripts/test-generate.mjs` was stale — raw CV text, no master, no
+teaser, no voice profile, no steering — so it reproduced nothing. It was
+rebuilt to run the real path against the stored record and now prints a
+verification digest (source, voice profile, tweak verbatim, `cover_evidence`,
+red flags, the full validation object, per-call cost). Every finding below was
+read off its output.
+
+**What the first real run showed** (Nik's record, the Seznam.cz
+recommendation-systems ad, voice on, no steering):
+
+- The letter was **121 words** and `validation.ok` was `true` — the word band
+  is a CEILING only. A stub passes every check we have.
+- The analysis gathered **4** requirement pairs; the letter used **2**. Check
+  27 passed anyway: it fires only when ZERO are answered.
+- `"Data must drive the algorithm."` — a five-word orphan paragraph, produced
+  by the voice-rewrite fallback satisfying the shape rule literally.
+- The verify pass had deleted 3 spans and nothing rebuilt the argument.
+
+**The measurement that explained it.** The prompt was **51,721 characters**:
+master 10,317, voice description 4,708, the candidate's own writing 3,065, and
+**41,404 of instructions — ~33,000 of them byte-identical on every run for
+every user and every job**. The ad and the steering were a few hundred
+characters each, buried inside that. The candidate's material was a fifth of
+what the writer read. That is the sameness: not the model, not the plumbing,
+not the contract.
+
+**What was wrong with the input, not the rules.** The writer never saw the ad
+— only `job_extraction`, a labelled bullet list. The Seznam ad says *"nebojí se
+computer science"* and *"neexistuje žádný univerzální recept"*; a letter
+written for THAT ad answers its register, and none of it survives extraction.
+The evidence pairs had the same problem in reverse: flat strings like
+*"introduced big-data-driven user research methodologies and developer
+experience (API UX) frameworks"*, CV-speak with the story removed.
+
+**Changes, and what each actually did to the output:**
+
+- **The ad reaches the writer verbatim.** Letter went from 2 of 4 pairs to all
+  4, and the answers became specific: *"KPIs and testing strategies that prove
+  whether a recommendation model improves user retention"* against the ad's
+  *"navrhovat metriky"* and A/B testing.
+- **Evidence pairs relabelled as pointers into the master**, not sentences to
+  assemble.
+- **One argument, one only THIS candidate could make for THIS ad.**
+- **The voice-rewrite call deleted.** It was the orphan-paragraph source.
+- **A close rule** (first person, an ask). The next run moved the maxim to the
+  OPENING, so maxims are now barred at both ends — worth knowing before anyone
+  bans a shape in one position only.
+- **Czech vocative in the salutation.** *"Vážený pane Sládku,"* on a live run.
+  Check 20 had to change with it: `String.includes` reported every correctly
+  declined Czech salutation as generic, since *Nováku* is not *Novák*.
+
+**Models, measured rather than assumed:**
+
+| | writing | verify |
+|---|---|---|
+| was | 2.5-flash | 2.5-flash-lite |
+| now | **3.6-flash** | **3.5-flash-lite** |
+| effect | better letters, **a third of the cost** ($0.021 vs $0.063 a write); 3 corrections where 3.5-flash took 9 | on the CV: 7 specific corrections instead of **18 blanket "invented claim"** verdicts; duplicated bullets and de-bulleted lines gone; consultancy sub-roles correctly nested |
+
+3.5-flash and 3.6-flash were both tried on the letter. 3.6 is better AND
+cheaper; 3.5-flash's one sample produced a welded sentence and a close with no
+ask. `gemini-3.5-pro` and `gemini-3.6-pro` do not exist on the API (404).
+
+**Dead ends and traps recorded for the next person:**
+
+- A single sample per model proves nothing. The first 3.6 letter was WORSE
+  than 3.5's; the second was clearly better. Read at least two.
+- Banning a bad shape in one position moves it, it does not remove it (the
+  maxim went from close to opening in one run).
+- Post-processing was doing visible damage that no test covered: deletions ate
+  sentence terminators (*"...group of twelve Earlier, at Česká spořitelna"*),
+  left orphaned punctuation (*"...experience design, ."*), and the prompt
+  template's `<!-- BLOCK:START -->` scaffolding was reaching the page. All three
+  are now deterministic cleanups with red-on-old regression tests.
+
+**Still open after this entry:**
+
+- CV hard failures survive the retry and ship anyway (a stray `1`, skills the
+  master does not evidence, year-only dates against Layer 1).
+- `DOMAIN_TERMS` matches 6-character folded stems, so the ordinary Czech word
+  **produkt** collides with a domain label and the repair errors on every
+  Czech run.
+- Analysis is still on 3.5-flash and untested against 3.6.

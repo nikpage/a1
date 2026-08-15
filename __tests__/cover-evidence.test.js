@@ -18,6 +18,7 @@ import { describe, test, expect } from 'vitest';
 import { coverEvidenceBlock, salutationName } from '../prompts/cover-evidence.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
+import { coverRedFlagRule } from '../prompts/cv-rules.js';
 import { validateCoverLetter, coverBody, coverShapeFaults, coverBreadthFault } from '../utils/cv-validate.js';
 
 const MASTER = JSON.stringify({
@@ -60,18 +61,26 @@ describe('coverEvidenceBlock', () => {
   test('it decides nothing about the letter — no hook, no order, no close, and the writer is told so', () => {
     const block = coverEvidenceBlock(analysisWith(EVIDENCE));
     expect(block).toMatch(/Material, not a plan/);
-    expect(block).toMatch(/YOU decide what this letter argues/);
+    expect(block).toMatch(/Use what serves your argument/);
     expect(block).toMatch(/unranked and its order means nothing/);
     expect(block).not.toMatch(/Execute this/);
     expect(block).not.toMatch(/Open on:/);
     expect(block).not.toMatch(/Close by asking for/);
   });
 
-  test('the writer is told it may use fewer, and that one concern or none is the choice', () => {
+  // The one-concern rule is stated ONCE now, in coverRedFlagRule() — the block
+  // used to restate it and the prompt carried both. Deduplicating a rule is only
+  // safe if the surviving copy is pinned, so it is pinned here: the rule must be
+  // gone from the evidence block AND present in the rule that owns it.
+  test('the writer is told it may use fewer, and the one-concern rule lives in coverRedFlagRule', () => {
     const block = coverEvidenceBlock(analysisWith(EVIDENCE));
     expect(block).toMatch(/left unanswered/);
-    expect(block).toMatch(/at most ONE may be addressed/);
-    expect(block).toMatch(/Addressing none is a common, correct answer/);
+    expect(block).not.toMatch(/At most ONE concern may be addressed/);
+
+    const rule = coverRedFlagRule();
+    expect(rule).toMatch(/At most ONE concern is defused/);
+    expect(rule).toMatch(/contract clause C2 binds for every applicant/);
+    expect(rule).toMatch(/Where nothing in the record answers any of them, address none/);
   });
 
   test('the candidate’s steering is stated as outranking the evidence', () => {
@@ -146,8 +155,11 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
     expect(text).toContain('cover_evidence.concerns');
     expect(text).not.toContain('objection_to_defuse');
     expect(text).toMatch(/never address a second/i);
-    expect(text).toMatch(/NOT a list to answer/i);
     expect(text).toMatch(/addressing NONE is the common answer/i);
+    // Contract C2: the letter reads the analysis's OWN flag list too, so an
+    // empty curated list no longer means no flag is ever addressed.
+    expect(text).toMatch(/C2 binds for every applicant/);
+    expect(text).not.toMatch(/NOT a list to answer/i);
   });
 
   test('the opener rule bans the application-act and identity openings', () => {
@@ -220,7 +232,11 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
     expect(long.ok).toBe(false);
     expect(long.hard.join(' ')).toMatch(/300/);
 
-    const short = validateCoverLetter(letter(body(150)), { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    // Under the ceiling, with nothing else to fail: the fixture's concern and
+    // requirements are contract checks now, so they are removed here to leave
+    // the word band as the only thing under test.
+    const bare = analysisWith({ requirement_evidence: [], concerns: [] });
+    const short = validateCoverLetter(letter(body(150)), { master: MASTER, analysis: bare });
     expect(short.ok).toBe(true);
   });
 
@@ -229,16 +245,21 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
   // Only a letter that answers NONE of them is untailored to the ad.
   test('using fewer of the available requirements is a judgement, not a defect', () => {
     const text = letter('I coached the product managers at wflow.com and consolidated three platforms across two markets there.');
-    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
-    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    const { hard, warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(hard.join(' ')).not.toMatch(/answers none of/);
   });
 
-  test('a letter that answers none of the answerable requirements is reported', () => {
+  // CONTRACT C1 (check 27). This used to be a warning nobody acted on; it is now
+  // a hard failure that regenerates the letter, because a letter answering none
+  // of the requirements the record can answer has not done the one thing a cover
+  // letter exists to do.
+  test('a letter that answers none of the answerable requirements is a HARD failure', () => {
     // It names the employer, so the letter and the record demonstrably share a
-    // language — the warning means what it says.
+    // language — the verdict means what it says.
     const text = letter('I enjoy building things at wflow.com and would bring energy and curiosity to your organisation every day.');
-    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
-    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')?.params).toEqual({ available: 3 });
+    const { ok, hard } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(ok).toBe(false);
+    expect(hard.join(' ')).toMatch(/answers none of the 3 requirements/);
   });
 
   // THE REGRESSION. A real Czech ad answered by a real English letter reported
@@ -254,21 +275,21 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
       concerns: [],
     };
     const text = letter('I am a Certified Google Design Sprint Master and have facilitated design sprints for years, having coached four product managers at wflow.com.');
-    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(czechAd) });
-    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    const { hard, warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(czechAd) });
+    expect(hard.join(' ')).not.toMatch(/answers none of/);
   });
 
   test('a letter sharing no language with the record gets no verdict at all', () => {
     // Nothing matches and nothing can be matched — silence beats a guess.
     const text = letter('Vážený pane, dodával jsem projekty pro poradenské skupiny a řídil dodávku softwarových produktů.');
-    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
-    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    const { hard, warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(hard.join(' ')).not.toMatch(/answers none of/);
   });
 
   test('every requirement answered raises nothing', () => {
     const text = letter('Coached product managers at wflow.com, ran a multi-market consolidation of three platforms, and built product operations at Salsita.');
-    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
-    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    const { hard, warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    expect(hard.join(' ')).not.toMatch(/answers none of/);
   });
 
   // Steering used to suspend this check because a demoted pair looked like a
@@ -276,27 +297,50 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
   // takes tweak at all — a letter answering something still passes.
   test('steering does not change the verdict — the check reads the letter, not a plan', () => {
     const text = letter('I coached the product managers at wflow.com and consolidated three platforms across two markets there.');
-    const { warnings } = validateCoverLetter(text, {
+    const { hard, warnings } = validateCoverLetter(text, {
       master: MASTER,
       analysis: analysisWith(EVIDENCE),
       tweak: 'Play down, condense or place late: wflow.com',
     });
-    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    expect(hard.join(' ')).not.toMatch(/answers none of/);
   });
 
   test('a named contact left as "Dear Hiring Manager" is reported', () => {
     const text = letter('Short body.', 'Dear Hiring Manager,');
-    const { warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    const { hard, warnings } = validateCoverLetter(text, { master: MASTER, analysis: analysisWith(EVIDENCE) });
     expect(warnings.find((w) => w.code === 'coverSalutation')?.params).toEqual({ name: 'Deborah' });
   });
 
   test('addressing the named contact raises nothing', () => {
-    const { warnings } = validateCoverLetter(letter('Short body.'), { master: MASTER, analysis: analysisWith(EVIDENCE) });
+    const { hard, warnings } = validateCoverLetter(letter('Short body.'), { master: MASTER, analysis: analysisWith(EVIDENCE) });
     expect(warnings.find((w) => w.code === 'coverSalutation')).toBeFalsy();
   });
 
+  // A Czech salutation puts the name in the VOCATIVE, which is the correct form
+  // and not a substring of the nominative the ad printed ("Petr" → "Petře").
+  // Red on the old code, which matched with String.includes and warned that a
+  // properly addressed letter had ignored its contact.
+  test('a Czech vocative salutation counts as addressing the contact', () => {
+    const withContact = (hr) => ({ ...analysisWith(EVIDENCE), job_extraction: { hr_contact: hr } });
+    const cz = (line) => letter('Krátké tělo dopisu.', line);
+
+    expect(validateCoverLetter(cz('Vážený pane Nováku,'), { master: MASTER, analysis: withContact('Petr Novák') })
+      .warnings.find((w) => w.code === 'coverSalutation')).toBeFalsy();
+    expect(validateCoverLetter(cz('Vážený pane Petře,'), { master: MASTER, analysis: withContact('Petr') })
+      .warnings.find((w) => w.code === 'coverSalutation')).toBeFalsy();
+    expect(validateCoverLetter(cz('Vážená paní Nováková,'), { master: MASTER, analysis: withContact('Jana Nováková') })
+      .warnings.find((w) => w.code === 'coverSalutation')).toBeFalsy();
+
+    // Still catches the real defect: a named contact addressed generically.
+    expect(validateCoverLetter(cz('Vážená paní, vážený pane,'), { master: MASTER, analysis: withContact('Petr Novák') })
+      .warnings.find((w) => w.code === 'coverSalutation')?.params).toEqual({ name: 'Petr Novák' });
+    // And a different name entirely is not accepted as this contact.
+    expect(validateCoverLetter(cz('Vážený pane Dvořáku,'), { master: MASTER, analysis: withContact('Petr Novák') })
+      .warnings.find((w) => w.code === 'coverSalutation')?.params).toEqual({ name: 'Petr Novák' });
+  });
+
   test('numbers the record does not hold are reported', () => {
-    const { warnings } = validateCoverLetter(letter('I cut costs by 47 percent across 3 platforms.'), {
+    const { hard, warnings } = validateCoverLetter(letter('I cut costs by 47 percent across 3 platforms.'), {
       master: MASTER,
       analysis: analysisWith(EVIDENCE),
     });
@@ -321,9 +365,9 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
   });
 
   test('a check whose evidence is missing reports nothing rather than guessing', () => {
-    const { ok, warnings } = validateCoverLetter(letter('Short body.'), { master: '', analysis: null });
+    const { ok, hard, warnings } = validateCoverLetter(letter('Short body.'), { master: '', analysis: null });
     expect(ok).toBe(true);
-    expect(warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    expect(hard.join(' ')).not.toMatch(/answers none of/);
     expect(warnings.find((w) => w.code === 'coverNumber')).toBeFalsy();
   });
 });

@@ -156,10 +156,13 @@ describe('steering is in scope when the letter is composed', () => {
     const text = buildCoverPrompt(MASTER, analysis(), 'formal', steering).map((m) => m.content).join('\n');
     expect(text).toMatch(/HIGHEST PRIORITY/);
     expect(text).toMatch(/Demoted content is not evidence/);
-    expect(text).toMatch(/leave that requirement UNANSWERED/);
-    expect(text).toMatch(/Emphasised content leads/);
+    expect(text).toMatch(/leave that requirement unanswered/);
+    // The RULES for steering are contract clause C4, stated once at the top.
+    expect(text).toMatch(/C4 — Obey the candidate's steering/);
+    expect(text).toMatch(/is in the FIRST paragraph/);
+    expect(text).toMatch(/is NOT in the first paragraph at all/);
     // And it still cannot buy the emphasis with an invented fact.
-    expect(text).toMatch(/NEVER invent a fact/);
+    expect(text).toMatch(/steering never adds a fact/);
     // There is no plan left for it to outrank.
     expect(text).not.toMatch(/outrank the plan/);
   });
@@ -191,9 +194,9 @@ describe('steering is in scope when the letter is composed', () => {
     // reads the letter rather than a plan, so the verdict is the same either way.
     const text = letter('Vedl jsem účet eBay a řídil dodávku softwarových produktů v Salsita Software ze Zlína.');
     const steered = validateCoverLetter(text, { master: MASTER, analysis: analysis(), tweak: steering });
-    expect(steered.warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    expect(steered.hard.join(' ')).not.toMatch(/answers none of/);
 
     const unsteered = validateCoverLetter(text, { master: MASTER, analysis: analysis() });
-    expect(unsteered.warnings.find((w) => w.code === 'coverRequirementsUnanswered')).toBeFalsy();
+    expect(unsteered.hard.join(' ')).not.toMatch(/answers none of/);
   });
 });

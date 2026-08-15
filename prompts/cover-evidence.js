@@ -70,11 +70,34 @@ export function salutationName(analysis) {
   return parts.join(' ');
 }
 
+// The analysis's OWN red flags, in full (CV_RULES.md, Layer 4: "The letter reads
+// the flag list itself"). The paired concerns above are a curated subset, and
+// when that subset comes back empty no flag is ever addressed for that applicant
+// — which turns the contract's C2 into a rule that fires only when some earlier
+// step happened to permit it. So the raw list is shown too, and the writer
+// applies the qualifying test itself.
+function redFlagLines(flags) {
+  if (!Array.isArray(flags)) return '';
+  const rendered = flags
+    .map((f) => (typeof f === 'string' ? f : f?.flag))
+    .map((f) => (typeof f === 'string' ? f.trim() : ''))
+    .filter(Boolean)
+    .map((f) => `- ${f}`);
+  return rendered.length
+    ? `\n## Everything a recruiter may hold against this application\n${rendered.join('\n')}\nNo answer has been paired with these — that is your judgement to make against the record. Address one of them ONLY where the master holds a fact that settles it, and leave alone anything the letter cannot improve (age, salary, a bare seniority mismatch): naming those raises an objection the reader had not.`
+    : '';
+}
+
 export function coverEvidenceBlock(analysis) {
   const ev = analysis?.generation_framework?.cover_evidence;
-  if (!ev || typeof ev !== 'object') return '';
+  const flagBlock = redFlagLines(analysis?.analysis?.red_flags);
+  if (!ev || typeof ev !== 'object') {
+    // No gathered evidence, but the flags still reach the letter: C2 binds for
+    // every applicant, not only those an upstream pass prepared material for.
+    return flagBlock ? `\n# Concerns this letter may settle\n${flagBlock}\n` : '';
+  }
 
-  const body = requirementLines(ev.requirement_evidence) + concernLines(ev.concerns);
+  const body = requirementLines(ev.requirement_evidence) + concernLines(ev.concerns) + flagBlock;
   if (!body.trim()) return '';
 
   return `
@@ -83,11 +106,8 @@ Material, not a plan. Everything else in the analysis was gathered for the CV; t
 ${body}
 
 ## How to use it
-- YOU decide what this letter argues: which of these the letter uses, which it leaves out, what it opens on, the order it proves things in, and what it asks for at the close. This list is unranked and its order means nothing.
-- Use the ones that serve the argument. A requirement that does not fit the letter you are writing is left unanswered — better than a letter that walks a list.
-- Prove what you use IN THE PROSE, pairing the requirement to the evidence. Never list them, never devote a paragraph to each.
-- The concerns are optional and at most ONE may be addressed, in one clause inside the body. Addressing none is a common, correct answer; a concern not listed here is never raised, because the record cannot answer it.
+- These are POINTERS INTO THE RECORD, not sentences. Each names a real achievement in one flat line with the story stripped out; the master CV above holds the actual entry, with the scope, the numbers and what changed. Write from the master entry, not from this line — a letter assembled out of these summaries is the flat letter this block exists to prevent.
+- The list is unranked and its order means nothing. Use what serves your argument, leave the rest; a requirement that does not fit the letter you are writing is left unanswered.
 - The candidate's own instructions outrank every line of this: evidence they asked you to play down is not evidence here either, however well it answers a requirement.
-- All of it still bows to the invariants: if the master does not evidence it, it does not go in the letter, however this block phrases it.
 `;
 }
