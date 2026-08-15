@@ -123,7 +123,7 @@ describe('existing key rules survive the date insertion (guard against accidenta
     const sys = delta.find((m) => m.role === 'system').content;
     expect(sys).toContain('REFRAME vs ADD');
     expect(sys).toContain('never INSERT experience it does not');
-    expect(sys).toContain("CANDIDATE'S OWN ANSWER");
+    expect(sys).toContain('NESTED ENGAGEMENTS');
     expect(sys).toMatch(/WRITING QUALITY \(non-negotiable\)/);
     expect(sys).toMatch(/LANGUAGE & FACTS/);
 

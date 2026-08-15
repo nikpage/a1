@@ -19,10 +19,6 @@
 // already-nested record a second time.
 //
 // Invariants enforced here:
-//   - A clarification is stored OUTSIDE work_experience. The role objects are
-//     what the extraction wrote; a user's answer sitting inside one would be
-//     read as record content by every consumer, and a sentence about why a job
-//     ended would reach the CV as though it were a bullet.
 //   - Unknown / out-of-range targets throw, so a bad flag can't silently corrupt
 //     the record.
 
@@ -99,36 +95,8 @@ export function applySingleFix(master, target, value) {
   throw new Error(`applySingleFix: unsupported section "${section}"`);
 }
 
-// Apply a CLARIFICATION: store the user's answer about ONE role (why a short
-// tenure ended, what a gap was) in the top-level `clarifications` array. It adds
-// context for the generator; it deletes and overwrites nothing in the record
-// itself. Answering the same role twice replaces the earlier answer.
-export function applyClarification(master, { index, note }) {
-  if (!master || typeof master !== 'object') {
-    throw new Error('applyClarification: master is required');
-  }
-  if (typeof note !== 'string' || note.trim() === '') {
-    throw new Error('applyClarification: a note is required');
-  }
-  const next = clone(master);
-  const flat = roles(next);
-  if (typeof index !== 'number' || index < 0 || index >= flat.length) {
-    throw new Error(`applyClarification: experience index ${index} out of range`);
-  }
-  const role = flat[index];
-  const existing = Array.isArray(next.clarifications) ? next.clarifications : [];
-  // The company and dates ride along so the note survives a rebuild: the index
-  // is only meaningful against the record it was answered on.
-  next.clarifications = [
-    ...existing.filter((c) => c?.index !== index),
-    { index, company: role.company, title: role.role, dates: role.dates, note: note.trim() },
-  ];
-  return next;
-}
-
 // Orchestrator the API route calls. Returns the NEW master.
 //   resolution.decision: 'accept' | 'edit' | 'reject'  (single)
-//                       | any non-reject               (clarify)
 export function resolveFlag(master, flag, resolution) {
   if (!flag || typeof flag !== 'object') throw new Error('resolveFlag: flag required');
   if (!resolution || typeof resolution !== 'object') throw new Error('resolveFlag: resolution required');
@@ -142,19 +110,6 @@ export function resolveFlag(master, flag, resolution) {
       throw new Error('resolveFlag: a value is required to accept/edit a single fix');
     }
     return applySingleFix(master, flag.target, value);
-  }
-
-  if (flag.type === 'clarify') {
-    if (decision === 'reject') return clone(master); // user skips the question; no change
-    const note = resolution.value;
-    if (typeof note !== 'string' || note.trim() === '') {
-      throw new Error('resolveFlag: an answer is required to clarify');
-    }
-    const index = flag.target?.index;
-    if (typeof index !== 'number') {
-      throw new Error('resolveFlag: clarify flag is missing target.index');
-    }
-    return applyClarification(master, { index, note });
   }
 
   throw new Error(`resolveFlag: unknown flag type "${flag.type}"`);

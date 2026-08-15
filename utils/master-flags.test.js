@@ -5,7 +5,7 @@
 // test is pure.
 
 import { describe, it, expect } from 'vitest';
-import { applySingleFix, applyClarification, resolveFlag } from './master-flags.js';
+import { applySingleFix, resolveFlag } from './master-flags.js';
 
 const role = (company, title, start_date, end_date, location = 'Prague, CZ', engagements = []) => ({
   company, title, start_date, end_date, location,
@@ -38,51 +38,6 @@ function nestedMaster() {
     ],
   };
 }
-
-describe('applyClarification', () => {
-  it('records the answer against the targeted role', () => {
-    const after = applyClarification(sampleMaster(), { index: 0, note: 'Contract ended' });
-    expect(after.clarifications).toHaveLength(1);
-    expect(after.clarifications[0]).toMatchObject({ index: 0, company: 'Salsita', note: 'Contract ended' });
-  });
-
-  // The role objects are what the extraction wrote. A user's sentence about why
-  // a job ended, stored inside one, is read as record content by every consumer
-  // downstream — and lands on the CV as a bullet.
-  it('never writes the answer into work_experience', () => {
-    const after = applyClarification(sampleMaster(), { index: 0, note: 'Contract ended' });
-    expect(JSON.stringify(after.work_experience)).not.toContain('Contract ended');
-    expect(after.work_experience[0].bullets).toEqual(['Worked at Salsita']);
-  });
-
-  it('does not mutate the input master', () => {
-    const before = sampleMaster();
-    applyClarification(before, { index: 0, note: 'Contract ended' });
-    expect(before.clarifications).toBeUndefined();
-  });
-
-  it('answering the same role twice replaces the earlier answer', () => {
-    const once = applyClarification(sampleMaster(), { index: 0, note: 'First answer' });
-    const twice = applyClarification(once, { index: 0, note: 'Actually, redundancy' });
-    expect(twice.clarifications).toHaveLength(1);
-    expect(twice.clarifications[0].note).toBe('Actually, redundancy');
-  });
-
-  // The index comes from roles(), which walks umbrella-then-engagements. An
-  // answer landing on the wrong company is worse than no answer.
-  it('resolves an index that points at a nested engagement', () => {
-    const after = applyClarification(nestedMaster(), { index: 1, note: 'A client project' });
-    expect(after.clarifications[0].company).toBe('ShortCo');
-  });
-
-  it('throws on an out-of-range index rather than silently doing nothing', () => {
-    expect(() => applyClarification(sampleMaster(), { index: 9, note: 'x' })).toThrow(/out of range/);
-  });
-
-  it('throws on an empty note', () => {
-    expect(() => applyClarification(sampleMaster(), { index: 0, note: '   ' })).toThrow(/note is required/);
-  });
-});
 
 describe('applySingleFix', () => {
   it('sets exactly the targeted field and nothing else', () => {
@@ -151,20 +106,6 @@ describe('resolveFlag', () => {
     expect(after).toEqual(before);
   });
 
-  it('stores a clarify answer against the flagged role', () => {
-    const flag = { type: 'clarify', kind: 'short_tenure', target: { section: 'experience', index: 0 } };
-    const after = resolveFlag(sampleMaster(), flag, { decision: 'option', value: 'Contract / fixed-term role ended' });
-    expect(after.clarifications[0]).toMatchObject({ index: 0, note: 'Contract / fixed-term role ended' });
-  });
-
-  it('rejects a clarify with no answer', () => {
-    const flag = { type: 'clarify', target: { section: 'experience', index: 0 } };
-    expect(() => resolveFlag(sampleMaster(), flag, { decision: 'option', value: '' })).toThrow(/answer is required/);
-  });
-
-  // The structural merge is gone: the extraction nests a client engagement under
-  // its consultancy itself, so a merge on top of that would fold an already
-  // nested record a second time.
   it('refuses a structural flag rather than silently doing nothing', () => {
     const flag = { type: 'structural', target: { section: 'experience', index: 0 } };
     expect(() => resolveFlag(sampleMaster(), flag, { decision: 'merge' })).toThrow(/unknown flag type/);

@@ -3,7 +3,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
 import crypto from 'crypto';
-import { masterForPrompt } from './master-read.js';
 
 let _supabase;
 function getSupabase() {
@@ -96,9 +95,7 @@ export async function getGenerationSource(user_id) {
   } catch (masterErr) {
     logger.error('Master CV fetch error:', masterErr.message);
   }
-  // Serialised through masterForPrompt so the user's own clarifications sit on
-  // the roles they answered about — where prompts/cv-generator.js reads them.
-  return master ? JSON.stringify(masterForPrompt(master)) : (cvRecord?.cv_data || null);
+  return master ? JSON.stringify(master) : (cvRecord?.cv_data || null);
 }
 
 // Persist the per-user MASTER CV (service-role write). Stored as JSONB.
@@ -124,21 +121,17 @@ export async function getGenerationSource(user_id) {
 export async function saveMasterCv(user_id, master) {
   const statesGuide =
     master && typeof master === 'object' && Object.prototype.hasOwnProperty.call(master, 'voice_guide');
-  const statesClarifications =
-    master && typeof master === 'object' && Object.prototype.hasOwnProperty.call(master, 'clarifications');
   // The read is best-effort: losing the guide is bad, losing a paid master build
   // because a read failed is worse, so a failure here never blocks the write.
-  // Both fields are the USER'S own writing and no extraction emits them, so a
-  // rebuild from a fresh CV upload would silently delete them.
-  if (master && typeof master === 'object' && (!statesGuide || !statesClarifications)) {
+  // voice_guide is the USER'S own writing and no extraction emits it, so a
+  // rebuild from a fresh CV upload would silently delete it.
+  if (master && typeof master === 'object' && !statesGuide) {
     try {
       const stored = await getMasterCv(user_id);
       const kept = String(stored?.voice_guide || '').trim();
-      if (!statesGuide && kept) master = { ...master, voice_guide: kept };
-      const notes = Array.isArray(stored?.clarifications) ? stored.clarifications : [];
-      if (!statesClarifications && notes.length) master = { ...master, clarifications: notes };
+      if (kept) master = { ...master, voice_guide: kept };
     } catch (e) {
-      logger.error('saveMasterCv: could not read stored voice_guide/clarifications:', e.message);
+      logger.error('saveMasterCv: could not read stored voice_guide:', e.message);
     }
   }
   const { data, error } = await getAdminSupabase()

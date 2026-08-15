@@ -11,10 +11,10 @@
 // (voice_samples, achievements). The user is authoritative over their own facts.
 
 import requireAuth from '../../lib/requireAuth';
-import { getMasterCv, saveMasterCv, getLatestAnalysis } from '../../utils/database';
+import { getMasterCv, saveMasterCv } from '../../utils/database';
 import { resolveFlag } from '../../utils/master-flags';
 import { applyOverlapAnswer } from '../../utils/master-schema';
-import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
+import { computeMasterIssues } from '../../utils/master-issues';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -24,7 +24,7 @@ async function handler(req, res) {
   const { user_id } = req.user;
   const { flag, decision, value } = req.body || {};
 
-  const VALID_TYPES = new Set(['single', 'structural', 'clarify', 'overlap']);
+  const VALID_TYPES = new Set(['single', 'structural', 'overlap']);
   if (!flag || typeof flag !== 'object' || !VALID_TYPES.has(flag.type)) {
     return res.status(400).json({ error: 'A valid flag { type } is required' });
   }
@@ -63,22 +63,9 @@ async function handler(req, res) {
   }
 
   // Recompute the open questions against the UPDATED master — no extra DB write,
-  // no AI call, the updated master is already in memory. This is what makes the
-  // question list hierarchical: answering a structural overlap can remove the
-  // short-tenure/gap questions it was suppressing or that it made moot.
-  //
-  // The analysis load is best-effort only — its sole purpose is to attach
-  // context/suggestion text to the recomputed flags. A failure here must never
-  // break the resolve itself, so it degrades to context-free flags.
-  let analysisContent = null;
-  try {
-    const data = await getLatestAnalysis(user_id);
-    analysisContent = parseAnalysisContent(data?.content);
-  } catch {
-    analysisContent = null;
-  }
-
-  const flags = computeMasterIssues(updated, { analysis: analysisContent });
+  // no AI call, the updated master is already in memory. Answering an overlap
+  // restructures the record, so the remaining questions are re-read from it.
+  const flags = computeMasterIssues(updated);
 
   return res.status(200).json({ ok: true, master: updated, flags });
 }

@@ -6,8 +6,8 @@
 // Resolving a flag EDITS the canonical master via POST /api/resolve-flag.
 //
 //   - single flag  : the AI's proposed fix → Accept / Edit / Reject
-//   - clarify flag : a recruiter red flag only the candidate can explain → quick
-//                    options or free text
+//   - overlap flag : client work under the person's own practice, or a separate
+//                    job? Two options; the answer restructures the record.
 // The structural (grouping) question is gone: the extraction nests a client
 // engagement under its consultancy itself, so there is nothing left to ask.
 //
@@ -37,16 +37,10 @@ const OPEN_QUESTION_CAP = 4;
 //                  reorders experience[]), which is what makes a sequential bulk
 //                  "accept all" safe.
 
-//   - clarify    : utils/master-issues matched the analysis text to one of the
-//                  deterministic reason options verbatim and set flag.suggestion
-//                  to that option string.
-// clarify flags with NO matched suggestion still need the user's own knowledge
-// and are never auto-applied.
+// An overlap flag never carries one: only the person knows whether that work was
+// delivered under their practice, so it is never auto-applied.
 function hasSuggestion(flag) {
   if (flag.type === 'single') return !!(flag.proposed_value && flag.proposed_value.trim());
-  if (flag.type === 'clarify') {
-    return !!(flag.suggestion && String(flag.suggestion).trim());
-  }
   return false;
 }
 
@@ -55,7 +49,6 @@ function hasSuggestion(flag) {
 // button in FlagCard sends.
 function suggestionResolution(flag) {
   if (flag.type === 'single') return { decision: 'accept' };
-  if (flag.type === 'clarify') return { decision: 'option', value: flag.suggestion };
   return null;
 }
 
@@ -164,44 +157,6 @@ function FlagCard({ flag, onResolved }) {
           ))}
         </div>
       )}
-
-      {flag.type === 'clarify' && (
-        <div className="mt-3">
-          {Array.isArray(flag.options) && flag.options.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {flag.options.map((opt) => (
-                <button
-                  key={opt}
-                  disabled={busy}
-                  onClick={() => send('option', opt)}
-                  className="px-3 py-1.5 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="mt-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              placeholder="Or type your own answer"
-            />
-            <div className="mt-2 flex gap-2">
-              <button disabled={busy || !draft.trim()} onClick={() => send('option', draft.trim())}
-                className="px-3 py-1.5 text-sm rounded bg-green-600 text-white disabled:opacity-50">
-                Save
-              </button>
-              <button disabled={busy} onClick={() => send('reject')}
-                className="px-3 py-1.5 text-sm rounded border border-gray-300 bg-white text-gray-600 disabled:opacity-50">
-                Skip
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>

@@ -2,7 +2,7 @@
 import { roles } from '../../utils/master-read';
 import { logger } from '../../lib/logger';
 import { getLatestAnalysis, getMasterCv, getVoiceProfile } from '../../utils/database';
-import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
+import { computeMasterIssues } from '../../utils/master-issues';
 import requireAuth from '../../lib/requireAuth';
 
 async function handler(req, res) {
@@ -47,7 +47,7 @@ async function handler(req, res) {
       // background function always JSON.stringify()s before insert), but handled
       // defensively either way. Feeding it in lets issues carry the teaser's own
       // sentences about the same overlap/gap as `context`/`suggestion` (TASK 2).
-      if (master) flags = computeMasterIssues(master, { analysis: parseAnalysisContent(data.content) });
+      if (master) flags = computeMasterIssues(master);
     } catch (e) {
       logger.error('get-analysis: master load failed:', e.message);
     }

@@ -13,9 +13,9 @@
 // paying for two augment calls.
 
 import requireAuth from '../../lib/requireAuth';
-import { getCV, getMasterCv, saveMasterCv, getLatestAnalysis, logAiTransaction } from '../../utils/database';
+import { getCV, getMasterCv, saveMasterCv, logAiTransaction } from '../../utils/database';
 import { augmentMaster, buildOrMergeMaster } from '../../utils/openai';
-import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
+import { computeMasterIssues } from '../../utils/master-issues';
 import { logger } from '../../lib/logger';
 import { Redis } from '@upstash/redis';
 
@@ -119,17 +119,9 @@ async function handler(req, res) {
     }
 
     // Recompute the open questions against the UPDATED master, exactly as
-    // resolve-flag does — new information can settle an existing question (a gap
-    // just filled) or raise one (a new role overlapping an old one). The analysis
-    // load is best-effort: it only attaches context text to the flags.
-    let analysisContent = null;
-    try {
-      const data = await getLatestAnalysis(user_id);
-      analysisContent = parseAnalysisContent(data?.content);
-    } catch {
-      analysisContent = null;
-    }
-    const flags = computeMasterIssues(result.output, { analysis: analysisContent });
+    // resolve-flag does — added information can settle an existing question or
+    // raise one (a new role overlapping the person's own practice).
+    const flags = computeMasterIssues(result.output);
 
     return res.status(200).json({
       ok: true,

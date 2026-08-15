@@ -18,9 +18,9 @@
 // answering something by hand can clear the question that asked about it.
 
 import requireAuth from '../../lib/requireAuth';
-import { getMasterCv, saveMasterCv, getLatestAnalysis } from '../../utils/database';
+import { getMasterCv, saveMasterCv } from '../../utils/database';
 import { normaliseMaster } from '../../utils/master-schema';
-import { computeMasterIssues, parseAnalysisContent } from '../../utils/master-issues';
+import { computeMasterIssues } from '../../utils/master-issues';
 import { logger } from '../../lib/logger';
 
 async function handler(req, res) {
@@ -66,15 +66,7 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'Could not save your record' });
   }
 
-  let analysisContent = null;
-  try {
-    const data = await getLatestAnalysis(user_id);
-    analysisContent = parseAnalysisContent(data?.content);
-  } catch {
-    analysisContent = null;
-  }
-
-  const flags = computeMasterIssues(updated, { analysis: analysisContent });
+  const flags = computeMasterIssues(updated);
 
   return res.status(200).json({ ok: true, master: updated, flags });
 }

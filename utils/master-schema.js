@@ -19,10 +19,10 @@
 // what was submitted.
 const PRESERVED_STRINGS = ['voice_guide'];
 
-// The user's own answers about their timeline (why a short role ended, what a
-// gap was), written through the flag fixer. The editor renders no field for
-// them, so an editor save must never be able to change or delete them.
-const PRESERVED = ['clarifications'];
+// Array fields the editor may not touch. Empty since the timeline
+// clarifications were removed — kept because PRESERVED_STRINGS' counterpart for
+// arrays is the shape the loop below expects.
+const PRESERVED = [];
 
 // Scalars coerce; an object or array does NOT. `String({})` is "[object Object]",
 // which is truthy, survives every filter, and silently replaces real content with

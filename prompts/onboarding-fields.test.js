@@ -42,29 +42,29 @@ const TEASER = {
   final_thought: 'Score 7.',
 };
 
-describe('buildAnalysisPrompt — clarifications are candidate-authoritative', () => {
-  test('delta (teaser-fed) pass instructs the model to treat clarification/merge_note as authoritative and not re-flag explained gaps', () => {
+// The clarification rule is GONE from the analysis prompt: the questions that
+// produced a clarification (why a short role ended, what a gap was) were removed
+// because no output ever read the answer. What survives is the nesting rule.
+describe('buildAnalysisPrompt — nested engagements are not job-hopping', () => {
+  test('delta (teaser-fed) pass states the nesting rule and carries no clarification rule', () => {
     const p = buildAnalysisPrompt(MASTER_JSON, SAMPLE_JOB, true, TEASER)
       .find((m) => m.role === 'system').content;
-    expect(p).toMatch(/clarification/);
-    expect(p).toMatch(/merge_note/);
-    expect(p).toMatch(/CANDIDATE'S OWN ANSWER/);
-    expect(p).toMatch(/do NOT report it as an open red flag/i);
     expect(p).toMatch(/contracts\[\]/);
     expect(p).toMatch(/never count the nested children as job-hopping/i);
+    expect(p).not.toMatch(/CANDIDATE'S OWN ANSWER/);
+    expect(p).not.toMatch(/carries a clarification/i);
   });
 
   test('standalone (no-teaser) path carries the same governing instruction (system message is shared)', () => {
     const p = buildAnalysisPrompt(MASTER_JSON, SAMPLE_JOB, true, null)
       .find((m) => m.role === 'system').content;
-    expect(p).toMatch(/clarification/);
     expect(p).toMatch(/contracts\[\]/);
   });
 
-  test('never-fabricate rule still binds for clarifications (regression guard)', () => {
+  test('never-fabricate rule still binds (regression guard)', () => {
     const p = buildAnalysisPrompt(MASTER_JSON, SAMPLE_JOB, true, TEASER)
       .find((m) => m.role === 'system').content;
-    expect(p).toMatch(/never licenses inventing a new one/i);
+    expect(p).toMatch(/never a licence to invent one/i);
   });
 
   test('existing REFRAME vs ADD rule is still present (guard against accidental deletion)', () => {
@@ -88,18 +88,19 @@ describe('buildAnalysisPrompt — clarifications are candidate-authoritative', (
   });
 });
 
-describe('buildCvPrompt — clarifications steer selection/framing, never print; contracts render nested', () => {
+describe('buildCvPrompt — contracts render nested', () => {
   const analysis = {
     analysis: { scenario_tags: [], red_flags: ['8-month gap 2021'], ats_keywords_present: '', ats_keywords_missing: '' },
     job_match: { positioning_strategy: '' },
     generation_framework: { cv_blueprint: {} },
   };
 
-  test('instructs the writer to use clarification/merge_note for selection only, never to print them', () => {
+  // The clarification rule is gone with the questions that fed it: nothing
+  // writes a `clarification` onto the record any more.
+  test('carries no clarification rule', () => {
     const p = buildCvPrompt(MASTER_JSON, analysis, 'professional').find((m) => m.role === 'user').content;
-    expect(p).toMatch(/clarification/);
-    expect(p).toMatch(/merge_note/);
-    expect(p).toMatch(/NEVER print the clarification or merge_note text itself/);
+    expect(p).not.toMatch(/NEVER print the clarification/);
+    expect(p).not.toMatch(/Clarifications steer selection/);
   });
 
   test('instructs a merged parent to render as one role with contracts nested beneath, not separate top-level jobs', () => {
@@ -119,7 +120,7 @@ describe('buildCvPrompt — clarifications steer selection/framing, never print;
   });
 });
 
-describe('buildCoverPrompt — clarifications defuse in one clause; length budget enforced', () => {
+describe('buildCoverPrompt — length budget enforced', () => {
   const analysisWithTarget = {
     analysis: { red_flags: ['8-month gap 2021'] },
     job_match: {},

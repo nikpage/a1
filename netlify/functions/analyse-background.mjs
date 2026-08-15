@@ -18,7 +18,6 @@ import { analyzeTeaser, analyzeCvJob, buildOrMergeMaster } from '../../utils/ope
 import { withOlderApplicant } from '../../prompts/scenarios.js';
 import { saveGeneratedDoc, logAiTransaction, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
 import { formatLayoutForPrompt } from '../../utils/cvLayout.js';
-import { masterForPrompt } from '../../utils/master-read.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
 
@@ -181,9 +180,7 @@ export const handler = async (event) => {
     // caught survives into the deep record instead of being recomputed away.
     const layoutNote = formatLayoutForPrompt(layout);
     const teaserCv = cv_data;
-    // masterForPrompt attaches the user's own clarifications onto the roles they
-    // answered about, which is where prompts/analysis.js looks for them.
-    const deepCv = master ? JSON.stringify(masterForPrompt(master)) : cv_data;
+    const deepCv = master ? JSON.stringify(master) : cv_data;
 
     // Teaser first: the cheap, high-impact read shown on the landing page. It is
     // also the SEED the deeper pass builds on — it now carries analysis.scenario_tags.
