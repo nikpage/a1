@@ -13,7 +13,7 @@ import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts
 import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
 import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
 import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
-import { buildMasterCvPrompt, buildMasterVerifyPrompt, buildMasterAugmentPrompt } from '../prompts/master-cv.js';
+import { buildMasterCvPrompt } from '../prompts/master-cv.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
@@ -48,7 +48,7 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat
 // Keeping the per-use heavy calls (analysis, generation) on flash also pulls
 // them off the overloaded flash-lite pool.
 const GEMINI_EXTRACTION_MODEL  = 'gemini-2.5-flash-lite'; // job-ad parsing, verifiable against the ad
-const GEMINI_MASTER_MODEL      = 'gemini-2.5-flash-lite'; // master build/merge — once per user, backstopped by verify
+const GEMINI_MASTER_MODEL      = 'gemini-3.5-flash-lite'; // master build — pure extraction, once per user
 const GEMINI_VERIFY_MODEL      = 'gemini-3.5-flash-lite'; // master verify — a checker, low creativity
 const GEMINI_ANALYSIS_MODEL    = 'gemini-3.5-flash';      // strategic brain that drives every downstream doc
 // Exported so tests can count writing calls without a second copy of the model
@@ -479,27 +479,6 @@ function groundAtomicFactsPerRole(master, sourceText) {
   return master;
 }
 
-// Targeted verify pass — see buildMasterVerifyPrompt. Mutates+returns the master
-// with corrections applied; returns the verify call's usage (null if it failed,
-// which is non-fatal — the unverified master is still usable).
-export async function verifyMaster(master, sourceText, trustedMaster = null) {
-  try {
-    pruneVoiceSamples(master, sourceText, trustedMaster);
-    // Deterministic per-role grounding runs FIRST and is authoritative; the AI
-    // pass below is only a secondary net over the prose it can't ground.
-    groundAtomicFactsPerRole(master, sourceText);
-    const messages = buildMasterVerifyPrompt({ master, sourceText, trustedMaster });
-    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
-    const gemini_usage = geminiUsage('master-cv verify', data, GEMINI_VERIFY_MODEL);
-    const corr = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
-    applyVerifyCorrections(master, corr);
-    trackDailySpend(gemini_usage.costUsd);
-    return { master, gemini_usage };
-  } catch (e) {
-    logger.error('master-cv verify failed (using unverified master):', e.message);
-    return { master, gemini_usage: null };
-  }
-}
 
 // Build (or merge into) the per-user MASTER CV — the persisted source-of-truth.
 //   buildOrMergeMaster(rawInput)                  → fresh build from raw/unstructured input
@@ -507,9 +486,9 @@ export async function verifyMaster(master, sourceText, trustedMaster = null) {
 // Every build/merge is followed by a targeted verify pass (runs each time the CV
 // is updated). Returns { output, usage, gemini_usage (build/merge call),
 // usages: [build/merge, verify] for cost logging }.
-export async function buildOrMergeMaster(rawInput, existingMaster = null, overrides = []) {
-  const mode = existingMaster ? 'merge' : 'build';
-  const messages = buildMasterCvPrompt({ mode, rawInput, existingMaster, overrides });
+export async function buildOrMergeMaster(rawInput) {
+  const mode = 'build';
+  const messages = buildMasterCvPrompt({ rawInput });
 
   // callGemini retries HTTP failures, but a 200 carrying malformed/truncated JSON
   // slips past it and parseJsonLoose throws — dropping a paid build to a null
@@ -537,69 +516,20 @@ export async function buildOrMergeMaster(rawInput, existingMaster = null, overri
   if (parseErr) throw new Error('Master CV build returned invalid JSON');
 
   const gemini_usage = attemptUsages[attemptUsages.length - 1];
-  const { gemini_usage: verifyUsage } = await verifyMaster(output, rawInput, existingMaster);
-
-  const usages = [...attemptUsages, verifyUsage].filter(Boolean);
+  const usages = [...attemptUsages].filter(Boolean);
   return { output, usage: lastData.usage, gemini_usage, usages };
 }
 
-// AUGMENT the master CV from the user's own loose text about work that isn't on
-// their CV. Additive only — see prompts/master-cv.js buildMasterAugmentPrompt.
-//
-// Returns { output (the augmented master), questions, changes, usages }. When
-// `questions` is non-empty the caller must NOT save: the model could not place
-// the fact, so it needs an answer first (the API route enforces this).
-//
-// The verify pass runs against the existing master's JSON PLUS the new text as
-// its source. That combination is deliberate: verifyMaster's deterministic
-// grounding checks every stored fact against the source it is handed, so passing
-// the loose text alone would strip the entire pre-existing record. The prior
-// master is also passed as `trustedMaster` so the AI pass treats its facts as
-// already verified and only scrutinises what the new text just added.
-export async function augmentMaster(master, text, answers = []) {
-  if (!master || typeof master !== 'object') throw new Error('augmentMaster requires an existing master');
-  const messages = buildMasterAugmentPrompt({ master, text, answers });
-
-  // Same tolerance as the build: a 200 carrying malformed JSON must not throw
-  // away a paid call. Every paid attempt is cost-logged via `usages`.
-  const MAX_PARSE_ATTEMPTS = 3;
-  const attemptUsages = [];
-  let envelope;
-  let parseErr;
-  for (let attempt = 1; attempt <= MAX_PARSE_ATTEMPTS; attempt++) {
-    const data = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low' });
-    const gu = geminiUsage('master-cv augment', data, GEMINI_MASTER_MODEL);
-    attemptUsages.push(gu);
-    trackDailySpend(gu.costUsd);
-    try {
-      envelope = parseJsonLoose(data.choices?.[0]?.message?.content || '');
-      parseErr = null;
-      break;
-    } catch (e) {
-      parseErr = e;
-      logger.error(`Invalid JSON from master-cv augment (attempt ${attempt}/${MAX_PARSE_ATTEMPTS}):`, e.message);
-    }
-  }
-  if (parseErr) throw new Error('Master CV augment returned invalid JSON');
-
-  const output = envelope?.master;
-  if (!output || typeof output !== 'object' || !Array.isArray(output.experience)) {
-    throw new Error('Master CV augment returned no usable master');
-  }
-
-  const questions = (Array.isArray(envelope.questions) ? envelope.questions : [])
-    .map((q) => String(q || '').trim())
-    .filter(Boolean)
-    .slice(0, 2);
-  const changes = (Array.isArray(envelope.changes) ? envelope.changes : [])
-    .map((c) => String(c || '').trim())
-    .filter(Boolean);
-
-  const source = `${JSON.stringify(master)}\n\n${text}`;
-  const { gemini_usage: verifyUsage } = await verifyMaster(output, source, master);
-
-  const usages = [...attemptUsages, verifyUsage].filter(Boolean);
-  return { output, questions, changes, usages };
+// Fold the user's own loose text about work their CV never captured into the
+// master record. There is no separate augment prompt and no patch logic: the
+// stored record plus the new text are re-extracted together through the ONE
+// extraction prompt, so the output is shaped by the same rules that built it.
+// That is what places a client engagement dated inside the consultancy's span
+// under `fractional_engagements` instead of appending it as a parallel role —
+// a patch would have to re-decide that with logic of its own, and drift.
+export async function augmentMaster(master, text) {
+  const combined = `EXISTING CAREER RECORD (JSON):\n${JSON.stringify(master)}\n\nADDITIONAL INFORMATION THE PERSON HAS SUPPLIED ABOUT THEIR OWN CAREER:\n${text}`;
+  return buildOrMergeMaster(combined);
 }
 
 // Landing-page TEASER analysis — small, high-impact output on the strong model

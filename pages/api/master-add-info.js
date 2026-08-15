@@ -3,9 +3,8 @@
 // "Anything not on your CV?" — the user types loose text about work their CV
 // never captured; the AI folds it into their canonical master record.
 //
-//   POST { text, answers?: [{ question, answer }] }
-//     → { ok: true, master, flags, changes }        the record was updated
-//     → { ok: false, questions: [...] }             cannot place it yet — nothing saved
+//   POST { text }
+//     → { ok: true, master, flags }                 the record was updated
 //
 // user_id ALWAYS comes from the verified session, never the body, and the master
 // loaded/saved is that user's own — the request supplies text only, so nothing
@@ -36,7 +35,7 @@ async function handler(req, res) {
   }
 
   const { user_id } = req.user;
-  const { text, answers } = req.body || {};
+  const { text } = req.body || {};
 
   if (typeof text !== 'string' || text.trim().length < 10) {
     return res.status(400).json({ error: 'Tell us a bit more — a sentence or two at least' });
@@ -44,14 +43,6 @@ async function handler(req, res) {
   if (text.length > MAX_TEXT) {
     return res.status(400).json({ error: `That is too long — keep it under ${MAX_TEXT} characters` });
   }
-
-  // Answers to the questions a previous round asked. Shape-checked, capped, and
-  // trimmed: they go straight into a prompt, so nothing unbounded gets through.
-  const cleanAnswers = (Array.isArray(answers) ? answers : [])
-    .filter((a) => a && typeof a.question === 'string' && typeof a.answer === 'string')
-    .map((a) => ({ question: a.question.slice(0, 300).trim(), answer: a.answer.slice(0, 500).trim() }))
-    .filter((a) => a.question && a.answer)
-    .slice(0, 2);
 
   const lockKey = `master_add_lock:${user_id}`;
   let lockHeld = false;
@@ -101,7 +92,7 @@ async function handler(req, res) {
 
     let result;
     try {
-      result = await augmentMaster(master, text.trim(), cleanAnswers);
+      result = await augmentMaster(master, text.trim());
     } catch (e) {
       logger.error('master-add-info augment failed:', e.message);
       return res.status(502).json({ error: 'Could not add that right now — try again' });
@@ -119,13 +110,6 @@ async function handler(req, res) {
         thinking_tokens: mu.thinkingTokens,
         detail: { type: mu.label },
       }).catch(() => {});
-    }
-
-    // The model could not place the fact without more from the user. Save
-    // NOTHING — a half-placed role in the canonical record is worse than none —
-    // and hand the questions back for a second round.
-    if (result.questions.length) {
-      return res.status(200).json({ ok: false, questions: result.questions, _gemini_usage: [...buildUsages, ...result.usages] });
     }
 
     try {
@@ -151,7 +135,6 @@ async function handler(req, res) {
       ok: true,
       master: result.output,
       flags,
-      changes: result.changes,
       _gemini_usage: [...buildUsages, ...result.usages],
     });
   } finally {
