@@ -41,6 +41,7 @@ export class GenerationError extends Error {
 
 export async function runGeneration({
   user_id,
+  generation_id = null,
   analysis: analysisRaw,
   tone = 'Formal',
   type = 'both',
@@ -78,7 +79,12 @@ export async function runGeneration({
   // any validation retry — is attributed and recorded by the meter inside
   // callGemini. This function does not log cost by hand; a retry it discards is
   // still billed by Google and so is still in the ledger.
-  return runWithAiContext({ user_id, context: 'generation', detail: { tone, type } }, async () => {
+  // `source_gen_id` stamps every call this run makes with the run's own id, so
+  // the ledger can group a generation into ONE task the way analysis already is
+  // (analyse-background sets it to the analysis_id). Without it, a run's write,
+  // verify and discarded-retry rows are loose in the table and the cost of a
+  // single task cannot be totalled.
+  return runWithAiContext({ user_id, context: 'generation', source_gen_id: generation_id, detail: { tone, type } }, async () => {
   try {
     let user;
     try {

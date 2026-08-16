@@ -31,6 +31,7 @@ import AnalysisDisplay from '../components/AnalysisDisplay';
 import DocumentDownloadButtons from '../components/DocumentDownloadButtons';
 import CvWarningBanner from '../components/CvWarningBanner';
 import VoiceProfilePanel from '../components/VoiceProfilePanel';
+import AiCostPanel from '../components/AiCostPanel';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { logGemini } from '../utils/log-gemini.js';
 import { generateDocuments } from '../utils/generateDocuments';
@@ -214,6 +215,9 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
       }
       setActiveTab(type);
       window.dispatchEvent(new Event('header-stats-updated'));
+      // The run is finished and its rows are in the ledger, so the cost panel
+      // can show what this task cost without waiting for a page load.
+      window.dispatchEvent(new Event('ai-costs-updated'));
     } catch (err) {
       setError(err.message);
     }
@@ -495,6 +499,11 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
         {/* ── How you write: set once, so it sits below the day's work ───── */}
         <div className="mt-6 border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
           <VoiceProfilePanel profile={voiceProfile} onUpdated={setVoiceProfile} />
+        </div>
+
+        {/* ── What the AI is costing, straight off the ledger ─────────────── */}
+        <div className="mt-6 border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
+          <AiCostPanel />
         </div>
       </main>
     </>

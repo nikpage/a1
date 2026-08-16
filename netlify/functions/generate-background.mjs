@@ -74,7 +74,7 @@ export const handler = async (event) => {
       logger.error('[generate-bg] rate limiter unavailable, proceeding:', rlErr.message);
     }
 
-    const result = await runGeneration({ user_id, analysis, tone, type, tweak, language });
+    const result = await runGeneration({ user_id, generation_id, analysis, tone, type, tweak, language });
     await saveGenerationStatus(user_id, generation_id, { status: 'done', ...result });
   } catch (e) {
     if (!(e instanceof GenerationError)) {

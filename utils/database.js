@@ -262,6 +262,25 @@ export async function logAiTransaction({
   if (error) logger.error('logAiTransaction: insert failed', error.message);
 }
 
+// Every AI-cost row since `sinceIso`, oldest first — the raw material the cost
+// report on /me aggregates (per task, per day, per billing period). It reads the
+// SAME rows as getAiSpendSince() and applies no filter beyond the date, so a
+// script run, a chat-driven experiment and a discarded retry are all in it: the
+// report shows ALL AI expense or it is not worth reading.
+export async function getAiCostRows(sinceIso) {
+  const db = getAdminSupabase();
+  const { data, error } = await db
+    .from('transactions')
+    .select('created_at, user_id, source_gen_id, model, amount_usd, cache_miss_tokens, completion_tokens, thinking_tokens, detail')
+    .eq('type', 'ai_cost')
+    .gte('created_at', sinceIso)
+    .order('created_at', { ascending: true })
+    .limit(10000);
+
+  if (error) throw new Error(`getAiCostRows: ${error.message}`);
+  return data || [];
+}
+
 // Today's AI spend straight out of the ledger, for the budget guard in
 // utils/ai-meter.js. Returns { total, unpriced }: `total` is the summed USD of
 // every priced call since `sinceIso`, `unpriced` is how many rows carry a null
