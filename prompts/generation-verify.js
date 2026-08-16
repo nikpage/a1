@@ -38,7 +38,7 @@ const REPAIR_KINDS = {
     title: 'A REQUIREMENT THE RECORD CANNOT ANSWER',
     found: 'THE TERMS FOUND IN THIS DOCUMENT, WHICH THE JOB ASKS FOR AND THE CANDIDATE\'S RECORD DOES NOT EVIDENCE ANYWHERE',
     reason: 'unevidenced requirement',
-    extra: '\n\nThe document claims, or implies, a capability the candidate has not been shown to have — lifted from the job ad to cover a gap. Cut the claim. Do NOT replace it with a different tool, system or skill: there is no source for one. Say what the candidate ACTUALLY does, without the term ("I use them to organise my work and prepare for meetings" where it said "to evaluate data in the CRM"), or delete the clause where the term is the only content it has. An unanswered requirement is honest; a papered-over one is a lie.',
+    extra: '\n\nThe document claims, or implies, a capability the candidate has not been shown to have — lifted from the job ad to cover a gap. Cut the claim. Do NOT replace it with a different tool, system or skill: there is no source for one. Say what the candidate ACTUALLY does, without the term ("I use them to organise my work and prepare for meetings" where it said "to evaluate data in the CRM"), or delete the clause where the term is the only content it has. An unanswered requirement is honest; a papered-over one is a lie.\n\nONE EXCEPTION, AND IT MATTERS: where the document mentions the term only to DISCLAIM it — "I am not the classic B2B salesperson who cold-calls all day", "this is not a CRM administration role" — no claim is being made and the sentence is often the most persuasive one in the document. Return NO correction for that term. Only an AFFIRMATIVE claim of having, using or knowing the thing is a defect.',
   },
   domain: {
     title: 'AN INVENTED INDUSTRY LABEL',

@@ -1202,16 +1202,35 @@ function normaliseTerm(t) {
     .trim();
 }
 
+// The model writes this list as advice to a human, so its entries drift between
+// a bare term ("CRM") and a phrase ("CRM software administration", "B2B sales
+// metrics"). A phrase is not a claim any document makes as a unit, so matching
+// it whole finds nothing — which is how CRM slipped through twice.
+//
+// From a phrase we therefore take only its ACRONYMS, capitalised in the source:
+// CRM, SAP, SQL, B2B. They are the checkable part — a specific named system or
+// standard, which the record either evidences or does not. The ordinary words
+// around them ("software", "administration", "outreach", "metrics", "school")
+// are deliberately ignored: they are too common to carry a claim, and cutting
+// one would damage a true sentence.
 function missingTerms(analysis) {
   const raw = analysis?.analysis?.ats_keywords_missing;
   const list = Array.isArray(raw) ? raw : String(raw || '').split(/[,;\n]/);
   const out = [];
   for (const item of list) {
-    const t = normaliseTerm(item);
-    // Multi-word advice ("vztahy se školami") is not a claim a document makes as
-    // a unit; only single terms are checkable this way.
-    if (!t || t.includes(' ') || t.length < 2) continue;
-    out.push(t);
+    const source = String(item || '').trim();
+    if (!source) continue;
+    const t = normaliseTerm(source);
+    if (!t || t.length < 2) continue;
+    if (!t.includes(' ')) { out.push(t); continue; }
+    for (const token of source.split(/[\s/]+/)) {
+      const bare = token.replace(/[^\p{L}\p{N}]/gu, '');
+      // An acronym as the model wrote it: short and all-caps (with digits
+      // allowed, so B2B counts).
+      if (bare.length >= 2 && bare.length <= 5 && bare === bare.toUpperCase() && /\p{L}/u.test(bare)) {
+        out.push(normaliseTerm(bare));
+      }
+    }
   }
   return out;
 }

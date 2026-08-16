@@ -470,7 +470,10 @@ export async function repairUnevidencedRequirements({ document, master = '', ana
 
     const left = unevidencedKeywordHits(content, { master, analysis });
     if (left.length) {
-      logger.error(`[repair requirement cover] survived: ${left.join(', ')}`);
+      // Not necessarily a failure: the repair is told to leave a term the
+      // letter only DISCLAIMS ("not the classic B2B salesperson"), which is a
+      // mention the deterministic check cannot tell from a claim.
+      logger.info(`[repair requirement cover] left in place (claim or disclaimer): ${left.join(', ')}`);
     } else {
       logger.info(`[repair requirement cover] ${applied.length} unevidenced requirement(s) removed`);
     }

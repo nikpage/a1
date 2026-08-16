@@ -63,6 +63,24 @@ describe('check 24 — a requirement the record cannot answer', () => {
     expect(unevidencedKeywordHits(letter, { master: MASTER, analysis: ANALYSIS })).toEqual([]);
   });
 
+  // The model writes this list for a human, so the term arrives inside a phrase
+  // as often as alone. A real analysis (2026-08-16) said "CRM software
+  // administration" — matching the phrase whole finds nothing, and CRM slipped
+  // through a second time.
+  test('pulls the acronym out of a multi-word entry', () => {
+    const analysis = { analysis: { ats_keywords_missing: 'CRM software administration, primary/secondary school outreach, B2B sales metrics' } };
+    const letter = 'Vyhodnocuji data v CRM každý týden.';
+    expect(unevidencedKeywordHits(letter, { master: MASTER, analysis })).toEqual(['CRM']);
+  });
+
+  // The ordinary words around an acronym are too common to carry a claim, and
+  // cutting one would damage a true sentence.
+  test('ignores the ordinary words in a multi-word entry', () => {
+    const analysis = { analysis: { ats_keywords_missing: 'primary/secondary school outreach' } };
+    const letter = 'I have worked with school directors and teachers on outreach programmes.';
+    expect(unevidencedKeywordHits(letter, { master: MASTER, analysis })).toEqual([]);
+  });
+
   test('no master and no analysis report nothing rather than guessing', () => {
     expect(unevidencedKeywordHits('anything at all', { master: '', analysis: ANALYSIS })).toEqual([]);
     expect(unevidencedKeywordHits('anything at all', { master: MASTER, analysis: null })).toEqual([]);
