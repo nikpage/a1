@@ -55,7 +55,7 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
           if (data.master_missing || isTeaserShaped(data.analysis || '')) {
             setRebuilding(true);
             try {
-              await uploadAndAnalyze({ user_id, deep: true });
+              await uploadAndAnalyze({ user_id });
               const res = await fetch('/api/get-analysis', {
                 method: 'POST',
                 credentials: 'include',

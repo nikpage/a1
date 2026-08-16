@@ -14,11 +14,10 @@
 // overridden with the confirmed values so edits survive into generation.
 
 import * as Sentry from '@sentry/node';
-import { analyzeTeaser, analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
+import { analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
 import { withOlderApplicant } from '../../prompts/scenarios.js';
 import { saveGeneratedDoc, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
 import { runWithAiContext } from '../../utils/ai-meter.js';
-import { formatLayoutForPrompt } from '../../utils/cvLayout.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
 
@@ -84,7 +83,7 @@ export const handler = async (event) => {
     return { statusCode: 400 };
   }
 
-  const { created_at, file_name, analysis_id, confirmedJob, layout } = body;
+  const { created_at, file_name, analysis_id, confirmedJob } = body;
   let { jobText } = body;
 
   const user_id = verified?.user_id || body.user_id;
@@ -152,73 +151,42 @@ export const handler = async (event) => {
       }
     }
 
-    // SOURCE SPLIT — the TEASER reads the RAW CV; the DEEP pass reads the MASTER.
+    // THE ANALYSIS READS THE MASTER. One pass, one call.
     //
-    // First impressions live in physical ORDER and SALIENCE. A recruiter — and a
-    // dumb ATS field-dump — hits whatever sits highest first: here, two short
-    // most-recent stints land before the spanning consultancy that explains them,
-    // and that unanswered "consulting, or fired fast?" doubt IS the signal. The
-    // master is an intelligent, reordered, reconciled record — it does that
-    // thinking for the recruiter (consultancy explains the stints, overlap logged
-    // as a resolved conflict) and dissolves the very signal the teaser exists to
-    // surface. So the TEASER reads the raw CV text, where order/salience/messiness
-    // are intact. The LAYOUT signal (column scramble, scanned/image — geometry the
-    // text can't show) still rides in on the request body and drives ONLY the ATS
-    // gate; absent on a re-analysis with no fresh upload, the ATS gate then judges
-    // on the text alone, which is fine.
+    // There used to be a landing-page teaser here, reading the RAW uploaded CV
+    // for first impressions (page order and salience, which the master's
+    // reordered record dissolves), seeding a two-call deep pass built on top of
+    // it. That shape served visitors dropping a PDF on the landing page. There
+    // are none: this is a personal tool, the master record is the source, and
+    // the CV is regenerated from it per job — so a first-impression read of the
+    // uploaded file, and the fix-your-old-CV advice built on it, described a
+    // document nobody will send. Removed 2026-08-16; the single pass classifies
+    // the scenario itself.
     //
-    // The DEEP pass reads the MASTER: it emits the rewrite blueprint AND
-    // master_flags, whose target.index / child_indexes point into the master's
-    // experience[] — so it must see that exact array. It is also handed the teaser,
-    // whose raw-based first-impression verdicts are carried forward verbatim
-    // (CARRIED_FROM_TEASER in prompts/analysis.js), so the warning the raw read
-    // caught survives into the deep record instead of being recomputed away.
-    const layoutNote = formatLayoutForPrompt(layout);
-    const teaserCv = cv_data;
-    const deepCv = master ? JSON.stringify(master) : cv_data;
+    // The layout signal went with it: it only ever drove the teaser's ATS gate.
+    const analysisCv = master ? JSON.stringify(master) : cv_data;
 
-    // Teaser first: the cheap, high-impact read shown on the landing page. It is
-    // also the SEED the deeper pass builds on — it now carries analysis.scenario_tags.
-    const result = await analyzeTeaser(teaserCv, jobText, layoutNote);
-    let content = result?.output;
+    if (!verified?.user_id) {
+      await saveError(user_id, analysis_id, 'Analysis requires a verified session');
+      return { statusCode: 202 };
+    }
+
+    let content;
+    const analysisUsages = [];
+    try {
+      const result = await analyzeCvJob(analysisCv, jobText, file_name || 'cv.pdf');
+      content = result?.output;
+      analysisUsages.push(...(result?.gemini_usages || [result?.gemini_usage]).filter(Boolean));
+    } catch (e) {
+      logger.error('[analyse-bg] analysis failed:', e.message);
+      Sentry.captureException(e);
+      await saveError(user_id, analysis_id, `Analysis failed: ${e.message}`);
+      return { statusCode: 202 };
+    }
+
     if (!content) {
       await saveError(user_id, analysis_id, 'No analysis content returned');
       return { statusCode: 202 };
-    }
-    // Every analysis AI call this run made, for cost logging + the browser console.
-    const analysisUsages = [result.gemini_usage];
-
-    // The DEEP pass runs ONLY when the caller explicitly asks for it (deep:true),
-    // which is the post-signup analysis on the user's own page — NEVER the landing
-    // page. analyzeCvJob is handed the teaser and generates only the delta, merged
-    // back so scenario/scores/verdicts carry forward instead of being recomputed.
-    // The landing teaser stays a single cheap call.
-    // Deep requested but no verified session: the gate closes and the user gets a
-    // teaser-shaped analysis with no assessment, red flags, quick wins or action
-    // items. That used to happen in total silence — nothing logged, nothing in
-    // the saved record — so a missing cookie looked identical to a model that
-    // simply returned less. Record it both ways.
-    let deepSkipped = null;
-    if (body.deep === true && !verified?.user_id) {
-      deepSkipped = 'unauthenticated';
-      logger.error('[analyse-bg] deep analysis requested but the session is not verified — teaser only');
-    }
-
-    if (body.deep === true && verified?.user_id) {
-      try {
-        const deep = await analyzeCvJob(deepCv, jobText, file_name || 'cv.pdf', content);
-        if (deep?.output) {
-          content = deep.output;
-          // The deep pass is two calls (blueprint + review) — log both.
-          analysisUsages.push(...(deep.gemini_usages || [deep.gemini_usage]));
-        }
-      } catch (e) {
-        // A deep-pass failure must not sink the analysis — the teaser already
-        // saved value. Surface it, keep the teaser content.
-        deepSkipped = `failed: ${e.message}`;
-        logger.error('[analyse-bg] deep analysis failed, keeping teaser:', e.message);
-        Sentry.captureException(e);
-      }
     }
 
     const extractMeta = (label) => {
@@ -243,8 +211,6 @@ export const handler = async (event) => {
       if (master && obj.analysis) {
         obj.analysis.scenario_tags = withOlderApplicant(obj.analysis.scenario_tags, master);
       }
-      // Why the record is teaser-shaped, saved alongside it. Absent on a good run.
-      if (deepSkipped) obj._deep_skipped = deepSkipped;
       // analyzeCvJob attached whatever job input it was given as `job_text`,
       // which on this path is the CONFIRMED job serialised back into a list.
       // The letter needs the employer's own words, so the ad kept above wins.

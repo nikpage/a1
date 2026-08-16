@@ -140,12 +140,9 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
     setBusy('upload');
     setPhase('Reading the file…');
     try {
-      // deep:true — this is a signed-in, past-the-wall run, so the worker builds
-      // the master and runs the full analysis, not just the landing teaser.
       await uploadAndAnalyze({
         file,
         user_id,
-        deep: true,
         onPing: () => setPhase('Building the master record…'),
       });
       await loadRecord();
@@ -165,7 +162,6 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
       await uploadAndAnalyze({
         user_id,
         jobText,
-        deep: true,
         // The confirmation modal exists to protect strangers from paying for a
         // misread ad. On my own workbench the extraction is accepted as-is.
         onJobExtracted: (extraction) => extraction,

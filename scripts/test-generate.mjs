@@ -5,9 +5,9 @@
 // path — read-only, no UI, no token spend, no writes to Supabase. It mirrors,
 // call for call:
 //   utils/run-generation.js            (source lookup, core, voice profile, calls)
-//   netlify/functions/analyse-background.mjs  (teaser -> deep pass, master build)
-//   utils/openai.js                    (analyzeTeaser, analyzeCvJob, buildOrMergeMaster,
-//                                        mergeTeaserAndDelta, generateCV, generateCoverLetter)
+//   netlify/functions/analyse-background.mjs  (one analysis pass, master build)
+//   utils/openai.js                    (analyzeCvJob, buildOrMergeMaster,
+//                                        generateCV, generateCoverLetter)
 // It imports those functions rather than reimplementing them, so a change to
 // the real pipeline is automatically exercised here.
 //
@@ -75,7 +75,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  analyzeTeaser,
   analyzeCvJob,
   buildOrMergeMaster,
   generateCV,
@@ -259,33 +258,18 @@ async function main() {
     console.log(`  → wrote ${path.join(outDir, name)}`);
   };
 
-  // ---- 2. analysis: teaser (raw text) -> deep pass (master), merged ----------
+  // ---- 2. analysis: ONE pass over the master, exactly as the worker runs it --
   console.log('\n═══ ANALYSIS ═══');
-  console.log('  teaser (raw cv text)...');
-  const teaserRes = await analyzeTeaser(rawCvText, jobText, '');
-  totalCost += logUsage('teaser', teaserRes.gemini_usage);
-  let analysis = JSON.parse(teaserRes.output);
-
-  console.log('  deep pass (master, handed the teaser)...');
-  let deepSkipped = null;
-  try {
-    // analyzeCvJob, handed a teaser, already returns teaser+delta MERGED via
-    // mergeTeaserAndDelta internally (utils/openai.js) — its `.output` is the
-    // final analysis object, not a raw delta. Use it directly.
-    const deepRes = await analyzeCvJob(generationSource, jobText, path.basename(opts.cv || 'master.json'), teaserRes.output);
-    analysis = JSON.parse(deepRes.output);
-    totalCost += logUsages('deep', deepRes.gemini_usages || [deepRes.gemini_usage]);
-  } catch (e) {
-    deepSkipped = `failed: ${e.message}`;
-    console.error(`  ✗ deep analysis failed, keeping teaser only: ${e.message}`);
-  }
+  console.log('  analysis (master)...');
+  const analysisRes = await analyzeCvJob(generationSource, jobText, path.basename(opts.cv || 'master.json'));
+  const analysis = JSON.parse(analysisRes.output);
+  totalCost += logUsages('analysis', analysisRes.gemini_usages || [analysisRes.gemini_usage]);
 
   // Older Applicant is computed in code from the master's dates, same as
   // analyse-background.mjs — not left to the model's 1-2 tag slots.
   if (master && analysis.analysis) {
     analysis.analysis.scenario_tags = withOlderApplicant(analysis.analysis.scenario_tags, master);
   }
-  if (deepSkipped) analysis._deep_skipped = deepSkipped;
 
   write('analysis.json', JSON.stringify(analysis, null, 2));
 

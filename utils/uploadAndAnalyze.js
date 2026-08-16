@@ -31,16 +31,11 @@ export async function uploadAndAnalyze({
   fallbackCreatedAt,  // kept for call-site compatibility
   onPing,
   onJobExtracted,     // optional: async (extraction) => confirmedJob | throws to cancel
-  deep = false,       // true only for the post-signup analysis on the user's page; the landing teaser leaves this false so it stays a single cheap call
 }) {
   let finalUserId = user_id ?? (typeof window !== 'undefined' ? window.localStorage.getItem('user_id') : null);
   const finalCreatedAt = created_at ?? fallbackCreatedAt ?? null;
   const finalFileName = file_name || (file && file.name) || 'Unnamed file';
 
-  // The layout signal (column/scanned/date hints for the teaser's ATS gate) is
-  // never stored — it rides in-flight from the upload response to the analysis
-  // kick below, is read once by the teaser, and discarded. No file, no layout.
-  let layout = null;
 
   // 1. Upload the file if one was provided. Every upload mints/refreshes the
   //    identity and rebuilds the master from this CV — one CV, one profile.
@@ -55,7 +50,6 @@ export async function uploadAndAnalyze({
       throw new Error(uploadData.error || 'Upload failed');
     }
     finalUserId = uploadData.user_id;
-    layout = uploadData.layout ?? null;
   }
 
   if (!finalUserId) throw new Error('Missing user_id for analysis');
@@ -116,8 +110,6 @@ export async function uploadAndAnalyze({
       created_at: finalCreatedAt,
       file_name: finalFileName,
       analysis_id,
-      deep,
-      layout,
     }),
   });
   if (kickRes.status !== 202 && !kickRes.ok) {
@@ -141,11 +133,6 @@ export async function uploadAndAnalyze({
     const payload = await statusRes.json().catch(() => ({}));
     if (payload.status === 'done') {
       logGemini(payload.gemini_usage);
-      // A teaser-shaped analysis is not a quiet outcome — say why it is short.
-      try {
-        const skipped = JSON.parse(payload.analysis)?._deep_skipped;
-        if (skipped) logger.error(`[analysis] deep pass did not run: ${skipped}`);
-      } catch { /* unparseable content is handled by the caller */ }
       return { user_id: finalUserId, analysis_id, analysis: payload.analysis, gemini_usage: payload.gemini_usage };
     }
     if (payload.status === 'error') {

@@ -19,7 +19,6 @@ const REQUIRED_SCHEMA = {
     Country: "n/a",
     "HR Contact": "n/a"
   },
-  jobs_extracted: [],
   analysis: {
     overall_score: "0-10",
     ats_score: "0-10",
@@ -29,19 +28,7 @@ const REQUIRED_SCHEMA = {
     parallel_experience: "",
     transferable_skills: "",
     ats_keywords_present: "",
-    ats_keywords_missing: "",
-    action_items: {
-      cv_changes: {
-        critical: [],
-        advised: [],
-        optional: []
-      },
-      "Cover Letter": {
-        "Points to Address": [],
-        "Narrative Flow": [],
-        "Tone and Style": []
-      }
-    }
+    ats_keywords_missing: ""
   },
   job_match: {
     keyword_match: "n/a",
@@ -109,15 +96,6 @@ function deepNormalize(value) {
 // Map model outputs into our strict schema
 function remapFields(parsed) {
   const out = { ...parsed };
-
-  // Handle employment history → jobs_extracted
-  if (Array.isArray(parsed.employment_experiences)) {
-    out.jobs_extracted = parsed.employment_experiences;
-  } else if (Array.isArray(parsed.employment_history)) {
-    out.jobs_extracted = parsed.employment_history;
-  } else if (Array.isArray(parsed.jobs)) {
-    out.jobs_extracted = parsed.jobs;
-  }
 
   // Handle CV basics
   if (parsed.name || parsed.full_name) {

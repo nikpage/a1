@@ -3,7 +3,6 @@
 import axios from 'axios'
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
-import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
 import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
@@ -252,117 +251,17 @@ export async function augmentMaster(master, text) {
   return buildOrMergeMaster(combined);
 }
 
-// Landing-page TEASER analysis — small, high-impact output on the strong model
-// (~$0.02 vs ~$0.05 for the full pass). Hero fields are full quality. The full
-// deep analysis runs after sign-up, building on this teaser.
-export async function analyzeTeaser(cvText, jobText, layoutNote = '') {
-  const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
-  const messages = buildAnalysisTeaserPrompt(cvText, jobText, hasJobText, layoutNote);
-  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low', label: 'analyze teaser' });
-  const gemini_usage = geminiUsage('analyze teaser', data, GEMINI_ANALYSIS_MODEL);
-
-  const jsonOutput = stripJsonFences(data.choices?.[0]?.message?.content || '');
-  try {
-    JSON.parse(jsonOutput);
-    return { output: jsonOutput, usage: data.usage, gemini_usage };
-  } catch (e) {
-    logger.error('Invalid JSON from teaser analysis:', e.message);
-    throw new Error('Teaser analysis returned invalid JSON');
-  }
-}
-
-// Merge the carried-forward teaser object with the deep DELTA the full pass
-// produced. The delta never re-emits the teaser's fields (see prompts/analysis.js),
-// so we glue them: top-level keys union, `analysis` and `job_match` merged key-wise
-// with the delta winning on shared keys (e.g. red_flags expands from teaser's
-// preview to the full list). Teaser-only keys (scores, verdicts, final_thought,
-// positioning_strategy) survive untouched.
-export function mergeTeaserAndDelta(teaser, delta) {
-  return {
-    ...teaser,
-    ...delta,
-    analysis: { ...(teaser.analysis || {}), ...(delta.analysis || {}) },
-    job_match: { ...(teaser.job_match || {}), ...(delta.job_match || {}) },
-  };
-}
-
-// One deep sub-call: run the prompt for `mode` and return its parsed delta.
-async function runDeltaPass(cvText, jobText, hasJobText, teaserObj, mode) {
-  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, teaserObj, mode);
-  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium', label: `analyze CV+job (${mode})` });
-  const gemini_usage = geminiUsage(`analyze CV+job (${mode})`, data, GEMINI_ANALYSIS_MODEL);
-
-  const raw = data.choices?.[0]?.message?.content || '';
-  logger.debug(`RAW JSON OUTPUT (${mode}, first 500 chars):`, raw.substring(0, 500) + (raw.length > 500 ? '...' : ''));
-
-  let parsed;
-  try {
-    parsed = JSON.parse(stripJsonFences(raw));
-  } catch (e) {
-    // Preserve gemini_usage on the rejection so a failed half still gets cost-logged
-    // to the transactions table by the caller, instead of vanishing untracked.
-    e.gemini_usage = gemini_usage;
-    throw e;
-  }
-  return { parsed, gemini_usage, usage: data.usage, choices: data.choices };
-}
-
-// `teaser` (optional): the parsed teaser object (or its JSON string) already
-// produced for this CV. When supplied, the deep pass is SPLIT IN TWO parallel
-// calls — 'blueprint' (what the generators execute) and 'review' (what the user
-// reads) — so neither half has to share one output budget with the other. Both
-// deltas plus the carried teaser fields are merged into one analysis object.
-// With no teaser, the full schema is generated in a single call as before.
+// ONE PASS: scenario, selection and framing for this job (see prompts/analysis.js).
+//
+// This used to be a teaser plus two delta calls ('blueprint' and 'review'). The
+// review half critiqued a document the app regenerates from the master record
+// every run, so nobody could act on it; the teaser existed for landing-page
+// visitors who no longer exist. Both are gone (2026-08-16) and the whole schema
+// comes back in one call. `teaser` is accepted and ignored so older callers do
+// not break.
 export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', teaser = null) {
   // DO NOT REMOVE THIS LINE OR MOVE IT
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
-
-  const teaserObj = typeof teaser === 'string' ? JSON.parse(teaser) : teaser;
-
-  if (teaserObj) {
-    // SETTLED, not all: the two halves are independent products — 'blueprint' is
-    // what the generators execute, 'review' is what the user reads. Promise.all
-    // meant one flaky call (a 503, or output truncated mid-JSON) threw away the
-    // other half's finished, already-paid-for work, and the caller fell all the
-    // way back to the teaser. A failed half now costs only that half.
-    const [bpRes, rvRes] = await Promise.allSettled([
-      runDeltaPass(cvText, jobText, hasJobText, teaserObj, 'blueprint'),
-      runDeltaPass(cvText, jobText, hasJobText, teaserObj, 'review'),
-    ]);
-
-    const blueprint = bpRes.status === 'fulfilled' ? bpRes.value : null;
-    const review = rvRes.status === 'fulfilled' ? rvRes.value : null;
-    if (!blueprint) logger.error('Deep analysis blueprint pass failed:', bpRes.reason?.message);
-    if (!review) logger.error('Deep analysis review pass failed:', rvRes.reason?.message);
-
-    // Only when BOTH halves failed is there no delta at all — then the caller's
-    // teaser fallback is the right answer.
-    if (!blueprint && !review) {
-      throw new Error(bpRes.reason?.message || 'Deep analysis produced nothing');
-    }
-
-    const delta = blueprint && review
-      ? mergeTeaserAndDelta(blueprint.parsed, review.parsed)
-      : (blueprint || review).parsed;
-    const merged = mergeTeaserAndDelta(teaserObj, delta);
-    // The ad's own words ride on the analysis record, attached HERE rather than
-    // in the Netlify worker so every caller of this function gets them — the
-    // worker, the local harness, and anything added later. The cover letter
-    // reads them via prompts/job-target.js (rawAdBlock); the extraction stays
-    // the fallback for records saved before this existed.
-    if (typeof jobText === 'string' && jobText.trim()) merged.job_text = jobText.trim().slice(0, 8000);
-    // Cost-log every call that actually completed — see the AI cost logging rule.
-    const gemini_usages = [blueprint?.gemini_usage, review?.gemini_usage].filter(Boolean);
-    const primary = blueprint || review;
-
-    return {
-      choices: primary.choices,
-      output: JSON.stringify(merged),
-      usage: primary.usage,
-      gemini_usage: primary.gemini_usage,
-      gemini_usages,
-    };
-  }
 
   const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, null);
 
@@ -376,8 +275,22 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
   const jsonOutput = stripJsonFences(rawOutputString);
 
   try {
-    JSON.parse(jsonOutput);
-    return { choices: data.choices, output: jsonOutput, usage: data.usage, gemini_usage, gemini_usages: [gemini_usage] };
+    const parsed = JSON.parse(jsonOutput);
+    // The ad's own words ride on the analysis record, attached HERE rather than
+    // in the Netlify worker so every caller of this function gets them — the
+    // worker, the local harness, and anything added later. The cover letter
+    // reads them via prompts/job-target.js (rawAdBlock); the extraction stays
+    // the fallback for records saved before this existed.
+    if (typeof jobText === 'string' && jobText.trim()) {
+      parsed.job_text = jobText.trim().slice(0, 8000);
+    }
+    return {
+      choices: data.choices,
+      output: JSON.stringify(parsed),
+      usage: data.usage,
+      gemini_usage,
+      gemini_usages: [gemini_usage],
+    };
   } catch (jsonError) {
     logger.error('Invalid JSON returned from API:', jsonError.message);
     logger.error('Cleaned JSON output:', jsonOutput);

@@ -85,11 +85,8 @@ export default function AnalysisDisplay({ analysis }) {
   // are not shown. Revive by restoring the <Field> rows and the prompt slots.
   const hasAssessment = any(a.ats_keywords_present, a.ats_keywords_missing);
   const hasScores = any(a.overall_score, a.ats_score);
-  const hasActionItems = a.action_items && Object.values(a.action_items).some(
-    (cats) => cats && Object.values(cats).some((items) => Array.isArray(items) && items.filter((x) => !isEmpty(x)).length > 0)
-  );
-  const hasSuggestions = any(data.job_match?.positioning_strategy, data.job_match?.career_scenario) || hasActionItems;
-  const hasAnalysis = hasScores || hasAssessment || any(a.quick_wins, a.red_flags);
+  const hasSuggestions = any(data.job_match?.positioning_strategy, data.job_match?.career_scenario);
+  const hasAnalysis = hasScores || hasAssessment || any(a.red_flags);
 
   return (
     <div className="analysis-fix">
@@ -162,7 +159,6 @@ export default function AnalysisDisplay({ analysis }) {
                 <Field label={t('atsGaps')} value={a.ats_keywords_missing} />
               </div>
               )}
-              <ListField label={t('quickWins')} items={a.quick_wins} />
               <ListField label={t('redFlags')} items={a.red_flags} />
             </div>
           }
@@ -175,30 +171,6 @@ export default function AnalysisDisplay({ analysis }) {
             <div>
               <Field label={t('positioningStrategy')} value={data.job_match?.positioning_strategy} />
               <Field label={t('careerScenario')} value={data.job_match?.career_scenario} />
-              {a.action_items && Object.keys(a.action_items).length > 0 && (
-                <div style={{ marginTop: '1rem' }}>
-                  <strong>{t('actionItems')}</strong>
-                  {Object.entries(a.action_items).map(([section, categories]) => (
-                    <div key={section} style={{ marginTop: '0.5rem' }}>
-                      <div style={{ fontWeight: 'bold' }}>
-                        {section === 'cv_changes' ? t('cv') : section === 'cover_letter' ? t('coverLetter') : section}
-                      </div>
-                      {Object.entries(categories).map(([priority, items]) =>
-                        Array.isArray(items) && items.filter((x) => !isEmpty(x)).length > 0 ? (
-                          <div key={priority} style={{ marginLeft: '1rem', marginTop: '0.25rem' }}>
-                            <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>{priority}:</div>
-                            <ul style={{ marginLeft: '1rem' }}>
-                              {items.filter((x) => !isEmpty(x)).map((text, i) => (
-                                <li key={i}>• {text}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           }
         />

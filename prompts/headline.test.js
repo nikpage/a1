@@ -38,11 +38,6 @@ describe('analysis asks for headline_draft', () => {
     expect(p).toContain('With no job ad, name the role the record itself proves');
   });
 
-  test('the review half must NOT ask for it — the blueprint owns it', () => {
-    const p = userOf(buildAnalysisPrompt(CV, JOB, true, TEASER, 'review'));
-    expect(p).not.toContain('headline_draft');
-  });
-
   test('standalone (no-teaser) path specs the field and puts it in the schema', () => {
     const p = userOf(buildAnalysisPrompt(CV, JOB, true, null));
     expect(p).toContain('generation_framework.cv_blueprint.headline_draft');

@@ -7,7 +7,6 @@
 
 import { describe, test, expect } from 'vitest';
 import { currentDateBlock, currentDateReminder, formatLongDate } from './current-date.js';
-import { buildAnalysisTeaserPrompt } from './analysis-teaser.js';
 import { buildAnalysisPrompt } from './analysis.js';
 import { buildMasterCvPrompt } from './master-cv.js';
 import { buildCvPrompt } from './cv-generator.js';
@@ -71,16 +70,11 @@ describe('currentDateBlock / formatLongDate', () => {
 });
 
 describe('every time-reasoning prompt carries the injected current date', () => {
-  test('teaser (with and without a job ad)', () => {
-    expect(joined(buildAnalysisTeaserPrompt(CV_TEXT, JOB_TEXT, true, '', FIXED))).toContain(`TODAY'S DATE IS ${TODAY}`);
-    expect(joined(buildAnalysisTeaserPrompt(CV_TEXT, '', false, '', FIXED))).toContain(`TODAY'S DATE IS ${TODAY}`);
-  });
-
-  test('deep analysis — teaser-fed delta (blueprint and review) and standalone paths', () => {
-    const blueprint = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'blueprint', FIXED);
-    const review = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'review', FIXED);
-    const standalone = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, null, 'blueprint', FIXED);
-    for (const msgs of [blueprint, review, standalone]) {
+  test('analysis — with and without a job ad', () => {
+    for (const msgs of [
+      buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, null, 'blueprint', FIXED),
+      buildAnalysisPrompt(MASTER_JSON, '', false, null, 'blueprint', FIXED),
+    ]) {
       expect(joined(msgs)).toContain(`TODAY'S DATE IS ${TODAY}`);
       expect(joined(msgs)).toMatch(/is in the PAST/);
     }
@@ -107,7 +101,6 @@ describe('every time-reasoning prompt carries the injected current date', () => 
 
   test('prompts fall back to the real clock when no date is passed (production call shape)', () => {
     const today = formatLongDate(new Date());
-    expect(joined(buildAnalysisTeaserPrompt(CV_TEXT, '', false))).toContain(today);
     expect(joined(buildAnalysisPrompt(MASTER_JSON, '', false))).toContain(today);
     expect(joined(buildMasterCvPrompt({ rawInput: CV_TEXT }))).toContain(today);
     expect(joined(buildCvPrompt(MASTER_JSON, ANALYSIS, 'professional'))).toContain(today);
@@ -118,35 +111,21 @@ describe('every time-reasoning prompt carries the injected current date', () => 
 // Guard: the date insertion must not have displaced any existing rule in the
 // sacred prompt files (same pattern as onboarding-fields.test.js).
 describe('existing key rules survive the date insertion (guard against accidental deletion)', () => {
-  test('analysis.js keeps its governing rules and both output skeletons', () => {
-    const delta = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'blueprint', FIXED);
-    const sys = delta.find((m) => m.role === 'system').content;
+  // One pass since 2026-08-16 — the teaser and the review half are gone.
+  test('analysis.js keeps its governing rules and its output skeleton', () => {
+    const msgs = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, null, 'blueprint', FIXED);
+    const sys = msgs.find((m) => m.role === 'system').content;
     expect(sys).toContain('REFRAME vs ADD');
     expect(sys).toContain('never INSERT experience it does not');
     expect(sys).toContain('NESTED ENGAGEMENTS');
     expect(sys).toMatch(/WRITING QUALITY \(non-negotiable\)/);
     expect(sys).toMatch(/LANGUAGE & FACTS/);
 
-    expect(delta.find((m) => m.role === 'user').content).toContain('"target_cover_words"');
-    const review = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, TEASER, 'review', FIXED)
-      .find((m) => m.role === 'user').content;
-    expect(review).toContain('"overall_score"');
-    expect(review).toContain('DO NOT RECOMPUTE OR RE-EMIT these');
-    const standalone = buildAnalysisPrompt(MASTER_JSON, JOB_TEXT, true, null, 'blueprint', FIXED)
-      .find((m) => m.role === 'user').content;
-    expect(standalone).toContain('STRICT SCENARIO LIST');
-    expect(standalone).toContain('JSON OUTPUT SCHEMA');
-  });
-
-  test('analysis-teaser.js keeps its tone law, two-stage scan and output shape', () => {
-    const user = buildAnalysisTeaserPrompt(CV_TEXT, JOB_TEXT, true, '', FIXED)
-      .find((m) => m.role === 'user').content;
-    expect(user).toContain('TONE LAW');
-    expect(user).toContain('THE TWO-STAGE SCAN');
-    expect(user).toContain('NO REPETITION');
-    expect(user).toContain('"hr_first_seconds"');
-    expect(user).toContain('SCENARIO LIST:');
-    expect(user).toContain(CV_TEXT);
+    const user = msgs.find((m) => m.role === 'user').content;
+    expect(user).toContain('"target_cover_words"');
+    expect(user).toContain('"overall_score"');
+    expect(user).toContain('STRICT SCENARIO LIST');
+    expect(user).toContain('JSON OUTPUT SCHEMA');
   });
 
   test('master-cv.js keeps the extraction task and the pinned output shape', () => {
@@ -201,15 +180,14 @@ describe('currentDateReminder sits next to the dated text', () => {
   it('every prompt that carries dated text also carries the reminder', () => {
     const PAST = new Date(2024, 2, 5);
     const has = (msgs) => JSON.stringify(msgs).includes('Reminder: today is 5 March 2024');
-    expect(has(buildAnalysisTeaserPrompt('CV', '', false, '', PAST))).toBe(true);
     expect(has(buildAnalysisPrompt('CV', '', false, null, 'blueprint', PAST))).toBe(true);
     expect(has(buildCvPrompt('CV', {}, 'direct', '', '', 'auto', PAST))).toBe(true);
     expect(has(buildCoverPrompt('CV', {}, 'direct', '', '', 'auto', PAST))).toBe(true);
     expect(has(buildMasterCvPrompt({ rawInput: 'raw cv', now: PAST }))).toBe(true);
   });
 
-  it('the teaser states the date in the SYSTEM message too, not only the instructions', () => {
-    const sys = buildAnalysisTeaserPrompt('CV', '', false, '', FIXED2).find((m) => m.role === 'system');
+  it('the analysis states the date in the SYSTEM message too, not only the instructions', () => {
+    const sys = buildAnalysisPrompt('CV', '', false, null, 'blueprint', FIXED2).find((m) => m.role === 'system');
     expect(sys.content).toContain(`TODAY'S DATE IS ${TODAY}`);
   });
 });
