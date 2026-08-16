@@ -41,26 +41,16 @@ import { costUsdFor } from './pricing.js';
 const db = () => import('./database.js');
 import { logger } from '../lib/logger.js';
 
-// Hard daily ceiling in USD. Reaching it STOPS further calls — a warning that
-// nobody is awake to read is what let a 5x day run to completion.
-const DAILY_BUDGET = parseFloat(process.env.GEMINI_DAILY_BUDGET_USD || '10');
-// Set to 'false' only to deliberately run past the ceiling (a long backfill).
-const ENFORCE = process.env.GEMINI_BUDGET_ENFORCE !== 'false';
+// There is NO daily ceiling. Owner decision (2026-08-16): the cap blocked real
+// work — including the bake-off runs CLAUDE.md requires before any prompt or
+// model change — and the thing that actually fixed the 5x day was making
+// metering unconditional, not the ceiling on top of it. Metering stays; the
+// ledger and scripts/ai-costs.mjs remain the way spend is seen.
+//
 // How long a spend total read from Supabase is trusted before re-reading. In
 // between, locally metered calls are added to it, so the figure only ever
 // UNDERSTATES concurrent spend by other runtimes for at most this long.
 const TOTAL_TTL_MS = 60_000;
-
-export class AiBudgetError extends Error {
-  constructor(spent, budget) {
-    super(`Daily Gemini budget reached: $${spent.toFixed(4)} of $${budget.toFixed(2)}. No further AI calls will run today.`);
-    this.name = 'AiBudgetError';
-    this.code = 'budget_exceeded';
-    this.status = 429;
-    this.spent = spent;
-    this.budget = budget;
-  }
-}
 
 const store = new AsyncLocalStorage();
 
@@ -156,19 +146,13 @@ function addLocalSpend(costUsd) {
   else cached.unpriced += 1;
 }
 
-// Called before every dispatch. Throws once the ceiling is reached so the spend
-// STOPS rather than merely being noted.
-export async function assertUnderBudget(model) {
-  const { total, unpriced, stale } = await dailySpend();
+// An unpriced call is the one thing still worth shouting about: it means a
+// model has no rate in utils/pricing.js, so the ledger UNDERSTATES the day.
+// Nothing here blocks a call.
+export async function reportUnpriced() {
+  const { total, unpriced } = await dailySpend();
   if (unpriced > 0) {
-    logger.error(`[spend-guard] ${unpriced} call(s) today have no recorded rate — today's true spend is at least $${total.toFixed(4)}. Add the model to utils/pricing.js.`);
-  }
-  if (total >= DAILY_BUDGET) {
-    const err = new AiBudgetError(total, DAILY_BUDGET);
-    logger.error(`[spend-guard] BLOCKED ${model}: ${err.message}${stale ? ' (ledger unreadable; figure is a floor)' : ''}`);
-    if (ENFORCE) throw err;
-  } else if (total >= DAILY_BUDGET * 0.8) {
-    logger.error(`[spend-guard] Daily Gemini spend $${total.toFixed(4)} has passed 80% of the $${DAILY_BUDGET} budget.`);
+    logger.error(`[spend] ${unpriced} call(s) today have no recorded rate — today's true spend is at least $${total.toFixed(4)}. Add the model to utils/pricing.js.`);
   }
 }
 
@@ -214,4 +198,4 @@ export function totalCost(usages = []) {
   return usages.reduce((sum, u) => sum + (Number.isFinite(u?.costUsd) ? u.costUsd : 0), 0);
 }
 
-export { DAILY_BUDGET, costUsdFor };
+export { costUsdFor };

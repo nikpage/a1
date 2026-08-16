@@ -14,7 +14,7 @@ import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
 import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
 import { buildMasterCvPrompt } from '../prompts/master-cv.js';
 import { costUsdFor } from './pricing.js';
-import { assertAttributed, assertUnderBudget, meterGeminiCall } from './ai-meter.js';
+import { assertAttributed, meterGeminiCall } from './ai-meter.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
@@ -81,10 +81,6 @@ export async function callGemini(model, messages, { label, ...options } = {}) {
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      // The ceiling is checked before EVERY attempt, not once per call: a retry
-      // storm costs as much as fresh calls do.
-      await assertUnderBudget(model);
-
       const response = await axios.post(
         GEMINI_URL,
         { model, messages, ...options },
@@ -103,10 +99,6 @@ export async function callGemini(model, messages, { label, ...options } = {}) {
 
       return response.data;
     } catch (error) {
-      // A budget block is a decision, not a transport failure: it must not be
-      // retried or rotated onto another key.
-      if (error?.code === 'budget_exceeded') throw error;
-
       lastError = error;
       const status = error.response?.status;
 

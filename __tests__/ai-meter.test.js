@@ -8,14 +8,18 @@
 //      Google, never written to `transactions` (red on the old code, where the
 //      logging line sat after the parse);
 //   2. a model with no recorded rate — the row used to be dropped entirely;
-//   3. nothing ever STOPPED. The guard logged and the run carried on.
+//   3. a call nobody claimed — no AI context — spending invisibly.
+//
+// There is deliberately NO daily ceiling (owner decision, 2026-08-16): the cap
+// blocked real work, and unconditional METERING is what made the 5x day
+// impossible to repeat. These tests pin that a call is always recorded and
+// never blocked.
 //
 // Only external boundaries are mocked: axios (the network) and utils/database.js
 // (Supabase). The meter, callGemini and the pricing math are the real ones.
 
 vi.hoisted(() => {
   process.env.GEMINI_API_KEYS = 'key1,key2';
-  process.env.GEMINI_DAILY_BUDGET_USD = '10';
 });
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
@@ -48,7 +52,7 @@ const responseFor = (content, model = PRICED_MODEL) => ({
   },
 });
 
-let callGemini, analyzeJobOnly, runWithAiContext, assertUnderBudget, dailySpend, AiBudgetError, logger;
+let callGemini, analyzeJobOnly, runWithAiContext, reportUnpriced, dailySpend, logger;
 let inCtx;
 
 beforeEach(async () => {
@@ -56,9 +60,8 @@ beforeEach(async () => {
   vi.clearAllMocks();
   mockGetAiSpendSince.mockResolvedValue({ total: 0, unpriced: 0 });
   mockLogAiTransaction.mockResolvedValue(undefined);
-  process.env.GEMINI_BUDGET_ENFORCE = 'true';
   ({ callGemini, analyzeJobOnly } = await import('../utils/openai.js'));
-  ({ runWithAiContext, assertUnderBudget, dailySpend, AiBudgetError } = await import('../utils/ai-meter.js'));
+  ({ runWithAiContext, reportUnpriced, dailySpend } = await import('../utils/ai-meter.js'));
   // vi.resetModules() gives each test a fresh ai-meter — and so a fresh, empty
   // AsyncLocalStorage that the runner's global context (vitest.setup.js) no
   // longer reaches. callGemini refuses an unattributed call, so each test that
@@ -175,63 +178,43 @@ describe('no context, no call', () => {
   });
 });
 
-describe('the daily ceiling stops spend, it does not merely note it', () => {
-  test('over budget: the call is blocked before it is dispatched', async () => {
-    mockGetAiSpendSince.mockResolvedValue({ total: 12.5, unpriced: 0 });
+describe('there is no daily ceiling — spend is recorded, never blocked', () => {
+  // Red on the old code: a ledger already past the old $10 cap blocked the call
+  // before dispatch and wrote no row.
+  test('a day already far past the old cap still dispatches and still meters', async () => {
+    mockGetAiSpendSince.mockResolvedValue({ total: 250.0, unpriced: 0 });
     mockAxiosPost.mockResolvedValue(responseFor('hello'));
 
-    await expect(
-      inCtx(() => callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'generate CV' }))
-    ).rejects.toBeInstanceOf(AiBudgetError);
+    const data = await inCtx(() =>
+      callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'generate CV' })
+    );
 
-    expect(mockAxiosPost).not.toHaveBeenCalled();
-    expect(mockLogAiTransaction).not.toHaveBeenCalled();
+    expect(data.choices[0].message.content).toBe('hello');
+    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+    expect(mockLogAiTransaction).toHaveBeenCalledTimes(1);
+    expect(mockLogAiTransaction.mock.calls[0][0]).toMatchObject({
+      user_id: 'user-1',
+      model: PRICED_MODEL,
+      detail: expect.objectContaining({ context: 'test', step: 'generate CV' }),
+    });
   });
 
-  // A block is a decision, not a transport error: it must not be retried across
-  // all six attempts (which is how a "guard" turns into six more failures).
-  test('a block is not retried and not key-rotated', async () => {
-    mockGetAiSpendSince.mockResolvedValue({ total: 99, unpriced: 0 });
-
-    await expect(
-      inCtx(() => callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'x' }))
-    ).rejects.toMatchObject({ code: 'budget_exceeded' });
-
-    expect(mockGetAiSpendSince).toHaveBeenCalledTimes(1);
-  });
-
-  test('spend metered inside one run counts immediately, without re-reading the ledger', async () => {
-    // Ledger reads $9.9995 once; a single call costing more than the remainder
-    // must push the total over and block the NEXT call in the same run.
-    mockGetAiSpendSince.mockResolvedValue({ total: 9.9999, unpriced: 0 });
+  test('successive calls in one run are all dispatched and all recorded', async () => {
+    mockGetAiSpendSince.mockResolvedValue({ total: 999, unpriced: 0 });
     mockAxiosPost.mockResolvedValue(responseFor('hello'));
 
     await inCtx(() => callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'first' }));
-    await expect(
-      inCtx(() => callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'second' }))
-    ).rejects.toBeInstanceOf(AiBudgetError);
+    await inCtx(() => callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'second' }));
 
-    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
-  });
-
-  test('GEMINI_BUDGET_ENFORCE=false reports but lets the call through', async () => {
-    process.env.GEMINI_BUDGET_ENFORCE = 'false';
-    vi.resetModules();
-    ({ callGemini } = await import('../utils/openai.js'));
-    const { runWithAiContext: rwc } = await import('../utils/ai-meter.js');
-    mockGetAiSpendSince.mockResolvedValue({ total: 50, unpriced: 0 });
-    mockAxiosPost.mockResolvedValue(responseFor('hello'));
-
-    const data = await rwc({ context: 'test' }, () => callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'x' }));
-
-    expect(data.choices[0].message.content).toBe('hello');
+    expect(mockAxiosPost).toHaveBeenCalledTimes(2);
+    expect(mockLogAiTransaction).toHaveBeenCalledTimes(2);
   });
 
   test('unpriced rows are counted separately and reported, never as zero', async () => {
     const spyError = vi.spyOn(logger, 'error');
     mockGetAiSpendSince.mockResolvedValue({ total: 1.0, unpriced: 3 });
 
-    await assertUnderBudget('gemini-2.5-flash-lite');
+    await reportUnpriced();
 
     const msg = spyError.mock.calls.flat().join(' ');
     expect(msg).toMatch(/3 call\(s\) today have no recorded rate/);
@@ -246,5 +229,15 @@ describe('the daily ceiling stops spend, it does not merely note it', () => {
 
     expect(spend.stale).toBe(true);
     expect(spyError.mock.calls.flat().join(' ')).toMatch(/could not read today's spend/i);
+  });
+
+  // The ledger being unreadable must never stop a user's generation.
+  test('an unreadable ledger does not block the call', async () => {
+    mockGetAiSpendSince.mockRejectedValue(new Error('supabase down'));
+    mockAxiosPost.mockResolvedValue(responseFor('hello'));
+
+    const data = await inCtx(() => callGemini(PRICED_MODEL, [{ role: 'user', content: 'hi' }], { label: 'x' }));
+
+    expect(data.choices[0].message.content).toBe('hello');
   });
 });

@@ -94,4 +94,4 @@ if (grandUnpriced) {
   const models = new Set((data || []).filter((r) => r.amount_usd === null).map((r) => r.model));
   for (const m of models) console.log(`    ${m}`);
 }
-console.log(`Daily budget: $${process.env.GEMINI_DAILY_BUDGET_USD || '10'} (GEMINI_DAILY_BUDGET_USD). Calls are BLOCKED once a day reaches it.`);
+console.log('No spend cap is enforced — every call runs and every call is recorded here.');
