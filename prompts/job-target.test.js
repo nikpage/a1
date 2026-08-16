@@ -74,7 +74,7 @@ describe('the generators receive the ad', () => {
     const header = user.content.indexOf('# The target job');
     expect(header).toBeGreaterThan(-1);
     expect(user.content.indexOf('- 5+ years Kubernetes in production')).toBeGreaterThan(header);
-    expect(header).toBeLessThan(user.content.indexOf('## Analysis ('));
+    expect(header).toBeLessThan(user.content.indexOf('## The strategist\'s blueprint'));
   });
 
   // The letter receives no analysis dump any more, so there is nothing to sit

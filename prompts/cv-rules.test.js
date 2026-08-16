@@ -108,7 +108,6 @@ describe('Layer 2', () => {
     const t = humanScannability();
     expect(t).toMatch(/NEVER in the same words/);
     expect(t).toMatch(/COMPRESSED, RE-ANGLED/);
-    expect(JSON.stringify(buildCvPrompt('x', {}, 'Formal'))).toMatch(/Copying the role's sentence up here word for word is a defect/);
   });
 
   // "A veteran technology leader" opened a shipped CV — a category asserted in
@@ -121,12 +120,13 @@ describe('Layer 2', () => {
     }
   });
 
+  // The layer's DETAIL is enforced downstream (Layer 6). What the writing
+  // prompt still states is the furniture: the Summary carries achievement
+  // bullets and each one names where it came from.
   it('tells the generator to write those bullets into the Summary block', () => {
     const p = buildCvPrompt({ cv: 'x', analysis: {}, tone: 'Formal' });
     const text = JSON.stringify(p);
-    expect(text).toMatch(/top_three_achievements/);
     expect(text).toMatch(/naming the role and employer it came from/);
-    expect(text).toMatch(/No heading markers/);
   });
 
   it('states bullet ceilings as ceilings, never quotas', () => {
@@ -145,10 +145,16 @@ describe('Layer 2', () => {
     expect(humanScannability('de')).toContain('15-25 words');
   });
 
-  it('carries that band through the whole rule stack into the CV prompt', () => {
+  it('carries that band through the whole rule stack', () => {
     expect(cvRulesBlock(true, 'cs')).toContain('12-22 words');
-    expect(JSON.stringify(buildCvPrompt('x', {}, 'Formal', '', '', 'cs'))).toContain('12-22 words');
-    expect(JSON.stringify(buildCvPrompt('x', {}, 'Formal', '', '', 'en'))).toContain('15-25 words');
+    expect(cvRulesBlock(true, 'en')).toContain('15-25 words');
+  });
+
+  // The band is a Layer 2 measurement, enforced by the validator over the
+  // finished document — it is no longer restated to the writer (CV_RULES.md,
+  // "What the CV IS").
+  it('does not restate the band to the writer', () => {
+    expect(JSON.stringify(buildCvPrompt('x', {}, 'Formal', '', '', 'cs'))).not.toContain('12-22 words');
   });
 });
 
@@ -255,23 +261,27 @@ describe('the prompts actually carry the rules', () => {
     generation_framework: { cv_blueprint: { top_three_achievements: ['Shipped X at Acme'] } },
   };
 
-  it('puts every layer in the CV prompt and no flex-grid skills block', () => {
+  // The CV prompt carries the INVARIANTS and the market conventions, and no
+  // longer restates Layers 1-4 (CV_RULES.md, "What the CV IS"): they are the
+  // specification of a finished CV, enforced downstream by utils/cv-validate.js.
+  it('carries the invariants and the market layer, not the restated rule stack', () => {
     const [, user] = buildCvPrompt('MASTER', analysis, 'confident');
     expect(user.content).toContain('T1 — Never fabricate');
-    expect(user.content).toContain('Layer 1 — Machine parseability');
-    expect(user.content).toContain('Layer 2 — Human scannability');
-    expect(user.content).toContain('Layer 3 — Job matching');
-    expect(user.content).toContain('Layer 4 — Situational overrides');
     expect(user.content).toContain('Layer 5 — Market conventions');
+    expect(user.content).not.toContain('Layer 1 — Machine parseability');
+    expect(user.content).not.toContain('Layer 2 — Human scannability');
+    expect(user.content).not.toContain('Layer 3 — Job matching');
+    expect(user.content).not.toContain('Layer 4 — Situational overrides');
     expect(user.content).not.toContain('display: flex');
     expect(user.content).not.toContain('<div');
-    expect(user.content).toContain('top_three_achievements');
   });
 
-  it('omits Layer 3 from the CV prompt when there is no job ad', () => {
-    const [, user] = buildCvPrompt('MASTER', { analysis: { scenario_tags: [] }, cv_data: { Country: 'Ireland' } }, 'confident');
-    expect(user.content).not.toContain('Layer 3 — Job matching');
-    expect(user.content).toContain('Layer 1 — Machine parseability');
+  // The record and the blueprint are the per-user material and still reach the
+  // writer in full.
+  it('hands the writer the record and the blueprint', () => {
+    const [, user] = buildCvPrompt('MASTER', analysis, 'confident');
+    expect(user.content).toContain('MASTER');
+    expect(user.content).toContain('Shipped X at Acme');
   });
 
   // The CV's rule stack no longer reaches the LETTER (2026-08-15). The letter

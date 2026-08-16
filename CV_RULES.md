@@ -22,6 +22,29 @@ Precedence for everything else: Layer 4 > Layer 3 > Layer 2, with Layer 1 as the
 
 **Steering is in scope when the document is composed.** The candidate's own instructions — what to emphasise, what to play down — are held by the writer at the moment it decides what the document says, not handed to it after the decision was taken elsewhere. **Content the candidate demoted is not evidence**: it cannot be the hook, the lead, a top-three achievement or the proof offered for a requirement in the ad, however well it answers it, and where the record offers no other evidence for that requirement, the requirement goes unanswered rather than the instruction ignored. **Content the candidate emphasised leads and is proved** with the facts the record holds for it; an emphasis reduced to one passing clause has been ignored, not applied. Demotion is never deletion — the timeline keeps every role and date (T2), and demoted content may still appear once, late and plainly, where leaving it out would make the story incoherent. And steering never adds: it reorders, reframes and cuts real content only. Where it asks for something the record does not evidence, the closest evidenced thing is foregrounded and nothing more is said.
 
+## What the CV IS (read this before any rule below)
+
+**The CV exists to get this person shortlisted.** It is the record, and its
+constraint is accuracy — but an accurate document nobody shortlists has failed
+exactly as a fabricated one has. The invariants above are absolute; everything
+else in this document earns its place by making a shortlist more likely.
+
+**The layers are the specification of a finished CV, not the text of the writing
+prompt.** Restating all of them to the writer produced, on the CV, the defect
+measured on the cover letter on 2026-08-15: a prompt whose standing instructions
+dwarf the candidate's own material, so every document reads the same. The CV
+writing prompt therefore carries the record, the ad, the invariants, the
+document's furniture (the section set, the date format, the markdown shape) and
+the candidate's voice and steering — and nothing else. Layers 1–5 are enforced
+downstream by Layer 6, deterministically, where a violation is caught rather than
+merely asked against, and the single regeneration carries the specific failure
+back to the writer.
+
+**A rule returns to the writing prompt only after a run shows the CV is better
+with it.** Same standard as the letter: a rule never compared with its own
+absence is a guess. The comparison is `scripts/test-generate.mjs` against a real
+record and a real ad, at least two samples, recorded in `COVER_LETTER_LOG.md`.
+
 ## What the cover letter IS (read this before any rule below)
 
 **The letter exists to PERSUADE. Its single job is to make the reader decide to

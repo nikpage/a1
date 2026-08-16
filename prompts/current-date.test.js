@@ -162,10 +162,10 @@ describe('existing key rules survive the date insertion (guard against accidenta
   test('cv-generator.js keeps its red-flag, blueprint and no-fabrication rules', () => {
     const user = buildCvPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)
       .find((m) => m.role === 'user').content;
-    expect(user).toContain('# How to work');
+    expect(user).toContain('# The document\'s furniture');
     expect(user).toContain('Red flags are handled, not advertised');
-    expect(user).toMatch(/NEVER invent a number or a fact that isn.t in the master CV/);
-    expect(user).toContain('Never fabricate dates or create artificial gaps');
+    expect(user).toContain('T1 — Never fabricate');
+    expect(user).toMatch(/changing a date is forbidden/);
   });
 
   test('cover-letter.js keeps its length budget and date/salutation format rules', () => {

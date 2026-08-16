@@ -55,22 +55,21 @@ describe('the CV prompt prints the headline', () => {
     generation_framework: { cv_blueprint: { headline_draft: 'Operations Leader | Fulfilment at Scale' } },
   };
 
-  test('the draft reaches the writer, in the reading list and as a required slot', () => {
+  // The writing prompt no longer restates the headline rules — the draft is
+  // per-user material and reaches the writer inside the blueprint, and the
+  // template keeps the slot (CV_RULES.md, "What the CV IS").
+  test('the draft reaches the writer inside the blueprint, with a slot in the template', () => {
     const p = userOf(buildCvPrompt(CV, analysis, 'Confident'));
-    expect(p).toContain('generation_framework.cv_blueprint.headline_draft');
-    expect(p).toContain('# The headline');
-    expect(p).toContain('REQUIRED headline');
-    // the actual draft text is in the prompt (it ships inside the analysis JSON)
     expect(p).toContain('Operations Leader | Fulfilment at Scale');
-    // the tone the writer must adapt it to is named in the headline instruction
-    expect(p).toMatch(/headline_draft`, adapted to the "Confident" voice/);
-    // the old vague optional slot is gone
+    expect(p).toMatch(/\[Headline — one short line/);
     expect(p).not.toContain('Optional tagline/headline if present in original CV');
   });
 
+  // It survives where it is enforced: the headline-only regeneration prompt,
+  // and Layer 6 over the finished document.
   test('the headline may never state a duration', () => {
-    const p = userOf(buildCvPrompt(CV, analysis, 'Formal'));
-    expect(p).toContain('never a duration ("X+ years", "a decade of")');
+    const p = userOf(buildHeadlinePrompt(CV, analysis, 'Formal'));
+    expect(p).toContain('NEVER a duration');
   });
 });
 
