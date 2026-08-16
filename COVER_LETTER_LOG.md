@@ -329,3 +329,59 @@ comment above it. The comparison costs $0.02.
 purpose; a Czech-language run with a named contact is untested against the new
 prompt; the `produkt` / DOMAIN_TERMS collision stands; the CV path still ships
 hard failures.
+
+---
+
+## 2026-08-16 — the same treatment applied to the CV
+
+The letter's rule stack was removed on 2026-08-15 and measured better without
+it. The CV prompt had never been compared with its own absence, so it still
+restated Layers 1-3, the scenario mitigations, the 3.9k human-voice block, a
+"How to work" reading list, a "What makes this CV impressive" list and a
+nineteen-line closing checklist on top of the record, the ad and the blueprint.
+
+**What was removed**, leaving the record, the ad extraction, the blueprint, the
+invariants (T1-T4), market conventions, steering, `voice_guide`, language, tone,
+the date format, contracts-nesting, the epithet ban, the banned-phrase list, the
+red-flag line and the markdown template:
+
+| | old | new |
+|---|---|---|
+| prompt size (identical inputs) | 33,480 chars | **12,138 chars** |
+
+The four rules kept in the prompt were kept deliberately: the epithet ban and
+the banned-phrase list are only WARNINGS at Layer 6, so dropping them would have
+degraded the document silently; contracts-nesting and the red-flag line describe
+how to read the record and the brief, which no downstream check can supply.
+
+**The run** (through the deployed app, so every call is metered: analysis
+$0.1211 + $0.1609, CV $0.0624 over 4 calls). Nik's real record, 19 roles, against
+the KUBO Account Manager ad — the same ad the minimal-prompt comparison used for
+the letter.
+
+- Headline came out job-aware and clean: *"Senior Account Manager & Technology
+  Adoption Leader"* — no duration, no epithet, nothing the record lacks.
+- **Relevance beat recency without a rule telling it to.** The 2017 Charles
+  University lectureship is in Work Experience, which is the right proof for a
+  job about presenting to school directors. That behaviour used to be the CV's
+  weakest point and no removed rule was producing it.
+- Summary leads on client-facing account work with achievement bullets naming
+  their employers (the eBay account under Salsita).
+- Dates MM/YYYY throughout, real months, every role kept.
+- Requirements the record cannot answer (*vztahy se školami, vzdělávání, školy,
+  knihovny, rodiny*) were left off and reported as gaps — not faked.
+- **`validateCv`: no hard failures.** Six warnings: opening 127 words against
+  the ~120 impact zone, two 13-word bullets under the band, one skill evidenced
+  only by work the CV no longer shows.
+
+**The finding.** The layer detail the writer no longer reads is exactly what the
+warnings now report — the checks still bind, they simply bind where a violation
+is caught rather than merely asked against. A prompt two thirds smaller did not
+cost parseability, dates, truthfulness or targeting on this run.
+
+**Open after this entry:** one ad, one sample — the letter's own lesson says
+read at least two before trusting a direction. The impact zone runs slightly
+long (127 words) and the bullet band is missed in places now that neither is
+stated to the writer; if that repeats across runs, the fix is a furniture line
+about length, not the return of Layer 2. An English-language CV only; a Czech
+generation is untested against the new prompt.
