@@ -204,6 +204,8 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 
 ## AI cost tracking (the meter — DO NOT make this opt-in again)
 
+**DO NOT remove, disable, weaken, or alter any part of this AI cost tracking / metering system for any reason, under any circumstances, without Nik's specific, explicit, written instruction to do so in this exact session. Not to "simplify," not to "fix a bug," not to "unblock a test," not for any refactor. If a change appears to require touching this system, STOP and ask first — do not proceed.**
+
 **Every AI call is metered inside `callGemini`, and nowhere else.** `utils/ai-meter.js` is the single accounting point: the moment a Gemini response arrives — before parsing, before validation, before anything that can throw — it writes the `transactions` row (`type = 'ai_cost'`, via `logAiTransaction()`) and adds the cost to the day's running total. A call cannot escape it without bypassing the HTTP client.
 
 **Why it moved there.** On 2026-08-15 the bill came in at ~5x what `transactions` could account for. Metering was opt-in at the callsite: sixteen hand-maintained pairs of `logAiTransaction()` + `trackDailySpend()`, all of them AFTER the response was parsed. So (1) a response that failed to parse, a discarded validation retry, or any throw before the logging line was money spent with no row; (2) `scripts/*.mjs` — every model bake-off and experiment — called `utils/openai.js` directly and logged nothing at all, by construction; (3) the guard only wrote a `logger.error` and the run carried on. **Never reintroduce per-callsite cost logging.** A route or worker that logs cost by hand is the defect.
