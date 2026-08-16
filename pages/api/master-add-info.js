@@ -13,7 +13,8 @@
 // paying for two augment calls.
 
 import requireAuth from '../../lib/requireAuth';
-import { getCV, getMasterCv, saveMasterCv, logAiTransaction } from '../../utils/database';
+import { getCV, getMasterCv, saveMasterCv } from '../../utils/database';
+import { withAiContext } from '../../utils/ai-meter';
 import { augmentMaster, buildOrMergeMaster } from '../../utils/openai';
 import { computeMasterIssues } from '../../utils/master-issues';
 import { logger } from '../../lib/logger';
@@ -98,19 +99,8 @@ async function handler(req, res) {
       return res.status(502).json({ error: 'Could not add that right now — try again' });
     }
 
-    // Every paid call is cost-logged (augment attempts + verify), whether or not
-    // the result is saved — the user was charged for it either way.
-    for (const mu of [...buildUsages, ...result.usages]) {
-      await logAiTransaction({
-        user_id,
-        model: mu.model,
-        cache_miss_tokens: mu.inputTokens,
-        cache_hit_tokens: 0,
-        completion_tokens: mu.outputTokens + mu.thinkingTokens,
-        thinking_tokens: mu.thinkingTokens,
-        detail: { type: mu.label },
-      }).catch(() => {});
-    }
+    // Every paid call — each augment attempt and the verify pass — was recorded
+    // by the meter as it responded, whether or not the result is saved.
 
     try {
       await saveMasterCv(user_id, result.output);
@@ -136,4 +126,4 @@ async function handler(req, res) {
   }
 }
 
-export default requireAuth(handler);
+export default requireAuth(withAiContext('api:master-add-info', handler));

@@ -38,13 +38,19 @@ vi.mock('../utils/database', () => ({
   saveMasterCv: mockSaveMasterCv,
   getLatestAnalysis: mockGetLatestAnalysis,
   logAiTransaction: mockLogAiTransaction,
+  getAiSpendSince: vi.fn(async () => ({ total: 0, unpriced: 0 })),
 }));
 vi.mock('../utils/openai', () => ({ augmentMaster: mockAugmentMaster, buildOrMergeMaster: mockBuildOrMergeMaster }));
 vi.mock('../lib/requireAuth', () => ({ default: (handler) => handler }));
 
+import { aiContext } from '../utils/ai-meter.js';
 import handler from '../pages/api/master-add-info.js';
 
 const SESSION_USER = 'user-session-1';
+
+// The AI cost context as it stood when a Gemini call was made — it decides
+// whose ledger the spend lands in.
+let aiContextSeen = null;
 const MASTER = {
   work_experience: [
     { company: 'Beta Ltd', title: 'PM', start_date: '2019', end_date: '2022', bullets: [], fractional_engagements: [] },
@@ -71,10 +77,18 @@ beforeEach(() => {
   mockRedisDel.mockResolvedValue(1);
   mockGetMasterCv.mockResolvedValue(MASTER);
   mockGetCV.mockResolvedValue({ cv_data: 'Jane Roe — Product Manager, Beta Ltd 2019-2022' });
-  mockBuildOrMergeMaster.mockResolvedValue({ output: MASTER, usages: [USAGE] });
+  mockBuildOrMergeMaster.mockImplementation(async () => {
+    aiContextSeen = { ...aiContext() };
+    return { output: MASTER, usages: [USAGE] };
+  });
   mockSaveMasterCv.mockResolvedValue({});
   mockGetLatestAnalysis.mockResolvedValue(null);
   mockLogAiTransaction.mockResolvedValue(undefined);
+  aiContextSeen = null;
+  mockAugmentMaster.mockImplementation(async () => {
+    aiContextSeen = { ...aiContext() };
+    return { output: UPDATED, usages: [USAGE] };
+  });
 });
 
 describe('POST /api/master-add-info', () => {
@@ -116,28 +130,16 @@ describe('POST /api/master-add-info', () => {
     expect(mockAugmentMaster).toHaveBeenCalledWith(MASTER, 'Six months contracting at Acme in 2023.');
   });
 
-  test('cost-logs every AI call with the model and token split from the usage', async () => {
-    const verifyUsage = { ...USAGE, label: 'master-cv verify', model: 'gemini-2.5-flash-lite', inputTokens: 200, outputTokens: 5, thinkingTokens: 2 };
-    mockAugmentMaster.mockResolvedValue({ output: UPDATED, usages: [USAGE, verifyUsage] });
-
-    const { done } = await call({ text: 'Six months contracting at Acme in 2023.' });
+  // The transactions row for each call is written by the meter inside
+  // callGemini (pinned in __tests__/ai-meter.test.js), which is why an augment
+  // that later fails to save is still billed in the ledger. What this route
+  // owns is ATTRIBUTION — the context the calls run in decides whose spend it
+  // is, and it must be the SESSION user, never one named in the body.
+  test('runs its AI calls attributed to the session user, not the body user', async () => {
+    const { done } = await call({ text: 'Six months contracting at Acme in 2023.', user_id: 'victim-user' });
     await done;
 
-    expect(mockLogAiTransaction).toHaveBeenCalledTimes(2);
-    expect(mockLogAiTransaction).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      user_id: SESSION_USER,
-      model: 'gemini-2.5-flash-lite',
-      cache_miss_tokens: 100,
-      completion_tokens: 50,   // outputTokens + thinkingTokens
-      thinking_tokens: 10,
-      detail: { type: 'master-cv augment' },
-    }));
-    expect(mockLogAiTransaction).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      cache_miss_tokens: 200,
-      completion_tokens: 7,
-      thinking_tokens: 2,
-      detail: { type: 'master-cv verify' },
-    }));
+    expect(aiContextSeen).toMatchObject({ user_id: SESSION_USER, context: 'api:master-add-info' });
   });
 
   test('rejects a second submission while one is in flight, and releases the lock after', async () => {
@@ -182,8 +184,9 @@ describe('POST /api/master-add-info', () => {
     expect(mockSaveMasterCv).toHaveBeenNthCalledWith(1, SESSION_USER, MASTER);
     expect(mockAugmentMaster).toHaveBeenCalledWith(MASTER, 'Six months contracting at Acme in 2023.');
     expect(mockSaveMasterCv).toHaveBeenNthCalledWith(2, SESSION_USER, UPDATED);
-    // The build's calls are cost-logged too, not just the augment's.
-    expect(mockLogAiTransaction).toHaveBeenCalledTimes(2);
+    // The build ran inside the same attributed context as the augment, so the
+    // meter billed both to this user.
+    expect(aiContextSeen).toMatchObject({ user_id: SESSION_USER });
   });
 
   test('409s only when there is no CV on file at all', async () => {

@@ -19,7 +19,8 @@
 //      was charged for it either way).
 
 import requireAuth from '../../lib/requireAuth';
-import { getVoiceProfile, saveVoiceProfile, logAiTransaction } from '../../utils/database';
+import { getVoiceProfile, saveVoiceProfile } from '../../utils/database';
+import { withAiContext } from '../../utils/ai-meter';
 import { buildVoiceProfile } from '../../utils/openai';
 import { logger } from '../../lib/logger';
 
@@ -99,21 +100,9 @@ async function handler(req, res) {
       return res.status(502).json({ error: 'Could not read your writing — please try again' });
     }
 
-    // Cost-logged before anything can fail on the way to the save: the call was
-    // paid for whether or not the row lands.
+    // The extraction call was recorded by the meter the moment it responded —
+    // before this route could fail on the way to the save.
     const gu = built.gemini_usage;
-    try {
-      await logAiTransaction({
-        user_id,
-        model: gu.model,
-        cache_miss_tokens: gu.inputTokens,
-        completion_tokens: gu.outputTokens + gu.thinkingTokens,
-        thinking_tokens: gu.thinkingTokens,
-        detail: { label: gu.label },
-      });
-    } catch (e) {
-      logger.error('voice-profile: cost log failed:', e.message);
-    }
 
     // Keep the user's own lines and options across a re-extract — they are
     // hand-written and no AI pass should be able to wipe them.
@@ -177,4 +166,4 @@ async function handler(req, res) {
   return res.status(400).json({ error: 'Unknown action' });
 }
 
-export default requireAuth(handler);
+export default requireAuth(withAiContext('api:voice-profile', handler));

@@ -9,6 +9,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { buildOrMergeMaster } from '../utils/openai.js';
+import { enterAiContext, setAiContext } from '../utils/ai-meter.js';
 
 async function main() {
   const arg = process.argv[2];
@@ -28,6 +29,7 @@ async function main() {
     if (!data) throw new Error(`no user for ${arg}`);
     userId = data.user_id;
   }
+  setAiContext({ user_id: userId });
 
   const { data: row } = await sb
     .from('cv_data')
@@ -62,5 +64,8 @@ async function main() {
     }
   }
 }
+
+// Two paid builds — recorded in `transactions` like any other spend.
+enterAiContext({ context: 'script:master-determinism' });
 
 main().catch(e => { console.error(e); process.exit(1); });

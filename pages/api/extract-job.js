@@ -1,6 +1,6 @@
 import requireAuth from '../../lib/requireAuth';
 import { analyzeJobOnly } from '../../utils/openai';
-import { logAiTransaction } from '../../utils/database';
+import { runWithAiContext } from '../../utils/ai-meter';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -13,21 +13,17 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'Missing jobText' });
   }
 
-  try {
-    const { output, gemini_usage } = await analyzeJobOnly(String(jobText));
-    logAiTransaction({
-      user_id: req.user.user_id,
-      model: gemini_usage.model,
-      cache_miss_tokens: gemini_usage.inputTokens,
-      cache_hit_tokens: 0,
-      completion_tokens: gemini_usage.outputTokens + gemini_usage.thinkingTokens,
-      thinking_tokens: gemini_usage.thinkingTokens,
-      detail: { type: 'job_extraction' },
-    }).catch(() => {});
-    return res.status(200).json({ extraction: output, gemini_usage });
-  } catch (e) {
-    return res.status(500).json({ error: e.message || 'Extraction failed' });
-  }
+  // The extraction call is recorded by the meter inside callGemini, attributed
+  // to this user through the context — including a call that then fails to
+  // parse, which the old post-hoc log here never saw.
+  return runWithAiContext({ user_id: req.user.user_id, context: 'api:extract-job' }, async () => {
+    try {
+      const { output, gemini_usage } = await analyzeJobOnly(String(jobText));
+      return res.status(200).json({ extraction: output, gemini_usage });
+    } catch (e) {
+      return res.status(500).json({ error: e.message || 'Extraction failed' });
+    }
+  });
 }
 
 export default requireAuth(handler);

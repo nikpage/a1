@@ -262,6 +262,32 @@ export async function logAiTransaction({
   if (error) logger.error('logAiTransaction: insert failed', error.message);
 }
 
+// Today's AI spend straight out of the ledger, for the budget guard in
+// utils/ai-meter.js. Returns { total, unpriced }: `total` is the summed USD of
+// every priced call since `sinceIso`, `unpriced` is how many rows carry a null
+// amount — real spend of an unknown size, which must never be counted as zero.
+// Read here rather than from Redis because Upstash is unreachable from the Next
+// server runtime, and a guard that silently fails open on the paths that spend
+// the most is not a guard.
+export async function getAiSpendSince(sinceIso) {
+  const db = getAdminSupabase();
+  const { data, error } = await db
+    .from('transactions')
+    .select('amount_usd')
+    .eq('type', 'ai_cost')
+    .gte('created_at', sinceIso);
+
+  if (error) throw new Error(`getAiSpendSince: ${error.message}`);
+
+  let total = 0;
+  let unpriced = 0;
+  for (const row of data || []) {
+    if (row.amount_usd === null) unpriced += 1;
+    else total += Number(row.amount_usd);
+  }
+  return { total, unpriced };
+}
+
 // Delete all data for a user (GDPR self-delete)
 export async function deleteUserData(user_id) {
   const db = getAdminSupabase();

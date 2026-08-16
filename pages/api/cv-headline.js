@@ -13,12 +13,12 @@
 // uses (saveGeneratedDoc → a new gen_data row, which get-docs then reads back).
 
 import { logger } from '../../lib/logger';
-import { getGenerationSource, saveGeneratedDoc, logAiTransaction } from '../../utils/database';
+import { getGenerationSource, saveGeneratedDoc } from '../../utils/database';
+import { withAiContext } from '../../utils/ai-meter';
 import { generateHeadline } from '../../utils/openai';
 import { writeHeadline, readHeadline, removeHeadline } from '../../utils/cv-headline';
 import { GENERATION_LANGUAGES } from '../../prompts/language';
 import { Redis } from '@upstash/redis';
-import crypto from 'crypto';
 import requireAuth from '../../lib/requireAuth';
 
 let _redis;
@@ -112,19 +112,8 @@ async function handler(req, res) {
       updated = writeHeadline(content, result.content);
       gemini_usage = result.gemini_usages;
 
-      // Cost logging is not optional — every AI call gets its own row.
-      for (const gu of gemini_usage) {
-        await logAiTransaction({
-          user_id,
-          source_gen_id: crypto.randomUUID(),
-          model: gu.model,
-          cache_hit_tokens: 0,
-          cache_miss_tokens: gu.inputTokens,
-          completion_tokens: gu.outputTokens + gu.thinkingTokens,
-          thinking_tokens: gu.thinkingTokens,
-          detail: { tone, type: 'cv', step: gu.label },
-        });
-      }
+      // Cost logging is not optional — and it no longer happens here: the meter
+      // inside callGemini wrote a row for each of these calls as it responded.
     } finally {
       if (lockHeld) {
         try { await getRedis().del(lockKey); } catch (e) { logger.error('Redis unlock error:', e.message); }
@@ -149,4 +138,4 @@ async function handler(req, res) {
   return res.status(200).json({ cv: updated, headline: readHeadline(updated), gemini_usage });
 }
 
-export default requireAuth(handler);
+export default requireAuth(withAiContext('api:cv-headline', handler));

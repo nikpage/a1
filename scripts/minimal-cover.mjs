@@ -21,6 +21,7 @@
 import fs from 'node:fs';
 import { getGenerationSource, getVoiceProfile } from '../utils/database.js';
 import { callGemini, GEMINI_GENERATION_MODEL, verifyGeneratedDoc } from '../utils/openai.js';
+import { enterAiContext } from '../utils/ai-meter.js';
 import { validateCoverLetter, bannedPhraseHits, unsourcedDomainHits } from '../utils/cv-validate.js';
 import { voiceProfileBlock, voiceExcerptBlock } from '../prompts/voice-profile.js';
 import { composeTweak } from '../utils/steering.js';
@@ -38,6 +39,10 @@ if (!jobFile) { console.error('usage: node scripts/minimal-cover.mjs <job-file> 
 const { createClient } = await import('@supabase/supabase-js');
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const { data: user } = await sb.from('users').select('user_id').eq('email', USER_EMAIL).single();
+
+// This is an experiment, and an experiment is spend: attribute it so its calls
+// land in `transactions` and count against the daily budget.
+enterAiContext({ context: 'script:minimal-cover', user_id: user.user_id });
 
 const master = await getGenerationSource(user.user_id);
 const job = fs.readFileSync(jobFile, 'utf8');

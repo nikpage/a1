@@ -291,12 +291,15 @@ vi.mock('../utils/database', () => ({
   getVoiceProfile: mockGetVoiceProfile,
   saveVoiceProfile: mockSaveVoiceProfile,
   logAiTransaction: mockLogAiTransaction,
+  getAiSpendSince: vi.fn(async () => ({ total: 0, unpriced: 0 })),
 }));
 vi.mock('../utils/openai', () => ({ buildVoiceProfile: mockBuildVoiceProfile }));
 vi.mock('../lib/requireAuth', () => ({ default: (handler) => handler }));
 
+const { aiContext } = await import('../utils/ai-meter.js');
 const { default: handler } = await import('../pages/api/voice-profile.js');
 
+let aiContextSeen = null;
 const SESSION_USER = 'user-session-1';
 const LONG = 'I shipped the migration on Friday and it broke nothing at all.'.repeat(10);
 const USAGE = {
@@ -320,7 +323,10 @@ describe('POST /api/voice-profile', () => {
     vi.clearAllMocks();
     mockGetVoiceProfile.mockResolvedValue(null);
     mockSaveVoiceProfile.mockResolvedValue([{ user_id: SESSION_USER }]);
-    mockBuildVoiceProfile.mockResolvedValue({
+    aiContextSeen = null;
+    mockBuildVoiceProfile.mockImplementation(async () => {
+      aiContextSeen = { ...aiContext() };
+      return {
       profile: {
         registers: [{ sample: 1, register: 'work email', distance: 'close' }],
         list_a: ['Short sentences.'],
@@ -328,6 +334,7 @@ describe('POST /api/voice-profile', () => {
         confidence: 'One register only.',
       },
       gemini_usage: USAGE,
+      };
     });
   });
 
@@ -347,14 +354,11 @@ describe('POST /api/voice-profile', () => {
     // The register comes from the extraction, not from the user.
     expect(saved.registers).toEqual([{ sample: 1, register: 'work email', distance: 'close' }]);
 
-    // The cost-logging rule has no exceptions: model, tokens, thinking tokens.
-    expect(mockLogAiTransaction).toHaveBeenCalledWith(expect.objectContaining({
-      user_id: SESSION_USER,
-      model: USAGE.model,
-      cache_miss_tokens: USAGE.inputTokens,
-      completion_tokens: USAGE.outputTokens + USAGE.thinkingTokens,
-      thinking_tokens: USAGE.thinkingTokens,
-    }));
+    // The transactions row is written by the meter inside callGemini (pinned in
+    // __tests__/ai-meter.test.js). What this route owns is ATTRIBUTION: the
+    // extraction runs in a context naming the SESSION user, so the body's
+    // 'victim-user' can never be billed for it.
+    expect(aiContextSeen).toMatchObject({ user_id: SESSION_USER, context: 'api:voice-profile' });
   });
 
   test('refuses a sample too thin to carry a pattern', async () => {

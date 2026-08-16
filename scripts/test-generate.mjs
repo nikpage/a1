@@ -83,6 +83,7 @@ import {
 } from '../utils/openai.js';
 import { withOlderApplicant } from '../prompts/scenarios.js';
 import { getMasterCv, getVoiceProfile, getUserByEmail } from '../utils/database.js';
+import { enterAiContext, setAiContext } from '../utils/ai-meter.js';
 import { getUserById } from '../utils/generation-utils.js';
 import { composeTweak } from '../utils/steering.js';
 import { GENERATION_LANGUAGES } from '../prompts/language.js';
@@ -184,6 +185,9 @@ async function main() {
   if (opts.user) {
     const user_id = await resolveUserId(opts.user);
     console.log(`\nUser: ${opts.user} -> user_id ${user_id}`);
+    // Attribute this run's calls now that the real user is known. An experiment
+    // costs the same money a user's run does and belongs in the same ledger.
+    setAiContext({ user_id });
 
     const user = await getUserById(user_id);
     if (!user) throw new Error(`User ${user_id} not found`);
@@ -335,6 +339,11 @@ function printDigest(label, result, { sourceKind, voiceProfile, tweak, analysis 
     logUsage(u.label || 'call', u);
   }
 }
+
+// EXPERIMENTS ARE SPEND. Every call this script makes lands in `transactions`
+// tagged context='script:test-generate' and counts against the daily budget —
+// which is what stops a model bake-off from quietly running up a bill.
+enterAiContext({ context: 'script:test-generate' });
 
 main().catch((err) => {
   console.error('\n✗ Error:', err.response?.data || err.message || err);

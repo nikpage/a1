@@ -18,12 +18,23 @@ describe('costUsdFor', () => {
     expect(rateFor('gemini-99-unknown')).toBeNull();
   });
 
-  test('returns null when cached tokens are billed on a model with no cached rate', () => {
-    // gemini-3.6-flash has no verified cachedInput rate recorded.
-    expect(PRICING['gemini-3.6-flash'].cachedInput).toBeUndefined();
-    expect(costUsdFor({ model: 'gemini-3.6-flash', inputTokens: 100, cachedInputTokens: 500 })).toBeNull();
-    // …but the same model prices normally when nothing is cached.
+  test('cached input is billed at the cached rate, not the full one', () => {
+    // gemini-3.6-flash: $0.75/1M in, $0.075/1M cached, $3.75/1M out.
+    // 1_000×0.00000075 + 500×0.000000075 = 0.00075 + 0.0000375
+    expect(costUsdFor({ model: 'gemini-3.6-flash', inputTokens: 1_000, cachedInputTokens: 500 })).toBeCloseTo(0.0007875, 12);
     expect(costUsdFor({ model: 'gemini-3.6-flash', inputTokens: 1_000, outputTokens: 500 })).toBeCloseTo(0.002625, 10);
+  });
+
+  // Cached tokens on a model whose cached rate is unverified must price as
+  // NULL — "this happened, at an unknown price" — never silently as zero. Every
+  // model currently listed has a verified cached rate, so this pins the rule
+  // against a future entry added without one.
+  test('cached tokens on a model with no cached rate price as null, never zero', () => {
+    const withoutCached = Object.entries(PRICING).filter(([, r]) => typeof r.cachedInput !== 'number');
+    for (const [model] of withoutCached) {
+      expect(costUsdFor({ model, inputTokens: 100, cachedInputTokens: 500 }), `${model} priced despite no cached rate`).toBeNull();
+    }
+    expect(PRICING['gemini-3.6-flash'].cachedInput).toBe(0.075);
   });
 
   test('every model the app can select has a rate', () => {

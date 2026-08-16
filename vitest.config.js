@@ -16,5 +16,8 @@ export default defineConfig({
     // .jsx for the component tests, which need the JSX loader above.
     include: ['**/*.test.js', '**/*.test.jsx'],
     globals: true,
+    // Puts every test inside an AI cost context, because callGemini refuses an
+    // unattributed call. See vitest.setup.js.
+    setupFiles: ['./vitest.setup.js'],
   },
 });

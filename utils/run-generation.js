@@ -11,10 +11,10 @@
 // `netlify/functions/generate-background.mjs` (15-min budget); this module is
 // transport-agnostic and throws GenerationError instead of writing a response.
 
-import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
 import { logger } from '../lib/logger.js';
-import { getGenerationSource, saveGeneratedDoc, logAiTransaction, getVoiceProfile } from './database.js';
+import { getGenerationSource, saveGeneratedDoc, getVoiceProfile } from './database.js';
+import { runWithAiContext } from './ai-meter.js';
 import { getUserById, decrementGenerations } from './generation-utils.js';
 import { generateCV, generateCoverLetter } from './openai.js';
 import { GENERATION_LANGUAGES } from '../prompts/language.js';
@@ -74,6 +74,11 @@ export async function runGeneration({
     logger.error('Redis lock unavailable, proceeding without lock:', redisErr.message);
   }
 
+  // Every Gemini call this run makes — both writing calls, both verify passes,
+  // any validation retry — is attributed and recorded by the meter inside
+  // callGemini. This function does not log cost by hand; a retry it discards is
+  // still billed by Google and so is still in the ledger.
+  return runWithAiContext({ user_id, context: 'generation', detail: { tone, type } }, async () => {
   try {
     let user;
     try {
@@ -160,30 +165,11 @@ export async function runGeneration({
       });
     }
 
-    // Every Gemini call this run made — the writing call AND its verify pass
-    // — gets its own transactions row and its own console line. Each result
-    // exposes them as `gemini_usages` (falling back to the single usage for
-    // safety), so adding a call can never silently escape cost logging.
+    // The usages are still collected here, but only to feed the browser's
+    // `[Gemini] …` console lines — the transactions rows were written by the
+    // meter as each call responded.
     const usagesOf = (result) =>
       result?.gemini_usages || (result?.gemini_usage ? [result.gemini_usage] : []);
-
-    const logUsages = async (result, docType) => {
-      for (const gu of usagesOf(result)) {
-        await logAiTransaction({
-          user_id,
-          source_gen_id: crypto.randomUUID(),
-          model: gu.model,
-          cache_hit_tokens: 0,
-          cache_miss_tokens: gu.inputTokens,
-          completion_tokens: gu.outputTokens + gu.thinkingTokens,
-          thinking_tokens: gu.thinkingTokens,
-          detail: { tone, type: docType, step: gu.label },
-        });
-      }
-    };
-
-    if (type === 'cv' || type === 'both') await logUsages(cvRes, 'cv');
-    if (type === 'cover' || type === 'both') await logUsages(coverRes, 'cover');
 
     // Layer 6 warnings (checks 5-9) ride out with the document so the user
     // sees what the validator flagged; hard failures never reach here.
@@ -201,4 +187,5 @@ export async function runGeneration({
       try { await getRedis().del(lockKey); } catch (e) { logger.error('Redis unlock error:', e.message); }
     }
   }
+  });
 }

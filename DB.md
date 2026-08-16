@@ -66,7 +66,9 @@ One row per user (upserted on upload).
 | `key_index` | integer | — | Which API key was used |
 | `created_at` | timestamp | now() | |
 
-Inserted by `logAiTransaction()` in `utils/database.js` (service-role client), called from `netlify/functions/analyse-background.mjs` (analysis) and `utils/run-generation.js` (generation).
+Inserted by `logAiTransaction()` in `utils/database.js` (service-role client), called from ONE place: the meter in `utils/ai-meter.js`, which runs inside `callGemini` the moment a Gemini response arrives. Nothing else writes an `ai_cost` row — routes, workers and scripts must not, or the call is counted twice.
+
+`detail` carries `{ context, step, … }`: `context` is the surface that spent the money (`generation`, `analyse-background`, `api:voice-profile`, `script:test-generate`), `step` is the prompt (`generate CV`, `master-cv verify`). `getAiSpendSince()` sums these rows for the daily budget guard, so the ledger and the guard read the same data. Report with `doppler run -- node scripts/ai-costs.mjs`.
 
 ### `model_pricing` — NO LONGER READ BY THE APP
 

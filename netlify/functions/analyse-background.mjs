@@ -16,7 +16,8 @@
 import * as Sentry from '@sentry/node';
 import { analyzeTeaser, analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
 import { withOlderApplicant } from '../../prompts/scenarios.js';
-import { saveGeneratedDoc, logAiTransaction, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
+import { saveGeneratedDoc, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
+import { runWithAiContext } from '../../utils/ai-meter.js';
 import { formatLayoutForPrompt } from '../../utils/cvLayout.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
@@ -111,6 +112,10 @@ export const handler = async (event) => {
     jobText = confirmedJobToText(confirmedJob);
   }
 
+  // Everything below runs inside the AI cost context, so every Gemini call it
+  // makes — teaser, deep pass, master build, master verify — is attributed and
+  // recorded by the meter in callGemini. Nothing here logs cost by hand.
+  return runWithAiContext({ user_id, context: 'analyse-background', source_gen_id: analysis_id, detail: { job_title: confirmedJob?.position_title || null, company: confirmedJob?.company || null } }, async () => {
   try {
     let query = supabase.from('cv_data').select('cv_data').eq('user_id', user_id);
     if (created_at) query = query.eq('created_at', created_at);
@@ -133,19 +138,9 @@ export const handler = async (event) => {
         master = built.output;
         masterUsages = built.usages;
         await saveMasterCv(user_id, master);
-        // Log every AI call the build made (build + verify pass).
-        for (const mu of built.usages) {
-          await logAiTransaction({
-            user_id,
-            source_gen_id: analysis_id,
-            model: mu.model,
-            cache_miss_tokens: mu.inputTokens,
-            cache_hit_tokens: 0,
-            completion_tokens: mu.outputTokens + mu.thinkingTokens,
-            thinking_tokens: mu.thinkingTokens,
-            detail: { type: mu.label },
-          }).catch(() => {});
-        }
+        // The build and its verify pass were already recorded by the meter, at
+        // the moment each responded — including a build that then failed to
+        // parse, which this hand-rolled loop never saw.
       } catch (e) {
         // A master-build failure must not sink the analysis — fall back to raw text.
         // But it must NOT pass silently either: the user was charged for the build,
@@ -281,21 +276,6 @@ export const handler = async (event) => {
       analysis_id,
     });
 
-    // Log EVERY analysis AI call (teaser, and the deep pass when it ran) — the
-    // cost-logging rule covers all of them, no exceptions.
-    for (const gu of analysisUsages) {
-      await logAiTransaction({
-        user_id,
-        source_gen_id: analysis_id,
-        model: gu.model,
-        cache_miss_tokens: gu.inputTokens,
-        cache_hit_tokens: 0,
-        completion_tokens: gu.outputTokens + gu.thinkingTokens,
-        thinking_tokens: gu.thinkingTokens,
-        detail: { job_title, company, type: gu.label },
-      }).catch(() => {});
-    }
-
     return { statusCode: 202 };
   } catch (e) {
     Sentry.captureException(e);
@@ -306,4 +286,5 @@ export const handler = async (event) => {
     await saveError(user_id, analysis_id, msg);
     return { statusCode: 202 };
   }
+  });
 };

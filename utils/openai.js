@@ -1,7 +1,6 @@
 // utils/openai.js
 
 import axios from 'axios'
-import { Redis } from '@upstash/redis';
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildAnalysisTeaserPrompt } from '../prompts/analysis-teaser.js';
@@ -15,34 +14,10 @@ import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
 import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
 import { buildMasterCvPrompt } from '../prompts/master-cv.js';
 import { costUsdFor } from './pricing.js';
+import { assertAttributed, assertUnderBudget, meterGeminiCall } from './ai-meter.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
-
-let _redis;
-function getRedis() {
-  if (!_redis) _redis = Redis.fromEnv();
-  return _redis;
-}
-
-const DAILY_BUDGET = parseFloat(process.env.GEMINI_DAILY_BUDGET_USD || '10');
-
-export async function trackDailySpend(costUsd) {
-  // An unpriced call (null) must not be added as 0 or NaN — the guard would
-  // read low forever and never fire. It is already logged by geminiUsage.
-  if (!Number.isFinite(costUsd)) return;
-  const key = `gemini_spend:${new Date().toISOString().slice(0, 10)}`; // YYYY-MM-DD
-  try {
-    const redis = getRedis();
-    const newTotal = await redis.incrbyfloat(key, costUsd);
-    await redis.expire(key, 60 * 60 * 26); // 26h TTL — survives midnight briefly
-    if (newTotal >= DAILY_BUDGET) {
-      logger.error(`[spend-guard] Daily Gemini spend $${newTotal.toFixed(4)} has reached/exceeded budget $${DAILY_BUDGET}`);
-    }
-  } catch (e) {
-    logger.warn('[spend-guard] Could not record spend:', e.message);
-  }
-}
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 // Model allocation by task nature (see CLAUDE.md "AI layer"):
@@ -90,7 +65,13 @@ function geminiErrorMessage(error) {
   return error.message || 'unknown error';
 }
 
-export async function callGemini(model, messages, options = {}) {
+// `label` names the step in the cost ledger ('generate CV', 'verify cover', …).
+// It is pulled OUT of the options here so it never reaches the request body.
+export async function callGemini(model, messages, { label, ...options } = {}) {
+  // No context, no call. Every Gemini call is claimed by a user, a surface or a
+  // named script before a single token is spent.
+  assertAttributed(model);
+
   const totalKeys = keyManager.keys.filter(k => k !== null).length;
   // Up to 6 attempts with exponential backoff so a transient 503 (model
   // overloaded) is ridden out. The heavy callers (master build/verify, analysis)
@@ -100,6 +81,10 @@ export async function callGemini(model, messages, options = {}) {
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
+      // The ceiling is checked before EVERY attempt, not once per call: a retry
+      // storm costs as much as fresh calls do.
+      await assertUnderBudget(model);
+
       const response = await axios.post(
         GEMINI_URL,
         { model, messages, ...options },
@@ -110,8 +95,18 @@ export async function callGemini(model, messages, options = {}) {
           }
         }
       );
+      // METER FIRST, RETURN SECOND. Gemini bills the moment it responds, so the
+      // call is recorded before anything that could throw — a parse, a
+      // validation retry that gets discarded, a caller that gives up. Everything
+      // downstream is free to fail without making the spend invisible.
+      await meterGeminiCall(geminiUsage(label || `call ${model}`, response.data, model));
+
       return response.data;
     } catch (error) {
+      // A budget block is a decision, not a transport failure: it must not be
+      // retried or rotated onto another key.
+      if (error?.code === 'budget_exceeded') throw error;
+
       lastError = error;
       const status = error.response?.status;
 
@@ -153,7 +148,7 @@ export async function callGemini(model, messages, options = {}) {
 
 export async function analyzeJobOnly(jobText) {
   const messages = buildJobExtractionPrompt(jobText);
-  const data = await callGemini(GEMINI_EXTRACTION_MODEL, messages, { reasoning_effort: 'low' });
+  const data = await callGemini(GEMINI_EXTRACTION_MODEL, messages, { reasoning_effort: 'low', label: 'extract job' });
   const gemini_usage = geminiUsage('extract job', data, GEMINI_EXTRACTION_MODEL);
 
   let jsonOutput = data.choices?.[0]?.message?.content || '';
@@ -166,7 +161,6 @@ export async function analyzeJobOnly(jobText) {
 
   try {
     const output = JSON.parse(jsonOutput);
-    trackDailySpend(gemini_usage.costUsd);
     return { output, usage: data.usage, gemini_usage };
   } catch (e) {
     logger.error('Invalid JSON from job extraction:', e.message);
@@ -235,10 +229,9 @@ export async function buildOrMergeMaster(rawInput) {
     // temperature 0: the build is pure extraction, so the same CV text must
     // yield the same record. The endpoint default of 1.0 made nesting vary
     // run to run (six client engagements one run, four the next).
-    lastData = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low', temperature: 0 });
+    lastData = await callGemini(GEMINI_MASTER_MODEL, messages, { reasoning_effort: 'low', temperature: 0, label: `master-cv ${mode}` });
     const gu = geminiUsage(`master-cv ${mode}`, lastData, GEMINI_MASTER_MODEL);
     attemptUsages.push(gu);
-    trackDailySpend(gu.costUsd);
     try {
       output = parseJsonLoose(lastData.choices?.[0]?.message?.content || '');
       parseErr = null;
@@ -273,13 +266,12 @@ export async function augmentMaster(master, text) {
 export async function analyzeTeaser(cvText, jobText, layoutNote = '') {
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
   const messages = buildAnalysisTeaserPrompt(cvText, jobText, hasJobText, layoutNote);
-  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low' });
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'low', label: 'analyze teaser' });
   const gemini_usage = geminiUsage('analyze teaser', data, GEMINI_ANALYSIS_MODEL);
 
   const jsonOutput = stripJsonFences(data.choices?.[0]?.message?.content || '');
   try {
     JSON.parse(jsonOutput);
-    trackDailySpend(gemini_usage.costUsd);
     return { output: jsonOutput, usage: data.usage, gemini_usage };
   } catch (e) {
     logger.error('Invalid JSON from teaser analysis:', e.message);
@@ -305,11 +297,8 @@ export function mergeTeaserAndDelta(teaser, delta) {
 // One deep sub-call: run the prompt for `mode` and return its parsed delta.
 async function runDeltaPass(cvText, jobText, hasJobText, teaserObj, mode) {
   const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, teaserObj, mode);
-  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium' });
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium', label: `analyze CV+job (${mode})` });
   const gemini_usage = geminiUsage(`analyze CV+job (${mode})`, data, GEMINI_ANALYSIS_MODEL);
-  // Gemini bills for this call the moment it responds, regardless of whether the
-  // JSON below parses — track/report the spend now, not after a parse that can throw.
-  trackDailySpend(gemini_usage.costUsd);
 
   const raw = data.choices?.[0]?.message?.content || '';
   logger.debug(`RAW JSON OUTPUT (${mode}, first 500 chars):`, raw.substring(0, 500) + (raw.length > 500 ? '...' : ''));
@@ -385,7 +374,7 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
 
   const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, null);
 
-  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium' });
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium', label: 'analyze CV+job' });
 
   const gemini_usage = geminiUsage('analyze CV+job', data, GEMINI_ANALYSIS_MODEL);
 
@@ -396,7 +385,6 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
 
   try {
     JSON.parse(jsonOutput);
-    trackDailySpend(gemini_usage.costUsd);
     return { choices: data.choices, output: jsonOutput, usage: data.usage, gemini_usage, gemini_usages: [gemini_usage] };
   } catch (jsonError) {
     logger.error('Invalid JSON returned from API:', jsonError.message);
@@ -482,14 +470,13 @@ export async function verifyGeneratedDoc({ document, master, docType = 'cv', lan
   try {
     if (!document || !master) return { content: document, gemini_usage: null, applied: [] };
     const messages = buildGenerationVerifyPrompt({ docType, document, master, language });
-    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low', label: `verify ${docType}` });
     const gemini_usage = geminiUsage(`verify ${docType}`, data, GEMINI_VERIFY_MODEL);
     const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
     const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
     if (applied.length) {
       logger.info(`[verify ${docType}] ${applied.length} unsupported claim(s) corrected:`, applied.map((a) => a.reason).join('; '));
     }
-    trackDailySpend(gemini_usage.costUsd);
     return { content, gemini_usage, applied };
   } catch (e) {
     logger.error(`generation verify failed (${docType}, using unverified document):`, e.message);
@@ -508,11 +495,10 @@ export async function repairStockPhrases({ document, docType = 'cv', language = 
 
   try {
     const messages = buildPhraseRepairPrompt({ docType, document, hits });
-    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low', label: `repair phrases ${docType}` });
     const gemini_usage = geminiUsage(`repair phrases ${docType}`, data, GEMINI_VERIFY_MODEL);
     const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
     const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
-    trackDailySpend(gemini_usage.costUsd);
 
     const left = bannedPhraseHits(content, language);
     if (left.length) {
@@ -542,11 +528,10 @@ export async function repairUnsourcedDomains({ document, master = '' }) {
 
   try {
     const messages = buildPhraseRepairPrompt({ docType: 'cover', document, hits, kind: 'domain' });
-    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low' });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low', label: 'repair unsourced domain' });
     const gemini_usage = geminiUsage('repair unsourced domain', data, GEMINI_VERIFY_MODEL);
     const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
     const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
-    trackDailySpend(gemini_usage.costUsd);
 
     const left = unsourcedDomainHits(content, { master });
     if (left.length) {
@@ -573,9 +558,8 @@ export async function repairUnsourcedDomains({ document, master = '' }) {
 // user tries again.
 export async function buildVoiceProfile(samples) {
   const messages = buildVoiceProfilePrompt({ samples });
-  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium' });
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium', label: 'voice profile' });
   const gemini_usage = geminiUsage('voice profile', data, GEMINI_ANALYSIS_MODEL);
-  trackDailySpend(gemini_usage.costUsd);
 
   const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
 
@@ -631,10 +615,9 @@ export async function applyVoice({ document, profile, docType = 'cover', jobText
   // verifyGeneratedDoc, which reads whatever text comes out of here.
   const rewrite = async (draft, faults) => {
     const messages = buildVoiceRewritePrompt({ document: draft, profile, jobText, shapeFaults: faults });
-    const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.9 });
+    const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.9, label: `voice rewrite ${docType}` });
     const gemini_usage = geminiUsage(`voice rewrite ${docType}`, data, GEMINI_GENERATION_MODEL);
     usages.push(gemini_usage);
-    trackDailySpend(gemini_usage.costUsd);
     return String(data.choices?.[0]?.message?.content || '').trim();
   };
 
@@ -708,9 +691,8 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
   // that keep it honest (don't upgrade the verb, don't invent a number); the
   // low temperature holds it to the record's own wording rather than a
   // more-impressive paraphrase of it.
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4 });
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.4, label: 'generate CV' });
   const gemini_usage = geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL);
-  trackDailySpend(gemini_usage.costUsd);
   const usages = [gemini_usage];
 
   // Safety net over the prose: strip anything the master doesn't evidence.
@@ -734,9 +716,8 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
   if (!validation.ok) {
     logger.info(`[validate cv] hard failures, regenerating once: ${validation.hard.join(' | ')}`);
     const retryMessages = [...messages, { role: 'user', content: validationFeedback(validation.hard) }];
-    const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4 });
+    const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4, label: 'generate CV (validation retry)' });
     const retryUsage = geminiUsage('generate CV (validation retry)', retry, GEMINI_GENERATION_MODEL);
-    trackDailySpend(retryUsage.costUsd);
     usages.push(retryUsage);
 
     const reVerified = await verifyGeneratedDoc({
@@ -780,9 +761,8 @@ export async function generateCV({ cv, analysis, tone, tweak = '', core = '', la
 // headline the full CV pass produced.
 export async function generateHeadline({ cv, analysis, tone, current = '', language = 'auto' }) {
   const messages = buildHeadlinePrompt(cv, analysis, tone, current, language);
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low', temperature: 0.6 });
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low', temperature: 0.6, label: 'generate headline' });
   const gemini_usage = geminiUsage('generate headline', data, GEMINI_GENERATION_MODEL);
-  trackDailySpend(gemini_usage.costUsd);
 
   // The model is told to return the bare line; strip any markdown or quoting it
   // adds anyway so the caller always gets plain headline text.
@@ -857,14 +837,13 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // one; a letter at 0.4 converges on the same four safe paragraphs for everyone,
   // which is the flatness the voice pass then has to undo. Facts are protected by
   // the verify pass that follows, not by a cold sampler.
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55 });
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55, label: 'generate cover letter' });
 
   const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
   const usages = [gemini_usage];
 
   const processedContent = dressLetter(data.choices?.[0]?.message?.content || '');
 
-  trackDailySpend(gemini_usage.costUsd);
 
   // The voice rewrite is a FALLBACK now, not a stage.
   //
@@ -920,9 +899,8 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   if (!validation.ok) {
     logger.info(`[validate cover] hard failures, regenerating once: ${validation.hard.join(' | ')}`);
     const retryMessages = [...messages, { role: 'user', content: validationFeedback(validation.hard, 'cover') }];
-    const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4 });
+    const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4, label: 'generate cover letter (validation retry)' });
     const retryUsage = geminiUsage('generate cover letter (validation retry)', retry, GEMINI_GENERATION_MODEL);
-    trackDailySpend(retryUsage.costUsd);
     usages.push(retryUsage);
 
     const reVerified = await verifyGeneratedDoc({

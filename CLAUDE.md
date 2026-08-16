@@ -37,7 +37,7 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, and the SQL
 - `utils/openai.js` (misleading name — calls **Gemini**, not OpenAI) via the Gemini OpenAI-compatible endpoint. Model is chosen per task by the constants at the top of the file, allocated by task nature: **lite** for extract/classify/check-against-a-schema-or-source (verifiable; lite ≈ flagship at a fraction of the cost) — `GEMINI_EXTRACTION_MODEL` (job-ad parsing), `GEMINI_MASTER_MODEL` (master build/merge, once per user, backstopped by verify), `GEMINI_VERIFY_MODEL` (the master verify checker); **flash** for strategy + prose that can't be fully verified — `GEMINI_ANALYSIS_MODEL` (the strategic brain) and `GEMINI_GENERATION_MODEL` (CV/cover prose). Putting the per-use heavy calls on flash also keeps them off the overloaded flash-lite pool. Raise a lite constant for more quality; never hardcode a model string elsewhere (`GEMINI_GENERATION_MODEL` is EXPORTED so tests can count writing calls without a second copy of the string). **Model choices are made by RUNNING them, not by reasoning about them** — `scripts/test-generate.mjs` against a real record and a real ad, at least two samples per model, and the result recorded in `COVER_LETTER_LOG.md`. Measured 2026-08-15: writing on `gemini-3.6-flash` beats `3.5-flash` at a THIRD of the cost ($0.021 vs $0.063 a write); the checkers on `gemini-3.5-flash-lite` beat `2.5-flash-lite` decisively (7 specific corrections on a CV where 2.5 returned 18 blanket "invented claim" verdicts that duplicated bullets and stripped their markers). `gemini-3.5-pro` and `gemini-3.6-pro` do not exist on the API. Key rotation via `utils/key-manager.js` over `GEMINI_API_KEYS`.
 - The OpenAI-compatible endpoint cannot set `safetySettings`. Mild profanity (e.g. the "cocky" tone's "shit-hot") comes through fine; if Gemini ever sanitizes output, the only lever is switching that call to the native `generateContent` endpoint with `BLOCK_NONE`.
 - Pricing is in `PRICING` in `utils/openai.js` — the single source of truth. Verify rates at ai.google.dev/gemini-api/docs/pricing. Per-call cost is logged to the browser console as `[Gemini] …` and written to the `transactions` table via `logAiTransaction()` in `utils/database.js`.
-- Every successful AI call fires `trackDailySpend()` (fire-and-forget) in `utils/openai.js`, which accumulates the day's USD spend in Redis and emits a `logger.error` alert once `GEMINI_DAILY_BUDGET_USD` (default $10) is reached.
+- **Every** AI call — not just the successful ones — is metered inside `callGemini` by `utils/ai-meter.js`, which writes its `transactions` row and BLOCKS further calls once the day reaches `GEMINI_DAILY_BUDGET_USD` (default $10). See "AI cost tracking".
 - The prompt builders in `prompts/` are provider-agnostic; tone definitions live in `prompts/tone.js` (shared by cv-generator and cover-letter).
 - **Only `Formal` is offered.** `OFFERED_TONES` in `prompts/tone.js` is the single source of truth for the tone selector (`pages/me.js`, `components/ToneDocModal.js` both import it). Friendly, Enthusiastic and Cocky are HIDDEN, not deleted: the candidate's voice profile now owns the writing prompt, so a tone that only changes mood no longer changes the output. Their definitions stay so an older document still regenerates in the tone it was written in. Re-offer one only after it demonstrably differs on a real run, and log that run.
 
@@ -202,14 +202,23 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 - **Employment Gap and Job Returner** keep MM/YYYY dates so the gap is simply visible. Under 6 months: nothing. Over 6 months: no timeline entry and no summary apology — one neutral line only where the master records what happened, in the candidate's own recorded words. Job Returner adds the same handling plus a summary that opens on current capability rather than history.
 - **REFRAME vs ADD still absolute:** every `generation` rule reframes/reorders/relabels/cuts real content; none inserts a fact. Unit tests: `prompts/scenarios.test.js`.
 
-## AI cost logging
+## AI cost tracking (the meter — DO NOT make this opt-in again)
 
-Every AI call writes a row to `transactions` (`type = 'ai_cost'`) via `logAiTransaction()` in `utils/database.js`. It prices the call from `PRICING` in **`utils/pricing.js`** — the single price list, shared with the `[Gemini] …` console line and the daily spend guard — and inserts directly using the service-role client (no HTTP self-call).
+**Every AI call is metered inside `callGemini`, and nowhere else.** `utils/ai-meter.js` is the single accounting point: the moment a Gemini response arrives — before parsing, before validation, before anything that can throw — it writes the `transactions` row (`type = 'ai_cost'`, via `logAiTransaction()`) and adds the cost to the day's running total. A call cannot escape it without bypassing the HTTP client.
 
-- **One price list, and an unpriced call is never invisible.** Rates used to live in BOTH `utils/openai.js` and the `model_pricing` TABLE, and `logAiTransaction` returned *without inserting* when the table lacked the model. On 2026-08-15 the generation model became `gemini-3.6-flash` and the master model `gemini-3.5-flash-lite`; neither was in the table, so every one of those calls billed at Google and wrote nothing — ~$4 of a ~$5 day, invisible in `transactions`. Now: a model with no rate is `logger.error`-ed, the row is still inserted with `amount_usd = null`, and `trackDailySpend` skips it rather than adding zero. **Adding a model constant means adding its rate to `utils/pricing.js`** — `utils/pricing.test.js` pins that every selectable model has one. `model_pricing` is no longer read by any code path.
+**Why it moved there.** On 2026-08-15 the bill came in at ~5x what `transactions` could account for. Metering was opt-in at the callsite: sixteen hand-maintained pairs of `logAiTransaction()` + `trackDailySpend()`, all of them AFTER the response was parsed. So (1) a response that failed to parse, a discarded validation retry, or any throw before the logging line was money spent with no row; (2) `scripts/*.mjs` — every model bake-off and experiment — called `utils/openai.js` directly and logged nothing at all, by construction; (3) the guard only wrote a `logger.error` and the run carried on. **Never reintroduce per-callsite cost logging.** A route or worker that logs cost by hand is the defect.
 
-- **Analysis**: logged in `netlify/functions/analyse-background.mjs` after `saveGeneratedDoc` succeeds.
-- **Generation**: logged in `utils/run-generation.js` after each document is saved. The generation counter is decremented only after both AI calls succeed — a failed call leaves the user's balance untouched.
+- **NO CONTEXT, NO CALL.** `callGemini` calls `assertAttributed()` first and throws `AiContextError` if there is no AI cost context. A call nobody claimed cannot be billed to a user, a surface or a script, so it is REFUSED rather than recorded as "unattributed" and hoped about — forgetting the one-line declaration costs a crash, not money. The test runner is not exempt: `vitest.setup.js` puts every test in a `context: 'test'`.
+- **There is exactly one door to Gemini, and it is guarded by tests.** `__tests__/ai-spend-containment.test.js` fails if any file outside `utils/openai.js` names the Gemini endpoint, if a Google GenAI SDK is imported or added to `package.json`, or if a script under `scripts/` imports `utils/openai.js` without entering a context. A second way to reach the API is a second way to spend invisibly.
+- **Attribution rides in an AsyncLocalStorage context**, not in arguments. Entry points wrap themselves: `runWithAiContext({ user_id, context, source_gen_id, detail }, fn)` for workers, `withAiContext('api:x', handler)` INSIDE `requireAuth` for Next routes, `enterAiContext({ context: 'script:x' })` for scripts (plus `setAiContext({ user_id })` once a script resolves its user). The `user_id` on the row is the SESSION user, never a body value — pinned by tests in `__tests__/cv-headline.test.js`, `__tests__/master-add-info.test.js`, `__tests__/voice-profile.test.js`.
+- **`context` and `step` land in `detail`**, so the ledger says which surface and which prompt spent the money: `context='generation'`, `step='generate CV (validation retry)'`.
+- **EXPERIMENTS ARE SPEND.** `scripts/test-generate.mjs`, `scripts/minimal-cover.mjs` and `scripts/master-determinism.mjs` all enter a `script:*` context, so a bake-off is in the same ledger and counts against the same budget as a user's run. A new script that calls Gemini adds one `enterAiContext` line — otherwise it spends invisibly.
+- **The daily ceiling STOPS spend.** `assertUnderBudget()` runs before every dispatch (every retry too) and throws `AiBudgetError` once the day reaches `GEMINI_DAILY_BUDGET_USD` (default $10); a block is never retried or key-rotated. `GEMINI_BUDGET_ENFORCE=false` downgrades it to a report for a deliberate long run. 80% of budget logs a warning.
+- **The day's total is read from `transactions`, NOT Redis** (`getAiSpendSince()` in `utils/database.js`, cached 60s, plus locally metered calls added immediately). Upstash is unreachable from the Next server runtime, so the old Redis counter was blind on exactly the paths that spend most. Guard and ledger now read the same rows and cannot disagree.
+- **One price list, and an unpriced call is never invisible.** Rates live only in `PRICING` in **`utils/pricing.js`** (shared with the `[Gemini] …` console line and the guard). A model with no rate is `logger.error`-ed, the row is still inserted with `amount_usd = null`, and the guard counts those rows SEPARATELY and reports them rather than treating them as zero. **Adding a model constant means adding its rate to `utils/pricing.js`** — `utils/pricing.test.js` pins that every selectable model has one. `model_pricing` is no longer read by any code path.
+- **A metering failure never fails the user's request**, but it is shouted with the full token split so the row can be reconstructed by hand.
+- **Seeing the money:** `doppler run -- node scripts/ai-costs.mjs [--days 7] [--by model|context|step|user]` reports the ledger per day, flags unpriced calls, and prints the budget.
+- Tests: `__tests__/ai-meter.test.js`.
 
 ## Generation flow (async — do not make it synchronous)
 
@@ -301,7 +310,7 @@ Secrets come from **Doppler** — do not add `.env` files or hardcode values. If
 
 ## AI cost logging rule (DO NOT REMOVE — owner order required to change)
 
-Every AI step — job extraction, master-CV build/merge, master-CV verify, CV+job analysis, CV generation, cover-letter generation, voice-profile extraction, voice fix — **must** report all of the following in **both** places:
+Every AI step — job extraction, master-CV build/merge, master-CV verify, CV+job analysis, CV generation, cover-letter generation, voice-profile extraction, voice fix — **must** report all of the following in **both** places. The DB half is now automatic (the meter in `callGemini` does it for every call, including ones whose result is thrown away); the console half is still the caller's job:
 
 | Field | DB column (`transactions`) | Console (`[Gemini] …` line) |
 |---|---|---|
@@ -309,11 +318,11 @@ Every AI step — job extraction, master-CV build/merge, master-CV verify, CV+jo
 | Input tokens | `cache_miss_tokens` | `in:` |
 | Output tokens | `completion_tokens - thinking_tokens` | `out:` |
 | Thinking tokens | `thinking_tokens` | `think:` |
-| Cost (USD) | `amount_usd` (calculated from `model_pricing`) | `cost:` |
+| Cost (USD) | `amount_usd` (calculated from `PRICING` in `utils/pricing.js`) | `cost:` |
 
 Implementation pattern:
 - Use `gemini_usage` returned by every `utils/openai.js` function — it already contains `{ model, inputTokens, outputTokens, thinkingTokens, costUsd }`.
-- Pass `model: gu.model` (never hardcode the model string), `cache_miss_tokens: gu.inputTokens`, `completion_tokens: gu.outputTokens + gu.thinkingTokens`, `thinking_tokens: gu.thinkingTokens` to `logAiTransaction()`.
+- **Do NOT call `logAiTransaction()` from a route, worker or script.** The meter already wrote the row; a second call double-counts. Give the call a `label` in its `callGemini` options and wrap the entry point in an AI context — that is the whole contract.
 - Console log is emitted by `logGemini(gemini_usage)` in `utils/uploadAndAnalyze.js` (server-side) or `DocumentGenerator.js` / `TabbedViewer.js` (browser-side).
 - Adding a new AI call without both DB and console logging is a defect. No exceptions.
 
@@ -344,7 +353,8 @@ Every API route that touches state or PII is wrapped in `requireAuth` (`lib/requ
 | `RESEND_API_KEY` | Email sending |
 | `RESEND_FROM_EMAIL` | Verified sender address, e.g. noreply@mysuper.cv |
 | `NEXT_PUBLIC_SITE_URL` | `https://mysuper.cv` |
-| `GEMINI_DAILY_BUDGET_USD` | Daily Gemini spend alert threshold (default $10) |
+| `GEMINI_DAILY_BUDGET_USD` | Daily Gemini spend CEILING (default $10) — calls are blocked once it is reached |
+| `GEMINI_BUDGET_ENFORCE` | `false` downgrades the ceiling to a report; anything else enforces it |
 | `JWT_SECRET` | Signs session cookies — required at startup, no fallback |
 | `SENTRY_DSN` | Error monitoring (server + edge) |
 | `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring (browser) |
