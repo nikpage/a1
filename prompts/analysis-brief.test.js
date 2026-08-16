@@ -85,10 +85,16 @@ const WITHHELD = [
 
 const KEPT = [
   'POSITIONING_KEEP', 'CAREER_ARC_KEEP', 'PARALLEL_KEEP',
-  'TRANSFERABLE_KEEP', 'RED_FLAG_KEEP', 'KEYWORD_PRESENT_KEEP', 'KEYWORD_MISSING_KEEP',
-  'QUICK_WIN_KEEP', 'CV_CHANGE_KEEP', 'COVER_POINT_KEEP', 'HEADLINE_DRAFT_KEEP',
+  'TRANSFERABLE_KEEP', 'RED_FLAG_KEEP', 'KEYWORD_PRESENT_KEEP', 'HEADLINE_DRAFT_KEEP',
   'SUMMARY_DRAFT_KEEP', 'ACHIEVEMENT_KEEP', 'SKILL_KEEP', 'INCLUDE_JOB_KEEP',
 ];
+
+// Dropped from the CV's brief on 2026-08-16, when the prompt stopped restating
+// the rule stack: each of these only worked because a line of that stack
+// explained it. ats_keywords_missing is a PROHIBITION that now reads as data;
+// quick_wins and action_items are advice to the candidate about the CV they
+// already have, and unlabelled advice is answered one sentence at a time.
+const DROPPED = ['KEYWORD_MISSING_KEEP', 'QUICK_WIN_KEEP', 'CV_CHANGE_KEEP', 'COVER_POINT_KEEP'];
 
 const userOf = (msgs) => msgs.find((m) => m.role === 'user').content;
 
@@ -101,6 +107,17 @@ describe('generationBrief projection', () => {
   test('keeps every field the generator prompts name', () => {
     const json = JSON.stringify(generationBrief(ANALYSIS));
     for (const sentinel of KEPT) expect(json).toContain(sentinel);
+  });
+
+  test('withholds the prohibition and the advice written about the OLD CV', () => {
+    const json = JSON.stringify(generationBrief(ANALYSIS));
+    for (const sentinel of DROPPED) expect(json).not.toContain(sentinel);
+  });
+
+  // The master CV is already in the prompt in full; a second copy of the same
+  // career invites the document to walk it.
+  test('does not ship the career a second time', () => {
+    expect(generationBrief(ANALYSIS)).not.toHaveProperty('jobs_extracted');
   });
 
   test('drops the scores outright rather than passing a stale verdict', () => {
@@ -137,6 +154,10 @@ describe('the CV prompt carries the brief, not the review', () => {
 
   test('the blueprint the writer executes still reaches it', () => {
     for (const sentinel of KEPT) expect(prompt).toContain(sentinel);
+  });
+
+  test('and the dropped fields reach no writer at all', () => {
+    for (const sentinel of DROPPED) expect(prompt).not.toContain(sentinel);
   });
 
   test('the job ad still reaches it via the target-job block, stated once', () => {

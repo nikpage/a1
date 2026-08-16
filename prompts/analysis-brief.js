@@ -45,7 +45,20 @@
 // career arc, and a model given eight lists of material uses all eight — which
 // produces a letter that says everything and argues nothing.
 //
-// The CV keys the CV generator names and acts on.
+// The CV keys the CV generator acts on.
+//
+// Four were dropped on 2026-08-16, when the CV prompt stopped restating the
+// rule stack (CV_RULES.md, "What the CV IS"). Each of them only worked because
+// a line of that stack explained it; unexplained, they are worse than absent:
+//   ats_keywords_missing
+//     — a PROHIBITION (skills the candidate lacks), not data. Its explaining
+//       line is gone, so it now reads as one more list of relevant keywords.
+//       A prohibition that is not shipped cannot be misread.
+//   quick_wins, action_items
+//     — advice written TO THE CANDIDATE about the CV they already have
+//       ("reduce to 2 pages", "rephrase the headline"). The writer is building
+//       a new document, and unlabelled advice reads as a checklist to answer
+//       one sentence at a time. What they imply is already in the blueprint.
 const ANALYSIS_KEYS = [
   'scenario_tags',          // cv-generator: drives what to emphasise
   'career_arc',             // cv-generator: the summary reflects it
@@ -53,15 +66,14 @@ const ANALYSIS_KEYS = [
   'transferable_skills',    // cv-generator: which strengths to spotlight
   'red_flags',              // cv-generator: neutralise; cover-letter: defuse
   'ats_keywords_present',   // cv-generator: safe to weave in
-  'ats_keywords_missing',   // cv-generator: the never-use list (must be visible
-                            //   to be honoured — it is a prohibition, not data)
-  'quick_wins',             // cv-generator: emphasis/framing steers
-  'action_items',           // cv-generator: cv_changes; cover-letter: its own
 ];
 
 // Top-level keys, in the order a writer reads them.
+//
+// jobs_extracted was dropped for the reason the letter dropped it: the master
+// CV is already in the prompt in full, so this is the same career twice, and
+// the second copy invites the document to walk it.
 const TOP_KEYS = [
-  'jobs_extracted',         // the roles, most-recent first
   'job_match',              // positioning_strategy, career_scenario, keywords
   'generation_framework',   // cv_blueprint + target_cover_words
 ];
