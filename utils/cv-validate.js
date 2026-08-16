@@ -1171,6 +1171,130 @@ export function unsourcedDomainHits(document, { master = '' } = {}) {
   return stray;
 }
 
+// CHECK 24 — A REQUIREMENT THE RECORD CANNOT ANSWER, ASSERTED ANYWAY.
+//
+// The analysis already computes the terms the job asks for and the record does
+// NOT evidence: `analysis.ats_keywords_missing`, shown to the candidate as
+// advice. Nothing ever enforced it. A real run (KUBO, 2026-08-16) produced a
+// letter claiming "vyhodnocování dat v CRM" over a master record containing no
+// occurrence of CRM, Salesforce or any CRM at all — while that same analysis
+// listed CRM as missing, twice. The AI verify pass has a BORROWED REQUIREMENT
+// category and did not fire: the claim was phrased as routine habit ("I use
+// them to…"), not as the loud "extensive X experience" its example describes.
+//
+// So the check is CODE, over a list the pipeline already computed. It cannot
+// hallucinate a violation, and it fires on the exact shape the checker misses.
+//
+// ACRONYMS ARE WHY THIS DOES NOT REUSE stem(): stem() discards anything under
+// four characters, so CRM, SQL, SAP, ERP and every other three-letter
+// requirement were structurally invisible to check 23's machinery. Short terms
+// are matched whole and case-insensitively; longer ones by stem, so CZ/PL
+// inflection still counts as one word.
+//
+// The MASTER remains the only evidence: a term the record does support is never
+// reported, even if a stale analysis still lists it as missing.
+function normaliseTerm(t) {
+  return String(t || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+#.\s-]/g, ' ')
+    .trim();
+}
+
+function missingTerms(analysis) {
+  const raw = analysis?.analysis?.ats_keywords_missing;
+  const list = Array.isArray(raw) ? raw : String(raw || '').split(/[,;\n]/);
+  const out = [];
+  for (const item of list) {
+    const t = normaliseTerm(item);
+    // Multi-word advice ("vztahy se školami") is not a claim a document makes as
+    // a unit; only single terms are checkable this way.
+    if (!t || t.includes(' ') || t.length < 2) continue;
+    out.push(t);
+  }
+  return out;
+}
+
+export function unevidencedKeywordHits(document, { master = '', analysis = null } = {}) {
+  const m = readMaster(master);
+  // No record is no evidence: report nothing rather than guess.
+  if (!m.text) return [];
+
+  const terms = missingTerms(analysis);
+  if (!terms.length) return [];
+
+  // Edge punctuation only: "CRM." must match "crm", while "node.js" and "c#"
+  // keep the punctuation that is part of the name.
+  const words = (text) => normaliseTerm(text)
+    .split(/\s+/)
+    .map((w) => w.replace(/^[.+#-]+/, '').replace(/[.+#-]+$/, ''))
+    .filter(Boolean);
+
+  const masterWords = new Set(words(m.text));
+  const masterStems = stemSet(m.text);
+  const docText = coverBody(document);
+  const docWords = words(docText);
+  const docStems = stemSet(docText);
+
+  const hits = [];
+  const seen = new Set();
+  for (const term of terms) {
+    if (seen.has(term)) continue;
+    seen.add(term);
+    const s = stem(term);
+    // The master supports it after all — never cut a true claim.
+    if (s ? masterStems.has(s) : masterWords.has(term)) continue;
+    const used = s ? docStems.has(s) : docWords.includes(term);
+    if (used) hits.push(term.toUpperCase().length <= 4 ? term.toUpperCase() : term);
+  }
+  return hits;
+}
+
+// CHECK 25 — THE SAME SENTENCE PRINTED TWICE.
+//
+// Seen on a real letter: "My focus is on user adoption, structured relationship
+// building, and client success." appeared verbatim in two paragraphs. In a
+// 250-350 word letter a repeated sentence is never intentional — it is the
+// writer restating its own point, or span surgery leaving a clause that already
+// existed elsewhere. Like the banned phrases and the invented domains, this is
+// the app's own writing failing, so it is REMOVED before delivery rather than
+// reported to the candidate — and deterministically, with no second AI call.
+//
+// Only exact repeats (after folding case, spacing and punctuation) are cut, and
+// only the LATER occurrence, so the argument keeps the sentence where it first
+// earned its place. Anything under six words is left alone: a short line may be
+// a deliberate echo, and the cost of cutting a real one is higher than the cost
+// of leaving it.
+export function stripDuplicateSentences(document) {
+  const text = String(document || '');
+  if (!text.trim()) return text;
+
+  const key = (s) => normaliseTerm(s).replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+  const seen = new Set();
+  let out = text;
+
+  // Sentence-ish spans: keep the terminator with the sentence so removing one
+  // does not weld its neighbours together.
+  const sentences = text.match(/[^.!?\n]+[.!?]+/g) || [];
+  for (const raw of sentences) {
+    const sentence = raw.trim();
+    const k = key(sentence);
+    if (!k || k.split(' ').length < 6) continue;
+    if (!seen.has(k)) { seen.add(k); continue; }
+    // A later exact repeat: cut it, then tidy the spacing it leaves behind.
+    const at = out.lastIndexOf(sentence);
+    if (at < 0) continue;
+    out = out.slice(0, at) + out.slice(at + sentence.length);
+  }
+
+  return out
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // The cover letter's slice of Layer 6 (checks 17-23). The letter has no
 // sections, dates or bullets, so most of validateCv does not apply to it — but
 // the banned-phrase list does, the letter is prose and that is exactly where the

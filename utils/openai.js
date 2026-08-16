@@ -10,7 +10,7 @@ import { targetJobBlock } from '../prompts/job-target.js';
 import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
 import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
 import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
-import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
+import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, unevidencedKeywordHits, stripDuplicateSentences, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
 import { buildMasterCvPrompt } from '../prompts/master-cv.js';
 import { costUsdFor } from './pricing.js';
 import { assertAttributed, meterGeminiCall } from './ai-meter.js';
@@ -451,6 +451,36 @@ export async function repairUnsourcedDomains({ document, master = '' }) {
   }
 }
 
+// A requirement the record cannot answer, asserted anyway (Layer 6, check 24).
+//
+// The terms come from `analysis.ats_keywords_missing`, which the analysis
+// already computes and shows the candidate — so this repair is driven by a list
+// the pipeline produced, not by a model's opinion. Like the domain repair it
+// does not warn: the app wrote the claim, so the app removes it before delivery.
+export async function repairUnevidencedRequirements({ document, master = '', analysis = null }) {
+  const hits = unevidencedKeywordHits(document, { master, analysis });
+  if (!hits.length) return { content: document, gemini_usage: null, applied: [] };
+
+  try {
+    const messages = buildPhraseRepairPrompt({ docType: 'cover', document, hits, kind: 'requirement' });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low', label: 'repair unevidenced requirement' });
+    const gemini_usage = geminiUsage('repair unevidenced requirement', data, GEMINI_VERIFY_MODEL);
+    const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+    const { content, applied } = applyGenerationCorrections(document, parsed.unsupported);
+
+    const left = unevidencedKeywordHits(content, { master, analysis });
+    if (left.length) {
+      logger.error(`[repair requirement cover] survived: ${left.join(', ')}`);
+    } else {
+      logger.info(`[repair requirement cover] ${applied.length} unevidenced requirement(s) removed`);
+    }
+    return { content, gemini_usage, applied };
+  } catch (e) {
+    logger.error('unevidenced-requirement repair failed (keeping document):', e.message);
+    return { content: document, gemini_usage: null, applied: [] };
+  }
+}
+
 // ── Voice profile ────────────────────────────────────────────────────────────
 //
 // Build the profile ONCE, from samples of the user's own writing. Reading prose
@@ -788,12 +818,18 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // checks (word band, matched pairs, salutation, one objection, numbers).
   const repair = await repairStockPhrases({ document: verified.content, docType: 'cover', language });
   const domainRepair = await repairUnsourcedDomains({ document: repair.content, master: cv });
+  // Check 24: a requirement the record cannot answer, driven by the list the
+  // analysis already computed (ats_keywords_missing).
+  const reqRepair = await repairUnevidencedRequirements({ document: domainRepair.content, master: cv, analysis });
   usages.push(...(voiced.gemini_usages || []));
   if (verified.gemini_usage) usages.push(verified.gemini_usage);
   if (repair.gemini_usage) usages.push(repair.gemini_usage);
   if (domainRepair.gemini_usage) usages.push(domainRepair.gemini_usage);
+  if (reqRepair.gemini_usage) usages.push(reqRepair.gemini_usage);
 
-  let content = domainRepair.content;
+  // Check 25: the same sentence printed twice. Deterministic, no AI call, and
+  // last so it also catches a repeat that span surgery above created.
+  let content = stripDuplicateSentences(reqRepair.content);
   let validation = validateCoverLetter(content, { master: cv, analysis, language, tweak });
 
   // The word band is a hard failure, so an over-length letter is regenerated
