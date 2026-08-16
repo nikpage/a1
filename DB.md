@@ -61,28 +61,30 @@ One row per user (upserted on upload).
 | `cache_miss_tokens` | integer | — | |
 | `completion_tokens` | integer | — | Output tokens + thinking tokens (both billed at output rate) |
 | `thinking_tokens` | integer | 0 | Thinking tokens only (subset of completion_tokens) |
-| `amount_usd` | numeric | — | Calculated from model_pricing |
+| `amount_usd` | numeric | — | Calculated in code from `PRICING` in `utils/pricing.js`. **Null** means the model had no recorded rate — the call still gets a row, because an unpriced call must stay visible. |
 | `detail` | jsonb | — | `{ job_title, company, tone }` |
 | `key_index` | integer | — | Which API key was used |
 | `created_at` | timestamp | now() | |
 
 Inserted by `logAiTransaction()` in `utils/database.js` (service-role client), called from `netlify/functions/analyse-background.mjs` (analysis) and `utils/run-generation.js` (generation).
 
-### `model_pricing`
+### `model_pricing` — NO LONGER READ BY THE APP
+
+Prices live in `PRICING` in `utils/pricing.js`. This table is dead weight kept
+only for historical rows; nothing queries it.
+
+It is why the 2026-08-15 bill could not be explained from `transactions`: the
+table held rates for four models, the code had moved generation to
+`gemini-3.6-flash` and the master build to `gemini-3.5-flash-lite`, and
+`logAiTransaction` returned *without inserting* whenever the model was absent
+here. Those calls billed at Google and left no row. Two price lists that must be
+kept in step is the defect; there is one now.
+
 | Column | Type | Notes |
 |---|---|---|
 | `model` | text | PK (composite with event_type) |
 | `event_type` | text | `'cache_hit'`, `'cache_miss'`, `'completion'` |
 | `cost_per_call` | numeric | USD per token |
-
-Rows:
-
-| model | cache_miss | cache_hit | completion |
-|---|---|---|---|
-| gemini-3.5-flash | $1.50/1M | $0.15/1M | $9.00/1M |
-| gemini-2.5-flash | $0.30/1M | $0.075/1M | $2.50/1M |
-| gemini-2.5-pro | $1.25/1M | $0.3125/1M | $10.00/1M |
-| gemini-2.5-flash-lite | $0.10/1M | $0.025/1M | $0.40/1M |
 
 ### `magic_tokens`
 | Column | Type | Notes |

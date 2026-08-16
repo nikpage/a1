@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
+import { costUsdFor } from './pricing.js';
 import crypto from 'crypto';
 
 let _supabase;
@@ -228,24 +229,21 @@ export async function logAiTransaction({
 }) {
   const db = getAdminSupabase();
 
-  const { data: pricing, error: pricingError } = await db
-    .from('model_pricing')
-    .select('event_type, cost_per_call')
-    .eq('model', model);
-
-  if (pricingError || !pricing?.length) {
-    logger.error('logAiTransaction: pricing lookup failed for model', model, pricingError);
-    return;
+  // Priced from utils/pricing.js — the same list that produces the console cost
+  // line — so a new model cannot be priced in one place and missing in the
+  // other. A model with no rate no longer cancels the insert: the row lands
+  // with a null amount, because a call whose price is unknown must still be
+  // VISIBLE. Returning early here is what hid ~$4 of a $5 day on 2026-08-15.
+  const costUsd = costUsdFor({
+    model,
+    inputTokens: cache_miss_tokens,
+    cachedInputTokens: cache_hit_tokens,
+    outputTokens: completion_tokens, // callers pass output + thinking, both billed at the output rate
+  });
+  if (costUsd === null) {
+    logger.error('logAiTransaction: no rate for model', model, '— row inserted with null amount_usd');
   }
-
-  const priceMap = {};
-  for (const row of pricing) priceMap[row.event_type] = parseFloat(row.cost_per_call);
-
-  const amount_usd = (
-    cache_hit_tokens  * (priceMap['cache_hit']  || 0) +
-    cache_miss_tokens * (priceMap['cache_miss'] || 0) +
-    completion_tokens * (priceMap['completion'] || 0)
-  ).toFixed(12);
+  const amount_usd = costUsd === null ? null : costUsd.toFixed(12);
 
   const { error } = await db.from('transactions').insert([{
     user_id,

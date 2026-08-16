@@ -14,6 +14,7 @@ import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
 import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
 import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
 import { buildMasterCvPrompt } from '../prompts/master-cv.js';
+import { costUsdFor } from './pricing.js';
 import { logger } from '../lib/logger.js';
 
 const keyManager = new KeyManager();
@@ -27,6 +28,9 @@ function getRedis() {
 const DAILY_BUDGET = parseFloat(process.env.GEMINI_DAILY_BUDGET_USD || '10');
 
 export async function trackDailySpend(costUsd) {
+  // An unpriced call (null) must not be added as 0 or NaN — the guard would
+  // read low forever and never fire. It is already logged by geminiUsage.
+  if (!Number.isFinite(costUsd)) return;
   const key = `gemini_spend:${new Date().toISOString().slice(0, 10)}`; // YYYY-MM-DD
   try {
     const redis = getRedis();
@@ -55,26 +59,17 @@ const GEMINI_ANALYSIS_MODEL    = 'gemini-3.5-flash';      // strategic brain tha
 // string drifting out of step with this one.
 export const GEMINI_GENERATION_MODEL = 'gemini-3.6-flash'; // CV/cover prose — writing quality + voice are visible
 
-// Pricing (USD per 1M tokens) — verify at ai.google.dev/gemini-api/docs/pricing
-const PRICING = {
-  'gemini-2.5-flash-lite': { input: 0.10,  output: 0.40  },
-  'gemini-2.5-flash':      { input: 0.30,  output: 2.50  },
-  'gemini-2.5-pro':        { input: 1.25,  output: 10.00 },
-  'gemini-3.5-flash':      { input: 1.50,  output: 9.00  },
-  'gemini-3.5-flash-lite': { input: 0.30,  output: 2.50  },
-  'gemini-3.6-flash':      { input: 0.75,  output: 3.75  },
-};
-
 function geminiUsage(label, data, modelHint) {
   const usage          = data.usage || {};
   const servedModel    = data.model || modelHint;
-  const rates          = PRICING[servedModel] || PRICING['gemini-2.5-flash-lite'];
   const inputTokens    = usage.prompt_tokens     || 0;
   const outputTokens   = usage.completion_tokens || 0;
   const totalTokens    = usage.total_tokens      || (inputTokens + outputTokens);
   const thinkingTokens = Math.max(0, totalTokens - inputTokens - outputTokens);
-  const costUsd        = (inputTokens                     / 1_000_000) * rates.input
-                       + ((outputTokens + thinkingTokens) / 1_000_000) * rates.output;
+  // A model with no rate is REPORTED, never priced off a stand-in. Substituting
+  // flash-lite's rates here understated a flash call by 20x and looked normal.
+  const costUsd        = costUsdFor({ model: servedModel, inputTokens, outputTokens, thinkingTokens });
+  if (costUsd === null) logger.error(`[pricing] no rate recorded for model "${servedModel}" — add it to utils/pricing.js`);
   return { label, model: servedModel, inputTokens, outputTokens, thinkingTokens, totalTokens, costUsd };
 }
 
@@ -312,12 +307,22 @@ async function runDeltaPass(cvText, jobText, hasJobText, teaserObj, mode) {
   const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, teaserObj, mode);
   const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium' });
   const gemini_usage = geminiUsage(`analyze CV+job (${mode})`, data, GEMINI_ANALYSIS_MODEL);
+  // Gemini bills for this call the moment it responds, regardless of whether the
+  // JSON below parses — track/report the spend now, not after a parse that can throw.
+  trackDailySpend(gemini_usage.costUsd);
 
   const raw = data.choices?.[0]?.message?.content || '';
   logger.debug(`RAW JSON OUTPUT (${mode}, first 500 chars):`, raw.substring(0, 500) + (raw.length > 500 ? '...' : ''));
 
-  const parsed = JSON.parse(stripJsonFences(raw));
-  trackDailySpend(gemini_usage.costUsd);
+  let parsed;
+  try {
+    parsed = JSON.parse(stripJsonFences(raw));
+  } catch (e) {
+    // Preserve gemini_usage on the rejection so a failed half still gets cost-logged
+    // to the transactions table by the caller, instead of vanishing untracked.
+    e.gemini_usage = gemini_usage;
+    throw e;
+  }
   return { parsed, gemini_usage, usage: data.usage, choices: data.choices };
 }
 

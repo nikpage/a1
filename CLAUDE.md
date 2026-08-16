@@ -204,7 +204,9 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 
 ## AI cost logging
 
-Every AI call writes a row to `transactions` (`type = 'ai_cost'`) via `logAiTransaction()` in `utils/database.js`. It looks up per-token rates from the `model_pricing` table and inserts directly using the service-role client — no HTTP self-call.
+Every AI call writes a row to `transactions` (`type = 'ai_cost'`) via `logAiTransaction()` in `utils/database.js`. It prices the call from `PRICING` in **`utils/pricing.js`** — the single price list, shared with the `[Gemini] …` console line and the daily spend guard — and inserts directly using the service-role client (no HTTP self-call).
+
+- **One price list, and an unpriced call is never invisible.** Rates used to live in BOTH `utils/openai.js` and the `model_pricing` TABLE, and `logAiTransaction` returned *without inserting* when the table lacked the model. On 2026-08-15 the generation model became `gemini-3.6-flash` and the master model `gemini-3.5-flash-lite`; neither was in the table, so every one of those calls billed at Google and wrote nothing — ~$4 of a ~$5 day, invisible in `transactions`. Now: a model with no rate is `logger.error`-ed, the row is still inserted with `amount_usd = null`, and `trackDailySpend` skips it rather than adding zero. **Adding a model constant means adding its rate to `utils/pricing.js`** — `utils/pricing.test.js` pins that every selectable model has one. `model_pricing` is no longer read by any code path.
 
 - **Analysis**: logged in `netlify/functions/analyse-background.mjs` after `saveGeneratedDoc` succeeds.
 - **Generation**: logged in `utils/run-generation.js` after each document is saved. The generation counter is decremented only after both AI calls succeed — a failed call leaves the user's balance untouched.
