@@ -142,6 +142,7 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
   const education = Array.isArray(draft.education) ? draft.education : [];
   const community = Array.isArray(draft.advisory_and_community) ? draft.advisory_and_community : [];
   const talks = Array.isArray(draft.speaking_and_lecturing) ? draft.speaking_and_lecturing : [];
+  const languages = Array.isArray(profile.languages) ? profile.languages : [];
 
   const setProfile = (patch) => setDraft({ ...draft, profile: { ...profile, ...patch } });
   const setContact = (patch) => setProfile({ contact: { ...contact, ...patch } });
@@ -193,6 +194,28 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
 
       <div className="mt-3">
         <StringList label="Skills" items={profile.top_skills} onChange={(top_skills) => setProfile({ top_skills })} />
+      </div>
+
+      {/* Languages were previously visible only in the read-only view this form
+          replaced — editable here so the field is not invisible. */}
+      <div className="mt-5">
+        <span className={labelClass}>Languages</span>
+        {languages.map((l, i) => (
+          <div key={i} className="mt-2 grid grid-cols-2 gap-2 rounded border border-gray-200 p-3">
+            <TextRow label="Language" value={l.language} onChange={(v) => setProfile({ languages: replaceAt(languages, i, { ...l, language: v }) })} />
+            <TextRow label="Proficiency" value={l.proficiency} onChange={(v) => setProfile({ languages: replaceAt(languages, i, { ...l, proficiency: v }) })} />
+            <button type="button" className="text-xs text-red-700 justify-self-start" onClick={() => setProfile({ languages: languages.filter((_, j) => j !== i) })}>
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="mt-2 text-xs text-blue-700 underline"
+          onClick={() => setProfile({ languages: [...languages, { language: '', proficiency: '' }] })}
+        >
+          + Add language
+        </button>
       </div>
 
       <div className="mt-5">
@@ -319,9 +342,11 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
         >
           {saving ? 'Saving…' : 'Save record'}
         </button>
-        <button type="button" className="text-sm text-gray-600 underline" onClick={onCancel} disabled={saving}>
-          Cancel
-        </button>
+        {typeof onCancel === 'function' && (
+          <button type="button" className="text-sm text-gray-600 underline" onClick={onCancel} disabled={saving}>
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   );
