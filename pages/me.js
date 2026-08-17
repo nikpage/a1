@@ -7,6 +7,9 @@
 //   The record   collapsed to one line. It is built once and topped up rarely,
 //                so it sits in a bar at the top and only opens when asked (or
 //                when there is no master yet, or open questions to settle).
+//                Inside, its three jobs — open questions, edit, add — are three
+//                separate collapsed sections; open questions is the only one
+//                that starts open, and only when there are any.
 //   Job → Fit    paste the ad, run the analysis, and READ IT. The analysis is
 //                rendered through the same AnalysisDisplay the viewer uses —
 //                never reduced to a "ready" tick, which told me nothing.
@@ -14,6 +17,12 @@
 //                read while the instructions that produced it are adjusted.
 //   Send         the documents are editable in place; the download buttons take
 //                the edited text, so a last-minute fix ships.
+//   Set up once  the voice profile and the AI ledger. Below everything, closed,
+//                and not mounted until opened.
+//
+// The two steps done for every application are numbered (1 The job, 2 Write) and
+// always open; everything else is behind a collapsed section. Nothing was
+// removed — only re-tiered by how often it is used.
 //
 // Every call goes through the existing shared paths (uploadAndAnalyze,
 // /api/master-add-info, /api/resolve-flag, generate-background) — this page adds
@@ -32,6 +41,7 @@ import DocumentDownloadButtons from '../components/DocumentDownloadButtons';
 import CvWarningBanner from '../components/CvWarningBanner';
 import VoiceProfilePanel from '../components/VoiceProfilePanel';
 import AiCostPanel from '../components/AiCostPanel';
+import CollapsibleSection from '../components/CollapsibleSection';
 import { uploadAndAnalyze } from '../utils/uploadAndAnalyze';
 import { logGemini } from '../utils/log-gemini.js';
 import { generateDocuments } from '../utils/generateDocuments';
@@ -267,21 +277,20 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
             </label>
           </div>
 
+          {/* The drawer holds three separate jobs — settle the open questions,
+              edit the record, add something new. Stacked open they were one
+              endless column and the questions (the only urgent one) sat under
+              a 380-line form. Each is its own section now, and only the
+              questions start open. */}
           {masterOpen && (
-            <div className="border-t border-gray-200 px-4 py-4">
-              {master && (
-                <MasterRecordPanel
-                  master={master}
-                  onUpdated={(saved, newFlags) => {
-                    setMaster(saved);
-                    if (saved) setExperience(roles(saved));
-                    if (Array.isArray(newFlags)) setFlags(newFlags);
-                  }}
-                />
-              )}
-
+            <div className="border-t border-gray-200 px-4 py-4 space-y-3">
               {!loadingRecord && (experience.length > 0 || flags.length > 0) && (
-                <div className="mt-5">
+                <CollapsibleSection
+                  label="Open questions"
+                  hint={flags.length > 0 ? 'answer these and the record is settled' : 'nothing outstanding'}
+                  badge={flags.length > 0 ? `${flags.length} to answer` : null}
+                  defaultOpen={flags.length > 0}
+                >
                   <MasterFlagFixer
                     flags={flags}
                     experience={experience}
@@ -295,10 +304,29 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                     }}
                     onComplete={loadRecord}
                   />
-                </div>
+                </CollapsibleSection>
               )}
 
-              <div className="mt-5">
+              {master && (
+                <CollapsibleSection
+                  label="Edit the record"
+                  hint="every role, date and fact — and how you write"
+                >
+                  <MasterRecordPanel
+                    master={master}
+                    onUpdated={(saved, newFlags) => {
+                      setMaster(saved);
+                      if (saved) setExperience(roles(saved));
+                      if (Array.isArray(newFlags)) setFlags(newFlags);
+                    }}
+                  />
+                </CollapsibleSection>
+              )}
+
+              <CollapsibleSection
+                label="Add information"
+                hint="something the CV never mentioned"
+              >
                 <AddInfoPanel onUpdated={(updated, newFlags) => {
                   if (updated) {
                     setMaster(updated);
@@ -306,14 +334,17 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                   }
                   if (Array.isArray(newFlags)) setFlags(newFlags);
                 }} />
-              </div>
+              </CollapsibleSection>
             </div>
           )}
         </div>
 
         {/* ── The job and the fit ───────────────────────────────────────── */}
         <section className="border border-gray-200 rounded-lg shadow-sm bg-white p-5 mb-6">
-          <h2 className="text-base font-semibold text-gray-900">The job</h2>
+          <h2 className="text-base font-semibold text-gray-900">
+            <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">1</span>
+            The job
+          </h2>
           <div className="mt-3 grid gap-5 lg:grid-cols-2">
             <div>
               <textarea
@@ -365,7 +396,10 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
 
         {/* ── Steering beside the documents ─────────────────────────────── */}
         <section className="border border-gray-200 rounded-lg shadow-sm bg-white p-5">
-          <h2 className="text-base font-semibold text-gray-900">Write</h2>
+          <h2 className="text-base font-semibold text-gray-900">
+            <span className={`mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold text-white ${analysis ? 'bg-blue-600' : 'bg-gray-300'}`}>2</span>
+            Write
+          </h2>
           <p className="mt-1 text-sm text-gray-600">
             Steering is the highest-priority instruction to the writer. It reframes, reorders and cuts —
             it will never invent a fact to satisfy it.
@@ -499,14 +533,20 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
           </div>
         </section>
 
-        {/* ── How you write: set once, so it sits below the day's work ───── */}
-        <div className="mt-6 border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
-          <VoiceProfilePanel profile={voiceProfile} onUpdated={setVoiceProfile} />
-        </div>
+        {/* ── Set up once / checked rarely. Below the day's work, closed, and
+             not mounted until opened — AiCostPanel fetches the whole ledger on
+             mount, which every page load was paying for unasked. ─────────── */}
+        <div className="mt-8">
+          <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Set up once</p>
+          <div className="space-y-3">
+            <div className="border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
+              <VoiceProfilePanel profile={voiceProfile} onUpdated={setVoiceProfile} />
+            </div>
 
-        {/* ── What the AI is costing, straight off the ledger ─────────────── */}
-        <div className="mt-6 border border-gray-200 rounded-lg bg-white shadow-sm px-4 py-2">
-          <AiCostPanel />
+            <CollapsibleSection label="AI spend" hint="every Gemini call, off the ledger">
+              <AiCostPanel />
+            </CollapsibleSection>
+          </div>
         </div>
       </main>
     </>
