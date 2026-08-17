@@ -503,8 +503,14 @@ function masterRoleNames(master) {
   return names;
 }
 
-// 6. Bullet ceilings, and the metric-fallback share where metrics exist.
-function checkBullets(document, master, language, warnings) {
+// 6. Bullet ceilings and the bullet word band (HARD); the metric-fallback share
+//    stays reported, since it depends on what the master holds. Both of the
+//    hard ones are counts with nothing to weigh: a role printing six bullets
+//    where five is the limit, or a 42-word bullet where the band tops out at
+//    25, has broken a rule no record can justify. Reporting them shipped the
+//    broken document and handed the app's own failure to the candidate to
+//    solve, which is not what a warning is for.
+function checkBullets(document, master, language, warnings, hard) {
   const [minWords, maxWords] = bulletBand(language);
   const sections = splitSections(document);
   const exp = sections.find((s) => parseRoles(s).length > 0);
@@ -514,12 +520,12 @@ function checkBullets(document, master, language, warnings) {
     if (isEarlierCareer(role.title)) return;
     const ceiling = i < 2 ? 5 : 3;
     if (role.bullets.length > ceiling) {
-      warnings.push({ code: 'bulletCeiling', params: { role: role.title, count: role.bullets.length, ceiling } });
+      hard.push(`Role "${role.title}" prints ${role.bullets.length} bullets; the ceiling for its position is ${ceiling}. Cut it to ${ceiling} by dropping the bullets least relevant to this application — the ceiling is not a quota and the remaining bullets are not to be padded or merged to compensate.`);
     }
     for (const b of role.bullets) {
       const n = words(b).length;
       if (n < minWords || n > maxWords) {
-        warnings.push({ code: 'bulletBand', params: { role: role.title, count: n, min: minWords, max: maxWords } });
+        hard.push(`A bullet under "${role.title}" runs to ${n} words; the band for this document's language is ${minWords}-${maxWords}. ${n > maxWords ? 'Cut it to length — say the same thing shorter, and never split it into two bullets to get under the ceiling.' : 'It is too thin to carry an achievement: state the scope and the outcome the record holds for it.'} Add no fact the record does not carry.`);
       }
     }
     // Fallback share: only meaningful when the master actually holds metrics
@@ -588,16 +594,59 @@ function checkProjects(document, analysis, warnings) {
   }
 }
 
-// 10. Older Applicant, HARD: the override's two arithmetic promises. A stray
-//     graduation year or a career total undoes the whole mitigation, and code can
-//     settle both beyond doubt — so this blocks rather than warns.
+// 10. Older Applicant, HARD: the override's arithmetic promises. A stray
+//     graduation year, a career total or a role printed outside the recency
+//     window undoes the whole mitigation, and code can settle all three beyond
+//     doubt — so this blocks rather than warns.
 const OLDER_APPLICANT_TAG = 'older applicant';
 
-function checkOlderApplicant(document, analysis, hard) {
+// The window itself, in years, matching Layer 1's "last 10-15 years": a role is
+// outside it when it ended more than this long before the most recent role did.
+const RECENCY_WINDOW_YEARS = 15;
+
+// Every four-digit year in a role's subtitle line ("**Acme** | 03/2019 - Present
+// | Prague, Czechia"). The subtitle is where parseRoles puts the dates.
+function subtitleYears(subtitle) {
+  return (String(subtitle || '').match(/\b(19|20)\d{2}\b/g) || []).map(Number);
+}
+
+function isOngoing(subtitle) {
+  return /present|current|now|dosud|obecnie|současnost/i.test(String(subtitle || ''));
+}
+
+// The year a printed role ended: the latest year on its line, or the current
+// year where it is ongoing and carries no end year of its own.
+function roleEndYear(role, now) {
+  if (isOngoing(role.subtitle)) return now.getFullYear();
+  const years = subtitleYears(role.subtitle);
+  return years.length ? Math.max(...years) : null;
+}
+
+function checkOlderApplicant(document, analysis, hard, now = new Date()) {
   const active = scenarioTags(analysis).some((t) => t.toLowerCase() === OLDER_APPLICANT_TAG);
   if (!active) return;
 
   const sections = splitSections(document);
+
+  // The recency window, enforced. This was the one promise of the override that
+  // no check covered: graduation years and career totals blocked while a role
+  // dated two decades back printed in full, dates and bullets intact, and the
+  // age signal reached the page anyway. The reference point is the document's
+  // own most recent role, so it needs no master and cannot disagree with one.
+  const expSection = sections.find((s) => parseRoles(s).length > 0);
+  const dated = expSection
+    ? parseRoles(expSection)
+        .filter((r) => !isEarlierCareer(r.title))
+        .map((r) => ({ role: r, end: roleEndYear(r, now) }))
+        .filter((r) => r.end !== null)
+    : [];
+  if (dated.length) {
+    const latestEnd = Math.max(...dated.map((r) => r.end));
+    const stale = dated.filter((r) => latestEnd - r.end > RECENCY_WINDOW_YEARS);
+    for (const { role, end } of stale) {
+      hard.push(`Work Experience entry "${role.title}" ended in ${end}, more than ${RECENCY_WINDOW_YEARS} years before the most recent role ended (${latestEnd}); the Older Applicant override keeps full detail inside that window only. Collapse it into the undated "Earlier Career" section as one "Title, Employer" bullet, with no dates and no achievements. Do not alter its dates anywhere they are still shown — this is selection of what to show, never a changed record.`);
+    }
+  }
   for (const s of sections) {
     if (!isSlot('education', s.heading)) continue;
     for (const line of s.lines) {
@@ -765,7 +814,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkAdTerms(document, m, analysis, hard);
 
   checkImpactZone(document, m, warnings);
-  checkBullets(document, m, language, warnings);
+  checkBullets(document, m, language, warnings, hard);
   checkMarket(document, m, warnings);
   checkGaps(analysis, warnings);
   checkProjects(document, analysis, warnings);

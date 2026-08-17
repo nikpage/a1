@@ -64,11 +64,11 @@ Delivery leader who rebuilt how Acme ships. Works close to the code and the cust
 #### **Head of Delivery**
 **Acme Ltd** | 03/2019 - 08/2022 | London, United Kingdom
 - Cut release cycle from 42 days to 9 days across four product teams and two platform squads
-- Ran a delivery organisation of 25 engineers through a full replatforming programme and rollout
+- Ran a delivery organisation of 25 engineers through a full replatforming programme and a staged rollout
 
 #### **Delivery Manager**
 **Borealis** | 01/2015 - 02/2019 | London, United Kingdom
-- Introduced continuous integration pipelines using Jenkins across every product team in the group
+- Introduced continuous integration pipelines using Jenkins across every product team in the group during the platform migration
 `;
 
 const ANALYSIS = {
@@ -259,19 +259,12 @@ describe('warnings (checks 5-9)', () => {
     expect(paramsFor(r, 'impactZoneWords').count).toBeGreaterThan(120);
   });
 
-  it('warns when a third-or-later role exceeds its three-bullet ceiling', () => {
-    const bullet = '- Introduced continuous integration pipelines using Jenkins across every product team in the group\n';
-    const doc = `${GOOD}\n#### **Earlier Delivery Manager**\n**Borealis** | 01/2015 - 02/2019 | London, United Kingdom\n${bullet.repeat(4)}`;
-    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
-    expect(codes(r)).toContain('bulletCeiling');
-    expect(paramsFor(r, 'bulletCeiling').ceiling).toBe(3);
-  });
-
   it('leaves the two most recent roles their five-bullet ceiling', () => {
-    const bullet = '- Introduced continuous integration pipelines using Jenkins across every product team in the group\n';
+    const bullet = '- Introduced continuous integration pipelines using Jenkins across every product team in the group during the platform migration\n';
     const doc = GOOD + bullet.repeat(2);
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
     expect(codes(r)).not.toContain('bulletCeiling');
+    expect(r.hard.join(' ')).not.toContain('bullets; the ceiling');
   });
 
   it('warns about a date of birth the master never supplied', () => {
@@ -333,6 +326,51 @@ describe('check 1b — certifications trace to the master (hard)', () => {
   });
 });
 
+// Red on the old code, which reported the ceiling as a warning and shipped the
+// over-long role: a count with nothing to weigh belongs in the retry, not on a
+// banner telling the candidate about the app's own failure.
+describe('check 6 — bullet ceiling (hard)', () => {
+  const bullet = '- Introduced continuous integration pipelines using Jenkins across every product team in the group during the platform migration\n';
+
+  it('blocks a third-or-later role that exceeds its three-bullet ceiling', () => {
+    const doc = `${GOOD}\n#### **Earlier Delivery Manager**\n**Borealis** | 01/2015 - 02/2019 | London, United Kingdom\n${bullet.repeat(4)}`;
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.ok).toBe(false);
+    expect(r.hard.some((h) => h.includes('Earlier Delivery Manager') && h.includes('4 bullets') && h.includes('ceiling for its position is 3'))).toBe(true);
+    // It is a block now, so it must not ALSO be reported to the candidate.
+    expect(codes(r)).not.toContain('bulletCeiling');
+  });
+
+  it('blocks a recent role that exceeds its five-bullet ceiling', () => {
+    // GOOD's second role already carries one bullet, so five more makes six.
+    const doc = GOOD + bullet.repeat(5);
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.some((h) => h.includes('6 bullets') && h.includes('ceiling for its position is 5'))).toBe(true);
+  });
+
+  // The band is a count too, so it blocks on the same reasoning as the ceiling.
+  // Red on the old code, which reported it and shipped the bullet.
+  it('blocks a bullet under the word band', () => {
+    const doc = `${GOOD}\n#### **Third Role**\n**Borealis** | 01/2015 - 02/2019 | London, United Kingdom\n- Shipped it\n`;
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.ok).toBe(false);
+    expect(r.hard.some((h) => h.includes('Third Role') && h.includes('2 words') && h.includes('15-25'))).toBe(true);
+    expect(codes(r)).not.toContain('bulletBand');
+  });
+
+  it('blocks a bullet over the word band', () => {
+    const long = `- ${'delivered '.repeat(30).trim()}\n`;
+    const doc = `${GOOD}\n#### **Third Role**\n**Borealis** | 01/2015 - 02/2019 | London, United Kingdom\n${long}`;
+    const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.some((h) => h.includes('30 words') && h.includes('Cut it to length'))).toBe(true);
+  });
+
+  it('leaves a bullet inside the band alone', () => {
+    const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toContain('the band for this document');
+  });
+});
+
 describe('check 10 — Older Applicant (hard)', () => {
   const OLDER = {
     analysis: { scenario_tags: ['Older Applicant'], ats_keywords_missing: [] },
@@ -358,6 +396,39 @@ describe('check 10 — Older Applicant (hard)', () => {
   it('leaves graduation years alone when the override is NOT active', () => {
     const r = validateCv(withEducation('**BSc Computing | Leeds University | 1994**'), { master: MASTER, analysis: ANALYSIS });
     expect(r.hard.join(' ')).not.toContain('Older Applicant');
+  });
+
+  // The gap this whole change exists to close: the override blocked graduation
+  // years and career totals while a role two decades old printed in full, with
+  // its dates and its bullets, so the age signal reached the page regardless.
+  // Red on the old code — nothing checked the window at all.
+  describe('the recency window', () => {
+    // Ends 2002, against a most-recent role ending 2022: 20 years outside.
+    const ancient = `${GOOD}\n#### **Junior Developer**\n**Northwind Systems** | 06/1998 - 04/2002 | Leeds, United Kingdom\n- Built internal reporting tools used across the finance and operations departments\n`;
+
+    it('blocks a dated role that ended more than 15 years before the most recent one', () => {
+      const r = validateCv(ancient, { master: MASTER, analysis: OLDER });
+      expect(r.ok).toBe(false);
+      expect(r.hard.some((h) => h.includes('Junior Developer') && h.includes('2002') && /Earlier Career/.test(h))).toBe(true);
+    });
+
+    it('leaves the same role alone when the override is NOT active', () => {
+      const r = validateCv(ancient, { master: MASTER, analysis: ANALYSIS });
+      expect(r.hard.join(' ')).not.toContain('more than 15 years before');
+    });
+
+    it('does not touch a role inside the window', () => {
+      const r = validateCv(GOOD, { master: MASTER, analysis: OLDER });
+      expect(r.hard.join(' ')).not.toContain('more than 15 years before');
+    });
+
+    // The Earlier Career section is exactly where an out-of-window role is
+    // SUPPOSED to end up, so the check must never fire on it.
+    it('exempts the Earlier Career section', () => {
+      const collapsed = `${GOOD}\n#### **Earlier Career**\n- Junior Developer, Northwind Systems\n`;
+      const r = validateCv(collapsed, { master: MASTER, analysis: OLDER });
+      expect(r.hard.join(' ')).not.toContain('more than 15 years before');
+    });
   });
 
   it('blocks a stated career total', () => {
@@ -601,22 +672,26 @@ describe('language', () => {
   const shortBullet = '- Zavedl kontinuální integraci napříč všemi produktovými týmy skupiny a zkrátil dobu nasazení výrazně\n';
   const doc = `### **Pracovní zkušenosti**\n\n#### **Head of Delivery**\n**Acme Ltd** | 03/2019 - 08/2022 | Praha, Czech Republic\n${shortBullet}`;
 
+  // The band blocks now, so the language question is which band the BLOCK
+  // applied — a Czech bullet judged on English assumptions would fail a
+  // perfectly good document rather than merely nag about it.
+  const bandFault = (r) => r.hard.find((h) => h.includes('the band for this document'));
+
   it('uses the Czech bullet band, not the English one', () => {
     const en = validateCv(doc, { master: MASTER, analysis: ANALYSIS, language: 'en' });
     const cs = validateCv(doc, { master: MASTER, analysis: ANALYSIS, language: 'cs' });
-    expect(en.warnings.map((w) => w.code)).toContain('bulletBand');
-    expect(cs.warnings.map((w) => w.code)).not.toContain('bulletBand');
+    expect(bandFault(en)).toBeTruthy();
+    expect(bandFault(cs)).toBeUndefined();
   });
 
-  it('reports the band it actually applied', () => {
+  it('states the band it actually applied', () => {
     const cs = validateCv(doc.replace(shortBullet, '- Krátká\n'), { master: MASTER, analysis: ANALYSIS, language: 'cs' });
-    const band = cs.warnings.find((w) => w.code === 'bulletBand').params;
-    expect([band.min, band.max]).toEqual([12, 22]);
+    expect(bandFault(cs)).toContain('12-22');
   });
 
   it('falls back to the default band for an unregistered language', () => {
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS, language: 'hu' });
-    expect(r.warnings.find((w) => w.code === 'bulletBand').params.min).toBe(15);
+    expect(bandFault(r)).toContain('15-25');
   });
 });
 

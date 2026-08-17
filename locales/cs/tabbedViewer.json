@@ -37,8 +37,6 @@
   "cvWarning": {
     "noSections": "Životopis nemá rozpoznatelné sekce, úvod proto nešlo zkontrolovat.",
     "impactZoneWords": "Úvod má {{count}} slov; personalista se rozhoduje zhruba do 120.",
-    "bulletCeiling": "„{{role}}“ má {{count}} odrážek; {{ceiling}} působí údernější.",
-    "bulletBand": "Odrážka u „{{role}}“ má {{count}} slov; nejlépe čte {{min}}–{{max}}.",
     "metricFallback": "„{{role}}“: {{count}} z {{total}} odrážek nemá číslo, přestože ve vašich podkladech čísla jsou.",
     "photoInvented": "Životopis obsahuje obrázek. Pokud jste ho nepřidali sami, odstraňte ho.",
     "dobInvented": "Životopis uvádí datum narození, které ve vašich podkladech není.",
