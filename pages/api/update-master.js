@@ -19,7 +19,7 @@
 
 import requireAuth from '../../lib/requireAuth';
 import { getMasterCv, saveMasterCv } from '../../utils/database';
-import { normaliseMaster } from '../../utils/master-schema';
+import { normaliseMaster, recordFingerprint } from '../../utils/master-schema';
 import { computeMasterIssues } from '../../utils/master-issues';
 import { logger } from '../../lib/logger';
 
@@ -29,7 +29,7 @@ async function handler(req, res) {
   }
 
   const { user_id } = req.user;
-  const { master: edited } = req.body || {};
+  const { master: edited, based_on } = req.body || {};
 
   if (!edited || typeof edited !== 'object' || Array.isArray(edited)) {
     return res.status(400).json({ error: 'A master record is required' });
@@ -45,6 +45,18 @@ async function handler(req, res) {
   // Editing presupposes a record to edit — a build must have run first.
   if (!stored) {
     return res.status(409).json({ error: 'No master record yet — upload a CV first' });
+  }
+
+  // The editor holds a COPY. If the stored record's structure moved since that
+  // copy was taken — an overlap answered, a role nested — saving the copy would
+  // undo it. Hand the current record back instead: the editor moves its typed
+  // edits onto it and saves again, so nothing is lost either way.
+  if (typeof based_on === 'string' && based_on !== recordFingerprint(stored)) {
+    return res.status(409).json({
+      error: 'Your record changed while you were editing — reopen it and make the edit again.',
+      master: stored,
+      flags: computeMasterIssues(stored),
+    });
   }
 
   let updated;

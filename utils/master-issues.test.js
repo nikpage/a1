@@ -25,7 +25,10 @@ describe('computeMasterIssues — the only question is the overlap', () => {
     const overlaps = issues.filter((i) => i.kind === 'overlap');
     expect(overlaps).toHaveLength(1);
     expect(overlaps[0].type).toBe('overlap');
-    expect(overlaps[0].question_index).toBe(0);
+    // Addressed by identity, never by position.
+    expect(overlaps[0].question_index).toBeUndefined();
+    expect(overlaps[0].role_key).toBe('salsita software | sr. product manager | november 2022 | october 2023');
+    expect(overlaps[0].umbrella_key).toContain('nik page experience strategy & design');
     expect(overlaps[0].target).toEqual({ section: 'experience', index: 1 });
     expect(overlaps[0].answers).toEqual(['nested', 'separate']);
     expect(overlaps[0].question).toContain('Salsita Software');

@@ -286,6 +286,13 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                     flags={flags}
                     experience={experience}
                     rebuilding={false}
+                    onRecord={(saved, newFlags) => {
+                      if (saved) {
+                        setMaster(saved);
+                        setExperience(roles(saved));
+                      }
+                      if (Array.isArray(newFlags)) setFlags(newFlags);
+                    }}
                     onComplete={loadRecord}
                   />
                 </div>

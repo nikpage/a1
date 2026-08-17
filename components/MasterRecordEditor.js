@@ -10,7 +10,8 @@
 // writes it. Every field the record holds is editable here except voice_guide,
 // which has its own panel and is carried over untouched.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { recordFingerprint, rebaseMaster } from '../utils/master-schema';
 
 const inputClass = 'w-full rounded border border-gray-300 px-2 py-1 text-sm';
 const labelClass = 'text-xs uppercase tracking-wide text-gray-500';
@@ -135,6 +136,17 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
   const [draft, setDraft] = useState(() => JSON.parse(JSON.stringify(master)));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // The record this draft was opened on. The questions sit on the same page and
+  // answering one restructures the record underneath this form, so the form
+  // follows: untouched sections take the new record, typed ones keep the typing
+  // (see rebaseMaster). Without this the form kept showing the old timeline and
+  // saving it put the old timeline back.
+  const base = useRef(master);
+  useEffect(() => {
+    if (master === base.current) return;
+    setDraft((current) => rebaseMaster(base.current, current, master));
+    base.current = master;
+  }, [master]);
 
   const profile = draft.profile || {};
   const contact = profile.contact || {};
@@ -147,18 +159,35 @@ export default function MasterRecordEditor({ master, onSaved, onCancel }) {
   const setProfile = (patch) => setDraft({ ...draft, profile: { ...profile, ...patch } });
   const setContact = (patch) => setProfile({ contact: { ...contact, ...patch } });
 
+  // One POST. `based_on` is the structure this draft was opened on, so the
+  // server can tell an up-to-date save from one taken before the record moved.
+  async function post(record, basedOn) {
+    const res = await fetch('/api/update-master', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ master: record, based_on: basedOn }),
+    });
+    return { res, data: await res.json() };
+  }
+
   async function save() {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/update-master', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ master: draft }),
-      });
-      const data = await res.json();
+      let { res, data } = await post(draft, recordFingerprint(base.current));
+      // The record moved while this form was open — a question answered in
+      // another tab, say. The server hands the current record back; the typed
+      // edits move onto it and the save goes again, ONCE. The typing is never
+      // dropped and the newer structure is never overwritten.
+      if (res.status === 409 && data.master) {
+        const rebased = rebaseMaster(base.current, draft, data.master);
+        setDraft(rebased);
+        base.current = data.master;
+        ({ res, data } = await post(rebased, recordFingerprint(data.master)));
+      }
       if (!res.ok) throw new Error(data.error || 'Could not save your record');
+      base.current = data.master;
       if (typeof onSaved === 'function') onSaved(data.master, data.flags);
     } catch (err) {
       setError(err.message);

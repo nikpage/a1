@@ -213,7 +213,11 @@ function SkeletonBlock({ entry, openFlags, doneFlags, onResolved }) {
   );
 }
 
-export default function MasterFlagFixer({ flags = [], experience = [], rebuilding = false, onComplete }) {
+// `onRecord(master, flags)` hands every answer straight back to the page that
+// owns the record. Without it the page kept the copy it loaded: the "N open
+// questions" badge stayed at its start-of-visit number however many were
+// settled, and the record editor opened on a pre-answer copy.
+export default function MasterFlagFixer({ flags = [], experience = [], rebuilding = false, onComplete, onRecord }) {
   // The LIVE open-issue list — recomputed server-side (utils/master-issues) after
   // every resolve and swapped in wholesale here. This is what makes the cascade
   // work: answering a question can settle the ones behind it
@@ -245,6 +249,7 @@ export default function MasterFlagFixer({ flags = [], experience = [], rebuildin
     });
     if (master) setExp(roles(master));
     if (Array.isArray(newFlags)) setFlagList(newFlags);
+    if (typeof onRecord === 'function') onRecord(master, newFlags);
   }
 
   // Every currently-open question (server truth, minus anything the user already
@@ -284,6 +289,7 @@ export default function MasterFlagFixer({ flags = [], experience = [], rebuildin
         setHistory((h) => (h.some((x) => x.id === f.id) ? h : [...h, f]));
         if (data.master) setExp(roles(data.master));
         if (Array.isArray(data.flags)) setFlagList(data.flags);
+        if (typeof onRecord === 'function') onRecord(data.master, data.flags);
       }
     } catch (e) {
       setBulkError(e.message);

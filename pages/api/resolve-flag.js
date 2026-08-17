@@ -45,11 +45,12 @@ async function handler(req, res) {
   let updated;
   try {
     // An overlap question is answered by the one function that nests a role.
-    // The pair itself is re-read from the user's OWN stored record by index, so
-    // a crafted flag can only choose WHICH open question is answered, never
-    // which roles move.
+    // The pair is re-found in the user's OWN stored record by the IDENTITY of
+    // the two roles, so a crafted flag can only choose WHICH open question is
+    // answered, never which roles move — and a question that is no longer open
+    // is a 400, never a save that quietly changed nothing.
     updated = flag.type === 'overlap'
-      ? applyOverlapAnswer(master, flag.question_index, decision)
+      ? applyOverlapAnswer(master, { role_key: flag.role_key, umbrella_key: flag.umbrella_key }, decision)
       : resolveFlag(master, flag, { decision, value });
   } catch (err) {
     // A bad target / out-of-range index / missing value lands here — never a 500.

@@ -62,7 +62,7 @@ function normaliseRole(role, depth = 0) {
 // there is no question to ask.
 const ANSWERS = ['nested', 'separate'];
 const idx = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
-function normaliseOverlaps(v) {
+export function normaliseOverlaps(v) {
   return arr(v)
     .map((o) => ({
       umbrella_index: idx(o?.umbrella_index),
@@ -70,6 +70,56 @@ function normaliseOverlaps(v) {
       answer: ANSWERS.includes(o?.answer) ? o.answer : '',
     }))
     .filter((o) => o.umbrella_index !== null && o.role_index !== null && o.umbrella_index !== o.role_index);
+}
+
+// A role's IDENTITY: employer, title and its two verbatim dates. This is how an
+// open question is addressed, because a POSITION is not stable — answering
+// "client work" pulls a role out of work_experience and every role below it
+// moves up, and dropping a malformed pair renumbers the questions themselves.
+// An answer keyed by position therefore landed on a different question, or on
+// none, while the save still reported success. Identity cannot drift: the same
+// role is the same role wherever it sits in the array.
+export function roleKey(entry) {
+  return [entry?.company, entry?.title, entry?.start_date, entry?.end_date]
+    .map((v) => str(v).toLowerCase())
+    .join(' | ');
+}
+
+// A fingerprint of the STRUCTURE a record was in when the editor opened on it:
+// which roles exist, how they are nested, and which questions are still open.
+// The editor sends it back with a save so the server can tell an up-to-date
+// submission from one taken before an overlap answer restructured the record.
+export function recordFingerprint(master) {
+  const structure = arr(master?.work_experience).map((r) => [
+    roleKey(r),
+    arr(r?.fractional_engagements).map(roleKey).join(' + '),
+  ].join(' >> '));
+  const questions = normaliseOverlaps(master?.role_overlaps)
+    .map((o) => `${o.umbrella_index}:${o.role_index}:${o.answer}`);
+  return [...structure, '--', ...questions].join(' / ');
+}
+
+// Move a draft that was opened on `base` onto the newer record `next`, keeping
+// what the person typed. The two write paths on /me touch the SAME record side
+// by side — answering a question restructures the timeline while the edit form
+// holds a copy — so without this the form goes on showing the old timeline and
+// saving it back undoes the answer.
+//
+// Section by section: a section the person has not touched (identical to the
+// base they opened on) takes the newer record's version; a section they HAVE
+// touched keeps their version, because their typing is the only copy of it.
+// role_overlaps is never the form's to carry — the newer record always wins.
+export function rebaseMaster(base, draft, next) {
+  if (!next || typeof next !== 'object') return draft;
+  if (!draft || typeof draft !== 'object') return next;
+  const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const out = { ...next };
+  for (const key of Object.keys({ ...base, ...draft, ...next })) {
+    if (key === 'role_overlaps') continue;
+    out[key] = same(draft[key], base?.[key]) ? next[key] : draft[key];
+  }
+  out.role_overlaps = next.role_overlaps;
+  return out;
 }
 
 // `edited` is what the user submitted; `stored` is the record currently saved
@@ -127,13 +177,12 @@ export function normaliseMaster(edited, stored = null) {
       .filter((t) => t.event || t.topic),
     publications_and_patents: strList(edited.publications_and_patents),
     // Overlap QUESTIONS, not structure: the build reports the pairs and the
-    // person answers them on /me. Absent from the submission entirely (the
-    // record editor renders no field for them) → the stored ones are kept, so
-    // an ordinary edit cannot silently drop pending questions. Present → the
-    // submission wins, which is how an answer is recorded.
-    role_overlaps: normaliseOverlaps(
-      edited.role_overlaps === undefined ? stored?.role_overlaps : edited.role_overlaps,
-    ),
+    // person answers them on /me, through applyOverlapAnswer alone. ALWAYS taken
+    // from the stored record — the editor renders no field for them, so anything
+    // submitted here is a stale copy the page loaded before the questions were
+    // answered, and letting it win wiped real answers and reopened settled
+    // questions.
+    role_overlaps: normaliseOverlaps(stored?.role_overlaps),
     education: arr(edited.education)
       .map((e) => ({
         institution: str(e?.institution),
@@ -167,15 +216,27 @@ export function normaliseMaster(edited, stored = null) {
 // next question about the wrong role. "separate" changes no structure; it
 // records the answer so the question is not asked again.
 //
-// Returns a new record; the input is not mutated. An out-of-range or already
-// answered question returns the record unchanged.
-export function applyOverlapAnswer(master, questionIndex, answer) {
+// The question is addressed by the IDENTITY of the two roles it concerns
+// ({ role_key, umbrella_key }, see roleKey) — never by its position. Returns a
+// new record; the input is not mutated. A question that is not open on this
+// record THROWS rather than returning the record unchanged: a silent no-op was
+// saved as a success, so the person was told their answer was recorded when
+// nothing had changed, and the question came back on the next page load.
+export function applyOverlapAnswer(master, question, answer) {
   if (!ANSWERS.includes(answer)) throw new Error('applyOverlapAnswer: answer must be "nested" or "separate"');
+  const role_key = str(question?.role_key);
+  const umbrella_key = str(question?.umbrella_key);
+  if (!role_key || !umbrella_key) throw new Error('applyOverlapAnswer: role_key and umbrella_key are required');
+
   const overlaps = normaliseOverlaps(master?.role_overlaps);
-  const q = overlaps[questionIndex];
   const experience = arr(master?.work_experience);
-  if (!q || q.answer) return master;
-  if (q.umbrella_index >= experience.length || q.role_index >= experience.length) return master;
+  const questionIndex = overlaps.findIndex((o) => !o.answer
+    && o.role_index < experience.length
+    && o.umbrella_index < experience.length
+    && roleKey(experience[o.role_index]) === role_key
+    && roleKey(experience[o.umbrella_index]) === umbrella_key);
+  if (questionIndex === -1) throw new Error('That question is not open on your record');
+  const q = overlaps[questionIndex];
 
   if (answer === 'separate') {
     return {

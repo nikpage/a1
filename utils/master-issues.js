@@ -22,6 +22,7 @@
 // Do not reintroduce a question without a path from the answer to the output.
 
 import { roles } from './master-read.js';
+import { normaliseOverlaps, roleKey } from './master-schema.js';
 
 // `role_overlaps` indexes into `master.work_experience`; a flag targets a
 // position in the FLAT list `roles()` produces (umbrella entries and their
@@ -49,12 +50,16 @@ function roleLabel(entry) {
 // only thing in the app that nests a role — through /api/resolve-flag.
 export function computeMasterIssues(master) {
   const experience = roles(master);
-  const overlaps = Array.isArray(master?.role_overlaps) ? master.role_overlaps : [];
+  // The SAME view of the pairs the answer is applied against (master-schema).
+  // Reading the raw array here while the answer was applied to the cleaned one
+  // meant the two lists were numbered differently, so a question's answer went
+  // to a different pair or to none at all.
+  const overlaps = normaliseOverlaps(master?.role_overlaps);
   const top = Array.isArray(master?.work_experience) ? master.work_experience : [];
   const flat = flatIndexes(master);
 
   const issues = [];
-  overlaps.forEach((o, i) => {
+  overlaps.forEach((o) => {
     if (!o || o.answer) return; // answered questions are never asked again
     const role = top[o.role_index];
     const umbrella = top[o.umbrella_index];
@@ -64,12 +69,19 @@ export function computeMasterIssues(master) {
     if (!entry) return;
     const practice = umbrella.company || 'your own practice';
     issues.push({
-      id: `overlap-${i}`,
+      // Stable across a re-list: the client tracks what the person has already
+      // answered by id, and a positional id changes under them when an answer
+      // restructures the record.
+      id: `overlap-${roleKey(role)}`,
       type: 'overlap',
       kind: 'overlap',
-      // Which `role_overlaps` question this is — what the server answers. The
-      // client never sends indexes of its own; they are re-read from the record.
-      question_index: i,
+      // WHICH question this is, by the identity of the two roles it concerns —
+      // never by position, which shifts when a role is nested or a malformed
+      // pair is dropped. The server re-finds the pair in the user's OWN record
+      // from these, so a crafted flag can still only answer a question that is
+      // genuinely open on it.
+      role_key: roleKey(role),
+      umbrella_key: roleKey(umbrella),
       target: { section: 'experience', index },
       question: `Your ${roleLabel(entry)} (${entry.dates}) ran while ${practice} was active. Was it client work delivered under ${practice}, or a separate job?`,
       options: [`Client work under ${practice}`, 'A separate job'],

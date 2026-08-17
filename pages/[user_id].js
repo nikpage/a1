@@ -100,7 +100,19 @@ export default function UserPage({ user_id, generationsRemaining, docDownloadsRe
       <main className="max-w-4xl mx-auto px-4 py-10">
         {showOnboarding ? (
           <div className="border border-gray-200 rounded-lg shadow-sm p-6 bg-white">
-            <MasterFlagFixer flags={flags} experience={experience} rebuilding={rebuilding} onComplete={() => setOnboardingDone(true)} />
+            <MasterFlagFixer
+              flags={flags}
+              experience={experience}
+              rebuilding={rebuilding}
+              onRecord={(saved, newFlags) => {
+                if (saved) {
+                  setMaster(saved);
+                  setExperience(roles(saved));
+                }
+                if (Array.isArray(newFlags)) setFlags(newFlags);
+              }}
+              onComplete={() => setOnboardingDone(true)}
+            />
           </div>
         ) : analysis ? (
           <>

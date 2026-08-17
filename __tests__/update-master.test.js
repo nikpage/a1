@@ -32,7 +32,7 @@ vi.mock('../utils/database', () => ({
 vi.mock('../lib/requireAuth', () => ({ default: (handler) => handler }));
 
 import handler from '../pages/api/update-master.js';
-import { normaliseMaster } from '../utils/master-schema.js';
+import { normaliseMaster, recordFingerprint } from '../utils/master-schema.js';
 
 const SESSION_USER = 'user-session-1';
 
@@ -70,6 +70,40 @@ beforeEach(() => {
   mockGetMasterCv.mockResolvedValue(JSON.parse(JSON.stringify(STORED)));
   mockSaveMasterCv.mockResolvedValue([{ user_id: SESSION_USER }]);
   mockGetLatestAnalysis.mockResolvedValue(null);
+});
+
+describe('a stale editor copy', () => {
+  // The editor holds a copy of the record. Answering an overlap below the form
+  // restructures the stored record; saving the copy afterwards used to restore
+  // the flat timeline and undo the answer. Red on the old route, which took the
+  // stale copy and saved it.
+  test('is refused when the stored record moved on, and saves nothing', async () => {
+    const stale = JSON.parse(JSON.stringify(STORED));
+    const moved = JSON.parse(JSON.stringify(STORED));
+    moved.work_experience = [
+      { company: 'Nik Page Ltd.', title: 'Founder', start_date: '2016', end_date: 'Present', location: '', bullets: [], fractional_engagements: [moved.work_experience[0]] },
+    ];
+    mockGetMasterCv.mockResolvedValue(moved);
+
+    const { res, done } = call({ master: stale, based_on: recordFingerprint(stale) });
+    await done;
+
+    expect(res._getStatusCode()).toBe(409);
+    expect(mockSaveMasterCv).not.toHaveBeenCalled();
+    expect(res._getJSONData().master.work_experience[0].company).toBe('Nik Page Ltd.');
+  });
+
+  test('is accepted when nothing moved', async () => {
+    const edited = JSON.parse(JSON.stringify(STORED));
+    edited.profile.name = 'Nik P.';
+
+    const { res, done } = call({ master: edited, based_on: recordFingerprint(STORED) });
+    await done;
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(mockSaveMasterCv).toHaveBeenCalledTimes(1);
+    expect(mockSaveMasterCv.mock.calls[0][1].profile.name).toBe('Nik P.');
+  });
 });
 
 describe('normaliseMaster', () => {
