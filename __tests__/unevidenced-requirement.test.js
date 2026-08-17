@@ -18,7 +18,7 @@
 // Both are red on the old code: neither function existed.
 
 import { describe, test, expect } from 'vitest';
-import { unevidencedKeywordHits, stripDuplicateSentences } from '../utils/cv-validate.js';
+import { unevidencedKeywordHits, stripDuplicateSentences, validateCv } from '../utils/cv-validate.js';
 
 const MASTER = JSON.stringify({
   identity: { name: 'Nik Page', country: 'Czech Republic' },
@@ -84,6 +84,100 @@ describe('check 24 — a requirement the record cannot answer', () => {
   test('no master and no analysis report nothing rather than guessing', () => {
     expect(unevidencedKeywordHits('anything at all', { master: '', analysis: ANALYSIS })).toEqual([]);
     expect(unevidencedKeywordHits('anything at all', { master: MASTER, analysis: null })).toEqual([]);
+  });
+});
+
+// THE DENY-LIST IS COMPUTED FROM THE AD, NOT TAKEN FROM THE MODEL.
+//
+// ats_keywords_missing comes from the same call that writes
+// ats_keywords_present, under a prompt telling it to be generous about what
+// counts as present — so a term the model wrongly reads as earned is absent
+// from the missing list, and the deny-list is empty in the case that leaks. On
+// the KUBO run that is how "B2B" reached the CV while "CRM" was caught.
+//
+// Red on the old code: missingTerms() read ats_keywords_missing alone.
+describe('the deny-list reads the ad itself', () => {
+  test('catches an ad acronym the missing-list never mentioned', () => {
+    const analysis = {
+      analysis: { ats_keywords_missing: 'Kubernetes' },
+      job_text: 'Hledáme obchodníka pro B2B prodej do škol. Práce s CRM výhodou.',
+    };
+    const letter = 'Mám zkušenost s B2B prodejem.';
+    expect(unevidencedKeywordHits(letter, { master: MASTER, analysis })).toEqual(['B2B']);
+  });
+
+  test('the employer name and advertised title are never cut', () => {
+    const analysis = {
+      job_text: 'KUBO hledá SDR pro české školy.',
+      job_extraction: { company: 'KUBO', job_title: 'SDR' },
+    };
+    const letter = 'Rád pomohu KUBO na českých školách jako SDR.';
+    expect(unevidencedKeywordHits(letter, { master: MASTER, analysis })).toEqual([]);
+  });
+
+  test('an ad term the master evidences is still never cut', () => {
+    const analysis = { job_text: 'Hledáme obchodníka pro B2B prodej.' };
+    const master = JSON.stringify({ experience: [{ company: 'X', role: 'Y', achievements: [{ text: 'Ran B2B accounts.' }] }] });
+    expect(unevidencedKeywordHits('I ran B2B accounts.', { master, analysis })).toEqual([]);
+  });
+});
+
+// CHECK 26 — the CV leaks the same way the letter does, and check 14's flat
+// five-letter stem match clears "B2B Client Relations" off a 2003 line reading
+// "Internal client relations".
+//
+// Red on the old code: checkAdTerms() did not exist.
+describe('check 26 — a borrowed requirement in a CV skill or headline', () => {
+  const analysis = {
+    analysis: { ats_keywords_missing: 'CRM' },
+    job_text: 'B2B account management for Czech schools. CRM a výhodou.',
+    generation_framework: { cv_blueprint: { section_order: ['Summary', 'Skills', 'Work Experience'] } },
+  };
+  const cv = (skills, headline = 'Product Strategy Leader') => [
+    '# Nik Page',
+    `**${headline}**`,
+    '',
+    '### Summary',
+    'Product leader who managed enterprise client accounts including eBay.',
+    '',
+    '### Skills',
+    ...skills.map((s) => `- ${s}`),
+    '',
+    '### Work Experience',
+    '',
+    '#### **Sr Product & Account Manager**',
+    '**Salsita Software** | 11/2022 - 10/2023',
+    '- Managed enterprise client accounts including eBay, directing solution design.',
+  ].join('\n');
+
+  const adFaults = (doc) => validateCv(doc, { master: MASTER, analysis })
+    .hard.filter((h) => h.includes('comes from the job ad'));
+
+  test('hard-fails a listed skill the ad supplied and the record does not', () => {
+    const faults = adFaults(cv(['B2B Client Relations']));
+    expect(faults).toHaveLength(1);
+    expect(faults[0]).toContain('B2B');
+  });
+
+  test('hard-fails the same term in the headline', () => {
+    const faults = adFaults(cv(['Product Management'], 'B2B Account Manager'));
+    expect(faults).toHaveLength(1);
+    expect(faults[0]).toContain('B2B');
+  });
+
+  test('leaves the CV alone when the record evidences the term', () => {
+    const master = JSON.stringify({ experience: [{ company: 'X', role: 'Y', achievements: [{ text: 'Ran B2B client relations.' }] }] });
+    const faults = validateCv(cv(['B2B Client Relations']), { master, analysis })
+      .hard.filter((h) => h.includes('comes from the job ad'));
+    expect(faults).toEqual([]);
+  });
+
+  test('prose is left to the verify pass — only the typed slots fail hard', () => {
+    const doc = cv(['Product Management']).replace(
+      'Product leader who managed enterprise client accounts including eBay.',
+      'Product leader familiar with the B2B world and CRM tooling.',
+    );
+    expect(adFaults(doc)).toEqual([]);
   });
 });
 

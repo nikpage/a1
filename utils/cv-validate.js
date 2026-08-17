@@ -762,6 +762,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkRolesReal(document, m, hard);
   checkStructure(document, analysis, hard);
   checkOlderApplicant(document, analysis, hard);
+  checkAdTerms(document, m, analysis, hard);
 
   checkImpactZone(document, m, warnings);
   checkBullets(document, m, language, warnings);
@@ -1213,6 +1214,38 @@ function normaliseTerm(t) {
 // around them ("software", "administration", "outreach", "metrics", "school")
 // are deliberately ignored: they are too common to carry a claim, and cutting
 // one would damage a true sentence.
+// The acronyms in a stretch of text, as written: short, all-caps, at least one
+// letter, digits allowed so B2B counts. A named system or standard is the
+// checkable part of any requirement — the record either evidences it or does
+// not — while the ordinary words around it are too common to carry a claim.
+function acronymsIn(text) {
+  const out = [];
+  for (const token of String(text || '').split(/[\s/,;()[\]]+/)) {
+    const bare = token.replace(/[^\p{L}\p{N}]/gu, '');
+    if (bare.length >= 2 && bare.length <= 5 && bare === bare.toUpperCase() && /\p{L}/u.test(bare)) {
+      out.push(normaliseTerm(bare));
+    }
+  }
+  return out;
+}
+
+// THE DENY-LIST IS COMPUTED FROM THE AD, NOT TAKEN FROM THE MODEL.
+//
+// `ats_keywords_missing` was the only source until 2026-08-16, and it comes out
+// of the same call that writes `ats_keywords_present` — under a prompt telling
+// that call to be GENEROUS about what counts as present. A term the model
+// wrongly reads as earned is, by construction, absent from the missing list, so
+// the deny-list is empty in exactly the case that leaks. On the KUBO run it
+// caught "CRM" and missed "B2B", "Account Management" and "onboarding", all of
+// which had been laundered through `ats_keywords_present` with a proof quote
+// nobody checked.
+//
+// So the ad's own acronyms are read straight off `analysis.job_text`. The
+// missing list stays as one input, no longer the source.
+//
+// The EMPLOYER'S OWN NAME is exempt. An ad names the company and the advertised
+// role, and a document may say them — that is a fact about the employer, which
+// is exactly what the ad is a source for.
 function missingTerms(analysis) {
   const raw = analysis?.analysis?.ats_keywords_missing;
   const list = Array.isArray(raw) ? raw : String(raw || '').split(/[,;\n]/);
@@ -1223,38 +1256,33 @@ function missingTerms(analysis) {
     const t = normaliseTerm(source);
     if (!t || t.length < 2) continue;
     if (!t.includes(' ')) { out.push(t); continue; }
-    for (const token of source.split(/[\s/]+/)) {
-      const bare = token.replace(/[^\p{L}\p{N}]/gu, '');
-      // An acronym as the model wrote it: short and all-caps (with digits
-      // allowed, so B2B counts).
-      if (bare.length >= 2 && bare.length <= 5 && bare === bare.toUpperCase() && /\p{L}/u.test(bare)) {
-        out.push(normaliseTerm(bare));
-      }
-    }
+    out.push(...acronymsIn(source));
   }
-  return out;
+  out.push(...acronymsIn(analysis?.job_text));
+
+  const extraction = analysis?.job_extraction || {};
+  const employer = new Set([
+    ...acronymsIn(extraction.company),
+    ...acronymsIn(extraction.job_title),
+  ]);
+  return out.filter((t) => !employer.has(t));
 }
 
-export function unevidencedKeywordHits(document, { master = '', analysis = null } = {}) {
-  const m = readMaster(master);
-  // No record is no evidence: report nothing rather than guess.
-  if (!m.text) return [];
-
-  const terms = missingTerms(analysis);
-  if (!terms.length) return [];
-
+// Which of the deny-list terms a stretch of the document actually used, with the
+// master as veto: a term the record does support is never reported, even if a
+// stale analysis still lists it.
+function unevidencedIn(text, m, terms) {
   // Edge punctuation only: "CRM." must match "crm", while "node.js" and "c#"
   // keep the punctuation that is part of the name.
-  const words = (text) => normaliseTerm(text)
+  const words = (t) => normaliseTerm(t)
     .split(/\s+/)
     .map((w) => w.replace(/^[.+#-]+/, '').replace(/[.+#-]+$/, ''))
     .filter(Boolean);
 
   const masterWords = new Set(words(m.text));
   const masterStems = stemSet(m.text);
-  const docText = coverBody(document);
-  const docWords = words(docText);
-  const docStems = stemSet(docText);
+  const docWords = words(text);
+  const docStems = stemSet(text);
 
   const hits = [];
   const seen = new Set();
@@ -1268,6 +1296,63 @@ export function unevidencedKeywordHits(document, { master = '', analysis = null 
     if (used) hits.push(term.toUpperCase().length <= 4 ? term.toUpperCase() : term);
   }
   return hits;
+}
+
+export function unevidencedKeywordHits(document, { master = '', analysis = null } = {}) {
+  const m = readMaster(master);
+  // No record is no evidence: report nothing rather than guess.
+  if (!m.text) return [];
+
+  const terms = missingTerms(analysis);
+  if (!terms.length) return [];
+
+  return unevidencedIn(coverBody(document), m, terms);
+}
+
+// CHECK 26 — THE SAME BORROWED REQUIREMENT, ON THE CV.
+//
+// Check 24 runs on the letter only, and the CV leaks the same way: the KUBO run
+// printed "B2B Client Relations" and "Account Management" in Skills and "B2B
+// Account Manager & Tech Enablement Specialist" as the headline, over a record
+// that says none of them.
+//
+// SEVERITY IS BY SLOT, because the slot resolves the ambiguity the term list
+// cannot. A Skills entry and a headline are bare assertions with no surrounding
+// prose to make them innocent, so a borrowed term there is always a claim about
+// the candidate: HARD, which triggers the one regeneration. Prose can carry an
+// ad word without asserting it — naming the employer's world, restating the
+// requirement being answered — so it is left to the AI verify pass, which reads
+// the sentence rather than the word.
+//
+// Check 14 cannot cover this: it matches five-letter stems against the master as
+// one flat string, so "B2B Client Relations" clears on the words "client" and
+// "relations" from a 2003 role, and three-letter terms are invisible to it
+// entirely.
+function checkAdTerms(document, m, analysis, hard) {
+  if (!m.text) return;
+  const terms = missingTerms(analysis);
+  if (!terms.length) return;
+
+  const slots = skillEntries(document);
+  const headline = cvHeadline(document);
+  if (headline) slots.push(headline);
+  if (!slots.length) return;
+
+  for (const hit of unevidencedIn(slots.join('\n'), m, terms)) {
+    hard.push(`"${hit}" comes from the job ad and the master record does not evidence it — it cannot be a listed skill or the headline.`);
+  }
+}
+
+// The headline is the line under the candidate's name: the first bold line
+// before the first section heading. An absent one reports nothing.
+function cvHeadline(document) {
+  for (const line of String(document || '').split('\n')) {
+    const t = line.trim();
+    if (/^#{2,}\s/.test(t)) break;
+    const bold = t.match(/^\*\*(.+)\*\*$/);
+    if (bold) return bold[1].trim();
+  }
+  return '';
 }
 
 // CHECK 25 — THE SAME SENTENCE PRINTED TWICE.
