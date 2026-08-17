@@ -73,7 +73,7 @@ const EXACT_SHAPE = `EXACT OUTPUT SHAPE — emit every key below, always, in thi
 
 {
   "profile": {
-    "name": "", "headline": "", "location": "", "summary": "",
+    "name": "", "headline": "", "location": "",
     "contact": { "phone": "", "email": "", "linkedin": "", "website": "" },
     "top_skills": [], "languages": [{ "language": "", "proficiency": "" }],
     "certifications": [], "honors_and_awards": []
