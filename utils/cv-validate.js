@@ -25,7 +25,7 @@
 // band come from prompts/cv-sections.js, which holds them per language.
 
 import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js';
-import { bannedPhrases } from '../prompts/voice.js';
+import { bannedPhrases, identityEpithets } from '../prompts/voice.js';
 import { coverWordBand } from '../prompts/market.js';
 import { salutationName } from '../prompts/cover-evidence.js';
 import { parseTweak } from './steering.js';
@@ -756,20 +756,13 @@ function checkEarlierCareer(document, master, warnings) {
 //     CV — the first words a recruiter reads, spent on a quality nobody can
 //     check and no ad asked for. A trait asserted about the candidate is a
 //     category asserted in place of evidence whatever part of speech carries it.
-//     Closed and exact like the banned-phrase list: it grows by adding a term
-//     actually seen in output, never by inferring a family from one member.
-const EPITHETS = [
-  'veteran', 'seasoned', 'accomplished', 'industry expert', 'technology leader',
-  'thought leader', 'world-class', 'renowned', 'distinguished',
-  'high-agency', 'high agency', 'self-starter', 'highly motivated',
-  'hands-on leader', 'visionary', 'battle-tested', 'proven leader',
-  'strategic thinker',
-  // "results-driven" and its family are NOT here: they are on the
-  // banned-phrasing list (Layer 2), which repairs the span rather than
-  // regenerating the document. One defect, one owner.
-];
-
-function checkEpithets(document, hard) {
+//     The list itself lives in `prompts/voice.js` — ONE registry, per language,
+//     shared with the writing prompt that is told what the checker looks for.
+//     A second copy here is how the English list drifted into two files and
+//     then did nothing at all on a Czech CV.
+function checkEpithets(document, hard, language) {
+  const EPITHETS = identityEpithets(language);
+  if (!EPITHETS.length) return;
   const sections = splitSections(document);
   // The headline sits above the first `###`, so it is not in any section.
   const head = plain(String(document || '').split(/^###\s+/m)[0] || '');
@@ -840,7 +833,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkGaps(analysis, warnings);
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
-  checkEpithets(document, hard);
+  checkEpithets(document, hard, language);
   checkSkillRecency(document, m, hard);
   checkRoleMetrics(document, m, warnings);
 

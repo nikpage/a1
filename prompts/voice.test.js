@@ -6,7 +6,7 @@
 // document while the CV side was already covered.
 
 import { describe, it, expect } from 'vitest';
-import { humanVoiceRules } from './voice.js';
+import { humanVoiceRules, identityEpithets, bannedPhrases } from './voice.js';
 import { buildCvPrompt } from './cv-generator.js';
 import { buildCoverPrompt } from './cover-letter.js';
 
@@ -41,5 +41,36 @@ describe('humanVoiceRules — identity epithets', () => {
     expect(cover).not.toMatch(/Name facts, not identities/);
     expect(cover).toMatch(/BANNED PHRASES/);
     expect(cover).toMatch(/proven track record/);
+  });
+});
+
+// The epithet registry is per language on the same footing as the banned
+// phrases: an English list applied to a Czech CV checks nothing, and a Czech
+// list invented by translating the English one blocks wording no Czech writer
+// would flag. cs/pl are empty until a real run produces an entry.
+describe('identityEpithets', () => {
+  it('returns the English list for en, including trait claims', () => {
+    const list = identityEpithets('en');
+    expect(list).toContain('veteran');
+    expect(list).toContain('high-agency');
+  });
+
+  it('is empty for cs and pl until a real run seeds them', () => {
+    expect(identityEpithets('cs')).toEqual([]);
+    expect(identityEpithets('pl')).toEqual([]);
+  });
+
+  it('applies every registered list on auto', () => {
+    expect(identityEpithets('auto')).toContain('veteran');
+  });
+
+  it('returns nothing for an unregistered language', () => {
+    expect(identityEpithets('hu')).toEqual([]);
+  });
+
+  // The stock filler stays with the repair pass, not the block.
+  it('excludes phrases the banned-phrasing list already owns', () => {
+    expect(identityEpithets('en')).not.toContain('results-driven');
+    expect(bannedPhrases('en')).toContain('results-driven');
   });
 });
