@@ -508,11 +508,16 @@ describe('check 15 — skills evidenced only by work the CV does not show', () =
   // Borealis evidences is describing a career the reader cannot see.
   const RECENT_ONLY = GOOD.split('#### **Delivery Manager**')[0];
 
-  it('warns about a skill whose only evidence is a role the CV drops', () => {
+  // Layer 2 says the skill "is not listed at all", so listing it is the app
+  // breaking its own rule. The candidate cannot act on it either — the role it
+  // came from was collapsed by the recency window, which is the app's call.
+  // Red on the old code, which reported it and shipped the stale skill.
+  it('blocks a skill whose only evidence is a role the CV drops', () => {
     const doc = `${RECENT_ONLY}\n### **Skills**\n- Jenkins\n`;
     const r = validateCv(doc, { master: MASTER, analysis: ANALYSIS });
-    expect(codes(r)).toContain('skillOutsideWindow');
-    expect(paramsFor(r, 'skillOutsideWindow').list).toBe('Jenkins');
+    expect(r.ok).toBe(false);
+    expect(r.hard.some((h) => h.includes('Jenkins') && /no longer shows in full/.test(h))).toBe(true);
+    expect(codes(r)).not.toContain('skillOutsideWindow');
   });
 
   it('stays silent when the skill is evidenced by a role the CV shows', () => {
@@ -636,20 +641,45 @@ describe('check 11 — Earlier Career names a real employer', () => {
 });
 
 describe('check 12 — identity epithets', () => {
-  it('warns when the Summary opens on what the candidate IS', () => {
+  const epithetFault = (r) => r.hard.find((h) => /asserts an identity or trait/.test(h));
+
+  it('blocks when the Summary opens on what the candidate IS', () => {
     const r = validateCv(GOOD.replace('Delivery leader who rebuilt', 'A veteran delivery leader who rebuilt'), { master: MASTER, analysis: ANALYSIS });
-    expect(codes(r)).toContain('identityEpithet');
-    expect(paramsFor(r, 'identityEpithet').list).toContain('veteran');
+    expect(r.ok).toBe(false);
+    expect(epithetFault(r)).toContain('veteran');
+    expect(codes(r)).not.toContain('identityEpithet');
   });
 
-  it('catches an epithet in the headline above the first section', () => {
+  it('blocks an epithet in the headline above the first section', () => {
     const r = validateCv(GOOD.replace('**Head of Delivery | Platform Teams**', '**Seasoned Head of Delivery**'), { master: MASTER, analysis: ANALYSIS });
-    expect(codes(r)).toContain('identityEpithet');
+    expect(epithetFault(r)).toContain('seasoned');
+  });
+
+  // The line that reached a delivered CV: a trait nobody can check, spent on
+  // the first words a recruiter reads. The old noun-only list passed it.
+  // Red on the old code.
+  it('blocks a trait claim in the headline, not just a noun epithet', () => {
+    const r = validateCv(GOOD.replace('**Head of Delivery | Platform Teams**', '**High-agency Senior Product Manager**'), { master: MASTER, analysis: ANALYSIS });
+    expect(r.ok).toBe(false);
+    expect(epithetFault(r)).toContain('high-agency');
+  });
+
+  it('matches the trait however it is hyphenated', () => {
+    const r = validateCv(GOOD.replace('**Head of Delivery | Platform Teams**', '**High agency Senior Product Manager**'), { master: MASTER, analysis: ANALYSIS });
+    expect(epithetFault(r)).toBeTruthy();
+  });
+
+  // "results-driven" is on the banned-phrasing list, which repairs the span
+  // rather than regenerating the page. One defect, one owner.
+  it('leaves banned-phrase filler to the repair pass', () => {
+    const r = validateCv(GOOD.replace('Delivery leader who rebuilt', 'A results-driven leader who rebuilt'), { master: MASTER, analysis: ANALYSIS });
+    expect(epithetFault(r)).toBeUndefined();
   });
 
   it('stays silent on a fact-led opening', () => {
     const r = validateCv(GOOD, { master: MASTER, analysis: ANALYSIS });
     expect(codes(r)).not.toContain('identityEpithet');
+    expect(epithetFault(r)).toBeUndefined();
   });
 });
 
@@ -739,8 +769,8 @@ describe('validateCoverLetter', () => {
   });
 
   it('still bans the same epithet on the CV', () => {
-    const { warnings } = validateCv('# Jane Roe\n**A seasoned technology leader**\n\n### Summary\nBuilt payments.');
-    expect(warnings.find((x) => x.code === 'identityEpithet')).toBeTruthy();
+    const { hard } = validateCv('# Jane Roe\n**A seasoned technology leader**\n\n### Summary\nBuilt payments.');
+    expect(hard.some((h) => /asserts an identity or trait/.test(h))).toBe(true);
   });
 
   it('passes a clean letter and never blocks', () => {

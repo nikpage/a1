@@ -37,7 +37,6 @@
   "cvWarning": {
     "noSections": "The CV has no recognisable sections, so the opening could not be checked.",
     "impactZoneWords": "The opening runs to {{count}} words; a recruiter reads about 120 before deciding.",
-    "metricFallback": "\"{{role}}\": {{count}} of {{total}} bullets carry no number, though your record has some.",
     "photoInvented": "The CV contains an image. Remove it unless you added it yourself.",
     "dobInvented": "The CV states a date of birth that is not in your record.",
     "consentInvented": "The CV states a data-processing consent line that is not in your record.",
@@ -47,9 +46,7 @@
     "summaryTooManyAchievements": "The summary lists {{count}} achievements; three is the ceiling before the opening stops being scannable.",
     "summaryAchievementNoRole": "{{count}} summary achievement(s) do not name the role they came from, so they read as floating claims.",
     "earlierCareerNoEmployer": "The Earlier Career section names no real employer — a recognisable name there is the strongest thing in it.",
-    "identityEpithet": "The opening describes you rather than what you did: {{list}}. Lead with a fact instead.",
     "summaryVerbatimCopy": "{{count}} summary achievement(s) repeat a work-experience bullet word for word. Same result, said differently, reads far better.",
-    "skillOutsideWindow": "These skills are only evidenced by work the CV no longer shows: {{list}}. They pull the eye back to an older career.",
     "noMetricsInRecord": "Your record holds no numbers for {{list}}. Add the real figures and these bullets get far stronger — we will not invent them.",
     "missingMonth": "Your record gives no month for {{list}}, so the year stands alone rather than being guessed. Add the month if you know it.",
     "earlierCareerTooManyBullets": "Earlier Career lists {{count}} roles; at most {{max}} are printed so the section does not drag the reader back through the whole career.",

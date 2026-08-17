@@ -239,7 +239,7 @@ function checkSkillsTrace(document, master, hard) {
 //     The Skills section says what the candidate is NOW: a speciality evidenced
 //     only by the collapsed Earlier Career line misdirects the recruiter and
 //     re-emits the age signal the recency window exists to manage.
-function checkSkillRecency(document, master, warnings) {
+function checkSkillRecency(document, master, hard) {
   const experience = Array.isArray(master?.parsed?.experience) ? master.parsed.experience : [];
   if (!experience.length) return;
 
@@ -274,7 +274,11 @@ function checkSkillRecency(document, master, warnings) {
     if (evidencedAnywhere && !shown.some((r) => evidences(r, core))) stale.push(skill);
   }
   if (stale.length) {
-    warnings.push({ code: 'skillOutsideWindow', params: { list: stale.join(', ') } });
+    // Layer 2 says such a skill "is not listed at all", so listing it is the
+    // app breaking its own rule and then telling the candidate about it. They
+    // cannot act on it — the role it came from was collapsed by the recency
+    // window, which is the app's decision, not theirs.
+    hard.push(`Skills lists ${stale.join(', ')}, evidenced only by roles this CV no longer shows in full. Remove them: the Skills section says what the candidate is now, and an old speciality beside current ones both misdirects the recruiter and re-emits the age signal the recency window exists to manage.`);
   }
 }
 
@@ -536,9 +540,12 @@ function checkBullets(document, master, language, warnings, hard) {
     // too, and every entry has those.
     const achievements = Array.isArray(entry.achievements) ? entry.achievements : [];
     if (!/\d/.test(JSON.stringify(achievements))) return; // no metrics exist — fallbacks are unlimited
+    // The record HOLDS numbers for this role and the writer did not use them.
+    // That is the app leaving the strongest evidence on the table and then
+    // reporting it to the candidate, who already supplied the figures.
     const noMetric = role.bullets.filter((b) => !/\d/.test(b)).length;
     if (noMetric > role.bullets.length / 3) {
-      warnings.push({ code: 'metricFallback', params: { role: role.title, count: noMetric, total: role.bullets.length } });
+      hard.push(`Under "${role.title}", ${noMetric} of ${role.bullets.length} bullets carry no number, but the record holds figures for this role. Rewrite them around the figures the record actually states — invent none, and use no figure the record does not hold.`);
     }
   });
 }
@@ -743,20 +750,34 @@ function checkEarlierCareer(document, master, warnings) {
 
 // 12. No identity epithet in the headline or Summary — a category asserted in
 //     place of evidence, and an age signal in the one place it hurts most.
+//
+//     TRAIT CLAIMS ARE THE SAME DEFECT. The list was nouns only, so "High-agency
+//     Senior Product Manager" passed it and reached the top line of a delivered
+//     CV — the first words a recruiter reads, spent on a quality nobody can
+//     check and no ad asked for. A trait asserted about the candidate is a
+//     category asserted in place of evidence whatever part of speech carries it.
+//     Closed and exact like the banned-phrase list: it grows by adding a term
+//     actually seen in output, never by inferring a family from one member.
 const EPITHETS = [
   'veteran', 'seasoned', 'accomplished', 'industry expert', 'technology leader',
   'thought leader', 'world-class', 'renowned', 'distinguished',
+  'high-agency', 'high agency', 'self-starter', 'highly motivated',
+  'hands-on leader', 'visionary', 'battle-tested', 'proven leader',
+  'strategic thinker',
+  // "results-driven" and its family are NOT here: they are on the
+  // banned-phrasing list (Layer 2), which repairs the span rather than
+  // regenerating the document. One defect, one owner.
 ];
 
-function checkEpithets(document, warnings) {
+function checkEpithets(document, hard) {
   const sections = splitSections(document);
   // The headline sits above the first `###`, so it is not in any section.
   const head = plain(String(document || '').split(/^###\s+/m)[0] || '');
   const summary = sections[0] ? plain(sections[0].lines.join(' ')) : '';
   const text = `${head} ${summary}`.toLowerCase();
-  const found = EPITHETS.filter((e) => new RegExp(`\\b${e}\\b`, 'i').test(text));
+  const found = EPITHETS.filter((e) => new RegExp(`\\b${e.replace(/[-\s]/g, '[-\\s]')}\\b`, 'i').test(text));
   if (found.length) {
-    warnings.push({ code: 'identityEpithet', params: { list: found.join(', ') } });
+    hard.push(`The headline or Summary asserts an identity or trait instead of evidence: ${found.join(', ')}. Replace it with something the candidate DID — the role and the thing they built or ran. A quality the reader cannot check is the weakest use of the first line on the page.`);
   }
 }
 
@@ -819,8 +840,8 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkGaps(analysis, warnings);
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
-  checkEpithets(document, warnings);
-  checkSkillRecency(document, m, warnings);
+  checkEpithets(document, hard);
+  checkSkillRecency(document, m, hard);
   checkRoleMetrics(document, m, warnings);
 
   // 13. Year-only dates the master could not supply a month for. Printing the
