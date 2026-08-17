@@ -10,7 +10,7 @@ import { targetJobBlock } from '../prompts/job-target.js';
 import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
 import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
 import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
-import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, unevidencedKeywordHits, stripDuplicateSentences, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
+import { validateCv, validateCoverLetter, validationFeedback, bannedPhraseHits, unsourcedDomainHits, unevidencedKeywordHits, splitProvenKeywords, stripDuplicateSentences, coverShapeFaults, coverBreadthFault } from './cv-validate.js';
 import { buildMasterCvPrompt } from '../prompts/master-cv.js';
 import { costUsdFor } from './pricing.js';
 import { assertAttributed, meterGeminiCall } from './ai-meter.js';
@@ -283,6 +283,27 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
     // the fallback for records saved before this existed.
     if (typeof jobText === 'string' && jobText.trim()) {
       parsed.job_text = jobText.trim().slice(0, 8000);
+    }
+    // EVERY "PRESENT" KEYWORD MUST BE PROVEN BY THE RECORD, DETERMINISTICALLY.
+    //
+    // The model quotes the phrase that earns each term; this checks the quote
+    // against the master here, at the single point every caller passes through
+    // (the worker, scripts/test-generate.mjs, anything added later). A term
+    // whose quote the record does not carry is not evidence, so it leaves
+    // ats_keywords_present — which bars it from skills_to_highlight — and joins
+    // ats_keywords_missing, which is the deny-list checks 24/26 enforce.
+    if (parsed?.analysis) {
+      const { proven, unproven } = splitProvenKeywords(parsed.analysis.ats_keywords_present, cvText);
+      parsed.analysis.ats_keywords_present = proven;
+      // With no job ad there is no target, so ats_keywords_missing stays empty
+      // (prompts/analysis.js); the term is simply dropped.
+      if (unproven.length && hasJobText) {
+        const missing = parsed.analysis.ats_keywords_missing;
+        const list = Array.isArray(missing)
+          ? missing
+          : String(missing || '').split(/[,;\n]/).map((t) => t.trim()).filter((t) => t && t.toLowerCase() !== 'n/a');
+        parsed.analysis.ats_keywords_missing = [...list, ...unproven];
+      }
     }
     return {
       choices: data.choices,

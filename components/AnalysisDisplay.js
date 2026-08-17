@@ -18,6 +18,14 @@ function display(v) {
   return v;
 }
 
+// ats_keywords_present is { term, proof } pairs (the proof is checked against
+// the record in utils/openai.js). The candidate reads the terms; the proof is
+// machinery, not copy.
+function keywordTerms(v) {
+  if (!Array.isArray(v)) return v;
+  return v.map((e) => (e && typeof e === 'object' ? e.term : e));
+}
+
 // A labelled field that renders nothing when its value is empty.
 function Field({ label, value }) {
   if (isEmpty(value)) return null;
@@ -83,7 +91,7 @@ export default function AnalysisDisplay({ analysis }) {
   // longer generated or rendered; career_arc, parallel_experience and
   // transferable_skills are still generated (the CV generator reads them) but
   // are not shown. Revive by restoring the <Field> rows and the prompt slots.
-  const hasAssessment = any(a.ats_keywords_present, a.ats_keywords_missing);
+  const hasAssessment = any(keywordTerms(a.ats_keywords_present), a.ats_keywords_missing);
   const hasScores = any(a.overall_score, a.ats_score);
   const hasSuggestions = any(data.job_match?.positioning_strategy, data.job_match?.career_scenario);
   const hasAnalysis = hasScores || hasAssessment || any(a.red_flags);
@@ -155,7 +163,7 @@ export default function AnalysisDisplay({ analysis }) {
               {hasAssessment && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('cvAssessment')}</h3>
-                <Field label={t('atsOptimization')} value={a.ats_keywords_present} />
+                <Field label={t('atsOptimization')} value={keywordTerms(a.ats_keywords_present)} />
                 <Field label={t('atsGaps')} value={a.ats_keywords_missing} />
               </div>
               )}

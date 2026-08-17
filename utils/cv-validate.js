@@ -1121,6 +1121,54 @@ function stemSet(text) {
   return out;
 }
 
+// THE PROOF QUOTE IS CHECKED AGAINST THE RECORD.
+//
+// `analysis.ats_keywords_present` is written under a prompt telling the model to
+// be GENEROUS, and every term it lists is safe to put on the CV — it feeds
+// `skills_to_highlight`, and being "present" keeps it out of
+// `ats_keywords_missing`, which is the deny-list checks 24/26 read. So a term
+// the model merely BELIEVES is earned is the one leak nothing downstream can
+// see: on the KUBO run (2026-08-16) "B2B", "Account Management" and
+// "onboarding" reached Skills and the headline over a record evidencing none.
+//
+// The model must now quote the record verbatim for each term. This checks that
+// quote and nothing else — no synonym matching, no judgement, no second model.
+// The tolerance is the file's existing one (6-character stems), so CZ/PL
+// inflection and Manager/Management do not cause a false drop; a CONCEPT
+// expressed in different words still passes, because what is checked is the
+// quote's presence in the record, not the term's.
+function proofSupported(quote, masterText) {
+  const q = plain(quote).toLowerCase();
+  if (!q) return false;
+  const hay = plain(masterText).toLowerCase();
+  if (hay.includes(q)) return true;
+
+  const stems = stemSet(masterText);
+  const content = plain(quote).split(/\s+/).map(stem).filter(Boolean);
+  if (!content.length) return false;
+  return content.every((s) => stems.has(s));
+}
+
+// Split `ats_keywords_present` into the terms whose proof the record carries and
+// the terms whose proof it does not. An entry with no proof at all fails: there
+// is no evidence to check.
+export function splitProvenKeywords(present, master) {
+  const m = readMaster(master);
+  const proven = [];
+  const unproven = [];
+  // No record is no evidence: judge nothing rather than guess.
+  if (!m.text) return { proven: Array.isArray(present) ? present : [], unproven };
+
+  for (const entry of Array.isArray(present) ? present : []) {
+    const term = typeof entry === 'string' ? entry : String(entry?.term || '').trim();
+    if (!term) continue;
+    const proof = typeof entry === 'string' ? '' : String(entry?.proof || '').trim();
+    if (proof && proofSupported(proof, m.text)) proven.push(entry);
+    else unproven.push(term);
+  }
+  return { proven, unproven };
+}
+
 // Industry and domain labels — the words that assert what world the candidate
 // worked in. Each is legitimate when the ad or the record supplies it, and an
 // invention when neither does. English and CZ/PL forms both appear because the

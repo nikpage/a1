@@ -100,7 +100,7 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - analysis.parallel_experience: side facts from the record only (speaking, teaching, certifications, advisory), stated plainly.
 - analysis.transferable_skills: skills from past roles that support the target direction; quote the exact phrases from the record that prove them.
 - analysis.red_flags: ARRAY of specific concerns a recruiter would raise about this candidate for THIS job (e.g. "14-month gap 2021-2022", "four jobs in three years", "overqualified for a mid-level role"), each short and concrete. These exist so the documents can HANDLE them — the CV neutralises by framing and selection, the letter may answer at most one. Empty array if genuinely none.
-- analysis.ats_keywords_present: strong terms the record ALREADY EARNS, quoting the exact phrase that proves each. A keyword is PRESENT if the record demonstrates the concept — not just the exact phrase ("managed a team of 8" satisfies "people management"; "reduced churn by 30%" satisfies "retention"). Be generous and thorough: surface every term the candidate has genuinely earned but under-labelled. These are safe to put on the CV.
+- analysis.ats_keywords_present: ARRAY of { "term": the keyword, "proof": the exact phrase from the record that proves it }. A keyword is PRESENT if the record demonstrates the concept — not just the exact phrase ("managed a team of 8" satisfies "people management"; "reduced churn by 30%" satisfies "retention"). Be generous and thorough: surface every term the candidate has genuinely earned but under-labelled. The PROOF is not optional and is not your own wording: copy it VERBATIM from the record, word for word. It is checked against the record afterwards, and a term whose proof is not there is dropped and reported to the candidate as a gap instead. These are safe to put on the CV.
 - analysis.ats_keywords_missing: ${hasJobText ? `important job-ad terms for which the record shows NO evidence at all (a named tool/language/certification the candidate never demonstrates). ADVICE TO THE CANDIDATE ONLY, shown on screen — they are NEVER facts about the candidate, NEVER feed skills_to_highlight, and NEVER reach the generated documents. Empty if none.` : `MUST be an empty array. With no job ad there is no target to be "missing" keywords against.`}
 - job_match.career_scenario: the chosen scenario(s), or "n/a" with no job ad.
 - job_match.positioning_strategy: 2-3 sentences on how to position this candidate to win — which real experience is foregrounded and how it is framed for this ad and its register. Never claim what the record does not prove; phrase it as what to bring forward from the real history, not as new capabilities to assert.
@@ -128,7 +128,7 @@ JSON OUTPUT SCHEMA:
     "career_arc": "",
     "parallel_experience": "",
     "transferable_skills": "",
-    "ats_keywords_present": "",
+    "ats_keywords_present": [{ "term": "", "proof": "" }],
     "ats_keywords_missing": ""
   },
   "job_match": {

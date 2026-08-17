@@ -27,7 +27,7 @@ const REQUIRED_SCHEMA = {
     career_arc: "",
     parallel_experience: "",
     transferable_skills: "",
-    ats_keywords_present: "",
+    ats_keywords_present: [],
     ats_keywords_missing: ""
   },
   job_match: {
