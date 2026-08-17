@@ -17,6 +17,7 @@ import { getCV, getMasterCv, saveMasterCv } from '../../utils/database';
 import { withAiContext } from '../../utils/ai-meter';
 import { augmentMaster, buildOrMergeMaster } from '../../utils/openai';
 import { computeMasterIssues } from '../../utils/master-issues';
+import { mergeAdditions } from '../../utils/master-schema';
 import { logger } from '../../lib/logger';
 import { Redis } from '@upstash/redis';
 
@@ -102,8 +103,16 @@ async function handler(req, res) {
     // Every paid call — each augment attempt and the verify pass — was recorded
     // by the meter as it responded, whether or not the result is saved.
 
+    // The model was handed the whole record and returns a whole record, because
+    // augmentMaster runs the BUILD prompt — pure re-extraction. Saving that
+    // return value re-transcribes the person's entire career on every note, and
+    // whatever the cheap model compresses, retitles or drops is gone. So the
+    // stored record is the base and the output is read for ADDITIONS only, which
+    // is what this route has always promised. Corrections belong to the editor.
+    const merged = mergeAdditions(master, result.output);
+
     try {
-      await saveMasterCv(user_id, result.output);
+      await saveMasterCv(user_id, merged);
     } catch {
       return res.status(500).json({ error: 'Could not save your record' });
     }
@@ -111,11 +120,11 @@ async function handler(req, res) {
     // Recompute the open questions against the UPDATED master, exactly as
     // resolve-flag does — added information can settle an existing question or
     // raise one (a new role overlapping the person's own practice).
-    const flags = computeMasterIssues(result.output);
+    const flags = computeMasterIssues(merged);
 
     return res.status(200).json({
       ok: true,
-      master: result.output,
+      master: merged,
       flags,
       _gemini_usage: [...buildUsages, ...result.usages],
     });

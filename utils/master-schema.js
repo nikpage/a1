@@ -268,4 +268,198 @@ export function applyOverlapAnswer(master, question, answer) {
   return { ...master, work_experience: nextExperience, role_overlaps: nextOverlaps };
 }
 
+// ── Additive merge ───────────────────────────────────────────────────────────
+//
+// "Anything not on your CV?" sends the person's note to the model together with
+// their whole existing record, and the model returns a whole record back. That
+// return value must NEVER be saved as-is: the call is the BUILD prompt — pure
+// re-extraction — so everything the person already had is re-transcribed from
+// scratch by a cheap model on every note. A run of it compressed twelve bullets
+// to two, dropped an entry's only two client names, and retitled a role. The
+// note was two lines; the loss was the career.
+//
+// So the STORED record is the base and the model's output is read for ADDITIONS
+// only, exactly as that route's own contract has always claimed ("additive only,
+// never overwrites"):
+//   - a role, talk, publication, qualification or skill that is not already
+//     there is appended;
+//   - a role that IS already there keeps its stored title, dates, location and
+//     wording, and gains only bullets the stored copy does not have;
+//   - nothing is ever removed, reworded or reordered.
+//
+// A correction to something already recorded is the EDITOR's job (the person
+// types it and it is saved verbatim, /api/update-master) — not a model's.
+//
+// Pure, so the rule is unit-testable and no network is involved.
+
+// Identity for matching, deliberately looser than roleKey: the model re-emits a
+// date as "Aug 2016" where the record says "August 2016", and a role that fails
+// to match would be appended a second time. Employer + title is stable across
+// re-transcription; the stored dates are kept either way.
+const softKey = (r) => `${str(r?.company).toLowerCase()} | ${str(r?.title).toLowerCase()}`;
+
+// A date reduced to what survives re-transcription: "August 2016", "Aug 2016"
+// and "08/2016" are the same date to a person and must be the same date here.
+const dateId = (v) => {
+  const s = str(v).toLowerCase();
+  const year = s.match(/\d{4}/)?.[0] || '';
+  const month = s.match(/[a-z]{3}/)?.[0] || s.match(/\b(\d{1,2})[/-]/)?.[1] || '';
+  return `${month}${year}`;
+};
+// The second way to recognise the same role, used when the title was rewritten:
+// employer plus when it started. Two roles at one employer are a promotion, and
+// those have different start dates.
+const spanKey = (r) => `${str(r?.company).toLowerCase()} @ ${dateId(r?.start_date)}`;
+const talkKey = (t) => [t?.event, t?.year, t?.topic].map((v) => str(v).toLowerCase()).join(' | ');
+const eduKey = (e) => [e?.institution, e?.qualification].map((v) => str(v).toLowerCase()).join(' | ');
+const orgKey = (e) => [e?.organization || e?.company, e?.title].map((v) => str(v).toLowerCase()).join(' | ');
+
+// Stored entries first, in their stored order; then any incoming entry whose key
+// is new. Order is never disturbed — a reordered timeline is a change the person
+// did not ask for.
+function appendNew(storedList, incomingList, key, shape) {
+  const out = arr(storedList).slice();
+  const seen = new Set(out.map(key));
+  for (const item of arr(incomingList)) {
+    const k = key(item);
+    if (!k.replace(/[|\s]/g, '') || seen.has(k)) continue;
+    seen.add(k);
+    out.push(shape(item));
+  }
+  return out;
+}
+
+const newStrings = (storedList, incomingList) => {
+  const out = strList(storedList);
+  const seen = new Set(out.map((s) => s.toLowerCase()));
+  for (const s of strList(incomingList)) {
+    if (seen.has(s.toLowerCase())) continue;
+    seen.add(s.toLowerCase());
+    out.push(s);
+  }
+  return out;
+};
+
+// Bullets the stored copy does not already carry, compared on their text alone
+// so re-punctuation by the model does not read as a new bullet.
+const bulletId = (b) => str(b).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+function mergeRoleList(storedRoles, incomingRoles, depth = 0) {
+  const incoming = arr(incomingRoles);
+  // An incoming entry matched to a stored role has been accounted for. Without
+  // this it was ALSO appended as a new role, so a re-extraction that merely
+  // retitled an employer left the person with that employer twice.
+  const used = new Set();
+  const out = arr(storedRoles).map((stored) => {
+    let match = incoming.find((r, i) => !used.has(i) && softKey(r) === softKey(stored));
+    if (!match) match = incoming.find((r, i) => !used.has(i) && spanKey(r) === spanKey(stored) && str(r?.company));
+    if (!match) return stored;
+    used.add(incoming.indexOf(match));
+    const bullets = strList(stored.bullets);
+    const have = new Set(bullets.map(bulletId));
+    for (const b of strList(match.bullets)) {
+      if (!have.has(bulletId(b))) {
+        have.add(bulletId(b));
+        bullets.push(b);
+      }
+    }
+    const merged = { ...stored, bullets };
+    if (depth === 0) {
+      merged.fractional_engagements = mergeRoleList(
+        arr(stored.fractional_engagements),
+        arr(match.fractional_engagements),
+        1
+      );
+    }
+    return merged;
+  });
+
+  const seen = new Set(out.map(softKey));
+  const spans = new Set(out.map(spanKey));
+  incoming.forEach((r, i) => {
+    const k = softKey(r);
+    if (used.has(i) || k === ' | ' || seen.has(k) || spans.has(spanKey(r))) return;
+    seen.add(k);
+    spans.add(spanKey(r));
+    out.push(normaliseRole(r, depth));
+  });
+  return out;
+}
+
+// `stored` is the record as saved; `augmented` is what the model returned.
+// Returns a new record — neither input is mutated.
+export function mergeAdditions(stored, augmented) {
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return augmented;
+  if (!augmented || typeof augmented !== 'object' || Array.isArray(augmented)) return stored;
+
+  const sp = stored.profile && typeof stored.profile === 'object' ? stored.profile : {};
+  const ap = augmented.profile && typeof augmented.profile === 'object' ? augmented.profile : {};
+  const sc = sp.contact && typeof sp.contact === 'object' ? sp.contact : {};
+  const ac = ap.contact && typeof ap.contact === 'object' ? ap.contact : {};
+  // A stored value always wins. An incoming one fills a field the record left
+  // empty — that is an addition, not an overwrite.
+  const fill = (a, b) => str(a) || str(b);
+
+  return {
+    ...stored,
+    profile: {
+      ...sp,
+      name: fill(sp.name, ap.name),
+      headline: fill(sp.headline, ap.headline),
+      location: fill(sp.location, ap.location),
+      summary: fill(sp.summary, ap.summary),
+      contact: {
+        phone: fill(sc.phone, ac.phone),
+        email: fill(sc.email, ac.email),
+        linkedin: fill(sc.linkedin, ac.linkedin),
+        website: fill(sc.website, ac.website),
+      },
+      top_skills: newStrings(sp.top_skills, ap.top_skills),
+      certifications: newStrings(sp.certifications, ap.certifications),
+      honors_and_awards: newStrings(sp.honors_and_awards, ap.honors_and_awards),
+      languages: appendNew(
+        sp.languages,
+        ap.languages,
+        (l) => str(l?.language).toLowerCase(),
+        (l) => ({ language: str(l?.language), proficiency: str(l?.proficiency) })
+      ),
+    },
+    work_experience: mergeRoleList(stored.work_experience, augmented.work_experience),
+    advisory_and_community: appendNew(
+      stored.advisory_and_community,
+      augmented.advisory_and_community,
+      orgKey,
+      (e) => ({
+        organization: str(e?.organization) || str(e?.company),
+        title: str(e?.title),
+        start_date: str(e?.start_date),
+        end_date: str(e?.end_date),
+        location: str(e?.location),
+        bullets: strList(e?.bullets),
+      })
+    ),
+    speaking_and_lecturing: appendNew(
+      stored.speaking_and_lecturing,
+      augmented.speaking_and_lecturing,
+      talkKey,
+      (t) => ({
+        event: str(t?.event),
+        role: str(t?.role),
+        topic: str(t?.topic),
+        location: str(t?.location),
+        year: str(t?.year),
+      })
+    ),
+    publications_and_patents: newStrings(stored.publications_and_patents, augmented.publications_and_patents),
+    education: appendNew(stored.education, augmented.education, eduKey, (e) => ({
+      institution: str(e?.institution),
+      qualification: str(e?.qualification),
+      dates: str(e?.dates),
+      location: str(e?.location),
+    })),
+    // Never the model's to change: the questions belong to the person.
+    role_overlaps: normaliseOverlaps(stored.role_overlaps),
+  };
+}
+
 export { PRESERVED, PRESERVED_STRINGS };

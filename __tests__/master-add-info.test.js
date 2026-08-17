@@ -102,7 +102,9 @@ describe('POST /api/master-add-info', () => {
     const data = res._getJSONData();
     expect(data.ok).toBe(true);
     expect(data.master.work_experience).toHaveLength(2);
-    expect(mockSaveMasterCv).toHaveBeenCalledWith(SESSION_USER, UPDATED);
+    const [uid, saved] = mockSaveMasterCv.mock.calls.at(-1);
+    expect(uid).toBe(SESSION_USER);
+    expect(saved.work_experience.map((r) => r.company)).toEqual(['Beta Ltd', 'Acme']);
     expect(Array.isArray(data.flags)).toBe(true);
   });
 
@@ -113,7 +115,7 @@ describe('POST /api/master-add-info', () => {
     await done;
 
     expect(mockGetMasterCv).toHaveBeenCalledWith(SESSION_USER);
-    expect(mockSaveMasterCv).toHaveBeenCalledWith(SESSION_USER, UPDATED);
+    expect(mockSaveMasterCv).toHaveBeenCalledWith(SESSION_USER, expect.anything());
     expect(mockGetMasterCv).not.toHaveBeenCalledWith('victim-user');
     expect(mockSaveMasterCv).not.toHaveBeenCalledWith('victim-user', expect.anything());
   });
@@ -183,10 +185,104 @@ describe('POST /api/master-add-info', () => {
     // The freshly built master is persisted, then the augmented one on top.
     expect(mockSaveMasterCv).toHaveBeenNthCalledWith(1, SESSION_USER, MASTER);
     expect(mockAugmentMaster).toHaveBeenCalledWith(MASTER, 'Six months contracting at Acme in 2023.');
-    expect(mockSaveMasterCv).toHaveBeenNthCalledWith(2, SESSION_USER, UPDATED);
+    expect(mockSaveMasterCv.mock.calls[1][1].work_experience.map((r) => r.company))
+      .toEqual(['Beta Ltd', 'Acme']);
     // The build ran inside the same attributed context as the augment, so the
     // meter billed both to this user.
     expect(aiContextSeen).toMatchObject({ user_id: SESSION_USER });
+  });
+
+  // THE DEFECT THIS ROUTE SHIPPED WITH. augmentMaster runs the BUILD prompt —
+  // pure re-extraction — over the whole stored record plus the note, so the
+  // model re-transcribes an entire career every time somebody adds two lines.
+  // Its return value was saved as-is. A real run of it compressed a role's
+  // bullets, dropped the only two client names an entry had, and retitled
+  // another role, and all of it landed in the canonical record.
+  //
+  // The stored record is now the base and the output is read for ADDITIONS
+  // only. Red on the old code, which saved `result.output` verbatim.
+  test('a degraded re-extraction cannot delete or rewrite what is already recorded', async () => {
+    const stored = {
+      profile: { name: 'Jane Roe', headline: 'Product Lead', top_skills: ['Discovery'], certifications: [] },
+      work_experience: [
+        {
+          company: 'EDP', title: 'Consultant', start_date: '1997', end_date: '2000', location: 'San Francisco, US',
+          bullets: ['Contract QA consulting. Clients included:', 'Pacific Bell', 'Canon'],
+          fractional_engagements: [],
+        },
+        {
+          company: 'Beta Ltd', title: 'PM', start_date: '2019', end_date: '2022', location: 'Prague, CZ',
+          bullets: ['Ran discovery.', 'Led a team of six.'],
+          fractional_engagements: [],
+        },
+      ],
+      speaking_and_lecturing: [
+        { event: 'WebExpo', role: 'Speaker', topic: 'Emergent Service Design', location: 'Prague', year: '2013' },
+      ],
+      publications_and_patents: ['Getting to Happy'],
+      education: [{ institution: 'Heald College', qualification: 'Informatics', dates: '1992 - 1994', location: '' }],
+      role_overlaps: [],
+    };
+    // What a cheap model actually does to 13k characters of JSON: a title
+    // rewritten, an entry's client names gone, a bullet lost, a talk's topic
+    // truncated, a publication and a qualification dropped — plus the one real
+    // addition the person asked for.
+    const degraded = {
+      profile: { name: 'Jane Roe', headline: 'Senior Product Leader', top_skills: ['Discovery', 'AI Strategy'], certifications: [] },
+      work_experience: [
+        {
+          company: 'EDP', title: 'Contract QA Consultant', start_date: '1997', end_date: '2000', location: 'San Francisco, US',
+          bullets: ['Provided software quality assurance consulting across client accounts.'],
+          fractional_engagements: [],
+        },
+        {
+          company: 'Beta Ltd', title: 'PM', start_date: '2019', end_date: '2022', location: 'Prague, CZ',
+          bullets: ['Ran discovery.', 'Shipped an AI assistant.'],
+          fractional_engagements: [],
+        },
+        {
+          company: 'Acme', title: 'Contractor', start_date: '2023', end_date: '2023', location: '',
+          bullets: ['Six months of contract delivery.'], fractional_engagements: [],
+        },
+      ],
+      speaking_and_lecturing: [
+        { event: 'WebExpo', role: 'Speaker', topic: 'Design', location: 'Prague', year: '2013' },
+      ],
+      publications_and_patents: [],
+      education: [],
+      role_overlaps: [{ umbrella_index: 0, role_index: 1 }],
+    };
+    mockGetMasterCv.mockResolvedValue(stored);
+    mockAugmentMaster.mockResolvedValue({ output: degraded, usages: [USAGE] });
+
+    const { res, done } = await call({ text: 'Six months contracting at Acme in 2023.' });
+    await done;
+
+    expect(res.statusCode).toBe(200);
+    const saved = mockSaveMasterCv.mock.calls.at(-1)[1];
+
+    // Nothing recorded was lost or reworded.
+    const edp = saved.work_experience.find((r) => r.company === 'EDP');
+    expect(edp.title).toBe('Consultant');
+    expect(edp.bullets).toEqual(expect.arrayContaining(['Pacific Bell', 'Canon']));
+    expect(saved.work_experience.find((r) => r.company === 'Beta Ltd').bullets)
+      .toEqual(expect.arrayContaining(['Led a team of six.']));
+    expect(saved.speaking_and_lecturing[0].topic).toBe('Emergent Service Design');
+    expect(saved.publications_and_patents).toEqual(['Getting to Happy']);
+    expect(saved.education).toHaveLength(1);
+    expect(saved.profile.headline).toBe('Product Lead');
+
+    // The addition the person actually asked for still lands.
+    expect(saved.work_experience.map((r) => r.company)).toEqual(['EDP', 'Beta Ltd', 'Acme']);
+    expect(saved.work_experience.find((r) => r.company === 'Beta Ltd').bullets)
+      .toContain('Shipped an AI assistant.');
+    expect(saved.profile.top_skills).toContain('AI Strategy');
+
+    // The overlap questions belong to the person, not to a re-extraction.
+    expect(saved.role_overlaps).toEqual([]);
+
+    // And the record handed back to the page is the saved one.
+    expect(res._getJSONData().master.work_experience).toHaveLength(3);
   });
 
   test('409s only when there is no CV on file at all', async () => {
