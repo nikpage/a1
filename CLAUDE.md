@@ -30,7 +30,7 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, and the SQL
 | Deployment | **Netlify** (`@netlify/plugin-nextjs`) |
 | Monitoring | **Sentry** (`@sentry/nextjs` for routes/edge, `@sentry/node` in the background fn) |
 | Logging | Leveled logger in `lib/logger.js` (info/debug silenced in production) |
-| Secrets | **Doppler** (injects env vars at build/runtime; do not commit secrets) |
+| Secrets | `.env` / `.env.local` in the repo root (gitignored; never commit them) |
 
 ## AI layer
 
@@ -220,7 +220,7 @@ The never-fabricate rule is enforced at three points, not one. Each catches what
 - **The day's total is read from `transactions`, NOT Redis** (`getAiSpendSince()` in `utils/database.js`, cached 60s, plus locally metered calls added immediately). Upstash is unreachable from the Next server runtime, so the old Redis counter was blind on exactly the paths that spend most. Guard and ledger now read the same rows and cannot disagree.
 - **One price list, and an unpriced call is never invisible.** Rates live only in `PRICING` in **`utils/pricing.js`** (shared with the `[Gemini] …` console line and the guard). A model with no rate is `logger.error`-ed, the row is still inserted with `amount_usd = null`, and the guard counts those rows SEPARATELY and reports them rather than treating them as zero. **Adding a model constant means adding its rate to `utils/pricing.js`** — `utils/pricing.test.js` pins that every selectable model has one. `model_pricing` is no longer read by any code path.
 - **A metering failure never fails the user's request**, but it is shouted with the full token split so the row can be reconstructed by hand.
-- **Seeing the money:** `doppler run -- node scripts/ai-costs.mjs [--days 7] [--by model|context|step|user]` reports the ledger per day, flags unpriced calls, and prints the budget.
+- **Seeing the money:** `node scripts/ai-costs.mjs [--days 7] [--by model|context|step|user]` reports the ledger per day, flags unpriced calls, and prints the budget.
 - Tests: `__tests__/ai-meter.test.js`.
 
 ## Generation flow (async — do not make it synchronous)
@@ -242,7 +242,7 @@ Gemini analysis runs longer than Netlify's 10s synchronous function limit (which
 - The worker always writes either the analysis **or** an `{ "__analysis_error": "…" }` sentinel to `gen_data` under a client-minted `analysis_id` — never silent. An analysis failure, or an unverified session, writes the sentinel.
 - Browser polls `POST /api/get-analysis-status` (`{ analysis_id }`; `user_id` comes from the verified session cookie, never the body) until `done` / `error`. It also returns `_gemini_usage` for the console cost log.
 - All three entry points (landing page, CV uploader, Start-Fresh modal) go through `utils/uploadAndAnalyze.js` — keep them on that single helper.
-- `/.netlify/functions/*` are **not** served by `next dev`; test locally with `doppler run -- netlify dev`.
+- `/.netlify/functions/*` are **not** served by `next dev`; test locally with `netlify dev`.
 
 ### Mothballed analysis fields (kept for revival — do not "restore" them casually)
 
@@ -268,8 +268,7 @@ source, whether a voice profile was used, the tweak verbatim, `cover_evidence`,
 red flags, scenario tags, the full validation object (ok / every hard failure /
 every warning) and a cost line for every call.
 
-Run it through Doppler (`doppler run -- node scripts/test-generate.mjs …`), or
-with `.env.local` if the Doppler token is stale.
+Run it with the repo's `.env.local` loaded: `node scripts/test-generate.mjs …`.
 
 **A change to writing quality is not finished until it has been run and the
 output read.** Reasoning about what a prompt change should do produced three
@@ -309,7 +308,7 @@ npm run build          # next build
 
 `netlify.toml` drives the build. Node 22. The `@netlify/plugin-nextjs` plugin handles SSR.
 
-Secrets come from **Doppler** — do not add `.env` files or hardcode values. If a secret is missing locally, fetch it via `doppler run -- npm run dev`.
+Secrets live in `.env` / `.env.local` in the repo root — gitignored, never committed, never hardcoded in source.
 
 ## AI cost logging rule (DO NOT REMOVE — owner order required to change)
 
