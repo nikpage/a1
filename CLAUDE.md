@@ -270,6 +270,15 @@ every warning) and a cost line for every call.
 
 Run it with the repo's `.env.local` loaded: `node scripts/test-generate.mjs …`.
 
+**Every paid run writes its output to a file in `runs/` (gitignored), never to
+stdout alone** — a run you cannot re-read is money spent twice. `runs/` is
+scratch, not history: prune it when you are in there. Anything worth keeping is
+one entry in `COVER_LETTER_LOG.md`, not a file dump.
+
+**Tests:** run the tests covering what you changed while working; run the full
+suite once before saying done or committing. Report the counts and the
+failures, never the whole log.
+
 **A change to writing quality is not finished until it has been run and the
 output read.** Reasoning about what a prompt change should do produced three
 days of changes that moved nothing; one real run found the cause in an hour.
