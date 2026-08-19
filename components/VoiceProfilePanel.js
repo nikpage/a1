@@ -40,6 +40,7 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
   const [busy, setBusy] = useState('');      // '' | 'extract' | 'save'
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [showSamples, setShowSamples] = useState(!profile);
 
   // The editable review state. List A and the user's own lines are plain text —
@@ -117,11 +118,38 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
           confidence: profile?.confidence || '',
           profile_text: ownLines,
           options: { cleanup },
+          // Sent explicitly so Remove on a sample box actually sticks. Empty
+          // text is dropped server-side, so a cleared box removes its sample.
+          samples: samples.filter((x) => x.text.trim()),
         },
       });
       loadProfile(data.profile);
       onUpdated?.(data.profile);
       setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusy('');
+  }
+
+  // Throw the profile away entirely and return to a blank panel. Deliberately
+  // two-step: it destroys the samples the user pasted, which they may no longer
+  // have anywhere else.
+  async function destroy() {
+    setBusy('delete');
+    setError('');
+    setSaved(false);
+    try {
+      await post({ action: 'delete' });
+      setSamples([emptySample()]);
+      setListA('');
+      setListB([]);
+      setOwnLines('');
+      setCleanup(false);
+      setConfirmDelete(false);
+      setShowSamples(true);
+      syncedRef.current = null;
+      onUpdated?.(null);
     } catch (err) {
       setError(err.message);
     }
@@ -180,14 +208,20 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
             <div key={i} className="mt-3 rounded border border-gray-200 bg-white p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-medium text-gray-700">Sample {i + 1}</span>
-                {samples.length > 1 && (
-                  <button
-                    onClick={() => setSamples(samples.filter((_, j) => j !== i))}
-                    className="ml-auto text-xs text-gray-500 underline"
-                  >
-                    Remove
-                  </button>
-                )}
+                {/* The last box is never deleted — a form with no textarea has
+                    nothing to paste into — but it MUST be clearable. Hiding
+                    Remove on it left the old sample sitting in the only box on
+                    the page with no way to get rid of it. */}
+                <button
+                  onClick={() => setSamples(
+                    samples.length > 1
+                      ? samples.filter((_, j) => j !== i)
+                      : [emptySample()]
+                  )}
+                  className="ml-auto text-xs text-gray-500 underline"
+                >
+                  {samples.length > 1 ? 'Remove' : 'Clear'}
+                </button>
               </div>
               <textarea
                 value={s.text}
@@ -338,6 +372,30 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
               {busy === 'save' ? 'Saving…' : 'Save profile'}
             </button>
             {saved && <span className="text-sm text-green-700">saved</span>}
+          </div>
+
+          <div className="mt-6 border-t border-gray-200 pt-3">
+            {confirmDelete ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-gray-700">
+                  Delete the profile and the samples you pasted? This cannot be undone.
+                </span>
+                <button
+                  onClick={destroy}
+                  disabled={busy === 'delete'}
+                  className="px-3 py-1.5 text-sm rounded bg-red-600 text-white font-medium disabled:opacity-50"
+                >
+                  {busy === 'delete' ? 'Deleting…' : 'Delete it'}
+                </button>
+                <button onClick={() => setConfirmDelete(false)} className="text-sm text-gray-600 underline">
+                  Keep it
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} className="text-xs text-red-700 underline">
+                Delete my voice profile
+              </button>
+            )}
           </div>
         </div>
       )}

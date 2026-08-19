@@ -286,10 +286,12 @@ const mockGetVoiceProfile  = vi.hoisted(() => vi.fn());
 const mockSaveVoiceProfile = vi.hoisted(() => vi.fn());
 const mockLogAiTransaction = vi.hoisted(() => vi.fn());
 const mockBuildVoiceProfile = vi.hoisted(() => vi.fn());
+const mockDeleteVoiceProfile = vi.hoisted(() => vi.fn());
 
 vi.mock('../utils/database', () => ({
   getVoiceProfile: mockGetVoiceProfile,
   saveVoiceProfile: mockSaveVoiceProfile,
+  deleteVoiceProfile: mockDeleteVoiceProfile,
   logAiTransaction: mockLogAiTransaction,
   getAiSpendSince: vi.fn(async () => ({ total: 0, unpriced: 0 })),
 }));
@@ -428,5 +430,116 @@ describe('POST /api/voice-profile', () => {
     const res = createResponse();
     await handler(req, res);
     expect(res.statusCode).toBe(405);
+  });
+});
+
+
+// ── Deleting the profile ────────────────────────────────────────────────────
+//
+// Red on the old code: there was no `delete` action at all, so every one of
+// these hit the 400 "Unknown action" fall-through. The panel reloads its sample
+// boxes from the stored row, so with no way to delete the profile a user is
+// stuck editing the samples they pasted once, forever.
+describe('POST /api/voice-profile — delete', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDeleteVoiceProfile.mockResolvedValue(true);
+  });
+
+  test('clears the profile and answers with none', async () => {
+    const { res, done } = call({ action: 'delete' });
+    await done;
+    expect(res._getStatusCode()).toBe(200);
+    expect(JSON.parse(res._getData())).toEqual({ ok: true, profile: null });
+    expect(mockDeleteVoiceProfile).toHaveBeenCalledWith(SESSION_USER);
+  });
+
+  test('deletes for the SESSION user, never a user_id in the body', async () => {
+    const { done } = call({ action: 'delete', user_id: 'someone-else' });
+    await done;
+    expect(mockDeleteVoiceProfile).toHaveBeenCalledWith(SESSION_USER);
+    expect(mockDeleteVoiceProfile).not.toHaveBeenCalledWith('someone-else');
+  });
+
+  test('says so when there was nothing to delete instead of reporting success', async () => {
+    mockDeleteVoiceProfile.mockResolvedValue(false);
+    const { res, done } = call({ action: 'delete' });
+    await done;
+    expect(res._getStatusCode()).toBe(404);
+    expect(JSON.parse(res._getData()).error).toMatch(/no voice profile to delete/i);
+  });
+
+  test('reports a failed delete rather than swallowing it', async () => {
+    mockDeleteVoiceProfile.mockRejectedValue(new Error('db down'));
+    const { res, done } = call({ action: 'delete' });
+    await done;
+    expect(res._getStatusCode()).toBe(500);
+    expect(JSON.parse(res._getData()).error).toMatch(/Could not delete/i);
+  });
+
+  test('spends nothing — deleting never calls the model', async () => {
+    const { done } = call({ action: 'delete' });
+    await done;
+    expect(mockBuildVoiceProfile).not.toHaveBeenCalled();
+  });
+});
+
+
+// ── Removing samples on save ────────────────────────────────────────────────
+//
+// Red on the old code: `save` overwrote whatever the client sent with
+// `existing.samples`, so removing every sample box and pressing Save brought
+// them all back. Remove was a button that did nothing.
+describe('POST /api/voice-profile — save keeps the samples the user left', () => {
+  const STORED = {
+    list_a: ['old line'],
+    list_b: [],
+    registers: [{ sample: 1, register: 'work email', distance: 'close' }],
+    samples: [{ text: 'A'.repeat(500) }, { text: 'B'.repeat(500) }, { text: 'C'.repeat(500) }],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetVoiceProfile.mockResolvedValue(STORED);
+    mockSaveVoiceProfile.mockResolvedValue([{ user_id: SESSION_USER }]);
+  });
+
+  test('a save that sends one sample stores one, not the three it replaced', async () => {
+    const { res, done } = call({
+      action: 'save',
+      profile: { list_a: ['kept'], list_b: [], samples: [{ text: 'A'.repeat(500) }] },
+    });
+    await done;
+    expect(res._getStatusCode()).toBe(200);
+    const [, saved] = mockSaveVoiceProfile.mock.calls[0];
+    expect(saved.samples).toHaveLength(1);
+    expect(saved.samples[0].text).toBe('A'.repeat(500));
+  });
+
+  test('a save that sends an empty list clears them', async () => {
+    const { done } = call({
+      action: 'save',
+      profile: { list_a: ['kept'], list_b: [], samples: [] },
+    });
+    await done;
+    const [, saved] = mockSaveVoiceProfile.mock.calls[0];
+    expect(saved.samples).toEqual([]);
+  });
+
+  test('a save that sends NO samples key still keeps the stored ones', async () => {
+    const { done } = call({ action: 'save', profile: { list_a: ['kept'], list_b: [] } });
+    await done;
+    const [, saved] = mockSaveVoiceProfile.mock.calls[0];
+    expect(saved.samples).toHaveLength(3);
+  });
+
+  test('the registers stay the extraction\'s, whatever the client sends', async () => {
+    const { done } = call({
+      action: 'save',
+      profile: { list_a: ['kept'], list_b: [], registers: [{ sample: 9, register: 'forged' }] },
+    });
+    await done;
+    const [, saved] = mockSaveVoiceProfile.mock.calls[0];
+    expect(saved.registers).toEqual([{ sample: 1, register: 'work email', distance: 'close' }]);
   });
 });

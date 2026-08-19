@@ -304,14 +304,23 @@ describe('the prompts actually carry the rules', () => {
     expect(uk.content).toMatch(/250-350 words/);
   });
 
-  // What replaced "one argument": the four moves that were measured to persuade.
-  it('tells the letter what actually persuades', () => {
+  // The prompt carries INPUTS, not writing advice. Every rule listed here was
+  // in the prompt on 2026-08-19 and every one of them was obeyed literally by
+  // the Sudolabs letter, which was worse for each. See the header of
+  // prompts/cover-letter.js.
+  it('carries the inputs and none of the writing rules', () => {
     const [, user] = buildCoverPrompt('MASTER', analysis, 'confident');
-    expect(user.content).toMatch(/Answer what the ad says it does NOT want/);
-    expect(user.content).toMatch(/Open on THEIR problem/);
-    expect(user.content).toMatch(/Relevance beats recency/);
-    expect(user.content).toMatch(/Let the ad set the shape/);
-    expect(user.content).toMatch(/decides to call this person for an interview/);
+    // Inputs.
+    expect(user.content).toContain('MASTER');
+    expect(user.content).toMatch(/Highlight the achievements and skills from the record/);
+    expect(user.content).toMatch(/never claim a duration, a number, a skill or a role the record does not state/);
+    // Rules that must NOT be there.
+    expect(user.content).not.toMatch(/Open on THEIR problem/);
+    expect(user.content).not.toMatch(/Relevance beats recency/);
+    expect(user.content).not.toMatch(/SEVEN WORDS OR FEWER/);
+    expect(user.content).not.toMatch(/stock close/i);
+    expect(user.content).not.toMatch(/Answer what the ad says it does NOT want/);
+    expect(user.content).not.toMatch(/would survive being pasted into a stranger/);
   });
 
   // Layer 4 reaches the CV only. A scenario is a CV mitigation — collapse early

@@ -34,27 +34,6 @@ const REPAIR_KINDS = {
     reason: 'stock phrase',
     extra: '',
   },
-  // The blocklist can only catch a phrase somebody already saw and wrote down,
-  // so the model writes the next one instead. This kind asks the checker to
-  // find them itself, by SHAPE rather than by spelling, and it runs on every
-  // cover letter — with the listed hits when there are any, alone when there
-  // are none. Two shapes, both taken from a real letter the candidate rejected.
-  stock: {
-    title: 'CONSULTANT-SPEAK',
-    found: 'PHRASES ALREADY KNOWN TO BE STOCK, IF ANY WERE FOUND',
-    reason: 'consultant-speak',
-    extra: `
-
-Then find the rest yourself. Two shapes, and ONLY these two:
-
-1. AN ABSTRACTION STANDING WHERE A FACT BELONGS — a sentence built of abstract nouns that names nothing that happened to anyone. The test is simple: could this exact sentence be pasted into a stranger's letter, for a different candidate in a different industry, without changing a word? Then it is about nobody. Examples of the shape: "Moving at that pace requires closing the distance between commercial discovery and software delivery", "My strength lies in understanding human motivation and strategic positioning", "Building useful agentic tools requires high agency and continuous experimentation".
-
-2. A STOCK HINGE OR A STOCK CLOSE — the join a template reaches for instead of starting on the fact ("In this capacity, I have…", "Across previous leadership roles, I have…", "My current work centers on…"), and the boilerplate request for a meeting ("I would be glad to schedule a brief virtual meeting to explore how we might work together").
-
-For shape 1 the replacement is usually "" — delete the sentence. It carries no fact, so nothing is lost and the letter gets shorter and harder. For shape 2, cut the hinge and let the sentence begin on what was done; for a stock close, say the same request plainly in the candidate's own register.
-
-DO NOT flag: a sentence that names a real employer, number, product, date or action, however plainly it is written; the ad's own words; strong verbs; or a short sentence. A specific claim is not consultant-speak. When in doubt, leave it — a false flag costs a real achievement, and this pass adds nothing back.`,
-  },
   requirement: {
     title: 'A REQUIREMENT THE RECORD CANNOT ANSWER',
     found: 'THE TERMS FOUND IN THIS DOCUMENT, WHICH THE JOB ASKS FOR AND THE CANDIDATE\'S RECORD DOES NOT EVIDENCE ANYWHERE',

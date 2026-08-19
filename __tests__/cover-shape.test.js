@@ -85,49 +85,22 @@ describe('the measurement itself', () => {
   });
 });
 
-describe('a flat letter goes back to the writer', () => {
-  test('it is regenerated once, and the rewritten letter is kept', async () => {
+// SHAPE IS MEASURED, NEVER FED BACK. Handing the writer "one sentence of seven
+// words or fewer" got exactly that and nothing else: "I manage outcomes, not
+// people." as an orphan paragraph in the Sudolabs letter (2026-08-19), the same
+// defect the removed voice rewrite produced. The measurement stays; the retry
+// on it is gone.
+describe('a flat letter is not sent back to the writer', () => {
+  test('no second writing call, no money spent chasing a rhythm target', async () => {
     writer(FLAT, VARIED);
 
     const { content } = await generateCoverLetter({ cv: '{}', analysis: {}, tone: 'Formal' });
 
-    expect(writingCalls()).toBe(2);
-    expect(content).toContain('Three platforms became one.');
-    expect(coverShapeFaults(content)).toEqual([]);
-  });
-
-  test('the writer is told what the measurement found', async () => {
-    writer(FLAT, VARIED);
-
-    await generateCoverLetter({ cv: '{}', analysis: {}, tone: 'Formal' });
-
-    const retry = mockAxiosPost.mock.calls.filter(([, b]) => b?.model === GEMINI_GENERATION_MODEL)[1];
-    const feedback = retry[1].messages.map((m) => m.content).join('\n');
-    // The measurement, not a vague instruction to write better.
-    expect(feedback).toMatch(/shortest sentence in the letter is \d+ words/);
-  });
-
-  test('a retry that is no better is discarded, and the draft stands', async () => {
-    // Just as flat, and one fault worse: a 130-word slab on top of the uniform
-    // sentence lengths.
-    const WORSE = wrap(
-      'I led the consolidation of three separate platforms into one single product at the company wflow.com. '
-      + 'I coached four separate product managers through that same programme of consolidation work there. '
-      + 'I built the product operations function at Salsita Software from nothing over two full years there. '
-      + 'I directed concurrent client software delivery for a number of accounts including eBay and others. '
-      + 'I handled the solution design and the operational team leadership across all of those engagements. '
-      + 'I established the market intelligence frameworks that the wider organisation continued to rely on. '
-      + 'I guided the non-technical stakeholders through the technical architectural trade-offs at each step. '
-      + 'I validated the product concepts through rapid prototyping across every one of those same accounts.',
-    );
-    writer(FLAT, WORSE);
-
-    const { content } = await generateCoverLetter({ cv: '{}', analysis: {}, tone: 'Formal' });
-
-    // The premise: the retry really is worse than the draft it would replace.
-    expect(coverShapeFaults(WORSE).length).toBeGreaterThan(coverShapeFaults(FLAT).length);
-    // So the draft stands.
+    expect(writingCalls()).toBe(1);
+    // The draft the writer produced is what ships, flat or not.
     expect(content).toContain('I directed concurrent client software initiatives');
+    // And the fault is still measurable — Layer 6 can report it.
+    expect(coverShapeFaults(content).length).toBeGreaterThan(0);
   });
 });
 

@@ -19,7 +19,7 @@
 //      was charged for it either way).
 
 import requireAuth from '../../lib/requireAuth';
-import { getVoiceProfile, saveVoiceProfile } from '../../utils/database';
+import { getVoiceProfile, saveVoiceProfile, deleteVoiceProfile } from '../../utils/database';
 import { withAiContext } from '../../utils/ai-meter';
 import { buildVoiceProfile } from '../../utils/openai';
 import { logger } from '../../lib/logger';
@@ -78,6 +78,23 @@ function cleanProfile({ registers, list_a, list_b, confidence, profile_text, opt
     })),
     updated_at: new Date().toISOString(),
   };
+}
+
+// Which of the STORED samples a save keeps. Removal is the only edit allowed:
+// every returned sample is one the stored row already held, matched on its text.
+//
+// Two cases are deliberately not removals. An omitted `samples` key is an old or
+// partial client that never had them — it keeps everything. A non-empty list
+// that matches NOTHING stored is a stale or forged page rather than someone
+// deleting their writing, so it keeps everything too. An explicit empty array is
+// a real removal: the user cleared every box.
+function keptSamples(incoming, stored) {
+  const kept = Array.isArray(stored) ? stored : [];
+  if (!Array.isArray(incoming)) return kept;
+  if (!incoming.length) return [];
+  const wanted = new Set(incoming.map((s) => String(s?.text || '').trim()).filter(Boolean));
+  const survivors = kept.filter((s) => wanted.has(String(s?.text || '').trim()));
+  return survivors.length ? survivors : kept;
 }
 
 async function handler(req, res) {
@@ -145,12 +162,20 @@ async function handler(req, res) {
       logger.error('voice-profile: could not read existing profile:', e.message);
     }
 
-    // Samples and the read registers are not editable here: the samples are what
-    // the user pasted, and the registers are what the extraction read off them.
+    // The registers are not editable here — they are what the extraction READ
+    // off the samples, not something the user sets.
+    //
+    // Samples: REMOVABLE but not REWRITABLE. Those are different powers and
+    // conflating them broke one or the other. Refusing every incoming array made
+    // the panel's Remove button a lie — the user cleared every box, pressed Save,
+    // and watched them all come back. Accepting any incoming array would let a
+    // client substitute sample text, which the letter quotes verbatim as its
+    // rhythm reference. So a save may only DROP samples the stored row already
+    // holds; text that is not already stored is ignored.
     const profile = cleanProfile({
       ...incoming,
       registers: existing?.registers || [],
-      samples: existing?.samples || [],
+      samples: keptSamples(incoming.samples, existing?.samples),
     });
 
     try {
@@ -161,6 +186,22 @@ async function handler(req, res) {
     }
 
     return res.status(200).json({ ok: true, profile });
+  }
+
+  // Delete the whole profile. Without this there is no way back to a blank
+  // slate: the sample boxes reload from the stored row every time the profile
+  // arrives, so a profile the user wants rid of follows them into every later
+  // attempt. No AI call, and the cover letter simply falls back to no voice.
+  if (action === 'delete') {
+    let cleared;
+    try {
+      cleared = await deleteVoiceProfile(user_id);
+    } catch (e) {
+      logger.error('voice-profile: delete failed:', e.message);
+      return res.status(500).json({ error: 'Could not delete your voice profile' });
+    }
+    if (!cleared) return res.status(404).json({ error: 'There is no voice profile to delete' });
+    return res.status(200).json({ ok: true, profile: null });
   }
 
   return res.status(400).json({ error: 'Unknown action' });

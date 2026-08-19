@@ -226,27 +226,25 @@ describe('the contract is stated to the writer, once, at the top', () => {
   // enforcement moved to code, which is where it worked all along.
   test('the purpose replaces the contract, and the one absolute is stated', () => {
     const p = promptText();
-    expect(p).toMatch(/decides to call this person for an interview/);
-    expect(p).toMatch(/never invent, never inflate/);
+    expect(p).toMatch(/never invent, never inflate/i);
     expect(p).not.toMatch(/C1 —/);
     expect(p).not.toMatch(/THE CONTRACT/);
   });
 
-  // The PURPOSE now leads, and the contract follows it — the letter exists to
-  // persuade, and a model reading rules first writes a compliant letter
-  // (CV_RULES.md, "What the cover letter IS"). Nothing else may come before
-  // them: the ordering is what keeps the rule stack from owning the document.
-  test('the purpose leads the prompt — nothing is stated before it', () => {
+  // The BRIEF leads and nothing precedes it. No purpose essay, no persuasion
+  // moves: each of the four "measured moves" that used to sit here was obeyed
+  // literally by the Sudolabs letter (2026-08-19) and made it worse.
+  test('the brief leads the prompt, and no writing rules follow it', () => {
     const user = buildCoverPrompt(MASTER, analysisWith(), 'Formal', '', '', 'auto').at(-1).content;
-    const purpose = user.indexOf('# What this letter is for');
-    expect(purpose).toBeGreaterThan(-1);
-    // Only Nik's own two-line brief precedes it.
-    expect(user.slice(0, purpose)).toMatch(/^Write a tailored cover letter/);
-    // The four measured moves reach the writer.
-    expect(user).toMatch(/Answer what the ad says it does NOT want/);
-    expect(user).toMatch(/Open on THEIR problem/);
-    expect(user).toMatch(/Relevance beats recency/);
-    expect(user).toMatch(/Let the ad set the shape/);
+    expect(user).toMatch(/^Write a tailored cover letter/);
+    expect(user).not.toMatch(/# What this letter is for/);
+    expect(user).not.toMatch(/Answer what the ad says it does NOT want/);
+    expect(user).not.toMatch(/Open on THEIR problem/);
+    expect(user).not.toMatch(/Relevance beats recency/);
+    expect(user).not.toMatch(/Let the ad set the shape/);
+    // The record, the ad and the furniture are all still there.
+    expect(user).toContain('# Job History');
+    expect(user).toContain('# Job Description');
   });
 
   // C3's fallback: no voice profile is not permission to write like a brochure.

@@ -424,8 +424,12 @@ export async function repairStockPhrases({ document, docType = 'cv', language = 
   // with the listed hits when there are any and on shape alone when there are
   // none. On the CV it stays hit-driven: a bullet is a fact or it is not, and
   // the abstraction shape this looks for is a prose defect.
-  const kind = docType === 'cover' ? 'stock' : 'phrase';
-  if (!hits.length && kind !== 'stock') return { content: document, gemini_usage: null, applied: [] };
+  // HIT-DRIVEN, both documents. The always-on 'stock' variant hunted the SHAPE of
+  // a sentence rather than a listed phrase, which is a second model rewriting the
+  // first model's letter — the defect the writer-owns-the-voice change settled.
+  // A flat or abstract letter is a WRITING-PROMPT problem.
+  const kind = 'phrase';
+  if (!hits.length) return { content: document, gemini_usage: null, applied: [] };
 
   try {
     const messages = buildPhraseRepairPrompt({ docType, document, hits, kind });
@@ -543,8 +547,19 @@ export async function buildVoiceProfile(samples) {
     }))
     .filter((b) => b.trait && b.translation);
 
+  // What the extraction READ each sample as. Carried through here or it is lost:
+  // the route preserves the stored registers on a save and can only ever save
+  // what a build handed it, so dropping them here emptied the field permanently.
+  const registers = (Array.isArray(parsed.registers) ? parsed.registers : [])
+    .map((r) => ({
+      sample: Number(r?.sample) || 0,
+      register: String(r?.register || '').trim(),
+      distance: String(r?.distance || '').trim(),
+    }))
+    .filter((r) => r.register);
+
   return {
-    profile: { list_a, list_b, confidence: String(parsed.confidence || '').trim() },
+    profile: { registers, list_a, list_b, confidence: String(parsed.confidence || '').trim() },
     gemini_usage,
   };
 }
@@ -866,28 +881,15 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
 
   // The word band is a hard failure, so an over-length letter is regenerated
   // ONCE with the count fed back — the same shape as generateCV's retry, and the
-  // retry is kept only if it did not make things worse. The voice pass is not
-  // repeated: its fixes are already in the draft the model is asked to shorten,
-  // and re-running it on a cut-down letter spends a call to re-learn them.
-  // SHAPE IS A WRITING FAULT, AND THE WRITER FIXES IT.
+  // retry is kept only if it did not make things worse.
   //
-  // coverShapeFaults measured the letter's rhythm — how short it ever goes, how
-  // much the sentence lengths vary, whether a paragraph is a slab — but it lived
-  // inside the voice rewrite, which no longer runs on this path. So nothing
-  // measured shape at all, and the Sudolabs letter (2026-08-19) went out as four
-  // near-identical slabs with no sentence under nine words: the single clearest
-  // tell that a machine wrote it.
-  //
-  // It is not repaired by a second model reshaping the first one's letter — that
-  // was tried, and it produced a five-word orphan paragraph. It goes back to the
-  // WRITER, once, with the measurement stated, exactly as a hard validation
-  // failure does. One owner, one document.
-  let shape = coverShapeFaults(content);
-  const breadth = coverBreadthFault(content, cv);
-  if (breadth) shape = [breadth, ...shape];
-
-  if (!validation.ok || shape.length) {
-    const reasons = [...validation.hard, ...shape];
+  // SHAPE IS NOT IN THIS TRIGGER. Feeding a rhythm measurement back to the
+  // writer made it perform the measurement: the Sudolabs letter (2026-08-19)
+  // answered "one sentence of seven words or fewer" with a five-word orphan
+  // paragraph, exactly as the removed voice rewrite had. coverShapeFaults /
+  // coverBreadthFault survive as Layer 6 measurements only.
+  if (!validation.ok) {
+    const reasons = validation.hard;
     logger.info(`[validate cover] regenerating once: ${reasons.join(' | ')}`);
     const retryMessages = [...messages, { role: 'user', content: validationFeedback(reasons, 'cover') }];
     const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4, label: 'generate cover letter (validation retry)' });
@@ -909,19 +911,13 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     if (reDomain.gemini_usage) usages.push(reDomain.gemini_usage);
 
     const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language, tweak });
-    const reshape = coverShapeFaults(reDomain.content);
-    // No worse on EITHER count, or the draft stands. A retry that fixed the word
-    // band by flattening the rhythm is not an improvement.
-    if (revalidated.hard.length <= validation.hard.length && reshape.length <= shape.length) {
+    // No worse than the draft it replaces, or the draft stands.
+    if (revalidated.hard.length <= validation.hard.length) {
       content = reDomain.content;
       validation = revalidated;
-      shape = reshape;
     }
     if (!validation.ok) {
       logger.error(`[validate cover] hard failures survived the retry: ${validation.hard.join(' | ')}`);
-    }
-    if (shape.length) {
-      logger.error(`[validate cover] shape faults survived the retry: ${shape.join(' | ')}`);
     }
   }
 

@@ -148,8 +148,10 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
   // The letter must never be handed a plan — its own or the CV's.
   test('the writer is told the shape follows the ad, and is its own call', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toMatch(/Let the ad set the shape/);
-    expect(text).toMatch(/Flowing paragraphs are a default, not a requirement/);
+    // The shape is not discussed with the writer AT ALL any more — prescribing
+    // it and un-prescribing it both got performed. See prompts/cover-letter.js.
+    expect(text).not.toMatch(/Let the ad set the shape/);
+    expect(text).not.toMatch(/Flowing paragraphs are a default, not a requirement/);
   });
 
   test('with no contact the letter is told to use the neutral form and never guess', () => {
@@ -189,7 +191,7 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
   // invented fact, and it needs no rule of its own.
   test('invented colour is covered by the no-invention absolute', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toMatch(/never invent, never inflate/);
+    expect(text).toMatch(/never invent, never inflate/i);
     expect(text).toMatch(/never claim a duration, a number, a skill or a role the record does not state/);
   });
 });

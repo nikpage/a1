@@ -24,6 +24,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 const mockAxiosPost = vi.hoisted(() => vi.fn());
 vi.mock('axios', () => ({ default: { post: mockAxiosPost } }));
 
+import { bannedPhraseHits } from '../utils/cv-validate.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
 import { repairStockPhrases } from '../utils/openai.js';
@@ -40,57 +41,39 @@ const NO_CORRECTIONS = geminiResp(JSON.stringify({ unsupported: [] }));
 
 beforeEach(() => vi.clearAllMocks());
 
-describe('the writer is told the shape, not just the words', () => {
+// The prompt is INPUTS only. These rules were in it on 2026-08-19 and the
+// letter obeyed every one of them literally; see prompts/cover-letter.js.
+describe('the writer is given no writing rules to perform', () => {
   const prompt = buildCoverPrompt('{}', {}, 'Formal', '', '', 'en', new Date(), null)
     .map((m) => m.content).join('\n');
 
-  test('it bans an abstraction standing where a fact belongs', () => {
-    expect(prompt).toContain('abstraction');
-    // The reusability test is the operative instruction: a sentence that would
-    // survive being pasted into a stranger's letter is about nobody.
-    expect(prompt.toLowerCase()).toContain("stranger's letter");
+  test('no shape target, no negative examples, no persuasion tips', () => {
+    expect(prompt).not.toContain("stranger's letter");
+    expect(prompt).not.toContain('closing the distance between commercial discovery');
+    // (Both are on the BANNED PHRASES list, which is a deterministic downstream
+    // check stated once — not a writing rule. What must be gone is the prose
+    // that told the writer how to hinge and how to close.)
+    expect(prompt).not.toContain('is the join a template reaches for');
+    expect(prompt).not.toContain('No stock hinges and no stock close');
+    expect(prompt).not.toMatch(/SEVEN WORDS OR FEWER/);
   });
 
-  test('it names the real sentences that failed, so the shape is unmistakable', () => {
-    expect(prompt).toContain('closing the distance between commercial discovery');
-    expect(prompt).toContain('My strength lies in understanding human motivation');
-  });
-
-  test('it bans the stock hinge and the stock close', () => {
-    expect(prompt).toContain('In this capacity');
-    expect(prompt).toContain('brief virtual meeting');
+  test('but the one absolute survives', () => {
+    expect(prompt).toMatch(/Never invent, never inflate/);
   });
 });
 
-describe('the repair pass hunts the shape itself', () => {
-  test('the stock prompt describes both shapes and forbids flagging specifics', () => {
-    const [system] = buildPhraseRepairPrompt({ docType: 'cover', document: 'x', hits: [], kind: 'stock' });
-    expect(system.content).toContain('CONSULTANT-SPEAK');
-    expect(system.content).toContain('ABSTRACTION STANDING WHERE A FACT BELONGS');
-    expect(system.content).toContain('STOCK HINGE');
-    // The conservative half. Without it the pass eats real achievements.
-    expect(system.content).toContain('DO NOT flag');
-    expect(system.content).toContain('names a real employer, number, product, date or action');
-  });
-
-  test('it works with no blocklist hits at all', () => {
-    const [system] = buildPhraseRepairPrompt({ docType: 'cover', document: 'x', hits: [], kind: 'stock' });
-    // The old builder interpolated an empty list and told the model to repair
-    // "" — the sentence it produced was 'THE PHRASES FOUND IN THIS DOCUMENT: .'
-    expect(system.content).toContain('No phrase from the known list appears');
-    expect(system.content).not.toMatch(/DOCUMENT: \./);
-  });
-
-  test('a letter with zero banned phrases is still checked', async () => {
+describe('the repair pass is hit-driven on both documents', () => {
+  test('the LETTER is hit-driven too — no call, no second model reshaping it', async () => {
     mockAxiosPost.mockResolvedValue(NO_CORRECTIONS);
-    // Consultant-speak, and not one word of it on the blocklist.
-    const doc = 'Delivering at that velocity demands alignment across the value chain.';
+    // Consultant-speak, and not one word of it on the blocklist. It still gets
+    // no repair call: an always-on shape hunt is a second model rewriting the
+    // first one's letter, which is what produced the orphan paragraph.
+    const doc = 'Sustained collaboration across the organisation underpins every outcome that matters.';
 
     const out = await repairStockPhrases({ document: doc, docType: 'cover', language: 'en' });
 
-    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
-    const [, body] = mockAxiosPost.mock.calls[0];
-    expect(body.messages[0].content).toContain('CONSULTANT-SPEAK');
+    expect(mockAxiosPost).not.toHaveBeenCalled();
     expect(out.content).toBe(doc);
   });
 
@@ -122,5 +105,24 @@ describe('the repair pass hunts the shape itself', () => {
     expect(out.content).not.toContain('closing the distance');
     expect(out.content).toContain('I cut onboarding time from 14 days to 3 at wflow.com.');
     expect(out.applied).toHaveLength(1);
+  });
+});
+
+// RED ON OLD: the English "brief virtual meeting" was on the list and its Czech
+// twin was not, so a real Czech run (2026-08-19) closed on "Mohu nabídnout
+// krátkou virtuální schůzku" — the exact stock close the list exists to stop.
+describe('the stock close is caught in every registered language', () => {
+  test('Czech: the stock request for a meeting, however it is inflected', () => {
+    expect(bannedPhraseHits('Mohu nabídnout krátkou virtuální schůzku k projednání cílů.', 'cs'))
+      .toContain('virtuální schůzku');
+    expect(bannedPhraseHits('Rád bych navrhl nezávaznou schůzku.', 'cs').length).toBeGreaterThan(0);
+  });
+
+  test('Polish: the same slot', () => {
+    expect(bannedPhraseHits('Zapraszam na krótkie spotkanie online.', 'pl').length).toBeGreaterThan(0);
+  });
+
+  test('a real Czech fact is not a stock phrase', () => {
+    expect(bannedPhraseHits('Vedl jsem vývoj pro eBay v Salsita Software.', 'cs')).toEqual([]);
   });
 });

@@ -179,6 +179,22 @@ export async function saveVoiceProfile(user_id, profile) {
   return data;
 }
 
+// Delete the whole profile. An UPDATE, not an upsert: a user with no cv_data
+// row has nothing to delete, and inserting one to hold a null would create a
+// row the rest of the app reads as "this user uploaded a CV". Returns whether a
+// row was actually cleared, so the route can answer honestly rather than
+// reporting success over a no-op — the failure that let twenty submissions look
+// like they had landed.
+export async function deleteVoiceProfile(user_id) {
+  const { data, error } = await getAdminSupabase()
+    .from('cv_data')
+    .update({ voice_profile: null })
+    .eq('user_id', user_id)
+    .select('user_id');
+  if (error) throw new Error(`deleteVoiceProfile failed: ${error.message || JSON.stringify(error)}`);
+  return Boolean(data && data.length);
+}
+
 // getCvData (ALIAS: for handler expecting this name)
 export async function getCvData(user_id) {
   const { data, error } = await supabase

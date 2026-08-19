@@ -77,6 +77,11 @@ export const BANNED_PHRASES = {
     'se zaměřuji na', 'zaměřuji se především',
     'rád bych si s vámi domluvil', 'rád bych se s vámi setkal',
     'online schůzka', 'osobní setkání', 'případnou spolupráci',
+    // The stock close in Czech, found on a real run (2026-08-19): the English
+    // "brief virtual meeting" was on the list and its Czech twin "krátkou
+    // virtuální schůzku" walked straight past it. Two adjacent tokens, so it
+    // matches whatever adjective or verb the letter puts in front of it.
+    'virtuální schůzka', 'krátká schůzka', 'nezávaznou schůzku',
     'strategické směřování', 'komplexní transformace',
   ],
   pl: [
@@ -87,6 +92,8 @@ export const BANNED_PHRASES = {
     'z entuzjazmem aplikuję', 'zwracam się z prośbą o rozpatrzenie mojej kandydatury',
     'wierzę, że jestem odpowiednim kandydatem', 'jak wynika z mojego CV',
     'w razie pytań proszę o kontakt', 'z góry dziękuję za poświęcony czas',
+    // Same slot in Polish as the Czech 'virtuální schůzka'.
+    'spotkanie online', 'krótkie spotkanie',
   ],
 };
 

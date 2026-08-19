@@ -1,42 +1,36 @@
 // prompts/cover-letter.js
 //
-// THE WRITING PROMPT FOR THE COVER LETTER.
+// THE WRITING PROMPT FOR THE COVER LETTER. IT IS SHORT ON PURPOSE.
 //
-// This file was 165 lines of rules and produced a 51,721-character prompt of
-// which ~33,000 characters were byte-identical for every user and every job. On
-// 2026-08-15 it was measured against a four-line prompt Nik wrote himself — the
-// master record, the ad, and "highlight the achievements that align with the
-// requirements, professional tone, 250-400 words" — run on the same model,
-// against the same record, for the same ads. The four-line prompt won every
-// comparison, decisively, and did so while breaking three of the rules this
-// file used to enforce.
+// Twice now this file has grown a list of rules describing good writing, and
+// twice the letter came back PERFORMING the rules instead of persuading. The
+// 51,721-character rule stack (removed 2026-08-15) lost to a four-line prompt
+// Nik wrote himself. The three "what actually persuades" bullets added on
+// 2026-08-19 — open on their problem, one sentence of seven words or fewer, no
+// stock close — produced the Sudolabs letter: an opening that read the ad back
+// to its author, "I manage outcomes, not people." as an orphan paragraph, and
+// no close at all. Each rule was obeyed. The letter was worse.
 //
-// What the rules were costing, seen in the outputs:
-//   - the letter opened on the candidate's most recent job instead of the
-//     employer's mission, because a rule said "open on a fact the candidate did"
-//   - it never answered what the ad said it did NOT want, because no rule
-//     mentioned that an ad's negative space is where the employer states its
-//     fear
-//   - it reached for recent evidence over relevant evidence
-//   - it wrote flowing prose where labelled themes would have shown the match
-//     faster, because the shape was prescribed rather than chosen
+// So the prompt is the four things that are actually inputs, and nothing else:
+//   1. the candidate's career record (the master CV)
+//   2. the job ad, verbatim, in the employer's own words
+//   3. the candidate's VOICE — their profile and their own writing
+//   4. their steering, the output language, and the letter's furniture
 //
-// So the rules are gone and the purpose leads (CV_RULES.md, "What the cover
-// letter IS"): the letter exists to make the reader decide to call this person.
-// What remains here is Nik's prompt plus the four things that demonstrably earn
-// their place — the candidate's VOICE, their STEERING, the output LANGUAGE, and
-// the letter's furniture (salutation, date, signature, length). Truth is
-// enforced downstream, where it belongs and where it works: the verify pass and
-// utils/cv-validate.js, both of which ran clean over the minimal prompt's
-// output.
+// Truth is enforced DOWNSTREAM, where it works: the verify pass and
+// utils/cv-validate.js. Stock phrasing is caught by the banned-phrase list and
+// repaired over its own spans. Shape is MEASURED but never fed back to the
+// writer — a rhythm target handed to a model becomes a rhythm target hit.
 //
-// **Do not restore a rule here without a run that shows the letter is better
-// with it.** That is the whole lesson of this file's history.
+// **Do not add a rule here.** Not a persuasion tip, not a shape target, not a
+// negative example. If a letter comes back bad, the fix is better INPUT — a
+// richer record, the real ad, a real voice profile — or a downstream check.
+// This file's entire history says so.
 
 import { toneInstructions } from './tone.js';
 import { languageInstruction } from './language.js';
-import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { bannedPhraseLine } from './voice.js';
+import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock, rawAdBlock } from './job-target.js';
 import { salutationName } from './cover-evidence.js';
 import { coverLengthRule } from './market.js';
@@ -104,24 +98,10 @@ Write like a person, not a template: vary the sentence lengths deliberately, go 
     role: 'user',
     content: `Write a tailored cover letter using the job history and job description below.
 
-Highlight the key achievements and skills from the history that directly align with the core requirements, responsibilities and qualifications in the job description.
+Highlight the achievements and skills from the record that align with what this job asks for. Lead with what the candidate actually did and what came of it — a result, a number, a change, wherever the record has one.
 
-# What this letter is for
-One job: the reader finishes it and decides to call this person for an interview. Nothing else. Every choice serves that — a letter that reads correctly and gives the reader no reason to pick up the phone has failed.
-
-One thing is absolute, and it is the only one: **never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state.** A letter that lies is worthless however well it reads. If the record does not evidence something the ad asks for, leave it unanswered — an unclaimed gap is honest, a papered-over one is a lie.
-
-## What actually persuades
-- **Answer what the ad says it does NOT want.** Ads state their fear in the negative — "not someone who cold-calls all day", "not just a coordinator". That sentence tells you what worries them about the people who will apply. Find it and answer it with a real fact: an achievement reframed against their fear is the most persuasive sentence you can write.
-- **Open on THEIR problem, not this candidate's latest job.** The reader cares about what they are building. A letter that opens on the applicant's most recent role reads as a self-description that happened to be posted to them.
-- **Relevance beats recency, every time.** The right evidence is whatever answers THIS ad, whether it happened last month or nine years ago. Reaching back for the right proof is the difference between a tailored letter and a career update.
-- **Let the ad set the shape.** Where the ad lists several distinct things it wants, answering them under short labelled themes is clearer than prose and entirely permitted. Flowing paragraphs are a default, not a requirement. Choose whatever makes the reader see the match fastest.
-- **Prove, never assert.** "Excellent communicator" is worth nothing; the workshop, the audience and what changed is worth everything.
-- **Never let an abstraction stand where a fact belongs.** Every sentence must name something that happened, to someone, somewhere. A sentence made of abstract nouns says nothing however well it reads: "Moving at that pace requires closing the distance between commercial discovery and software delivery", "My strength lies in understanding human motivation and strategic positioning", "Building useful agentic tools requires high agency". Each of those is a consultant's filler sentence — cut it and say what the candidate did. If a sentence would survive being pasted into a stranger's letter unchanged, it is not about this candidate and does not belong.
-- **SHAPE. These are measured on the finished letter, in code, and a letter that misses them is written again.** At least one sentence of SEVEN WORDS OR FEWER. Sentence lengths that genuinely vary — a letter whose sentences all land at the same weight is the clearest signal of machine writing there is. No paragraph over 100 words: four paragraphs of the same size is a machine's default shape. Go short on the sentence that carries the strongest fact, and let it stand alone.
-- **No stock hinges and no stock close.** "In this capacity", "Across previous leadership roles", "My current work centers on" are joins a template reaches for; start the sentence on the fact instead. The last line asks for the conversation in the candidate's own plain words — never "I would be glad to schedule a brief virtual meeting to explore how we might work together".
+Never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state. Where the record cannot answer something the ad asks for, leave it unanswered.
 ${bannedPhraseLine(language)}
-- **Never state a span of experience the record does not state.** No "14 years of AI solution design", no "a decade in fintech". Durations are facts: the only ones that exist are those written in the record's own dates. A multiple computed from two real figures is fine where the record's own bounds make it a floor ("under $20k to over $100k" IS more than fivefold); a duration nobody wrote down is not.
 ${steeringBlock}${voiceOwnership}${coreBlock}
 ${adBlock(analysis)}
 
@@ -131,7 +111,7 @@ ${coverLengthRule(analysis)}
 - ${languageInstruction(language)}
 ${salutationRule(analysis, language)}
 - Start with the date on its own line at the top. Do NOT put the candidate's name or contact details above the salutation.
-- End with a signature block in exactly this form, using the record's own \`identity\` / \`contact\` data:
+- End with a signature block in exactly this form, using the record's own \`identity\` / \`contact\` data. The sign-off is written in the LETTER'S OWN LANGUAGE — "Sincerely," in English, "S pozdravem," in Czech, "Z poważaniem," in Polish; an English sign-off under a Czech letter is the plainest possible sign that a machine filled in a template:
 Sincerely,
 
 **[Full Name]**
