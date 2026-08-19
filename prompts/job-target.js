@@ -66,6 +66,8 @@ ${raw}
 
 - It is the TARGET, never evidence about the candidate: nothing here is a fact about them until the master CV proves it.
 - Answer its register as well as its requirements. A warm, informal, first-person ad is answered in kind; a terse corporate one is answered plainly. Never borrow its phrasing to cover experience the record does not hold.
+- **DO NOT QUOTE IT AND DO NOT PARAPHRASE IT.** Not in the opening, not anywhere. Reciting the employer's own copy back at them — their mission line, their phrasing for what they are building, the sentence they are proudest of — is the plainest possible mail-merge tell: they wrote it, they know it, and being shown it tells them only that nobody thought about the job. Their striking words are their fingerprints; leave them here. Ordinary nouns the work cannot be described without are not borrowings.
+- **The first sentence is something the candidate DID**, in the candidate's own words, that shows they have already handled a problem of this kind. That is what proves the ad was understood. An opening that describes the employer to the employer proves nothing.
 `;
 }
 

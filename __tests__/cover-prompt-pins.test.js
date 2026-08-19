@@ -85,6 +85,30 @@ describe('PIN 1 — the letter is written from the ad in the employer\'s own wor
   });
 });
 
+// The ad is handed over verbatim so the letter can ANSWER it. The failure mode
+// of doing that is the letter reciting the employer's own copy back at them —
+// observed in a real run: a long quote from the ad as the opening, "the ad
+// returned to sender". The ban on it lives with the ad itself.
+describe('PIN 1b — the ad is answered, never quoted back', () => {
+  test('the prompt forbids quoting or paraphrasing the ad', () => {
+    const text = promptText(ANALYSIS);
+    expect(text).toMatch(/DO NOT QUOTE IT AND DO NOT PARAPHRASE IT/);
+    expect(text).toMatch(/Not in the opening, not anywhere/);
+  });
+
+  test('the opening is pinned to something the candidate DID', () => {
+    const text = promptText(ANALYSIS);
+    expect(text).toMatch(/The first sentence is something the candidate DID/);
+    expect(text).toMatch(/An opening that describes the employer to the employer proves nothing/);
+  });
+
+  test('the ban travels with the raw ad, not with the fallback extraction', () => {
+    const { job_text, ...noRaw } = ANALYSIS;
+    // No ad text in the prompt means nothing to quote back.
+    expect(promptText(noRaw)).not.toMatch(/DO NOT QUOTE IT AND DO NOT PARAPHRASE IT/);
+  });
+});
+
 describe('PIN 2 — the writing prompt stays minimal', () => {
   // The stack that lost on 2026-08-15 was 51,721 characters, ~33,000 of them
   // byte-identical for every user and every job. The minimal prompt measures

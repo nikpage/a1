@@ -84,6 +84,18 @@ won, and absent from this pipeline's output):
    reader cares about their own mission first. A letter opening on the
    applicant's most recent role reads as a self-description that happens to have
    been posted to them.
+
+   **But never in the ad's own words.** Opening by quoting or paraphrasing the
+   employer's copy back at them — their mission statement, their phrasing for
+   what they are building, the sentence they are proudest of — is not
+   persuasion. It is the ad returned to sender, and it reads as a mail-merge:
+   the one move that proves nobody thought about the job. The reader wrote that
+   text; being shown it teaches them nothing. Understanding of the problem is
+   demonstrated by naming something the candidate DID about a problem of that
+   kind, in the candidate's own words, in the first sentence. Individually
+   striking words from the ad ("choreography", "compounding", "handover") are
+   the ad's fingerprints and do not belong in the letter at all; ordinary
+   domain nouns the job cannot be discussed without are not borrowings.
 3. **Relevance beats recency in choosing evidence.** The winning letter reached
    back nine years for a university lectureship because the ad is about
    presenting to educators, and left the newest AI work in a supporting role.
