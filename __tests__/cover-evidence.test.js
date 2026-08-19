@@ -139,18 +139,13 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
   // The gathered evidence no longer reaches the writer at all: the letter reads
   // the RECORD and the AD directly (2026-08-15). Pre-chewed evidence lines were
   // CV-speak with the story removed, and letters assembled from them read flat.
-  // 2026-08-19: REVERSED by owner spec. The letter must answer the ad's own
-  // requirements with contextual proof, so the gathered pairs reach the writer
-  // as MATERIAL — pointers into the record, framed as deciding nothing. What
-  // stays banned is a PLAN: an ordered running order, a named hook, a close.
-  test('the gathered evidence reaches the writer as material, never as a plan', () => {
+  test('the pre-gathered evidence lines do NOT reach the writer', () => {
     const text = promptText(analysisWith(EVIDENCE));
-    expect(text).toContain('lead a team of product managers');
-    expect(text).toMatch(/Material, not a plan/);
-    expect(text).toMatch(/The list is unranked and its order means nothing/);
-    expect(text).not.toMatch(/open on|hook_angle|close_ask/);
+    expect(text).not.toContain('coached four PMs at wflow.com');
+    expect(text).not.toContain('Evidence gathered for THIS letter');
   });
 
+  // The letter must never be handed a plan — its own or the CV's.
   test('the writer is told the shape follows the ad, and is its own call', () => {
     const text = promptText(analysisWith(EVIDENCE));
     // The shape is not discussed with the writer AT ALL any more — prescribing
@@ -170,18 +165,10 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
   // of it, and the letters that measured best raised the objection naturally
   // ("I am not a machine learning researcher who invents fundamental algorithms
   // from scratch") without being told to.
-  //
-  // The RULE stays gone; the MATERIAL is not the rule. A concern the record can
-  // answer reaches the writer as a pointer into the record, framed as material
-  // that decides nothing — which is what `coverEvidenceBlock` renders. Barring
-  // the material too left utils/cv-validate.js check 20 judging the letter on
-  // concerns the writer had never been shown.
-  test('no concern-handling RULE is stated, though the material reaches the writer', () => {
+  test('no concern-handling rule is stated to the writer', () => {
     const text = promptText(analysisWith(EVIDENCE));
     expect(text).not.toMatch(/At most ONE concern is defused/);
-    expect(text).toContain('consultancy vs permanence');
-    expect(text).toMatch(/Material, not a plan/);
-    expect(text).toMatch(/it decides nothing about the letter/);
+    expect(text).not.toContain('consultancy vs permanence');
   });
 
   // The opener BANS are gone, with one exception that survives as a banned
@@ -209,34 +196,16 @@ describe('buildCoverPrompt carries the letter-side rules', () => {
   });
 });
 
-// RESTORED 2026-08-19. f42d5e2 deleted cover_evidence from the analysis prompt
-// as "never read downstream". It IS read downstream — prompts/cover-evidence.js,
-// prompts/analysis-brief.js, prompts/cv-rules.js, utils/cv-validate.js checks
-// 19/20 — and its absence was measured on a real run: `cover_evidence: {}` in
-// the digest, and a letter that walked the CV because it had no requirement it
-// could answer. These pin BOTH halves: the analysis gathers it, and the writer
-// is actually handed it. Half of that alone is what broke last time.
-describe('the analysis gathers cover_evidence, and the letter receives it', () => {
+describe('the analysis pass no longer gathers cover_evidence (2026-08-15)', () => {
+  // cover_evidence was computed by every analysis call and never read by
+  // buildCoverPrompt — coverEvidenceBlock()/coverBrief() are dead code, never
+  // imported by prompts/cover-letter.js. Removed to stop paying for it.
   const build = (jobText) => buildAnalysisPrompt('CV TEXT', jobText, Boolean(jobText && jobText.length > 20), null)
     .map((m) => m.content).join('\n');
 
-  test('the analysis schema asks for the evidence pool and the answerable concerns', () => {
+  test('the schema no longer asks for cover_evidence', () => {
     const text = build('Head of Product at PLG Group, Prague. Lead a team of product managers.');
-    expect(text).toContain('cover_evidence.requirement_evidence');
-    expect(text).toContain('cover_evidence.concerns');
-    expect(text).toContain('"cover_evidence"');
-  });
-
-  test('with no job ad the pool must come back empty — there is no requirement to answer', () => {
-    const text = build('');
-    expect(text).toContain('cover_evidence');
-    expect(text).toMatch(/MUST be an empty array/);
-  });
-
-  // The analysis deciding NOTHING about the letter's shape is the standing rule
-  // (CV_RULES.md, Layer 3). These fields named the hook, the order and the close.
-  test('it still does not hand the letter a finished plan', () => {
-    const text = build('Head of Product at PLG Group, Prague.');
+    expect(text).not.toContain('cover_evidence');
     expect(text).not.toContain('hook_angle');
     expect(text).not.toContain('close_ask');
     expect(text).not.toContain('objection_to_defuse');
@@ -244,15 +213,9 @@ describe('the analysis gathers cover_evidence, and the letter receives it', () =
     expect(text).not.toContain('salutation_target');
   });
 
-  test('the WRITER is handed the gathered evidence, not just the validator', () => {
-    const analysis = analysisWith(EVIDENCE);
-    const text = buildCoverPrompt('MASTER', analysis, 'professional').map((m) => m.content).join('\n');
-    expect(text).toContain('Evidence gathered for THIS letter');
-    // A concern the record can answer reaches the writer — it used to reach
-    // only utils/cv-validate.js, which judged the letter on material the
-    // writer had never seen.
-    const [firstConcern] = analysis.generation_framework.cover_evidence.concerns;
-    expect(text).toContain(firstConcern.flag);
+  test('same with no job ad', () => {
+    const text = build('');
+    expect(text).not.toContain('cover_evidence');
   });
 });
 

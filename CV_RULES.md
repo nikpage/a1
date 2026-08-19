@@ -83,7 +83,9 @@ won, and absent from this pipeline's output):
 2. **It opens on the employer's problem, not the candidate's latest job.** The
    reader cares about their own mission first. A letter opening on the
    applicant's most recent role reads as a self-description that happens to have
-   been posted to them.
+   been posted to them. **The standing shape below states the opening in full
+   and this clause does not restate it**: three rules ordering one paragraph is
+   why the writer obeyed none of them.
 
    **But never in the ad's own words.** Opening by quoting or paraphrasing the
    employer's copy back at them — their mission statement, their phrasing for

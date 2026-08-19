@@ -173,19 +173,17 @@ describe('the cover-letter prompt carries the brief, not the review', () => {
     for (const sentinel of WITHHELD) expect(prompt).not.toContain(sentinel);
   });
 
-  // coverBrief itself stays gone (2026-08-15): the letter does not receive the
-  // analysis's projection of a document. What reaches it from the analysis is
-  // the ad, the market word band, and — since 2026-08-19 — the gathered
-  // EVIDENCE and the flags a recruiter would raise, as material it may use or
-  // ignore. Positioning strategy and CV-change guidance stay out: those tell
-  // the writer how to frame, which is the plan the writer owns.
-  test('the writer gets evidence and flags, never the analysis\'s framing guidance', () => {
+  // The letter no longer receives the analysis at all (2026-08-15). coverBrief
+  // was the careful projection of a document the letter now composes from the
+  // record and the ad directly, and every letter measurably improved when it
+  // stopped arriving. What the brief protected against — display copy reaching
+  // the writer — is protected absolutely now: NOTHING from the analysis object
+  // reaches the letter except the ad and the market word band.
+  test('no analysis guidance reaches the cover writer either — only the ad and the budget', () => {
     expect(prompt).not.toContain('COVER_POINT_KEEP');
+    expect(prompt).not.toContain('RED_FLAG_KEEP');
     expect(prompt).not.toContain('POSITIONING_KEEP');
     expect(prompt).not.toContain('CV_CHANGE_KEEP');
-    // The flags reach it as material — contract clause C2 binds for every
-    // applicant, and a flag the writer never sees cannot be answered.
-    expect(prompt).toContain('RED_FLAG_KEEP');
     // The word band still reaches it: length is furniture, not guidance.
     expect(prompt).toContain('275');
   });

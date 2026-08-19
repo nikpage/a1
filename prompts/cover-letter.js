@@ -32,7 +32,7 @@ import { languageInstruction } from './language.js';
 import { bannedPhraseLine } from './voice.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock, rawAdBlock } from './job-target.js';
-import { coverEvidenceBlock, salutationName } from './cover-evidence.js';
+import { salutationName } from './cover-evidence.js';
 import { coverLengthRule } from './market.js';
 import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
 
@@ -104,14 +104,6 @@ Never invent, never inflate, never claim a duration, a number, a skill or a role
 ${bannedPhraseLine(language)}
 ${steeringBlock}${voiceOwnership}${coreBlock}
 ${adBlock(analysis)}
-${coverEvidenceBlock(analysis)}
-# The letter's shape (CV_RULES.md, "The letter's standing shape")
-- **First paragraph: name the role and the company, say why this application, and state the value proposition in one or two sentences.** The alignment is established immediately, not built to.
-- **Answer the ad's OWN requirements.** Read it for its top terms, the skills it requires and the responsibilities it names, and work them into the argument naturally. A keyword list pasted into a sentence is not integration and reads as one.
-- **Two or three pieces of contextual proof.** Each connects a real achievement to a challenge this role actually names. Where the record holds a metric — a percentage, a revenue figure, time saved — carry it WITH the brief context of how it was achieved: a number with no story behind it is a statistic, not proof.
-- **Complement the CV, never restate it.** The letter carries what a bullet cannot: the background behind an achievement, the reason behind a transition, the motivation for this application. A paragraph that reads like the CV in sentences has wasted the page.
-- **Close on a clear call to action** — interest restated and an interview asked for, plainly.
-- Active, confident, direct, and pitched to this industry's culture.
 
 # The letter's furniture
 ${currentDateBlock(now)}

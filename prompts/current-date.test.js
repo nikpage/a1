@@ -152,8 +152,6 @@ describe('existing key rules survive the date insertion (guard against accidenta
       .find((m) => m.role === 'user').content;
     expect(user).toContain('# The letter\'s furniture');
     expect(user).toMatch(/250-350 words/);
-    // 2026-08-19: the letter opens with a contact header, then the date
-    // (CV_RULES.md, "The letter's standing shape").
     expect(user).toContain('Open with a professional header');
     expect(user).toContain('voice_samples');
   });
