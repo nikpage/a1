@@ -40,6 +40,16 @@ export const BANNED_PHRASES = {
     'aligns directly with', 'aligns perfectly with', 'aligns with your mission',
     'resonates with', 'positions me to', 'this ensures',
     'i am confident that i can', 'i believe i can bring',
+    // Seen 2026-08-19 in a real Sudolabs letter: consultant-speak. Each one is
+    // an abstraction standing where a fact belongs, or a stock hinge between
+    // two paragraphs. They are what makes a letter read as written by a
+    // consultancy rather than by the person applying.
+    'in this capacity', 'my strength lies in', 'my work centers on',
+    'my current work centers on', 'across previous leadership roles',
+    'closing the distance between', 'strategic positioning',
+    'bogged down in', 'client transformations',
+    'i would be glad to schedule', 'brief virtual meeting',
+    'explore how we might work together',
   ],
   // Czech tells are their OWN set, not these translated: "results-driven" has no
   // Czech equivalent anyone writes, while "v neposlední řadě" has no English one.
@@ -53,6 +63,21 @@ export const BANNED_PHRASES = {
     'věřím, že jsem vhodným kandidátem', 'jak je patrné z mého životopisu',
     'v případě zájmu mě neváhejte kontaktovat',
     'předem děkuji za váš čas', 'těším se na vaši odpověď',
+    // The Czech counterparts of the consultant-speak added 2026-08-19. NOT a
+    // translation of the English block above — these are the phrases a Czech
+    // cover letter actually reaches for in the same slots: the hinge into a
+    // role, the asserted strength, the stock request for a meeting, and the
+    // consultancy abstraction standing where a fact belongs.
+    // Written as the CORE of the phrase, not as one inflected form: matching is
+    // by stem, so "silnou stránkou" catches "mou silnou stránkou je" and "mojí
+    // silnou stránkou zůstává" alike. Listing every declension is the mistake
+    // this matching exists to remove.
+    'v této pozici', 'v rámci této role', 'v rámci předchozích rolí',
+    'silnou stránkou', 'silná stránka',
+    'se zaměřuji na', 'zaměřuji se především',
+    'rád bych si s vámi domluvil', 'rád bych se s vámi setkal',
+    'online schůzka', 'osobní setkání', 'případnou spolupráci',
+    'strategické směřování', 'komplexní transformace',
   ],
   pl: [
     'w dzisiejszych dynamicznych czasach', 'dynamiczne środowisko',

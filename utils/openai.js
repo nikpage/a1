@@ -417,10 +417,18 @@ export async function verifyGeneratedDoc({ document, master, docType = 'cv', lan
 // literal-match path, so anything the repair invents is discarded.
 export async function repairStockPhrases({ document, docType = 'cv', language = 'auto' }) {
   const hits = bannedPhraseHits(document, language);
-  if (!hits.length) return { content: document, gemini_usage: null, applied: [] };
+  // THE BLOCKLIST IS A FLOOR, NOT THE CHECK. It can only hold phrases somebody
+  // already read and wrote down, so a writing model simply produces the next
+  // one — the Sudolabs letter (2026-08-19) was consultant-speak end to end and
+  // hit the list nowhere. On the LETTER the repair therefore runs every time,
+  // with the listed hits when there are any and on shape alone when there are
+  // none. On the CV it stays hit-driven: a bullet is a fact or it is not, and
+  // the abstraction shape this looks for is a prose defect.
+  const kind = docType === 'cover' ? 'stock' : 'phrase';
+  if (!hits.length && kind !== 'stock') return { content: document, gemini_usage: null, applied: [] };
 
   try {
-    const messages = buildPhraseRepairPrompt({ docType, document, hits });
+    const messages = buildPhraseRepairPrompt({ docType, document, hits, kind });
     const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low', label: `repair phrases ${docType}` });
     const gemini_usage = geminiUsage(`repair phrases ${docType}`, data, GEMINI_VERIFY_MODEL);
     const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
@@ -861,9 +869,27 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // retry is kept only if it did not make things worse. The voice pass is not
   // repeated: its fixes are already in the draft the model is asked to shorten,
   // and re-running it on a cut-down letter spends a call to re-learn them.
-  if (!validation.ok) {
-    logger.info(`[validate cover] hard failures, regenerating once: ${validation.hard.join(' | ')}`);
-    const retryMessages = [...messages, { role: 'user', content: validationFeedback(validation.hard, 'cover') }];
+  // SHAPE IS A WRITING FAULT, AND THE WRITER FIXES IT.
+  //
+  // coverShapeFaults measured the letter's rhythm — how short it ever goes, how
+  // much the sentence lengths vary, whether a paragraph is a slab — but it lived
+  // inside the voice rewrite, which no longer runs on this path. So nothing
+  // measured shape at all, and the Sudolabs letter (2026-08-19) went out as four
+  // near-identical slabs with no sentence under nine words: the single clearest
+  // tell that a machine wrote it.
+  //
+  // It is not repaired by a second model reshaping the first one's letter — that
+  // was tried, and it produced a five-word orphan paragraph. It goes back to the
+  // WRITER, once, with the measurement stated, exactly as a hard validation
+  // failure does. One owner, one document.
+  let shape = coverShapeFaults(content);
+  const breadth = coverBreadthFault(content, cv);
+  if (breadth) shape = [breadth, ...shape];
+
+  if (!validation.ok || shape.length) {
+    const reasons = [...validation.hard, ...shape];
+    logger.info(`[validate cover] regenerating once: ${reasons.join(' | ')}`);
+    const retryMessages = [...messages, { role: 'user', content: validationFeedback(reasons, 'cover') }];
     const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.4, label: 'generate cover letter (validation retry)' });
     const retryUsage = geminiUsage('generate cover letter (validation retry)', retry, GEMINI_GENERATION_MODEL);
     usages.push(retryUsage);
@@ -883,12 +909,19 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     if (reDomain.gemini_usage) usages.push(reDomain.gemini_usage);
 
     const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language, tweak });
-    if (revalidated.hard.length <= validation.hard.length) {
+    const reshape = coverShapeFaults(reDomain.content);
+    // No worse on EITHER count, or the draft stands. A retry that fixed the word
+    // band by flattening the rhythm is not an improvement.
+    if (revalidated.hard.length <= validation.hard.length && reshape.length <= shape.length) {
       content = reDomain.content;
       validation = revalidated;
+      shape = reshape;
     }
     if (!validation.ok) {
       logger.error(`[validate cover] hard failures survived the retry: ${validation.hard.join(' | ')}`);
+    }
+    if (shape.length) {
+      logger.error(`[validate cover] shape faults survived the retry: ${shape.join(' | ')}`);
     }
   }
 

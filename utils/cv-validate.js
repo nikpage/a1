@@ -788,15 +788,89 @@ function checkEpithets(document, hard, language) {
 //     unrelated trade. Every hit is reported, so the candidate sees the actual
 //     phrases rather than a count.
 function phraseHits(document, language) {
-  const text = plain(document).toLowerCase();
+  const text = plain(document);
+  const tokens = tokenise(text);
   const hits = [];
+  const seen = new Set();
+
   for (const phrase of bannedPhrases(language)) {
-    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const lead = /^\w/.test(phrase) ? '\\b' : '';
-    const tail = /\w$/.test(phrase) ? '\\b' : '';
-    if (new RegExp(`${lead}${escaped}${tail}`, 'i').test(text)) hits.push(phrase);
+    const words = String(phrase).split(/\s+/).filter((w) => phraseKey(w));
+    if (!words.length) continue;
+    for (let i = 0; i + words.length <= tokens.length; i++) {
+      let ok = true;
+      for (let j = 0; j < words.length; j++) {
+        if (!sameWord(tokens[i + j], words[j])) { ok = false; break; }
+      }
+      if (!ok) continue;
+      // The span AS THE DOCUMENT WROTE IT, not as the list spells it: the repair
+      // pass replaces literal text, so an inflected hit must be handed back
+      // inflected or the replacement silently does nothing.
+      const span = text.slice(tokens[i].start, tokens[i + words.length - 1].end);
+      const dedupe = span.toLowerCase();
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      hits.push(span);
+    }
   }
   return hits;
+}
+
+// One token reduced to what all its inflected forms share. Long words are cut to
+// their stem, exactly as stem() does for DOMAIN_TERMS; short words (articles,
+// prepositions, "je", "se", "of") carry no suffix to strip and are matched
+// whole, because truncating them would collapse distinct words into one.
+function fold(word) {
+  return String(word || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+// The key is only a BUCKET — it gathers the forms that might be the same word,
+// and sameWord() below decides. Four characters, not the six DOMAIN_TERMS uses,
+// because Czech adjective roots are short: "silnou" and "silnými" share "siln"
+// and diverge at the fifth character, so a six-character key files two forms of
+// one word in two different buckets and the second gets round the list.
+const PHRASE_KEY_LEN = 4;
+
+function phraseKey(word) {
+  const folded = fold(word);
+  if (!folded) return '';
+  return folded.length < PHRASE_KEY_LEN ? folded : folded.slice(0, PHRASE_KEY_LEN);
+}
+
+// A shared stem is not enough on its own: "synergies" and "Synergybank" share
+// one, and an employer's name is not a banned phrase. An inflected form differs
+// from its base by a SUFFIX — one to three characters in Czech and Polish, none
+// in English — so the two must agree on everything BUT that suffix. Sharing the
+// first six characters and then diverging for five more is a different word.
+const INFLECTION_SLACK = 3;
+
+function commonPrefix(a, b) {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+}
+
+function sameWord(token, word) {
+  if (token.key !== phraseKey(word)) return false;
+  const other = fold(word);
+  const longest = Math.max(token.full.length, other.length);
+  return commonPrefix(token.full, other) >= longest - INFLECTION_SLACK;
+}
+
+// The document split into words, each keeping where it sat so the matched span
+// can be cut out of the original text.
+function tokenise(text) {
+  const out = [];
+  const re = /[\p{L}\p{N}][\p{L}\p{N}'-]*/gu;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const key = phraseKey(m[0]);
+    if (key) out.push({ key, full: fold(m[0]), start: m.index, end: m.index + m[0].length });
+  }
+  return out;
 }
 
 //     Neither hard nor a warning. A stock phrase is the app's own writing

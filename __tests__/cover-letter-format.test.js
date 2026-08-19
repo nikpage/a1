@@ -57,7 +57,11 @@ describe('generateCoverLetter — exactly one date at the top', () => {
   test.each(forms)('strips a leading date written as "%s"', async (dateLine) => {
     mockAxiosPost
       .mockResolvedValueOnce(geminiResp(`${dateLine}\n\nDear Hiring Manager,\n\nBody text.\n\nSincerely,\n\nNik Page`))
-      .mockResolvedValueOnce(CLEAN_VERIFY);
+      .mockResolvedValueOnce(CLEAN_VERIFY)
+      // The letter's repair passes run unconditionally now (the consultant-speak
+      // check works on shape, not on a blocklist hit), so every call after the
+      // write and the verify gets an empty verdict.
+      .mockResolvedValue(CLEAN_VERIFY);
 
     const { content } = await generateCoverLetter({ cv: '{}', analysis: {}, tone: 'Formal' });
 
@@ -71,7 +75,8 @@ describe('generateCoverLetter — exactly one date at the top', () => {
   test('a date inside the body is NOT stripped', async () => {
     mockAxiosPost
       .mockResolvedValueOnce(geminiResp('Dear Hiring Manager,\n\nI led the rollout in August 2024.\n\nSincerely,'))
-      .mockResolvedValueOnce(CLEAN_VERIFY);
+      .mockResolvedValueOnce(CLEAN_VERIFY)
+      .mockResolvedValue(CLEAN_VERIFY);
 
     const { content } = await generateCoverLetter({ cv: '{}', analysis: {}, tone: 'Formal' });
     expect(content).toContain('I led the rollout in August 2024.');

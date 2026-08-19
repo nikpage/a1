@@ -782,9 +782,12 @@ describe('validateCoverLetter', () => {
 });
 
 describe('banned phrases are language-scoped', () => {
+  // Hits come back AS THE DOCUMENT WROTE THEM, capitalisation and inflection
+  // intact, because the repair pass replaces literal spans: handing back the
+  // list's own lower-case citation form would replace nothing.
   it('finds Czech tells in a Czech document', () => {
     const hits = bannedPhraseHits('Proaktivní přístup a komplexní řešení, týmový hráč.', 'cs');
-    expect(hits).toContain('proaktivní přístup');
+    expect(hits).toContain('Proaktivní přístup');
     expect(hits).toContain('komplexní řešení');
     expect(hits).toContain('týmový hráč');
   });
@@ -795,7 +798,7 @@ describe('banned phrases are language-scoped', () => {
 
   it('applies every registered language on auto', () => {
     const hits = bannedPhraseHits('Týmový hráč with a proven track record.', 'auto');
-    expect(hits).toContain('týmový hráč');
+    expect(hits).toContain('Týmový hráč');
     expect(hits).toContain('proven track record');
   });
 
@@ -848,5 +851,114 @@ describe('check 1 — a digit inside a word is not a number claim', () => {
   it('still fails a real number the master does not hold', () => {
     const r = validateCv(doc('Formalised product management processes and cut churn by 40% across accounts'), { master: M, analysis: ANALYSIS });
     expect(r.hard.join(' ')).toMatch(/Number "40"/);
+  });
+});
+
+// The consultant-speak added on 2026-08-19 from a real Sudolabs letter. Every
+// phrase here was in a letter the candidate read and rejected; each is an
+// abstraction standing where a fact belongs, or a stock hinge between two
+// paragraphs. Red on the previous revision, where none of them was on the list
+// and the checker returned no hits for this paragraph.
+describe('check 17 — the consultant-speak seen in the Sudolabs letter', () => {
+  const SEEN = [
+    'In this capacity, I have built and deployed RAG-based search.',
+    'My strength lies in understanding human motivation.',
+    'My current work centers on building production AI tools.',
+    'Across previous leadership roles, I have facilitated workshops.',
+    'Moving at that pace requires closing the distance between discovery and delivery.',
+    'I bring strategic positioning to every engagement.',
+    'an industry often bogged down in internal politics',
+    'how we might work together on Sudolabs client transformations',
+    'I would be glad to schedule a brief virtual meeting.',
+  ];
+
+  it.each(SEEN)('catches %s', (sentence) => {
+    expect(bannedPhraseHits(sentence, 'en').length).toBeGreaterThan(0);
+  });
+
+  it('does not fire on the real achievements from the same letter', () => {
+    const real =
+      'I built and deployed RAG-based semantic image search and an expert chatbot ' +
+      'integrated with client CRMs, founded the internal UX practice at Česká ' +
+      'spořitelna, and directed concurrent client software initiatives including eBay.';
+    expect(bannedPhraseHits(real, 'en')).toEqual([]);
+  });
+});
+
+// The Czech half of the same fix. The registry's rule is that Czech tells are
+// their own set rather than the English list translated, so these are the
+// phrases a Czech letter actually uses in those slots. Red on the previous
+// revision. The final assertion is the one that matters most: the checker must
+// not fire on ordinary Czech describing real work.
+describe('check 17 — the same consultant-speak in Czech', () => {
+  const SEEN_CS = [
+    'V této pozici jsem vedl tým čtyř produktových manažerů.',
+    'Mou silnou stránkou je porozumění lidské motivaci.',
+    'V současné době se zaměřuji na vývoj produkčních AI nástrojů.',
+    'V rámci předchozích rolí jsem vedl produktové workshopy.',
+    'Rád bych si s vámi domluvil krátkou online schůzku.',
+    'Těším se na osobní setkání.',
+    'Přináším strategické směřování každému projektu.',
+  ];
+
+  it.each(SEEN_CS)('catches %s', (sentence) => {
+    expect(bannedPhraseHits(sentence, 'cs').length).toBeGreaterThan(0);
+  });
+
+  it('does not fire on real Czech achievements', () => {
+    const real =
+      'V České spořitelně jsem založil interní UX praxi a vedl výzkum produktu ve ' +
+      'wflow.com. Nasadil jsem sémantické vyhledávání obrázků postavené na RAG a ' +
+      'chatbota napojeného na CRM klienta.';
+    expect(bannedPhraseHits(real, 'cs')).toEqual([]);
+  });
+
+  it('applies both lists on auto, so a letter of unknown language is still checked', () => {
+    expect(bannedPhraseHits('Mou silnou stránkou je porozumění.', 'auto').length).toBeGreaterThan(0);
+    expect(bannedPhraseHits('In this capacity, I led the team.', 'auto').length).toBeGreaterThan(0);
+  });
+});
+
+// THE POINT OF STEM MATCHING. The list was exact strings, so a Czech letter got
+// round it by declining the noun — "mou silnou stránkou je" was caught and
+// "mojí silnou stránkou zůstává" was not, which in an inflected language means
+// the list caught roughly one form in six. Every case here is red on the exact-
+// string matcher and green now.
+describe('check 17 — inflection does not get round the list', () => {
+  const CZECH_FORMS = [
+    'Mou silnou stránkou je porozumění lidské motivaci.',
+    'Mojí silnou stránkou zůstává porozumění lidské motivaci.',
+    'Jeho silná stránka byla vždy porozumění motivaci.',
+    'Silnými stránkami jsou porozumění a strategie.',
+    'V současné době se zaměřuji na vývoj AI nástrojů.',
+    'Dlouhodobě se zaměřuji na vývoj AI nástrojů.',
+    'Rád bych si s vámi domluvil krátkou online schůzku.',
+    'Nabízím krátkou online schůzku.',
+    'Vedl jsem komplexní transformaci celého oddělení.',
+  ];
+
+  it.each(CZECH_FORMS)('catches %s', (sentence) => {
+    expect(bannedPhraseHits(sentence, 'cs').length).toBeGreaterThan(0);
+  });
+
+  it('hands the repair pass the inflected span, not the citation form', () => {
+    const hits = bannedPhraseHits('Mojí silnou stránkou zůstává empatie.', 'cs');
+    // The repair replaces literal text. "silnou stránkou" is what is on the
+    // page here; a hit reading "silná stránka" would replace nothing.
+    expect(hits).toContain('silnou stránkou');
+  });
+
+  it('still refuses to fire inside an unrelated longer word', () => {
+    // Shares a stem with "synergies" and is an employer's name.
+    expect(bannedPhraseHits('Built the payments team at Synergybank.', 'en')).toEqual([]);
+    // Shares a stem with "transformace" and is ordinary Czech about real work.
+    expect(bannedPhraseHits('Pracoval jsem na transformátorech.', 'cs')).toEqual([]);
+  });
+
+  it('leaves real Czech achievements alone', () => {
+    const real =
+      'V České spořitelně jsem založil interní UX praxi a vedl výzkum produktu. ' +
+      'Nasadil jsem sémantické vyhledávání obrázků a chatbota napojeného na CRM.';
+    expect(bannedPhraseHits(real, 'cs')).toEqual([]);
   });
 });
