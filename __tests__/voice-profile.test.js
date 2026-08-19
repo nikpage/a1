@@ -40,10 +40,6 @@ const PROFILE = {
   ],
   profile_text: 'I never use exclamation marks.',
   options: { cleanup: false },
-  registers: [
-    { sample: 1, register: 'work email', distance: 'close to a letter' },
-    { sample: 2, register: 'personal message', distance: 'far' },
-  ],
   samples: [
     { text: 'We shipped the migration on Friday. It broke nothing. The team stayed late twice.' },
     { text: 'look mate the thing is fucking useless, i binned it' },
@@ -51,11 +47,13 @@ const PROFILE = {
 };
 
 describe('buildVoiceProfilePrompt', () => {
-  test('reads the register off the text instead of being told it', () => {
+  // The register is READ — it calibrates how far each List B translation has to
+  // travel — but never asked for and never reported: nothing downstream used it.
+  test('reads the register off the text instead of being told it, and keeps it internal', () => {
     const [, user] = buildVoiceProfilePrompt({ samples: [{ text: 'hey so anyway' }] });
     expect(user.content).toMatch(/work out FROM THE WRITING ITSELF what kind of writing it is/);
     expect(user.content).toMatch(/Nobody has told you: infer it/);
-    expect(user.content).toContain('"registers"');
+    expect(user.content).not.toContain('"registers"');
   });
 
   test('carries no label for the user to have set — the sample is just its text', () => {
@@ -330,7 +328,6 @@ describe('POST /api/voice-profile', () => {
       aiContextSeen = { ...aiContext() };
       return {
       profile: {
-        registers: [{ sample: 1, register: 'work email', distance: 'close' }],
         list_a: ['Short sentences.'],
         list_b: [{ trait: 'swears', translation: 'flat assertion' }],
         confidence: 'One register only.',
@@ -353,8 +350,6 @@ describe('POST /api/voice-profile', () => {
     const saved = mockSaveVoiceProfile.mock.calls[0][1];
     expect(saved.list_a).toEqual(['Short sentences.']);
     expect(saved.samples[0].text).toBe(LONG);
-    // The register comes from the extraction, not from the user.
-    expect(saved.registers).toEqual([{ sample: 1, register: 'work email', distance: 'close' }]);
 
     // The transactions row is written by the meter inside callGemini (pinned in
     // __tests__/ai-meter.test.js). What this route owns is ATTRIBUTION: the
@@ -382,10 +377,7 @@ describe('POST /api/voice-profile', () => {
   });
 
   test('save keeps the stored samples — an edit cannot rewrite what was pasted', async () => {
-    mockGetVoiceProfile.mockResolvedValue({
-      samples: [{ text: LONG }],
-      registers: [{ sample: 1, register: 'work email', distance: 'close' }],
-    });
+    mockGetVoiceProfile.mockResolvedValue({ samples: [{ text: LONG }] });
     const { res, done } = await call({
       action: 'save',
       profile: {
@@ -393,7 +385,6 @@ describe('POST /api/voice-profile', () => {
         list_b: [],
         profile_text: 'No exclamation marks.',
         samples: [{ text: 'injected' }],
-        registers: [{ sample: 1, register: 'injected register', distance: 'x' }],
       },
     });
     await done;
@@ -401,9 +392,9 @@ describe('POST /api/voice-profile', () => {
     expect(res.statusCode).toBe(200);
     const saved = mockSaveVoiceProfile.mock.calls[0][1];
     expect(saved.list_a).toEqual(['Edited by hand.']);
+    // The samples are not rewritable from a save.
     expect(saved.samples[0].text).toBe(LONG);
-    // Neither the samples nor the read registers are editable from a save.
-    expect(saved.registers[0].register).toBe('work email');
+    expect(saved.registers).toBeUndefined();
   });
 
   test('save drops a List B row whose translation was emptied', async () => {
@@ -494,7 +485,6 @@ describe('POST /api/voice-profile — save keeps the samples the user left', () 
   const STORED = {
     list_a: ['old line'],
     list_b: [],
-    registers: [{ sample: 1, register: 'work email', distance: 'close' }],
     samples: [{ text: 'A'.repeat(500) }, { text: 'B'.repeat(500) }, { text: 'C'.repeat(500) }],
   };
 
@@ -533,13 +523,14 @@ describe('POST /api/voice-profile — save keeps the samples the user left', () 
     expect(saved.samples).toHaveLength(3);
   });
 
-  test('the registers stay the extraction\'s, whatever the client sends', async () => {
+  // The stored shape is closed: a key the client invents is dropped, not stored.
+  test('a key that is not part of the profile shape is never written', async () => {
     const { done } = call({
       action: 'save',
       profile: { list_a: ['kept'], list_b: [], registers: [{ sample: 9, register: 'forged' }] },
     });
     await done;
     const [, saved] = mockSaveVoiceProfile.mock.calls[0];
-    expect(saved.registers).toEqual([{ sample: 1, register: 'work email', distance: 'close' }]);
+    expect(saved.registers).toBeUndefined();
   });
 });

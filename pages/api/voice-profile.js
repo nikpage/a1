@@ -52,15 +52,8 @@ function cleanSamples(input) {
 
 // The stored profile shape, assembled defensively. Anything the client sends that
 // isn't part of the shape is dropped rather than written into the column.
-function cleanProfile({ registers, list_a, list_b, confidence, profile_text, options, samples }) {
+function cleanProfile({ list_a, list_b, confidence, profile_text, options, samples }) {
   return {
-    // What the extraction read each sample as. Shown back to the user, and the
-    // reason no label buttons exist: the writing says what it is.
-    registers: (Array.isArray(registers) ? registers : []).map((r) => ({
-      sample: Number(r?.sample) || 0,
-      register: String(r?.register || '').trim(),
-      distance: String(r?.distance || '').trim(),
-    })).filter((r) => r.register),
     list_a: (Array.isArray(list_a) ? list_a : []).map((o) => String(o || '').trim()).filter(Boolean),
     list_b: (Array.isArray(list_b) ? list_b : [])
       .map((b) => ({
@@ -162,9 +155,6 @@ async function handler(req, res) {
       logger.error('voice-profile: could not read existing profile:', e.message);
     }
 
-    // The registers are not editable here — they are what the extraction READ
-    // off the samples, not something the user sets.
-    //
     // Samples: REMOVABLE but not REWRITABLE. Those are different powers and
     // conflating them broke one or the other. Refusing every incoming array made
     // the panel's Remove button a lie — the user cleared every box, pressed Save,
@@ -174,7 +164,6 @@ async function handler(req, res) {
     // holds; text that is not already stored is ignored.
     const profile = cleanProfile({
       ...incoming,
-      registers: existing?.registers || [],
       samples: keptSamples(incoming.samples, existing?.samples),
     });
 

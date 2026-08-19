@@ -547,19 +547,8 @@ export async function buildVoiceProfile(samples) {
     }))
     .filter((b) => b.trait && b.translation);
 
-  // What the extraction READ each sample as. Carried through here or it is lost:
-  // the route preserves the stored registers on a save and can only ever save
-  // what a build handed it, so dropping them here emptied the field permanently.
-  const registers = (Array.isArray(parsed.registers) ? parsed.registers : [])
-    .map((r) => ({
-      sample: Number(r?.sample) || 0,
-      register: String(r?.register || '').trim(),
-      distance: String(r?.distance || '').trim(),
-    }))
-    .filter((r) => r.register);
-
   return {
-    profile: { registers, list_a, list_b, confidence: String(parsed.confidence || '').trim() },
+    profile: { list_a, list_b, confidence: String(parsed.confidence || '').trim() },
     gemini_usage,
   };
 }

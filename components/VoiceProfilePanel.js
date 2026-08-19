@@ -3,9 +3,9 @@
 // The voice profile, end to end: paste samples of your own writing, extract the
 // profile, then REVIEW AND EDIT it.
 //
-// The user is never asked what kind of writing each sample is. The extraction
-// reads the register off the text and reports it back, which is shown here — a
-// question the model can answer itself is a question not worth asking.
+// The user is never asked what kind of writing each sample is: the extraction
+// reads each sample's register off the text to calibrate its List B
+// translations, and nothing else needs it, so nothing is stored or shown.
 //
 // The review screen is not optional and not collapsible past the first visit —
 // it is the difference between a tool and a black box. The user deletes the
@@ -20,12 +20,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 const emptySample = () => ({ text: '' });
-
-// Registers far from business prose need most of List B translated, and the
-// result is thinner. The extraction reports what it read; this spots the private
-// registers in that report so the user is told rather than quietly served a
-// weaker letter.
-const FAR = /(personal|private|chat|message|forum|informal|casual)/i;
 
 function wordCount(text) {
   return String(text || '').trim().split(/\s+/).filter(Boolean).length;
@@ -158,10 +152,6 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
 
   const usable = samples.filter((s) => s.text.trim().length > 0);
   const thin = usable.length === 1;
-  // Judged from what the extraction READ, so it can only be shown after a run —
-  // there is no label to guess from beforehand, by design.
-  const registers = Array.isArray(profile?.registers) ? profile.registers : [];
-  const allFar = registers.length > 0 && registers.every((r) => FAR.test(`${r.register} ${r.distance}`));
   const hasProfile = Boolean(profile?.list_a?.length || profile?.list_b?.length || profile?.profile_text);
 
   return (
@@ -271,19 +261,6 @@ export default function VoiceProfilePanel({ profile, onUpdated }) {
             This is what your writing looks like from the outside. Delete anything wrong and add your own lines —
             yours win.
           </p>
-
-          {registers.length > 0 && (
-            <p className="mt-2 text-xs text-gray-600">
-              Read as: {registers.map((r) => `${r.register}${r.distance ? ` (${r.distance})` : ''}`).join('; ')}
-            </p>
-          )}
-
-          {allFar && (
-            <p className="mt-2 text-sm text-amber-800">
-              That is all private-register writing, so most of it had to be translated for a letter. Expect a
-              thinner result than a work email or a previous application would give.
-            </p>
-          )}
 
           {profile?.confidence && (
             <p className="mt-2 text-xs italic text-gray-600">{profile.confidence}</p>

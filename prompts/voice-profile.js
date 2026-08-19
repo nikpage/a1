@@ -25,10 +25,10 @@
 //            hedging"). The translation is stored and shown to the user.
 //
 // The REGISTER of each sample — work email, blog post, personal message, a
-// previous application — is inferred by the model FROM THE TEXT and reported
-// back in the profile. The user is never asked to classify their own writing:
-// the writing says what it is, and a question the model can answer itself is a
-// question not worth asking.
+// previous application — is inferred by the model FROM THE TEXT, and used only
+// to judge how far each List B translation has to travel. The user is never
+// asked to classify their own writing, and the reading itself is not reported:
+// nothing downstream acted on it.
 
 export function buildVoiceProfilePrompt({ samples = [] } = {}) {
   const blocks = samples
@@ -55,9 +55,9 @@ Return 15 to 25 observations in total, split into the two lists defined below. E
 Describe only what the samples actually show. Where a trait is present but inconsistent, say so ("hedges in the personal message, flatly assertive in the work email") — that inconsistency is itself a fact about them.
 
 # First, read the register off the text
-For each sample, work out FROM THE WRITING ITSELF what kind of writing it is — a previous application or cover letter, a work email or work document, a blog post or article or other public writing, a personal message or chat or forum post, or something else. Say which, in one short phrase per sample, and how far that register sits from the prose of a cover letter. Nobody has told you: infer it from the vocabulary, the address, the formality and what the piece is trying to do.
+For each sample, work out FROM THE WRITING ITSELF what kind of writing it is — a previous application or cover letter, a work email or work document, a blog post or article or other public writing, a personal message or chat or forum post, or something else. Nobody has told you: infer it from the vocabulary, the address, the formality and what the piece is trying to do. Keep that reading to yourself; it is not part of the output.
 
-That reading is what calibrates List B below: writing already in a work register needs almost no translation, a private message needs a great deal.
+It is what calibrates List B below: writing already in a work register needs almost no translation, a private message needs a great deal.
 ${thin ? '\nOnly one sample was supplied, so you are reading a single register. Say plainly in "confidence" which observations you could not test across registers.\n' : ''}
 # LIST A — carries across registers. Applied directly to their cover letters.
 Cover, where the samples show it:
@@ -93,9 +93,6 @@ Use the register you inferred for each sample to judge how far the translation h
 
 # Output — JSON only, no markdown fence, exactly this shape:
 {
-  "registers": [
-    { "sample": 1, "register": "the kind of writing this is, in a short phrase", "distance": "how far it sits from cover-letter prose, in a short phrase" }
-  ],
   "list_a": [
     "one specific, actionable observation about how they write, in plain prose"
   ],
