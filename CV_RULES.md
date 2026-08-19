@@ -155,6 +155,49 @@ requested; where they requested none, in the language the record and the ad
 imply. A letter in the wrong language is not a quality defect, it is an
 undeliverable document.
 
+## The letter's standing shape (owner spec, 2026-08-19)
+
+Set by Nik and binding. Where it collides with a rule elsewhere in this
+document, this section wins and the other rule is edited to match, not
+quietly obeyed alongside it.
+
+**Address a named person wherever the ad gives one.** The HR contact or hiring
+manager's name is read off `job_extraction.hr_contact` and used. Only where no
+person survives that read does the letter fall back to the neutral form. A name
+is never guessed.
+
+**Establish alignment immediately.** The target role and the company are named
+in the first paragraph, with why this applicant is going for this position and
+their core value proposition, in one or two sentences.
+
+**Target the ad's actual requirements.** Read the ad for its top terms, required
+skills and core responsibilities, and work them into the letter naturally. A
+pasted keyword list is not integration.
+
+**Prove value with contextual proof.** Two or three targeted narrative bullets
+or short paragraphs, each connecting a past achievement to a challenge this role
+actually names. High-impact metrics — percentage, revenue, time saved — carried
+with the brief context of how they were achieved. A number with no story behind
+it is a statistic, not proof.
+
+**Complement the CV, never copy it.** The letter carries what bullets cannot:
+the background behind a major achievement, the reason for a transition, the
+motivation for this application.
+
+**Structure.**
+- Header: professional contact details, styled to match the CV.
+- Salutation: a named individual wherever one exists.
+- Opening: the position applied for, genuine enthusiasm, and the primary value
+  hook.
+- Body: qualifications aligned to the ad's requirements through specific
+  achievements.
+- Close: interest restated, a clear call to action about an interview, and a
+  professional sign-off.
+
+**Length and tone.** 250–350 words, one page maximum; the per-market band in
+Layer 5 sets the exact figure where a market convention is shorter. Active,
+confident, direct, and pitched to the target industry's culture.
+
 ## Layer 1 — Machine parseability
 
 **Headers.** Standard names only, taken from the section-name registry for the CV's output language (en/cs/pl today). Each slot has one canonical name plus accepted market variants; a heading standard in any registered language is valid. Projects renders only when the Under-qualified or Career Pivot override is active, and only from evidenced master entries. No creative section names.

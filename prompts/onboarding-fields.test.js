@@ -139,7 +139,7 @@ describe('buildCoverPrompt — length budget enforced', () => {
   it('states the length budget and the letter furniture, without a clarification rule', () => {
     const [, user] = buildCoverPrompt(MASTER_JSON, analysisWithTarget, 'Formal');
     expect(user.content).toMatch(/LENGTH \(hard constraint\)/);
-    expect(user.content).toMatch(/Start with the date on its own line/);
+    expect(user.content).toMatch(/Open with a professional header/);
     expect(user.content).not.toMatch(/One clause, once, carrying a fact/);
   });
 

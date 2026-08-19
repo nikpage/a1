@@ -54,3 +54,32 @@ describe('dressLetter strips the model’s own date line', () => {
     expect(dateLines(out)).toHaveLength(1);
   });
 });
+
+// 2026-08-19: the letter now opens with a CONTACT HEADER (CV_RULES.md, "The
+// letter's standing shape"), so the model's date line is no longer the FIRST
+// line — it sits under the header. Stripping only leading date lines left it
+// on the page and prepended a second one above the header. Red on the old
+// code: two date lines, and the header pushed below a date.
+describe('dressLetter with a contact header above the salutation', () => {
+  const HEADER = 'Nik Page\nMe@Nik.Page\n+420 731 647 707';
+
+  test('the model\'s date under the header is replaced, not duplicated', () => {
+    const out = dressLetter(`${HEADER}\n\n19 August 2026\n\n${SALUTATION}\n\nText dopisu.`);
+    expect(dateLines(out)).toHaveLength(1);
+  });
+
+  test('the header stays first and the date sits between it and the salutation', () => {
+    const out = dressLetter(`${HEADER}\n\n19 August 2026\n\n${SALUTATION}\n\nText dopisu.`);
+    expect(out.startsWith('Nik Page')).toBe(true);
+    const [only] = dateLines(out);
+    expect(out.indexOf('Me@Nik.Page')).toBeLessThan(out.indexOf(only));
+    expect(out.indexOf(only)).toBeLessThan(out.indexOf(SALUTATION));
+  });
+
+  test('a header with no date of its own still gets exactly one, in the same place', () => {
+    const out = dressLetter(`${HEADER}\n\n${SALUTATION}\n\nText dopisu.`);
+    expect(dateLines(out)).toHaveLength(1);
+    expect(out.startsWith('Nik Page')).toBe(true);
+    expect(out.indexOf(dateLines(out)[0])).toBeLessThan(out.indexOf(SALUTATION));
+  });
+});

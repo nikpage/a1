@@ -52,6 +52,15 @@ import { currentDateBlock, currentDateReminder } from './current-date.js';
 // prompts/analysis-brief.js: career_arc, parallel_experience,
 // transferable_skills. Do not drop them.
 
+// The letter is COMPOSED, not executed (CV_RULES.md, Layer 3): the analysis
+// hands it EVIDENCE and decides nothing about the letter's shape. Removed by
+// f42d5e2 as "never read downstream" — it is read by prompts/cover-evidence.js,
+// prompts/analysis-brief.js, prompts/cv-rules.js and utils/cv-validate.js, and
+// its absence left every letter since composing from an empty pool: the writer
+// had no requirement it could answer, so it walked the CV instead.
+const coverEvidenceRule = (hasJobText) => `- generation_framework.cover_evidence.requirement_evidence: ${hasJobText ? `ARRAY of up to FIVE objects { requirement, evidence } — the ad's important requirements that this record can genuinely answer. \`requirement\` quotes the ad's own words. \`evidence\` names the real achievement that answers it AND the employer it came from, drawn from the record. This is a POOL, not a running order and not a plan: do not rank it, do not trim it to the three that read best, do not order it for a paragraph — the writer chooses which to use, in what order, with the candidate's own steering in hand. NEVER include a requirement the record cannot answer: an unevidenced requirement is a gap reported to the candidate, and listing it here invites the letter to fill it. Fewer is correct where the record answers fewer; an empty array is correct where it answers none.` : `MUST be an empty array. With no job ad there is no requirement to answer; the letter argues from the candidate's strongest evidenced work.`}
+- generation_framework.cover_evidence.concerns: ARRAY of up to THREE objects { flag, answer_evidence } — the recruiter concerns that HAVE a real answer in the record. \`flag\` names it in one short phrase, \`answer_evidence\` is the fact that settles it. Include only where mention could help: a gap over six months, the permanence question under a standing consultancy, a location or relocation mismatch, a required capability with a genuine adjacent answer. NEVER include what the letter cannot improve (age, salary, a seniority mismatch with no answer behind it) and NEVER one the record holds no answering fact for. An empty array is a common and correct answer. The writer addresses at most ONE of these, or none — you are not choosing for it.`;
+
 export function buildAnalysisPrompt(cvText, jobText, hasJobText, _legacyTeaser = null, _legacyMode = 'blueprint', now = new Date()) {
   const systemContent = `${currentDateBlock(now)}
 
@@ -115,6 +124,7 @@ ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the a
 - generation_framework.cv_blueprint.summary_draft: WRITE A STRONG, IMPACT-FIRST PROFESSIONAL SUMMARY DRAFT — max 3 sentences, tone-neutral, no "Seeking to" / "Looking to" openers, no repeated phrases. Lead with the candidate's strongest proof for this job (scope, scale, results). Plain, specific language — strong action verbs are fine, but cut empty filler ("results-driven", "proven track record", "passionate about", "dynamic", "synergy"). The CV writer adapts this into the requested tone, so make it factual and dense, not stylised.
 - generation_framework.cv_blueprint.skills_to_highlight: 8-12 specific skills drawn ONLY from transferable_skills and ats_keywords_present (skills the candidate genuinely has), ordered by relevance to this ad. NEVER pull from ats_keywords_missing — a skill the record cannot prove must never appear here.
 - generation_framework.target_cover_words: target word COUNT (a number) for the cover letter body, tuned to scenario/seniority AND to the target market's convention (Layer 5): for a CZECH or POLISH target the letter is a short covering note — 200-300, default 250; for every other market 250-350, default 275. Pick the market from the job ad's country when there is one, otherwise the candidate's own.
+${coverEvidenceRule(hasJobText)}
 
 JSON OUTPUT SCHEMA:
 {
@@ -150,7 +160,11 @@ JSON OUTPUT SCHEMA:
       "top_three_achievements": [],
       "skills_to_highlight": []
     },
-    "target_cover_words": ""
+    "target_cover_words": "",
+    "cover_evidence": {
+      "requirement_evidence": [],
+      "concerns": []
+    }
   }${hasJobText ? `,
   "job_extraction": {
     "position_title": "",

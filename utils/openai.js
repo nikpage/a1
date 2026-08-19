@@ -781,11 +781,21 @@ export function dressLetter(rawContent) {
   // drop starting empty lines
   while (lines.length && lines[0].trim() === '') lines.shift();
 
-  // remove only consecutive leading lines that are pure dates
-  while (lines.length && leadingDateRegex.test(lines[0].trim())) lines.shift();
+  // The letter now opens with a CONTACT HEADER (CV_RULES.md, "The letter's
+  // standing shape"), so the model's date line is no longer the first line —
+  // it sits below the header, and stripping only the LEADING ones left it on
+  // the page with the real date prepended above the header. Any date-only line
+  // above the salutation is the model's; there is exactly one date on a letter
+  // and this function owns it.
+  const salutationAt = lines.findIndex((l) => /^\s*(dear\b|vážen|vazen|szanown)/i.test(l));
+  const headerEnd = salutationAt === -1 ? lines.length : salutationAt;
+  lines = lines.filter((line, i) => !(i < headerEnd && leadingDateRegex.test(line.trim())));
 
   // remove placeholders anywhere
   lines = lines.filter(line => !line.includes('[Company Address]') && !line.includes('[Date]'));
+
+  // drop empty lines the date removal left at the top
+  while (lines.length && lines[0].trim() === '') lines.shift();
 
   // Rejoin
   let processedContent = lines.join('\n').trim();
@@ -795,9 +805,15 @@ export function dressLetter(rawContent) {
     processedContent = rawContent.trim();
   }
 
-  // Ensure we always prepend today's real date (de-DE format like before)
+  // Today's real date, written ONCE, in its conventional place: under the
+  // contact header and above the salutation. With no salutation to anchor it
+  // (a fragment, a failed generation) it goes back on top.
   const todayString = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  return `${todayString}\n\n${processedContent}`.trim();
+  const out = processedContent.split('\n');
+  const at = out.findIndex((l) => /^\s*(dear\b|vážen|vazen|szanown)/i.test(l));
+  if (at === -1) return `${todayString}\n\n${processedContent}`.trim();
+  out.splice(at, 0, todayString, '');
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
