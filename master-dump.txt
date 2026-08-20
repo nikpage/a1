@@ -1,2 +1,0 @@
-Unable to download secrets
-[31mDoppler Error:[0m Invalid Auth token
