@@ -1,31 +1,43 @@
 # PRODUCT.md — a1 / mysuper.cv
 
-Owner's page. Drafted 2026-08-20 from the code and the existing docs during the
-onboarding sweep, so Nik has something to correct rather than a blank page.
-**Blocks 3, 5 and 6 need his numbers — the placeholders marked NEEDS NIK are not
-mine to invent.**
+Owner's page. Written by Nik on 2026-08-20, block by block. This is the why and
+the what; CLAUDE.md is the how.
 
 ## 1. Who it's for
 
-A job seeker applying to real vacancies in Europe, in English, Czech or Polish,
-who already has a CV and is tailoring it per application. They are not a
-recruiter, not a coach, not a company. They can write, but they cannot see their
-own record the way a screener does.
+A person applying for real jobs in Europe, in English or Czech, who already has
+a CV. For each application they want a professional-level CV and cover letter
+pair, matched to that specific job.
 
 ## 2. The problem
 
-Tailoring a CV and cover letter per job is slow, and doing it badly is worse than
-not doing it: a generic letter reads as generic, a stuffed CV fails the interview
-it won, and an AI-written one reads like an AI wrote it. The tools that exist
-either template the output — so every applicant sends the same document — or
-invent achievements the candidate then has to defend in a room.
+Tailoring a CV and cover letter per job is tedious, and most applicants lack the
+skills it actually takes: knowing which keywords matter, understanding how HR
+processes, ATS filters and human screeners really read a document, writing
+persuasively, and assessing their own strengths and weaknesses against a
+specific role. Human experts do it well and charge $20-100 per document pair.
+The tools that exist are templates, so every letter reads like the same mad-lib.
+The result is that getting documents good enough to open doors in a
+hyper-professional market is daunting.
 
 ## 3. Success
 
-NEEDS NIK — the one number that matters, plus two or three guardrails, with dates.
-What exists today instead of a number: the standing quality bar from the contract,
-that the output must rival what a professional CV writer would ship and be good
-enough that they would use it.
+**The bar.** Every document pair reads as written by a human professional, not an
+AI. If the user supplies writing samples, it is in their voice; if not, it is
+human-sounding and persuasive. The CV is optimised for that specific job. The
+cover letter addresses the job's needs and the user's strengths, and only if
+necessary the single biggest red flag, as a structured persuasive narrative of
+250-350 words. Everything in both documents is truthful.
+
+**The number.** Interview invitations from applications sent using the tool. The
+product is working when that rate is materially above what Nik got writing them
+by hand.
+
+**Guardrails.** The bar above never drops. No application goes out with anything
+untrue in it.
+
+Commercial goals are deliberately out of scope until Nik has a job. This app is
+for Nik's own job search; productising it is a later decision, not a current one.
 
 ## 4. Non-goals
 
@@ -40,47 +52,60 @@ enough that they would use it.
   Voice is the cover letter's.
 - **No tone menu.** Only Formal is offered. The candidate's own voice profile
   owns the writing, so a tone that only changes mood no longer changes anything.
+- **Not a business yet.** No pricing, no marketing, no multi-user features, no
+  onboarding for strangers. Productising is a later decision.
+- **Not for people working on someone else's CV.** No coaches, CV writers,
+  recruiters acting for clients, or companies. One person, their own record.
+  This is "not now", not "never" - CV writers are a real later market, and
+  serving them changes the shape of the app.
 
 ## 5. Constraints
 
-- Monthly budget ceiling: **NEEDS NIK**. Measured AI spend is $9.50 per 30 days
-  (`ONBOARDING_SWEEP.md` §2); Netlify, Supabase, Upstash and Sentry plans unknown.
-- Deadlines: **NEEDS NIK**.
-- Expected scale: **NEEDS NIK**.
-- Legal: EU product, so GDPR — users delete their own account and all data via
-  `DELETE /api/delete-account`, and a `/privacy` page states retention.
-- Structural: Netlify caps ordinary functions at 10 seconds on this plan, which
-  is why analysis and generation are background jobs the browser polls.
+There is no monthly budget ceiling. Nik spends what the work takes. The
+constraint is on how tokens are spent, not how many.
+
+- No exploratory work without a stated purpose that moves the product forward.
+  Experiments that turn into rabbit holes are the failure mode; a recent one
+  cost $5 and produced nothing usable.
+- Every non-trivial task carries an up-front size and cost estimate. If reality
+  passes it by roughly 2x, stop and report before continuing.
+- Cheap models do the grunt work - locating files, running commands. Judgement
+  work only on the expensive one.
+- Re-reading, recaps and padding are pure waste and are billed to Nik.
+
+Scale: one user. Deadline: none fixed, but Nik is job-hunting now, so sooner is
+worth more.
 
 ## 6. Current focus
 
-**NEEDS NIK — one thing, and what shipped means for it.**
+**Now.** The cover writer produces letters that meet the bar in section 3.
+Shipped means three letters on three real job ads, each judged good by Nik, with
+those outputs captured as tests so the letter cannot regress a fourth time.
 
-What the record shows the work has actually been on, most recent first:
+**Next.** Fix the analysis. Likely two stages, to be confirmed once we look: one
+analysis of the master CV, which does not change because it is the user's record,
+and a separate one for how to build the job-specific CV and cover letter.
 
-- **Cover-letter quality.** The rule stack was removed on 2026-08-15 after a
-  four-line prompt beat a 51,721-character one on the same record and ads. Since
-  then the work has been keeping the letter on that prompt and giving it the
-  candidate's real voice. Every experiment is logged in `COVER_LETTER_LOG.md`.
-- **Trimming the analysis to what a candidate can act on.** The landing-page
-  teaser, the document critique, `quick_wins` and `action_items` were removed on
-  2026-08-16; one analysis pass now reads the master record.
+**Done means.** The analysis makes sense, and CVs and cover letters both pass the
+three-job test.
 
-Carried over from the old onboarding spec, and **built**: registration leads into
-building the master CV — a four-step progress tracker, a screen that asks only the
-ambiguities the model genuinely cannot settle (chiefly whether a role that sits
-inside the person's own practice was client work or a salaried job), and the
-answer editing the master record. Onboarding ends when the master is settled;
-then normal use is upload job → generate → pay → download.
-
-Carried over and **not built**: nothing outstanding from that spec that I can find
-in the code.
+Nik expects each stage to take about 30 minutes, not a day. That is an
+expectation, not a cap: if a stage runs well past it, stop and report rather than
+continuing silently.
 
 ## 7. Trade-off order
 
-Quality first, then cost, then speed — the contract's default, and the way the
-project has actually behaved: model and prompt choices are made by running them
-and reading the output, and the cheapest model that clears the bar wins.
+**Quality first, then speed, then cost.**
+
+This ranks how the app gets built, not what the documents are. Document quality
+is fixed by the bar in section 3 and is never traded against anything.
+
+- Quality beats speed. A faster route that produces worse code or worse output
+  loses, every time.
+- Speed beats cost. Nik is job-hunting now, so a result today is worth more than
+  a cheaper result next week. Spend the tokens.
+- Cost is last but not ignored: of two options that clear the bar equally, the
+  cheaper one wins, and grunt work runs on cheap models.
 
 ---
 
