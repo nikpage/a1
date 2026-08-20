@@ -6,6 +6,12 @@ NEVER use the `AskUserQuestion` tool / multiple-choice question box. Not once, e
 If you need to ask the user something, ask it in plain text in the chat and let
 them answer in plain text. The question-box artifact is forbidden in this repo.
 
+## Product context (loaded automatically)
+
+@PRODUCT.md
+
+Read it before planning anything. It is the why and the what; this file is the how.
+
 ## What this is
 
 CV and cover-letter generator with token-based billing. Deployed at **mysuper.cv**.
