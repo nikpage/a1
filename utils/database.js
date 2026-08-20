@@ -195,6 +195,40 @@ export async function deleteVoiceProfile(user_id) {
   return Boolean(data && data.length);
 }
 
+// The per-user CAREER PROFILE: the job-agnostic half of the analysis (arc,
+// parallel experience, transferable skills, base scenario, standing risks,
+// proven keywords). Stored in its own JSONB column for the same reason
+// voice_profile is: master_cv is the evidence set the truth passes check
+// against, and interpretation living inside it would read as fact.
+//
+// It carries `record_fingerprint`; the caller compares that against
+// recordFingerprint(master) and rebuilds only on a mismatch, so a job ad never
+// pays to re-derive the person.
+export async function getCareerProfile(user_id) {
+  const { data, error } = await supabase
+    .from('cv_data')
+    .select('career_profile')
+    .eq('user_id', user_id)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.career_profile || null;
+}
+
+// Service-role upsert, for the reason saveMasterCv uses one: an update whose
+// filter matches no row reports no error and writes nothing. Only user_id +
+// career_profile are sent, so cv_data, master_cv and voice_profile are untouched.
+export async function saveCareerProfile(user_id, profile) {
+  const { data, error } = await getAdminSupabase()
+    .from('cv_data')
+    .upsert([{ user_id, career_profile: profile }], { onConflict: ['user_id'] })
+    .select('user_id');
+  if (error) throw new Error(`saveCareerProfile failed: ${error.message || JSON.stringify(error)}`);
+  if (!data || data.length === 0) {
+    throw new Error(`saveCareerProfile saved nothing for user ${user_id}`);
+  }
+  return data;
+}
+
 // getCvData (ALIAS: for handler expecting this name)
 export async function getCvData(user_id) {
   const { data, error } = await supabase

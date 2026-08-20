@@ -13,11 +13,17 @@
 // Rendered both inside onboarding (MasterFlagFixer) and on the user page after
 // onboarding, so the record can be topped up at any time.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { logGemini } from '../utils/log-gemini.js';
 
-export default function AddInfoPanel({ onUpdated }) {
+// `seed` is a starting draft the page hands in — today, the capabilities the
+// analysis reported as missing that the user says they DO have. It is a draft on
+// purpose: the user finishes the sentence in their own words, so what reaches
+// the record is the evidence, not a bare keyword the model would have to invent
+// a story around.
+export default function AddInfoPanel({ onUpdated, seed = '' }) {
   const [text, setText] = useState('');
+  useEffect(() => { if (seed) setText(seed); }, [seed]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [questions, setQuestions] = useState([]);   // strings the AI needs answered

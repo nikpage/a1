@@ -17,6 +17,7 @@ import * as Sentry from '@sentry/node';
 import { analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
 import { withOlderApplicant } from '../../prompts/scenarios.js';
 import { saveGeneratedDoc, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
+import { resolveCareerProfile } from '../../utils/career-profile.js';
 import { runWithAiContext } from '../../utils/ai-meter.js';
 import { verifyToken } from '../../lib/auth.js';
 import { logger } from '../../lib/logger.js';
@@ -171,10 +172,19 @@ export const handler = async (event) => {
       return { statusCode: 202 };
     }
 
+    // THE CAREER PROFILE — the job-agnostic half, built ONCE per record.
+    // Arc, parallel evidence, transferable skills, base scenario, standing
+    // risks and their framing, proven keywords: none of it changes when the ad
+    // changes, so it is built when the record's fingerprint moves and read from
+    // the column every other time. The per-job pass is handed it as settled, so
+    // an application pays for the AD, not for re-deriving the person.
+    const { profile: careerProfile, usages: profileUsages } =
+      await resolveCareerProfile(user_id, master, analysisCv);
+
     let content;
-    const analysisUsages = [];
+    const analysisUsages = [...profileUsages];
     try {
-      const result = await analyzeCvJob(analysisCv, jobText, file_name || 'cv.pdf');
+      const result = await analyzeCvJob(analysisCv, jobText, file_name || 'cv.pdf', null, careerProfile);
       content = result?.output;
       analysisUsages.push(...(result?.gemini_usages || [result?.gemini_usage]).filter(Boolean));
     } catch (e) {

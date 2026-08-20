@@ -95,7 +95,14 @@ const ALL = { ...BASE_SCENARIOS, ...JOB_SCENARIOS };
 // The bullet list of selectable scenarios, gated by whether a job ad exists.
 // Mirrors the old inline "STRICT SCENARIO LIST" but sourced from one place and
 // extended with the two missing senior cases.
-export function scenarioList(hasJobText) {
+//
+// `settledBase` is the career-profile case: the base scenario was already
+// decided once from this record, so the per-job pass is shown ONLY the
+// job-relative ones. It is not asked to re-read a thirty-year history to
+// rediscover that the person is an independent consultant — that is the
+// duplication the profile exists to remove.
+export function scenarioList(hasJobText, settledBase = false) {
+  if (hasJobText && settledBase) return Object.keys(JOB_SCENARIOS).map((n) => `- ${n}`).join('\n');
   const names = hasJobText ? Object.keys(ALL) : Object.keys(BASE_SCENARIOS);
   return names.map((n) => `- ${n}`).join('\n');
 }
@@ -103,8 +110,8 @@ export function scenarioList(hasJobText) {
 // Handling guidance for ALL selectable scenarios — given to the ANALYSIS so the
 // scenario it picks actually shapes positioning_strategy and generation_framework
 // (not just a tag). Gated the same way as the list.
-export function scenarioHandling(hasJobText) {
-  const set = hasJobText ? ALL : BASE_SCENARIOS;
+export function scenarioHandling(hasJobText, settledBase = false) {
+  const set = hasJobText ? (settledBase ? JOB_SCENARIOS : ALL) : BASE_SCENARIOS;
   return Object.entries(set)
     .map(([name, s]) => `- ${name}: ${s.handling}`)
     .join('\n');

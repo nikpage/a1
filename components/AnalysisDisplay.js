@@ -1,5 +1,5 @@
 // components/AnalysisDisplay.js
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 // A value is "empty" if it is null/undefined, a placeholder sentinel, or an
@@ -24,6 +24,61 @@ function display(v) {
 function keywordTerms(v) {
   if (!Array.isArray(v)) return v;
   return v.map((e) => (e && typeof e === 'object' ? e.term : e));
+}
+
+// THE GAPS ARE NOT A VERDICT — they are a question.
+//
+// ats_keywords_missing is what the ad asked for and the RECORD could not
+// evidence. Some of it the person genuinely does not have; some of it they have
+// and their CV never said. Printing it as a flat list left them nowhere to go
+// with the second kind. Each term is selectable, and the selected ones are
+// handed to the "Add information" box as a draft the person finishes in their
+// own words — so the claim and its evidence enter the master together, the
+// record's fingerprint moves, and the career profile rebuilds around it.
+function GapClaims({ label, terms, onClaim, t }) {
+  const list = Array.isArray(terms)
+    ? terms.filter((x) => !isEmpty(x)).map(String)
+    : String(terms || '').split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+  const [picked, setPicked] = useState([]);
+  if (!list.length) return null;
+
+  const toggle = (term) =>
+    setPicked((p) => (p.includes(term) ? p.filter((x) => x !== term) : [...p, term]));
+
+  return (
+    <div>
+      <strong>{label}</strong>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', margin: '0.375rem 0' }}>
+        {list.map((term) => (
+          <button
+            key={term}
+            type="button"
+            onClick={() => toggle(term)}
+            style={{
+              borderRadius: '9999px',
+              border: `1px solid ${picked.includes(term) ? '#1d4ed8' : '#d1d5db'}`,
+              background: picked.includes(term) ? '#dbeafe' : '#fff',
+              color: picked.includes(term) ? '#1e3a8a' : '#374151',
+              padding: '0.125rem 0.625rem',
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+            }}
+          >
+            {term}
+          </button>
+        ))}
+      </div>
+      {picked.length > 0 && (
+        <button
+          type="button"
+          onClick={() => { onClaim(picked); setPicked([]); }}
+          style={{ fontSize: '0.8125rem', color: '#1d4ed8', textDecoration: 'underline', cursor: 'pointer' }}
+        >
+          {t('claimGapsAction', 'I do have these — add them to my record')}
+        </button>
+      )}
+    </div>
+  );
 }
 
 // A labelled field that renders nothing when its value is empty.
@@ -52,7 +107,7 @@ function ListField({ label, items, style }) {
   );
 }
 
-export default function AnalysisDisplay({ analysis }) {
+export default function AnalysisDisplay({ analysis, onClaimGaps = null }) {
   const { t } = useTranslation('analysisDisplay');
   if (!analysis) return null;
 
@@ -164,7 +219,16 @@ export default function AnalysisDisplay({ analysis }) {
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('cvAssessment')}</h3>
                 <Field label={t('atsOptimization')} value={keywordTerms(a.ats_keywords_present)} />
-                <Field label={t('atsGaps')} value={a.ats_keywords_missing} />
+                {onClaimGaps ? (
+                  <GapClaims
+                    label={t('atsGaps')}
+                    terms={a.ats_keywords_missing}
+                    onClaim={onClaimGaps}
+                    t={t}
+                  />
+                ) : (
+                  <Field label={t('atsGaps')} value={a.ats_keywords_missing} />
+                )}
               </div>
               )}
               <ListField label={t('redFlags')} items={a.red_flags} />

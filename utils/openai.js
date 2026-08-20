@@ -3,6 +3,8 @@
 import axios from 'axios'
 import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
+import { buildCareerProfilePrompt } from '../prompts/career-profile.js';
+import { timelineBlock } from './master-timeline.js';
 import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
@@ -259,11 +261,34 @@ export async function augmentMaster(master, text) {
 // visitors who no longer exist. Both are gone (2026-08-16) and the whole schema
 // comes back in one call. `teaser` is accepted and ignored so older callers do
 // not break.
-export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', teaser = null) {
+// THE CAREER PROFILE — the job-agnostic half of the analysis, built ONCE per
+// master record and reused by every later application. See
+// prompts/career-profile.js for why it exists: none of it changes when the ad
+// changes, so re-deriving it per job burned money to print the same red flags.
+//
+// Keyed by recordFingerprint(master) in the caller: rebuild only on mismatch.
+// Every "present" keyword is proven against the record here, deterministically,
+// exactly as analyzeCvJob does it — an unproven quote is not evidence.
+export async function buildCareerProfile(cvText, master = null) {
+  const messages = buildCareerProfilePrompt(cvText, master);
+  const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium', label: 'career profile' });
+  const gemini_usage = geminiUsage('career profile', data, GEMINI_ANALYSIS_MODEL);
+
+  const parsed = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || ''));
+  const { proven } = splitProvenKeywords(parsed.proven_keywords, cvText);
+  parsed.proven_keywords = proven;
+  // The timeline is COUNTED IN CODE (utils/master-timeline.js) and stored with
+  // the profile, so the per-job pass gets the same authoritative numbers without
+  // recomputing anything or re-reading the record for them.
+  if (master) parsed.timeline = timelineBlock(master);
+  return { profile: parsed, gemini_usage };
+}
+
+export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', teaser = null, careerProfile = null) {
   // DO NOT REMOVE THIS LINE OR MOVE IT
   const hasJobText = typeof jobText === 'string' && jobText.trim().length > 20;
 
-  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, null);
+  const messages = buildAnalysisPrompt(cvText, jobText, hasJobText, null, 'blueprint', new Date(), careerProfile);
 
   const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium', label: 'analyze CV+job' });
 
@@ -292,6 +317,41 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
     // whose quote the record does not carry is not evidence, so it leaves
     // ats_keywords_present — which bars it from skills_to_highlight — and joins
     // ats_keywords_missing, which is the deny-list checks 24/26 enforce.
+    // THE SETTLED HALF IS COPIED ON, NOT ASKED FOR.
+    //
+    // With a career profile present the prompt no longer requests the arc, the
+    // parallel experience, the transferable skills, the base scenario or the
+    // proof-quoted keyword inventory — the model would only re-derive what was
+    // already decided from this same record. Everything downstream still reads
+    // those exact fields (prompts/analysis-brief.js, cv-generator.js,
+    // cv-validate.js), so they are restored here, from the profile, before the
+    // record leaves this function. The shape a caller receives is identical
+    // either way.
+    if (parsed?.analysis && careerProfile) {
+      const a = parsed.analysis;
+      a.career_arc = careerProfile.career_arc || '';
+      a.parallel_experience = careerProfile.parallel_experience || '';
+      a.transferable_skills = careerProfile.transferable_skills || '';
+      const settled = Array.isArray(careerProfile.base_scenario_tags) ? careerProfile.base_scenario_tags : [];
+      const jobRelative = Array.isArray(a.scenario_tags) ? a.scenario_tags.filter(Boolean) : [];
+      // Base first: it is the read a recruiter makes before the ad exists. The
+      // Layer 4 cap of two is applied downstream, as it always was.
+      a.scenario_tags = [...new Set([...settled, ...jobRelative])];
+      // The model returned TERMS chosen from the proven list; the proof quotes
+      // stay in the profile, already checked against the record when it was
+      // built. Rejoin them so ats_keywords_present keeps its { term, proof }
+      // shape — a term with no match in the proven list is not evidence and is
+      // dropped, which is exactly what splitProvenKeywords would have done.
+      const provenList = Array.isArray(careerProfile.proven_keywords) ? careerProfile.proven_keywords : [];
+      const chosen = Array.isArray(a.keywords_for_this_job) ? a.keywords_for_this_job : [];
+      const byTerm = new Map(provenList.map((k) => [String(k?.term || k).toLowerCase(), k]));
+      const picked = chosen
+        .map((t) => byTerm.get(String(t?.term || t).toLowerCase()))
+        .filter(Boolean);
+      // No ad, or the model picked nothing: the whole proven inventory stands.
+      a.ats_keywords_present = picked.length ? picked : provenList;
+      delete a.keywords_for_this_job;
+    }
     if (parsed?.analysis) {
       const { proven, unproven } = splitProvenKeywords(parsed.analysis.ats_keywords_present, cvText);
       parsed.analysis.ats_keywords_present = proven;

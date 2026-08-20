@@ -17,6 +17,7 @@ import { getCV, getMasterCv, saveMasterCv } from '../../utils/database';
 import { withAiContext } from '../../utils/ai-meter';
 import { augmentMaster, buildOrMergeMaster } from '../../utils/openai';
 import { computeMasterIssues } from '../../utils/master-issues';
+import { refreshCareerProfile } from '../../utils/career-profile';
 import { mergeAdditions } from '../../utils/master-schema';
 import { logger } from '../../lib/logger';
 import { Redis } from '@upstash/redis';
@@ -117,6 +118,15 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Could not save your record' });
     }
 
+    // The record just changed, so the career profile that describes it is stale.
+    // Refresh it HERE rather than leaving it for the next job ad: the person
+    // added this information so their next application would use it, and making
+    // that application pay the rebuild is the delay they would actually feel.
+    // resolveCareerProfile never throws — a failed refresh leaves the stored
+    // profile in place with the old fingerprint, so the next analysis rebuilds
+    // it exactly as it would have anyway.
+    const refreshed = await refreshCareerProfile(user_id, merged);
+
     // Recompute the open questions against the UPDATED master, exactly as
     // resolve-flag does — added information can settle an existing question or
     // raise one (a new role overlapping the person's own practice).
@@ -126,7 +136,7 @@ async function handler(req, res) {
       ok: true,
       master: merged,
       flags,
-      _gemini_usage: [...buildUsages, ...result.usages],
+      _gemini_usage: [...buildUsages, ...result.usages, ...refreshed.usages],
     });
   } finally {
     if (lockHeld) {

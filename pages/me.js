@@ -85,6 +85,10 @@ function analysisHeadline(analysis) {
 export default function MePage({ user_id, generationsRemaining, docDownloadsRemaining }) {
   const [analysis, setAnalysis] = useState('');
   const [flags, setFlags] = useState([]);
+  // The missing-keyword chips in the analysis hand a draft to the add-info box
+  // and open it; the counter is what carries "open now" across the page.
+  const [addSeed, setAddSeed] = useState('');
+  const [addOpen, setAddOpen] = useState(0);
   const [experience, setExperience] = useState([]);
   const [master, setMaster] = useState(null);
   const [voiceProfile, setVoiceProfile] = useState(null);
@@ -324,10 +328,12 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
               )}
 
               <CollapsibleSection
+                id="record-panel"
                 label="Add information"
                 hint="something the CV never mentioned"
+                openSignal={addOpen}
               >
-                <AddInfoPanel onUpdated={(updated, newFlags) => {
+                <AddInfoPanel seed={addSeed} onUpdated={(updated, newFlags) => {
                   if (updated) {
                     setMaster(updated);
                     if (updated) setExperience(roles(updated));
@@ -382,7 +388,18 @@ export default function MePage({ user_id, generationsRemaining, docDownloadsRema
                     </div>
                   )}
                   <div className="max-h-[28rem] overflow-y-auto pr-2 text-sm leading-relaxed text-gray-800">
-                    <AnalysisDisplay analysis={analysis} />
+                    <AnalysisDisplay
+                      analysis={analysis}
+                      // A gap the person says they DO have is not a gap in them,
+                      // it is a gap in the record. Send it to the add-info box as
+                      // a draft they finish in their own words — the master takes
+                      // evidence, never a bare keyword.
+                      onClaimGaps={(terms) => {
+                        setAddSeed(`I do have experience with ${terms.join(', ')}. `);
+                        setAddOpen((n) => n + 1);
+                        document.getElementById('record-panel')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    />
                   </div>
                 </>
               ) : (

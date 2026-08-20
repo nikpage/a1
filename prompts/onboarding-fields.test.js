@@ -1,7 +1,7 @@
 // prompts/onboarding-fields.test.js
 //
 // Proves the onboarding answers (utils/master-flags.js: `clarification`,
-// `merge_note`, `contracts[]`) actually reach and steer the AI prompts, instead
+// `merge_note`, `fractional_engagements[]`) actually reach and steer the AI prompts, instead
 // of sitting inert inside JSON.stringify(master) with no instruction attached.
 
 import { describe, test, expect } from 'vitest';
@@ -25,7 +25,7 @@ const MASTER_JSON = JSON.stringify({
       dates: '2018 - 2021',
       location: 'Remote',
       merge_note: 'Both engagements delivered concurrently under this consultancy.',
-      contracts: [
+      fractional_engagements: [
         { company: 'Client A', role: 'Interim PM', dates: '2019 - 2020' },
         { company: 'Client B', role: 'Interim PM', dates: '2020 - 2021' },
       ],
@@ -49,7 +49,7 @@ describe('buildAnalysisPrompt — nested engagements are not job-hopping', () =>
   test('delta (teaser-fed) pass states the nesting rule and carries no clarification rule', () => {
     const p = buildAnalysisPrompt(MASTER_JSON, SAMPLE_JOB, true, TEASER)
       .find((m) => m.role === 'system').content;
-    expect(p).toMatch(/contracts\[\]/);
+    expect(p).toMatch(/work_experience\[\]\.fractional_engagements\[\]/);
     expect(p).toMatch(/never count the nested children as job-hopping/i);
     expect(p).not.toMatch(/CANDIDATE'S OWN ANSWER/);
     expect(p).not.toMatch(/carries a clarification/i);
@@ -58,7 +58,7 @@ describe('buildAnalysisPrompt — nested engagements are not job-hopping', () =>
   test('standalone (no-teaser) path carries the same governing instruction (system message is shared)', () => {
     const p = buildAnalysisPrompt(MASTER_JSON, SAMPLE_JOB, true, null)
       .find((m) => m.role === 'system').content;
-    expect(p).toMatch(/contracts\[\]/);
+    expect(p).toMatch(/work_experience\[\]\.fractional_engagements\[\]/);
   });
 
   test('never-fabricate rule still binds (regression guard)', () => {
@@ -88,7 +88,7 @@ describe('buildAnalysisPrompt — nested engagements are not job-hopping', () =>
   });
 });
 
-describe('buildCvPrompt — contracts render nested', () => {
+describe('buildCvPrompt — fractional engagements render nested', () => {
   const analysis = {
     analysis: { scenario_tags: [], red_flags: ['8-month gap 2021'], ats_keywords_present: '', ats_keywords_missing: '' },
     job_match: { positioning_strategy: '' },
@@ -103,15 +103,15 @@ describe('buildCvPrompt — contracts render nested', () => {
     expect(p).not.toMatch(/Clarifications steer selection/);
   });
 
-  test('instructs a merged parent to render as one role with contracts nested beneath, not separate top-level jobs', () => {
+  test('instructs a merged parent to render as one role with engagements nested beneath, not separate top-level jobs', () => {
     const p = buildCvPrompt(MASTER_JSON, analysis, 'professional').find((m) => m.role === 'user').content;
     expect(p).toMatch(/renders? as ONE role/);
     expect(p).toMatch(/never as separate top-level jobs/);
   });
 
-  test('the experience[] source-of-truth rule now explicitly covers contracts[]', () => {
+  test('the work_experience[] source-of-truth rule names the real nested key', () => {
     const p = buildCvPrompt(MASTER_JSON, analysis, 'professional').find((m) => m.role === 'user').content;
-    expect(p).toMatch(/definitive source for all employment[\s\S]*contracts\[\]/);
+    expect(p).toMatch(/definitive source for all employment[\s\S]*fractional_engagements\[\]/);
   });
 
   test('existing "red flags handled, not advertised" rule is still present (guard against accidental deletion)', () => {

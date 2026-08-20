@@ -9,19 +9,25 @@
 // fetches on mount (the AI cost ledger) then costs nothing until it is asked
 // for, and a closed section cannot occupy the screen with work nobody is doing.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function CollapsibleSection({
+  id,
   label,
   hint,
   badge,
   defaultOpen = false,
+  // A counter the page bumps to open this section from somewhere else — the
+  // missing-keyword chips in the analysis send the user here, and a panel they
+  // then have to find and expand themselves is a dead end.
+  openSignal = 0,
   children,
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
+    <div id={id} className="border border-gray-200 rounded-lg bg-white shadow-sm">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full flex-wrap items-baseline gap-3 px-4 py-3 text-left"

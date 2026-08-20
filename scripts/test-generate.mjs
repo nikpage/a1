@@ -82,6 +82,7 @@ import {
 } from '../utils/openai.js';
 import { withOlderApplicant } from '../prompts/scenarios.js';
 import { getMasterCv, getVoiceProfile, getUserByEmail } from '../utils/database.js';
+import { resolveCareerProfile } from '../utils/career-profile.js';
 import { enterAiContext, setAiContext } from '../utils/ai-meter.js';
 import { getUserById } from '../utils/generation-utils.js';
 import { composeTweak } from '../utils/steering.js';
@@ -94,7 +95,7 @@ const VALID_TONES = ['formal', 'friendly', 'enthusiastic', 'cocky'];
 
 // ---- tiny arg parser ---------------------------------------------------------
 function parseArgs(argv) {
-  const opts = { tones: 'formal', type: 'both', files: true, language: 'auto', voice: 'on' };
+  const opts = { tones: 'formal', type: 'both', files: true, language: 'auto', voice: 'on', profile: 'on' };
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -164,6 +165,7 @@ async function main() {
   if (!['cv', 'cover', 'both'].includes(opts.type)) { console.error(`✗ --type must be cv | cover | both`); process.exit(1); }
   if (!GENERATION_LANGUAGES[opts.language]) { console.error(`✗ --language must be one of: ${Object.keys(GENERATION_LANGUAGES).join(', ')}`); process.exit(1); }
   if (!['on', 'off'].includes(opts.voice)) { console.error(`✗ --voice must be on | off`); process.exit(1); }
+  if (!['on', 'off'].includes(opts.profile)) { console.error(`✗ --profile must be on | off`); process.exit(1); }
 
   const tweak = composeTweak({
     emphasise: opts.emphasise || '',
@@ -180,9 +182,11 @@ async function main() {
   let voiceProfile = null;
   let core = opts.core || '';
   let masterUsages = [];
+  let resolvedUserId = null; // set in --user mode; the career profile is per-user
 
   if (opts.user) {
     const user_id = await resolveUserId(opts.user);
+    resolvedUserId = user_id;
     console.log(`\nUser: ${opts.user} -> user_id ${user_id}`);
     // Attribute this run's calls now that the real user is known. An experiment
     // costs the same money a user's run does and belongs in the same ledger.
@@ -260,8 +264,28 @@ async function main() {
 
   // ---- 2. analysis: ONE pass over the master, exactly as the worker runs it --
   console.log('\n═══ ANALYSIS ═══');
+
+  // The career profile, resolved through the SAME door the worker uses
+  // (utils/career-profile.js): reused when the record's fingerprint matches,
+  // rebuilt when it does not. A second run of the same record costs one call
+  // instead of two — which is the whole point of it.
+  let careerProfile = null;
+  if (master && resolvedUserId && opts.profile === 'on') {
+    const before = Date.now();
+    const resolved = await resolveCareerProfile(resolvedUserId, master, generationSource);
+    careerProfile = resolved.profile;
+    if (resolved.rebuilt) {
+      console.log(`  career profile: BUILT (record new or changed, ${Math.round((Date.now() - before) / 1000)}s)`);
+      totalCost += logUsages('career profile', resolved.usages);
+    } else if (careerProfile) {
+      console.log('  career profile: REUSED (record unchanged, no AI call)');
+    } else {
+      console.log('  career profile: NONE (build failed) — analysis derives it itself');
+    }
+  }
+
   console.log('  analysis (master)...');
-  const analysisRes = await analyzeCvJob(generationSource, jobText, path.basename(opts.cv || 'master.json'));
+  const analysisRes = await analyzeCvJob(generationSource, jobText, path.basename(opts.cv || 'master.json'), null, careerProfile);
   const analysis = JSON.parse(analysisRes.output);
   totalCost += logUsages('analysis', analysisRes.gemini_usages || [analysisRes.gemini_usage]);
 

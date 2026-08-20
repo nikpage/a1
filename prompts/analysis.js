@@ -52,7 +52,23 @@ import { currentDateBlock, currentDateReminder } from './current-date.js';
 // prompts/analysis-brief.js: career_arc, parallel_experience,
 // transferable_skills. Do not drop them.
 
-export function buildAnalysisPrompt(cvText, jobText, hasJobText, _legacyTeaser = null, _legacyMode = 'blueprint', now = new Date()) {
+// `careerProfile` is the job-agnostic half, already decided once from this
+// record (prompts/career-profile.js). When it is present this pass DOES NOT
+// re-derive the person: the arc, the parallel evidence, the transferable
+// skills, the base scenario and the standing risks are given to it as settled,
+// and it spends its reading on the ONE thing that changed — the ad.
+const arr = (v) => (Array.isArray(v) ? v : []);
+
+export function buildAnalysisPrompt(cvText, jobText, hasJobText, _legacyTeaser = null, _legacyMode = 'blueprint', now = new Date(), careerProfile = null) {
+  // With a career profile in hand this pass is DELIBERATELY SHORTER: the fields
+  // that describe the person rather than the match — arc, parallel experience,
+  // transferable skills, the base scenario, the proven-keyword inventory with
+  // its verbatim proof quotes — are dropped from the instructions AND from the
+  // schema, and copied onto the result in code (analyzeCvJob). They were being
+  // re-derived, re-reasoned and re-typed on every single application to come
+  // back the same. Output tokens are the expensive half; this is where the
+  // saving is.
+  const hasProfile = Boolean(careerProfile);
   const systemContent = `${currentDateBlock(now)}
 
 You are a top-tier HR strategist and a sharp professional CV writer. You are given a candidate's COMPLETE career record — every role they have ever held, in full, including work that is decades old and work that has nothing to do with the job in question — and, when one is provided, the job ad they are applying for.
@@ -67,10 +83,28 @@ LANGUAGE & FACTS: Detect the record's language and write ALL output in it, even 
 
 REFRAME vs ADD (hard rule — governs every instruction you give the CV writer): RE-EMPHASISE, REORDER, RELABEL and UPGRADE THE WORDING of experience the record already proves; never INSERT experience it does not. Changing which real work leads, reframing a role around a different facet of what was genuinely done, cutting weak material, and replacing weak or under-labelled phrasing with a stronger, higher-impact or more ATS-standard EQUIVALENT for the same thing are all legitimate and encouraged — they operate on content that exists. A word swap is allowed ONLY when the substitute denotes the SAME underlying fact: same scope, seniority, domain and meaning ("coordinated releases" → "led release management" only if they genuinely led it). Concrete facts — employer, location, dates, tools, numbers — are immutable: never replace a real one with a different one because it reads better (a candidate based in Berlin is in Berlin, not London; a city is a fact, not a keyword). Introducing a skill, tool, technology, domain, metric or achievement the record does not evidence — or upgrading a term into something that claims MORE than was actually done — is fabrication, however well it matches the job ad. A career pivot is won by reframing genuine transferable work, never by manufacturing experience in the target domain. Any capability the candidate lacks belongs ONLY in ats_keywords_missing (advice to the user) — it must NEVER become a CV instruction, a positioning claim, or a skill to highlight.
 
-NESTED ENGAGEMENTS (hard rule, wherever the master CV is your source): experience[].contracts[] are real engagements delivered UNDER that parent entry, not separate jobs — the timeline is the parent's; never count the nested children as job-hopping or short tenures. The never-fabricate rule still binds absolutely here: a nested engagement is a fact that already exists, never a licence to invent one.`;
+NESTED ENGAGEMENTS (hard rule, wherever the master CV is your source): work_experience[].fractional_engagements[] are real engagements delivered UNDER that parent entry, not separate jobs — the timeline is the parent's; never count the nested children as job-hopping or short tenures, and never describe them as short stints, instability or a portfolio of separate jobs. The never-fabricate rule still binds absolutely here: a nested engagement is a fact that already exists, never a licence to invent one.`;
 
   const noJobBlock = !hasJobText ? `NO JOB AD PROVIDED — STANDALONE PASS:
 No job description was given, so there is NO target role, company, location, industry or market to select against. Do NOT invent one — no hypothetical target market, no assumed seniority jump, no keywords for a role the candidate never named. (Locations, industries or tools that appear in the record itself are real facts and may be used; only an invented target is forbidden.) Select and frame for the kind of roles the record ITSELF evidences, and judge conventions by the candidate's own country (cv_data.Country). Every job-relative field stays neutral: job_data, job_match.* and job_extraction stay "n/a"; analysis.ats_keywords_missing MUST be an empty array (you cannot be "missing" keywords with no job to compare against).
+
+` : '';
+
+  // The settled half, rendered as the few things this pass actually needs. Not
+  // JSON.stringify(profile): the proof quotes were already checked against the
+  // record when the profile was built, so sending them again buys nothing and
+  // costs the longest strings in the object.
+  const profileBlock = hasProfile ? `SETTLED FACTS ABOUT THIS CANDIDATE — decided ONCE from this same record. They are true, they are final, and they are NOT yours to re-derive, contradict, restate or return to me.
+- Country: ${careerProfile.country || ''}
+- Career arc: ${careerProfile.career_arc || ''}
+- Parallel experience: ${careerProfile.parallel_experience || ''}
+- Transferable skills: ${careerProfile.transferable_skills || ''}
+- Base career scenario (already chosen, keep it): ${arr(careerProfile.base_scenario_tags).join(', ') || 'none'}
+- Standing risks, with the framing already written for each:
+${arr(careerProfile.standing_risks).map((r) => `  - ${r?.risk} -> ${r?.framing}`).join('\n') || '  - none'}
+- Capabilities already PROVEN against the record (every one is safe to use; the proof was checked in code): ${arr(careerProfile.proven_keywords).map((k) => (typeof k === 'string' ? k : k?.term)).filter(Boolean).join('; ') || 'none'}
+${careerProfile.timeline ? `\n${careerProfile.timeline}\n` : ''}
+Your ONLY job now is the AD. Do not re-read this life to reach these conclusions again — they are above. Spend everything you have on which of this evidence THIS job wants, and how to frame it for THIS ad's register.
 
 ` : '';
 
@@ -82,26 +116,27 @@ No job description was given, so there is NO target role, company, location, ind
 FRAMEWORK:
 1. Detect the record's language and use it consistently for all output.
 2. Identify the most recent country from the record for 'cv_data.Country'.
-3. Classify the candidate's career scenario (choose 1-2 MAX from the strict list below). This is the FIRST decision and it governs the rest: it is how a recruiter will read this life before they read a single achievement.
+3. ${hasProfile ? 'The BASE scenario is already settled below. Add a job-relative scenario from the list below ONLY if this ad makes one genuinely apply; otherwise return an empty array and the settled one stands.' : "Classify the candidate's career scenario (choose 1-2 MAX from the strict list below). This is the FIRST decision and it governs the rest: it is how a recruiter will read this life before they read a single achievement."}
 4. SELECT. Decide which roles carry this application, which are condensed to a line, and which fall away entirely. The record holds work the ad has no use for; leaving it out is the job, not a failure. Relevance beats recency — a nine-year-old role that answers the ad directly outranks last year's that does not.
 5. FRAME. Say how the selected work is positioned for this ad, in the ad's own register, following the scenario handling.
 6. Return VALID JSON only — no comments, no trailing commas, no markdown.
 
-STRICT SCENARIO LIST (Choose 1-2):
-${scenarioList(hasJobText)}
+STRICT SCENARIO LIST (${hasProfile ? 'job-relative only — the base is settled; choose 0-1' : 'Choose 1-2'}):
+${scenarioList(hasJobText, hasProfile)}
 
 SCENARIO HANDLING — once you choose the scenario(s), your positioning_strategy and generation_framework MUST follow the matching handling rule(s) below. These govern how the candidate is framed; they reframe/reorder/cut REAL content only and never license inventing experience:
-${scenarioHandling(hasJobText)}
+${scenarioHandling(hasJobText, hasProfile)}
 
-${noJobBlock}FIELD INSTRUCTIONS (apply when filling the schema below):
+${noJobBlock}${profileBlock}FIELD INSTRUCTIONS (apply when filling the schema below):
 ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the ad — quote exact phrasing where possible. Use empty arrays where the ad is silent. NEVER invent, infer, or embellish.
 ` : ''}- analysis.overall_score / analysis.ats_score: each "0-10", honest. overall_score is how well this CANDIDATE fits this job; ats_score is how well the record's evidence covers the ad's stated requirements. Neither judges any existing document.
-- analysis.career_arc: 1-3 sentences telling the trajectory in plain factual terms — what they did, in what order. No hype.
+${hasProfile ? '' : `- analysis.career_arc: 1-3 sentences telling the trajectory in plain factual terms — what they did, in what order. No hype.
 - analysis.parallel_experience: side facts from the record only (speaking, teaching, certifications, advisory), stated plainly.
 - analysis.transferable_skills: skills from past roles that support the target direction; quote the exact phrases from the record that prove them.
-- analysis.red_flags: ARRAY of specific concerns a recruiter would raise about this candidate for THIS job (e.g. "14-month gap 2021-2022", "four jobs in three years", "overqualified for a mid-level role"), each short and concrete. These exist so the documents can HANDLE them — the CV neutralises by framing and selection, the letter may answer at most one. Empty array if genuinely none.
-- analysis.ats_keywords_present: ARRAY of { "term": the keyword, "proof": the exact phrase from the record that proves it }. A keyword is PRESENT if the record demonstrates the concept — not just the exact phrase ("managed a team of 8" satisfies "people management"; "reduced churn by 30%" satisfies "retention"). Be generous and thorough: surface every term the candidate has genuinely earned but under-labelled. The PROOF is not optional and is not your own wording: copy it VERBATIM from the record, word for word. It is checked against the record afterwards, and a term whose proof is not there is dropped and reported to the candidate as a gap instead. These are safe to put on the CV.
-- analysis.ats_keywords_missing: ${hasJobText ? `important job-ad terms for which the record shows NO evidence at all (a named tool/language/certification the candidate never demonstrates). ADVICE TO THE CANDIDATE ONLY, shown on screen — they are NEVER facts about the candidate, NEVER feed skills_to_highlight, and NEVER reach the generated documents. Empty if none.` : `MUST be an empty array. With no job ad there is no target to be "missing" keywords against.`}
+`}- analysis.red_flags: ARRAY of specific concerns a recruiter would raise about this candidate for THIS job (e.g. "14-month gap 2021-2022", "four jobs in three years", "overqualified for a mid-level role"), each short and concrete. ${hasProfile ? 'Any flag about tenure, gaps, hopping or the number of employers must come from the computed TIMELINE above — you do not count the record yourself, and an engagement delivered under a position is never a job. ' : ''}These exist so the documents can HANDLE them — the CV neutralises by framing and selection, the letter may answer at most one. Empty array if genuinely none.
+${hasProfile ? `- analysis.keywords_for_this_job: ARRAY of TERMS ONLY, copied verbatim from the settled PROVEN list above — the ones THIS ad actually wants, most relevant first. No proof quotes: they were already checked in code. Never add a term that is not on that list; if the ad wants something the list does not carry, it belongs in ats_keywords_missing.
+` : `- analysis.ats_keywords_present: ARRAY of { "term": the keyword, "proof": the exact phrase from the record that proves it }. A keyword is PRESENT if the record demonstrates the concept — not just the exact phrase ("managed a team of 8" satisfies "people management"; "reduced churn by 30%" satisfies "retention"). Be generous and thorough: surface every term the candidate has genuinely earned but under-labelled. The PROOF is not optional and is not your own wording: copy it VERBATIM from the record, word for word. It is checked against the record afterwards, and a term whose proof is not there is dropped and reported to the candidate as a gap instead. These are safe to put on the CV.
+`}- analysis.ats_keywords_missing: ${hasJobText ? `important job-ad terms for which the record shows NO evidence at all (a named tool/language/certification the candidate never demonstrates). ADVICE TO THE CANDIDATE ONLY, shown on screen — they are NEVER facts about the candidate, NEVER feed skills_to_highlight, and NEVER reach the generated documents. Empty if none.` : `MUST be an empty array. With no job ad there is no target to be "missing" keywords against.`}
 - job_match.career_scenario: the chosen scenario(s), or "n/a" with no job ad.
 - job_match.positioning_strategy: 2-3 sentences on how to position this candidate to win — which real experience is foregrounded and how it is framed for this ad and its register. Never claim what the record does not prove; phrase it as what to bring forward from the real history, not as new capabilities to assert.
 - generation_framework.cv_blueprint.target_length_pages: e.g. "1 page" or "2 pages" based on seniority.
@@ -125,10 +160,10 @@ JSON OUTPUT SCHEMA:
     "ats_score": "0-10",
     "scenario_tags": [],
     "red_flags": [],
-    "career_arc": "",
+${hasProfile ? '    "keywords_for_this_job": [],' : `    "career_arc": "",
     "parallel_experience": "",
     "transferable_skills": "",
-    "ats_keywords_present": [{ "term": "", "proof": "" }],
+    "ats_keywords_present": [{ "term": "", "proof": "" }],`}
     "ats_keywords_missing": ""
   },
   "job_match": {
