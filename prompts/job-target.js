@@ -66,6 +66,34 @@ ${raw}
 
 - It is the TARGET, never evidence about the candidate: nothing here is a fact about them until the master CV proves it.
 - Answer its register as well as its requirements. A warm, informal, first-person ad is answered in kind; a terse corporate one is answered plainly. Never borrow its phrasing to cover experience the record does not hold.
+${stanceBlock(job.stance)}`;
+}
+
+// The company's STANCE — its own prose about what it is and how it thinks —
+// pulled verbatim by the extraction (prompts/analysis.js, job_extraction.stance)
+// and put in front of the writer with the three rules that govern its use.
+//
+// Why it is lifted out of an ad the writer can already read in full: the stance
+// sentences are the raw material for COMMON GROUND, which is what the letter is
+// about (CV_RULES.md, "What the letter is ABOUT"), and they are also the
+// sentences most likely to be echoed straight back. Naming them makes both the
+// use and the prohibition explicit instead of hoping the writer infers each.
+function stanceBlock(stance) {
+  const lines = (Array.isArray(stance) ? stance : [])
+    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+    .filter(Boolean);
+  if (!lines.length) return '';
+
+  return `
+## What this company says about itself
+These are the employer's own words about what they are, what they believe, and what they are reaching for. They are the raw material for the one thing this letter is ABOUT: what the candidate and this company have in common.
+
+${lines.map((l) => `- "${l}"`).join('\n')}
+
+Three rules govern what you may do with them, and they are absolute:
+1. **Never echo their phrasing.** Understood, never returned. If they say "simple, automated investing", the words "simple" and "automated" do not appear in your letter. Quoting a company's own copy back at them is the clearest proof that nobody thought about the job.
+2. **Never claim their domain.** A licence, regulation, technology or market named here tells you what kind of company this is. It is NOT something to write about. Where the candidate's record does not evidence it, discussing it makes them an authority on something they have never touched — and lecturing a reader about their own field loses them faster than any weakness.
+3. **Show the equivalent from the candidate's own record.** Where a stance is worth answering, name what the candidate DID that shows they work that way — their fact, in their words. Common ground is demonstrated, never asserted, and never claimed in the abstract ("I share your commitment to…").
 `;
 }
 

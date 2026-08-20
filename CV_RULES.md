@@ -106,6 +106,49 @@ won, and absent from this pipeline's output):
    under short labelled themes is clearer than prose and is permitted. Flowing
    paragraphs are a default, never a requirement.
 
+## What the letter is ABOUT (owner spec, 2026-08-20)
+
+Set by Nik and binding. It answers a question the clauses below do not: given
+that the letter persuades, what is it persuading *with*?
+
+**Its subject is what the candidate and the company have in common** — a shared
+way of working, argued in language that persuades and reaches, where it can, for
+inspiring. Not a narration of the CV. A letter that walks the reader through the
+candidate's roles in prose has no reason to exist, because the CV is attached and
+does that better. And **if necessary, and only if necessary, it handles one red
+flag** (C2 governs how).
+
+**The ad has a stance, and it is read separately from its requirements.** An ad's
+prose states what the company is, what it believes and what it is reaching for —
+the sentences built on *we're building*, *we believe*, *our goal is*, *we're
+looking for* — and it marks what it cares about by repeating a word (Invity's ad
+says "simple" twice) and by bolding. That stance is the raw material for common
+ground. The requirements are a different thing and come from the labelled
+sections ("What You'll Do", "About You", however the ad titles them); the
+remaining prose is read for context.
+
+**Three rules bind what the writer may do with the stance, and they are why the
+extraction is separate from the writing:**
+
+1. **Never echo their phrasing.** Their stance is understood, never returned.
+   "Simple, automated investing" does not reappear as "simple and automated" in
+   the letter. This is the existing no-borrowed-copy rule (point 2 above),
+   applied to the stance lines specifically, where the temptation is strongest.
+2. **Never claim their domain.** A licence, a regulation, a technology or a
+   market the candidate's record does not evidence is context that tells the
+   writer what kind of company this is — never material to write about. Invity's
+   MiCA licence is the worked example: it is bolded, it describes where they are
+   today rather than the job's future, and a letter that discusses it makes the
+   candidate an authority on something they have never touched. Lecturing a
+   reader about their own field is the fastest way to lose them. The existing
+   rule that the ad is not a source for the candidate's background (Layer 6,
+   check 23) is the same principle; this states it for stance as well as
+   industry labels.
+3. **Show the equivalent from the candidate's own record.** For a stance line
+   worth answering, the move is to name what the candidate did that shows they
+   work that way — their fact, their words. Common ground is demonstrated, not
+   asserted.
+
 ## The cover letter's contract (four clauses, enforced in code)
 
 Everything else about the letter is judgement. These four are not. They are the

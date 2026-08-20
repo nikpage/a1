@@ -129,6 +129,8 @@ ${scenarioHandling(hasJobText, hasProfile)}
 
 ${noJobBlock}${profileBlock}FIELD INSTRUCTIONS (apply when filling the schema below):
 ${hasJobText ? `- job_extraction: Extract ONLY what is literally stated in the ad — quote exact phrasing where possible. Use empty arrays where the ad is silent. NEVER invent, infer, or embellish.
+- job_extraction.must_have_requirements / nice_to_have / responsibilities: take these from the ad's LABELLED sections ("What You'll Do", "About You", "Requirements", "Nice to have", however this ad titles them). Requirements are what the ad asks the person to be or do.
+- job_extraction.stance: 3-6 sentences quoted VERBATIM from the ad's PROSE — not from its bullet lists — in which the company says what it is, what it believes, what it is reaching for, or what it wants from this hire. They are usually built on "we're building", "we believe", "our goal is", "we're looking for", "we work", or a first-person description of the team. Include a sentence carrying a word the ad repeats or bolds; that repetition is the company telling you what it cares about. This is NOT a requirements list and never duplicates one: requirements say what the person must do, stance says how this company thinks. Copy each sentence exactly, no paraphrase, no commentary. Empty array if the ad is pure bullet points with no such prose.
 ` : ''}- analysis.overall_score / analysis.ats_score: each "0-10", honest. overall_score is how well this CANDIDATE fits this job; ats_score is how well the record's evidence covers the ad's stated requirements. Neither judges any existing document.
 ${hasProfile ? '' : `- analysis.career_arc: 1-3 sentences telling the trajectory in plain factual terms — what they did, in what order. No hype.
 - analysis.parallel_experience: side facts from the record only (speaking, teaching, certifications, advisory), stated plainly.
@@ -195,7 +197,8 @@ ${hasProfile ? '    "keywords_for_this_job": [],' : `    "career_arc": "",
     "must_have_requirements": [],
     "nice_to_have": [],
     "responsibilities": [],
-    "language_requirements": []
+    "language_requirements": [],
+    "stance": []
   }` : ''}
 }
 

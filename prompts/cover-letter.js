@@ -1,35 +1,42 @@
 // prompts/cover-letter.js
 //
-// THE WRITING PROMPT FOR THE COVER LETTER. IT IS SHORT ON PURPOSE.
+// THE COVER LETTER'S PROMPT. ONE FILE, READ IT TOP TO BOTTOM.
 //
-// Twice now this file has grown a list of rules describing good writing, and
-// twice the letter came back PERFORMING the rules instead of persuading. The
-// 51,721-character rule stack (removed 2026-08-15) lost to a four-line prompt
-// Nik wrote himself. The three "what actually persuades" bullets added on
-// 2026-08-19 — open on their problem, one sentence of seven words or fewer, no
-// stock close — produced the Sudolabs letter: an opening that read the ad back
-// to its author, "I manage outcomes, not people." as an orphan paragraph, and
-// no close at all. Each rule was obeyed. The letter was worse.
+// History, so it is not repeated: this prompt has twice been a rule stack
+// (51,721 characters at its peak, removed 2026-08-15) and twice the letter came
+// back performing the rules instead of persuading. The reaction was to strip it
+// to four lines and compose everything else from eight other prompt modules —
+// which produced a 19,041-character prompt that nobody, human or model, could
+// read as a single document. On 2026-08-20 Nik read four consecutive letters off
+// that path and called them the blandest AI writing he had seen. He was right:
+// they answered nothing the ad asked.
 //
-// So the prompt is the four things that are actually inputs, and nothing else:
-//   1. the candidate's career record (the master CV)
-//   2. the job ad, verbatim, in the employer's own words
-//   3. the candidate's VOICE — their profile and their own writing
-//   4. their steering, the output language, and the letter's furniture
+// The diagnosis was not a missing rule. The writer was handed the ad and the
+// record and NOTHING THAT CONNECTS THEM, so it wrote about the field in general.
+// So this file now states, in one place and in order:
 //
-// Truth is enforced DOWNSTREAM, where it works: the verify pass and
-// utils/cv-validate.js. Stock phrasing is caught by the banned-phrase list and
-// repaired over its own spans. Shape is MEASURED but never fed back to the
-// writer — a rhythm target handed to a model becomes a rhythm target hit.
+//   1. the job, in the employer's own words
+//   2. WHAT THAT AD SAYS IT NEEDS, as a list the letter must work through
+//   3. the candidate's record — the only source of fact
+//   4. their voice, their steering, the language, the furniture
 //
-// **Do not add a rule here.** Not a persuasion tip, not a shape target, not a
-// negative example. If a letter comes back bad, the fix is better INPUT — a
-// richer record, the real ad, a real voice profile — or a downstream check.
-// This file's entire history says so.
+// The register is not set by a tone blurb any more. "Professional and reserved,
+// businesslike" was the one instruction in the old prompt that literally asked
+// for the prose Nik rejected, and with a voice profile present it fought the
+// voice block sitting directly beneath it.
+//
+// Truth is enforced DOWNSTREAM where it demonstrably works — verifyGeneratedDoc
+// and utils/cv-validate.js. Banned phrasing is caught in code after generation
+// and repaired over its own spans, so the 2,000-word ban list is no longer read
+// to the writer before it starts: a wall of "never write this" produces cautious,
+// generic prose, which is the exact failure it was meant to prevent.
+//
+// Before changing anything here, run it: scripts/test-generate.mjs against a
+// real record and a real ad, and read the letter. Then log it in
+// COVER_LETTER_LOG.md. A change that was reasoned about and not run is not a
+// change, it is a guess.
 
-import { toneInstructions } from './tone.js';
 import { languageInstruction } from './language.js';
-import { bannedPhraseLine } from './voice.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock, rawAdBlock } from './job-target.js';
 import { salutationName } from './cover-evidence.js';
@@ -41,6 +48,82 @@ import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
 // standalone reviews with no ad at all.
 function adBlock(analysis) {
   return rawAdBlock(analysis) || targetJobBlock(analysis);
+}
+
+// WHAT THE AD SAYS IT NEEDS — the block whose absence caused the 2026-08-20
+// letters. The extraction is already on the analysis record (job_extraction,
+// written by the analysis worker), so this costs no AI call. It is the ad's own
+// asks, listed, so the writer has something specific to answer instead of a
+// 4,000-character ad to free-associate over.
+//
+// It lists the ASKS ONLY. It never pairs them with evidence and never orders
+// them: which asks the letter answers, in what order, and what proves each is
+// the writer's decision, made with the record, the steering and the voice all
+// in hand (CV_RULES.md, Layer 3 — the letter is composed, not executed).
+function asksBlock(analysis) {
+  const job = analysis?.job_extraction || {};
+  const asks = [
+    ...(job.must_have_requirements || []),
+    ...(job.required_skills || []),
+    ...(job.responsibilities || []),
+    ...(job.language_requirements || []),
+    ...(job.nice_to_have || []),
+    ...(job.desired_skills || [])
+  ]
+    .map((a) => (typeof a === 'string' ? a.trim() : ''))
+    .filter(Boolean);
+
+  if (!asks.length) return '';
+
+  const seen = new Set();
+  const lines = asks
+    .filter((a) => {
+      const k = a.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .map((a) => `- ${a}`)
+    .join('\n');
+
+  return `
+# What this employer says it needs
+${lines}
+
+That list is for CHOOSING, not for covering. Work through it before you write, ask what in the record actually answers each, and then pick the TWO OR THREE this employer plainly cares about most and that the record answers best. Those are the letter.
+
+Prove each one with a specific piece of work: what the candidate did, where, and what came of it — the number, the change, the outcome, wherever the record holds one. One proved claim beats six asserted ones, and a letter that touches every item on that list proves nothing about any of them. Leave the rest out entirely.
+
+The rest of the list is not your problem. Where the record does not answer an ask, say nothing about it at all — no hedge, no adjacent skill, no borrowing the employer's own wording to cover the hole. An unanswered ask is honest; a papered-over one is a lie the interview will find.
+
+If the ad asks the applicant for something directly — why this role, why this company, a few words about anything — answer it plainly and in your own terms. Do not answer it with praise of the company.
+`;
+}
+
+// THE OBJECTION. The analysis already works out what a recruiter will hold
+// against this candidate for THIS job (analysis.red_flags) and, until the
+// cover_evidence block was removed on 2026-08-15, the letter was told about it.
+// Since then it has not been, and every letter has written as though the reader
+// had no reservation at all — on the Invity ad the record's loudest problem was
+// "3-5 years wanted, this candidate has thirty" and four consecutive letters
+// never went near it.
+//
+// It is stated as a fact about the reader, not as an instruction to defend.
+// ONE is answered at most, and only where the record itself settles it: two
+// defences read as a defence, and naming a flag the letter cannot improve (age,
+// salary, a bare seniority mismatch with nothing behind it) hands the reader an
+// objection they had not raised.
+function objectionBlock(analysis) {
+  const flags = (analysis?.analysis?.red_flags || analysis?.red_flags || [])
+    .map((f) => (typeof f === 'string' ? f.trim() : ''))
+    .filter(Boolean);
+  if (!flags.length) return '';
+  return `
+# What the reader will hold against this application
+${flags.map((f) => `- ${f}`).join('\n')}
+
+These are real, and the reader reaches them whether or not the letter mentions them. Answer AT MOST ONE, and only where the record holds a fact that genuinely settles it — said once, plainly, without apology, and never as the letter's opening or its close. Answering two reads as a defence. Where nothing in the record settles any of them, answer none and say nothing: naming a problem you cannot fix only introduces it.
+`;
 }
 
 // How the letter opens its address. A name only where the ad genuinely gave
@@ -75,17 +158,20 @@ What they asked you to foreground LEADS the letter and is proved with a real fac
     ? `\n# How the candidate describes their own durable value\n"${core.trim()}"\nLet it guide what you foreground — never state anything the record does not prove.\n`
     : '';
 
+  // The register. With a voice profile it is theirs; without one it is still a
+  // person's, not a template's. Neither branch asks for "reserved" or
+  // "businesslike" prose — that instruction produced the letters this file's
+  // header describes.
   const voiceOwnership = voiceBlock
     ? `
 # YOU ARE WRITING AS THIS CANDIDATE, IN THEIR VOICE
 Their voice is described below and their own writing is quoted after it. Read both before writing a word, and write the whole letter that way from the first sentence. Voice is SHAPE before it is vocabulary: the spread of sentence lengths, how short the shortest sentence gets, how long a paragraph runs, whether the point lands first or last. Uniform sentences in uniform paragraphs are what reads as machine-written, and no word choice fixes that.
 
-The TONE they chose for this letter is "${tone}" — ${toneInstructions(tone)} Their voice is fixed and theirs; the tone is the mood they picked for this one letter. Write the mood they asked for, in their sentence shapes.
+This is a job application, so it stays professional: no slang, no exclamation marks, nothing that would embarrass the candidate in front of a hiring manager. That is the ONLY limit on the voice below. It is not an instruction to write even, reserved, businesslike prose — sanding their voice into that is the failure this block exists to prevent, and a letter that reads slightly too direct beats one that reads like a template.
 ${voiceBlock}${excerptBlock}`
     : `
-# Tone
-Write in a "${tone}" tone. ${toneInstructions(tone)}
-Write like a person, not a template: vary the sentence lengths deliberately, go genuinely short at least once, and let the paragraphs differ in weight.`;
+# Write like a person, not a template
+Vary the sentence lengths deliberately, go genuinely short at least once, and let the paragraphs differ in weight. It stays professional — no slang, no exclamation marks — but even, uniform business prose is what marks a letter as machine-written, and no word choice fixes that.`;
 
   const systemMessage = {
     role: 'system',
@@ -96,14 +182,20 @@ Write like a person, not a template: vary the sentence lengths deliberately, go 
 
   const userMessage = {
     role: 'user',
-    content: `Write a tailored cover letter using the job history and job description below.
+    content: `Write this candidate's application letter for the job below.
 
-Highlight the achievements and skills from the record that align with what this job asks for. Lead with what the candidate actually did and what came of it — a result, a number, a change, wherever the record has one.
+The letter has one job: the person reading it decides to call this candidate in. It is written in the FIRST PERSON, as the candidate — "I did X", never "product decisions hinged on X". A letter with no "I" in it is not an application.
 
-Never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state. Where the record cannot answer something the ad asks for, leave it unanswered.
-${bannedPhraseLine(language)}
-${steeringBlock}${voiceOwnership}${coreBlock}
+What the letter is ABOUT is what this candidate and this company have in common — a shared way of working, shown through things the candidate actually did. Not a narration of their CV. Walking the reader through the candidate's roles in prose is the one thing this letter must not be: the CV is attached and does that better, and a letter that duplicates it has no reason to exist.
+
+Two failures follow from getting that wrong, and both are fatal on the first line:
+- **Do not lecture the reader about their own industry.** An opening thesis about what makes companies of this kind succeed or fail, or an explanation of the employer's own market back to them, is marketing copy, not a letter. The reader knows their business.
+- **Do not write aphorisms.** A short declarative line dropped in to sound weighty — "Friction kills adoption.", "Specification is an execution problem." — is a slogan, and slogans are what a machine writes when it has nothing to say. Every sentence carries a fact, an argument, or a question. Going short is about rhythm, never about scoring a point.
+
+Never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state.
+${steeringBlock}
 ${adBlock(analysis)}
+${asksBlock(analysis)}${objectionBlock(analysis)}${voiceOwnership}${coreBlock}
 
 # The letter's furniture
 ${currentDateBlock(now)}
@@ -120,16 +212,13 @@ Sincerely,
 [LinkedIn URL]
 - No placeholders of any kind — no "[Company Address]", no bracketed instructions, nothing for the candidate to fill in.
 
-# Job History
+# The candidate's record — the ONLY source of fact
 ${currentDateReminder(now)}
 A \`voice_guide\` in this record, where one exists, is the candidate's OWN written style guide: follow it over any style habit of yours. Like \`voice_samples\` it describes HOW to write, never WHAT is true — neither can license a fact the record does not carry.
 
 ${cv}
 
-# Job Description
-${adBlock(analysis) ? 'Given above.' : '(No job ad — write from the record\'s strongest evidenced work.)'}
-
-Return only the letter: the date, the salutation, the body, the signature block.`
+Return only the letter: the header, the date, the salutation, the body, the signature block.`
   };
 
   return [systemMessage, userMessage];
