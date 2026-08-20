@@ -120,4 +120,5 @@ is fixed by the bar in section 3 and is never traded against anything.
   a template.
 - When I have been told what my own record says, I need to steer it — this
   matters, play that down — and have the document actually do it.
-- When I am paying per document, I need to see what I am spending.
+- When a prompt or a model starts costing more, I need to see it in the AI cost
+  ledger. That view is Nik's alone; no real user ever sees AI costs.
