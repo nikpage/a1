@@ -344,6 +344,9 @@ const newStrings = (storedList, incomingList) => {
 // so re-punctuation by the model does not read as a new bullet.
 const bulletId = (b) => str(b).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
+// A role's own key plus the key of every engagement nested beneath it.
+const allKeys = (key) => (role) => [key(role), ...arr(role?.fractional_engagements).map(key)];
+
 function mergeRoleList(storedRoles, incomingRoles, depth = 0) {
   const incoming = arr(incomingRoles);
   // An incoming entry matched to a stored role has been accounted for. Without
@@ -374,8 +377,13 @@ function mergeRoleList(storedRoles, incomingRoles, depth = 0) {
     return merged;
   });
 
-  const seen = new Set(out.map(softKey));
-  const spans = new Set(out.map(spanKey));
+  // A role already held as a client engagement under the person's own practice
+  // is NOT new. The augment prompt is the build prompt, which never nests, so a
+  // re-extraction returns every engagement flat at the top level; comparing only
+  // against top-level stored roles read all of them as new and appended a second
+  // copy of each on every note added.
+  const seen = new Set(out.flatMap(allKeys(softKey)));
+  const spans = new Set(out.flatMap(allKeys(spanKey)));
   incoming.forEach((r, i) => {
     const k = softKey(r);
     if (used.has(i) || k === ' | ' || seen.has(k) || spans.has(spanKey(r))) return;
