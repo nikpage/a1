@@ -116,8 +116,8 @@ is fixed by the bar in section 3 and is never traded against anything.
 - When my history has a gap, an overlap, or a stretch of my own consulting, I need
   the record to state it plainly rather than paper over it or guess what it was.
 - When I send a cover letter, I need it to read as though I wrote it for this job
-  — answering what the ad says it is afraid of — not as though a model filled in
-  a template.
+  - addressing the specific concerns the ad raises - not as though a model
+  filled in a template.
 - When I have been told what my own record says, I need to steer it — this
   matters, play that down — and have the document actually do it.
 - When a prompt or a model starts costing more, I need to see it in the AI cost
