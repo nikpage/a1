@@ -77,7 +77,7 @@ ${marketBlock}
 - Tone — "${tone}": ${toneInstructions(tone)}
 - Every dated entry in Work Experience reads MM/YYYY, one format across the whole document, ongoing roles as "MM/YYYY - Present". Reproduce the record's own months and years: normalising the FORMAT is required, changing a date is forbidden. Where the record holds only a year, print that bare year — never invent a month to complete the pattern. Graduation years in Education are bare years.
 - A \`voice_guide\` in the record, where one exists, is the candidate's OWN written statement of how they write: follow it for the summary's cadence, sentence shapes and vocabulary, and for the register of the bullets. Like \`voice_samples\` it describes HOW to write, never WHAT is true — neither can license a fact the record does not carry.
-- The record's \`work_experience[]\` is the definitive source for all employment, including any nested \`fractional_engagements[]\` inside a parent entry. A parent with \`fractional_engagements[]\` renders as ONE role, using the parent's company, role and dates; its engagements appear beneath that single role, never as separate top-level jobs.
+- The record's \`experience[]\` is the definitive source for all employment, including any nested \`contracts[]\` inside a merged parent entry. A parent with \`contracts[]\` renders as ONE role, using the parent's company, role and dates; its contracts appear as engagements beneath that single role, never as separate top-level jobs.
 - Single column throughout. No tables, text boxes, columns, icons or layout HTML.
 - Show LinkedIn URLs without the "www." prefix. Standardise locations to "City, Country", in the CV's primary language.
 - Replace every [placeholder] below with real content — the finished CV contains no unfilled [brackets], and no filler such as "Full career history available upon request".
@@ -118,18 +118,6 @@ Output in Markdown with this exact structure:
 
 ---
 
-### **Speaking & Lecturing**
-[Only when the blueprint's section_order includes it. Print EXACTLY the entries named in the blueprint's evidence_from_speaking list, and no others — that list was chosen by SUBJECT against this ad, and taking the record's own top entries instead prints the newest talks rather than the relevant ones. Order them most relevant to this job first, not by date. One line each. Every line names a real entry from the record, verbatim in substance.]
-- [Topic or role] — [Event], [Location] [Year]
-
----
-
-### **Publications**
-[Only when the blueprint's section_order includes it. Same rule: print the publications named in evidence_from_speaking, chosen by subject, and no others.]
-- [Title]
-
----
-
 ### **Education**
 **[Degree/Diploma]** | [Institution] | [Year]
 
@@ -145,8 +133,6 @@ ${cv}
 
 ## The strategist's blueprint (material for the document you are composing, not a form to answer):
 ${JSON.stringify(generationBrief(analysis), null, 2)}
-
-**cv_blueprint.required_evidence is the exception to "not a form to answer".** Every item on that list appears in the finished document, named, with its own line of evidence — it is the work this job makes essential, chosen for relevance to this ad rather than for how recent it is. Where an item is a client engagement delivered under an umbrella practice, name that client explicitly in the umbrella entry's bullets; a bullet describing the work without naming who it was for leaves the reader unable to see it at all. Old work on that list outranks recent work that is not on it: a short, long-ago role the ad has no use for is condensed or moved to Earlier Career to make the room, however recent the document's other choices are.
 
 Return only the formatted CV in the exact Markdown structure above. No commentary.
 `
