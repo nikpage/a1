@@ -1,0 +1,64 @@
+{
+  "note": "Each entry is a defect found by reading a real generated document. It fails now and passes when the defect is actually fixed. Text is never matched exactly — a generated document never repeats word for word.",
+  "ad": "ad-invity-pm.txt",
+  "master": "master.json",
+  "cv": [
+    {
+      "id": "crypto-engagements-named",
+      "why": "Applying to a Bitcoin company with the crypto work deleted. All three engagements live under an umbrella practice, so the writer collapsed them away and the only trace was the word 'crypto' in a list.",
+      "require_all": ["BLOCKS", "Aerum", "Blockchain4Humanity"]
+    },
+    {
+      "id": "recognisable-finance-employers",
+      "why": "Morgan Stanley and Wells Fargo dropped entirely from a finance application — the two employer names a screener recognises on sight.",
+      "require_all": ["Morgan Stanley", "Wells Fargo"]
+    },
+    {
+      "id": "crypto-speaking-visible",
+      "why": "Five talks on crypto UX and a co-created blockchain workshop could not reach any CV, because no Speaking section existed in the registry.",
+      "require_any": ["BlockStars", "Ethereum Name Service", "Dezentrum", "Coalition 4 Good", "Paralelni Polis", "Paralelní Polis"]
+    },
+    {
+      "id": "no-uninstantiated-capability",
+      "why": "The summary claimed 'designing and launching customer-facing digital products'. The record holds advisory work, a UX practice and QA strategy — no instance of it. Lifted from the ad to cover a gap.",
+      "forbid_any": ["launching customer-facing", "track record of shipping", "expert in"]
+    },
+    {
+      "id": "correct-education",
+      "why": "The school was overwritten from a LinkedIn export after being corrected by hand more than once.",
+      "require_all": ["Heald College"]
+    },
+    {
+      "id": "ai-fintech-work-present",
+      "why": "Four years of fintech and call-centre AI automation is the most relevant thing in the record for an AI-first employer.",
+      "require_any": ["AI-enriched automation", "RAG", "automation"]
+    }
+  ],
+  "cover": [
+    {
+      "id": "first-person",
+      "why": "A letter read as marketing copy with no 'I' in it: 'participating in the ground-up launch of Airbank demonstrated that...'",
+      "require_any": ["I ", "I'"]
+    },
+    {
+      "id": "no-aphorisms",
+      "why": "Slogans dropped in as paragraph-enders: 'Friction kills adoption.', 'Execution speed matters.', 'It works. So I stay hands-on.'",
+      "forbid_any": ["Friction kills", "Execution speed matters", "Product specification is ultimately"]
+    },
+    {
+      "id": "names-the-employer",
+      "why": "A letter that never names who it is written to reads exactly like one that was written to nobody.",
+      "require_all": ["Invity"]
+    },
+    {
+      "id": "no-echoed-stance",
+      "why": "The employer's own copy returned to sender. Their phrasing understood, never repeated.",
+      "forbid_any": ["simple, automated investing", "trust, simplicity and strong execution", "MiCA"]
+    },
+    {
+      "id": "crypto-in-the-argument",
+      "why": "Crypto reduced to a one-line afterthought in a letter to a Bitcoin company.",
+      "require_any": ["BLOCKS", "Aerum", "Blockchain4Humanity", "BlockStars"]
+    }
+  ]
+}
