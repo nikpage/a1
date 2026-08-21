@@ -119,13 +119,13 @@ Output in Markdown with this exact structure:
 ---
 
 ### **Speaking & Lecturing**
-[Only when the blueprint's section_order includes it. Reverse-chronological, one line each, most relevant to THIS job first — a talk on the employer's own subject is evidence the candidate worked in that field publicly.]
+[Only when the blueprint's section_order includes it. Print EXACTLY the entries named in the blueprint's evidence_from_speaking list, and no others — that list was chosen by SUBJECT against this ad, and taking the record's own top entries instead prints the newest talks rather than the relevant ones. Order them most relevant to this job first, not by date. One line each. Every line names a real entry from the record, verbatim in substance.]
 - [Topic or role] — [Event], [Location] [Year]
 
 ---
 
 ### **Publications**
-[Only when the blueprint's section_order includes it.]
+[Only when the blueprint's section_order includes it. Same rule: print the publications named in evidence_from_speaking, chosen by subject, and no others.]
 - [Title]
 
 ---

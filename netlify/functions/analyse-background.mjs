@@ -106,10 +106,26 @@ export const handler = async (event) => {
   // the saved record as `job_text`, read by prompts/job-target.js.
   const rawAd = typeof jobText === 'string' ? jobText.trim() : '';
 
-  // Use the confirmed job object (serialised to text) as the job input when present.
-  // This ensures the analysis runs on the user-corrected data, not the raw ad.
+  // THE ANALYSIS READS THE AD ITSELF, with the user's corrections ON TOP.
+  //
+  // Until 2026-08-21 this line REPLACED the ad with confirmedJobToText(), so the
+  // analysis — the step that chooses which of a fourteen-role record reaches the
+  // page — never saw a word the employer wrote. It selected against a flattened
+  // "Position: … Required Skills: …" list. On the Invity ad that cost the whole
+  // point of the application: the record's three crypto engagements lost their
+  // place to recent unrelated work, and the summary it drafted would have fitted
+  // fifty other employers, because nothing it read said this company is a
+  // Bitcoin neobank that works AI-first inside regulation.
+  //
+  // The original intent stands and is kept: the user's corrections are the
+  // better FACTS. So both go in, ad first, corrections after, and the block
+  // states which wins where. The ad carries the register and the emphasis; the
+  // corrected fields carry the facts.
   if (confirmedJob && typeof confirmedJob === 'object') {
-    jobText = confirmedJobToText(confirmedJob);
+    const corrections = confirmedJobToText(confirmedJob);
+    jobText = rawAd
+      ? `${rawAd}\n\n---\nTHE USER HAS REVIEWED AND CORRECTED THE FOLLOWING FACTS ABOUT THIS JOB. Where these disagree with the ad above, THESE ARE RIGHT — use them for the position, company, contact, location, seniority and the requirement lists. The ad above remains the source for how this employer writes, what it emphasises and what it says about itself.\n${corrections}`
+      : corrections;
   }
 
   // Everything below runs inside the AI cost context, so every Gemini call it

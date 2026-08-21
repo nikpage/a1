@@ -39,7 +39,7 @@
 import { languageInstruction } from './language.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock, rawAdBlock } from './job-target.js';
-import { salutationName } from './cover-evidence.js';
+import { salutationName, coverEvidenceBlock } from './cover-evidence.js';
 import { coverLengthRule } from './market.js';
 import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
 
@@ -100,31 +100,10 @@ If the ad asks the applicant for something directly — why this role, why this 
 `;
 }
 
-// THE OBJECTION. The analysis already works out what a recruiter will hold
-// against this candidate for THIS job (analysis.red_flags) and, until the
-// cover_evidence block was removed on 2026-08-15, the letter was told about it.
-// Since then it has not been, and every letter has written as though the reader
-// had no reservation at all — on the Invity ad the record's loudest problem was
-// "3-5 years wanted, this candidate has thirty" and four consecutive letters
-// never went near it.
-//
-// It is stated as a fact about the reader, not as an instruction to defend.
-// ONE is answered at most, and only where the record itself settles it: two
-// defences read as a defence, and naming a flag the letter cannot improve (age,
-// salary, a bare seniority mismatch with nothing behind it) hands the reader an
-// objection they had not raised.
-function objectionBlock(analysis) {
-  const flags = (analysis?.analysis?.red_flags || analysis?.red_flags || [])
-    .map((f) => (typeof f === 'string' ? f.trim() : ''))
-    .filter(Boolean);
-  if (!flags.length) return '';
-  return `
-# What the reader will hold against this application
-${flags.map((f) => `- ${f}`).join('\n')}
-
-These are real, and the reader reaches them whether or not the letter mentions them. Answer AT MOST ONE, and only where the record holds a fact that genuinely settles it — said once, plainly, without apology, and never as the letter's opening or its close. Answering two reads as a defence. Where nothing in the record settles any of them, answer none and say nothing: naming a problem you cannot fix only introduces it.
-`;
-}
+// THE OBJECTION is no longer built here. coverEvidenceBlock() (prompts/cover-evidence.js)
+// renders the analysis's paired concerns AND the full red_flags list under one
+// heading, so the writer sees the flag and the fact that settles it together.
+// Two blocks listing the same flags was the duplication this replaced.
 
 // How the letter opens its address. A name only where the ad genuinely gave
 // one — salutationName() refuses anything that does not look like a person, so
@@ -195,7 +174,7 @@ Two failures follow from getting that wrong, and both are fatal on the first lin
 Never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state.
 ${steeringBlock}
 ${adBlock(analysis)}
-${asksBlock(analysis)}${objectionBlock(analysis)}${voiceOwnership}${coreBlock}
+${asksBlock(analysis)}${coverEvidenceBlock(analysis)}${voiceOwnership}${coreBlock}
 
 # The letter's furniture
 ${currentDateBlock(now)}

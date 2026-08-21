@@ -345,8 +345,22 @@ export async function analyzeCvJob(cvText, jobText, fileName = 'unknown.pdf', te
       const provenList = Array.isArray(careerProfile.proven_keywords) ? careerProfile.proven_keywords : [];
       const chosen = Array.isArray(a.keywords_for_this_job) ? a.keywords_for_this_job : [];
       const byTerm = new Map(provenList.map((k) => [String(k?.term || k).toLowerCase(), k]));
+      // A chosen term that IS on the settled list keeps that list's checked
+      // proof. One that is NOT is a domain the job-agnostic pass never had a
+      // reason to name — crypto, fintech, the employer's own field — and it
+      // arrives with its own verbatim quote, which splitProvenKeywords checks
+      // against the record immediately below. Dropping these was why a record
+      // holding three crypto engagements and six blockchain talks produced a
+      // ten-term inventory with no domain in it, and a CV for a Bitcoin company
+      // with not one crypto skill on it.
       const picked = chosen
-        .map((t) => byTerm.get(String(t?.term || t).toLowerCase()))
+        .map((t) => {
+          const term = String(t?.term || t);
+          const settledMatch = byTerm.get(term.toLowerCase());
+          if (settledMatch) return settledMatch;
+          const proof = typeof t?.proof === 'string' ? t.proof.trim() : '';
+          return proof ? { term, proof } : null;
+        })
         .filter(Boolean);
       // No ad, or the model picked nothing: the whole proven inventory stands.
       a.ats_keywords_present = picked.length ? picked : provenList;
