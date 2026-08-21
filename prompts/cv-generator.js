@@ -134,6 +134,8 @@ ${cv}
 ## The strategist's blueprint (material for the document you are composing, not a form to answer):
 ${JSON.stringify(generationBrief(analysis), null, 2)}
 
+**cv_blueprint.required_evidence is the exception to "not a form to answer".** Every item on that list appears in the finished document, named, with its own line of evidence — it is the work this job makes essential, chosen for relevance to this ad rather than for how recent it is. Where an item is a client engagement delivered under an umbrella practice, name that client explicitly in the umbrella entry's bullets; a bullet describing the work without naming who it was for leaves the reader unable to see it at all. Old work on that list outranks recent work that is not on it: a short, long-ago role the ad has no use for is condensed or moved to Earlier Career to make the room, however recent the document's other choices are.
+
 Return only the formatted CV in the exact Markdown structure above. No commentary.
 `
   };

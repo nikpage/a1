@@ -45,6 +45,7 @@
     "summaryNoAchievements": "Podsumowanie nie zawiera punktów z osiągnięciami — pierwsze 120 słów to miejsce, które rekruter naprawdę czyta.",
     "summaryTooManyAchievements": "Podsumowanie wymienia {{count}} osiągnięć; trzy to maksimum, powyżej wstęp przestaje być czytelny.",
     "summaryAchievementNoRole": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu nie wskazują stanowiska, z którego pochodzą, więc brzmią jak gołosłowna deklaracja.",
+    "requiredEvidenceMissing": "W CV brakuje doświadczenia kluczowego dla tego stanowiska: {{list}}. Dodaj je lub wygeneruj dokument ponownie.",
     "earlierCareerNoEmployer": "Sekcja Wcześniejsza kariera nie wymienia żadnego prawdziwego pracodawcy — rozpoznawalna nazwa jest w niej najcenniejsza.",
     "summaryVerbatimCopy": "{{count}} osiągnięcie/osiągnięcia w podsumowaniu powtarzają słowo w słowo punkt z doświadczenia. Ten sam efekt ujęty inaczej czyta się dużo lepiej.",
     "noMetricsInRecord": "Twoje dane nie zawierają liczb dla: {{list}}. Podaj prawdziwe wartości, a te punkty znacznie zyskają — nie wymyślamy ich.",

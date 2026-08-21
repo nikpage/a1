@@ -695,6 +695,51 @@ function checkOlderApplicant(document, analysis, hard, now = new Date()) {
 //     never recorded — is a fabricated fact under T1.
 const EARLIER_CAREER_MAX_BULLETS = 6;
 
+// Check 14 — evidence the analysis called essential, missing from the document.
+//
+// The blueprint's `required_evidence` names the work THIS ad makes indispensable,
+// chosen for relevance rather than recency, and a nested client engagement is
+// named there in its own right. A CV generated for a Bitcoin company dropped all
+// three of the candidate's crypto engagements — they live under an umbrella
+// practice, so the writer collapsed the umbrella into five bullets and the three
+// it happened to keep were the recent unrelated ones. Nothing saw it: every other
+// check asks whether what IS printed is true, and silently deleted work is true.
+//
+// A warning, not a hard failure: the list is one model's judgement of relevance,
+// and regenerating a whole document over a judgement call costs more than it
+// saves. The name is matched folded, so diacritics and inflection do not hide a
+// hit ("Česká spořitelna" against "Ceska sporitelny").
+function checkRequiredEvidence(document, analysis, warnings) {
+  const required = analysis?.generation_framework?.cv_blueprint?.required_evidence;
+  if (!Array.isArray(required) || !required.length) return;
+
+  const doc = fold(document);
+  // Every content word of the name, cut to the stem its inflected forms share.
+  // "Česká spořitelna" must match "Ceska sporitelny" in a document written in
+  // another language's case system, and a whole-string compare cannot: the
+  // ending diverges. Six characters, as DOMAIN_TERMS uses.
+  const stems = (name) =>
+    String(name)
+      .split(/[^\p{L}\p{N}]+/u)
+      .map(fold)
+      .filter((w) => w.length >= 3)
+      .map((w) => (w.length > 6 ? w.slice(0, 6) : w));
+
+  const missing = [];
+  for (const item of required) {
+    const name = typeof item === 'string' ? item : String(item?.evidence || '');
+    const parts = stems(name);
+    // A name with no word long enough to match cannot be checked without
+    // matching everything.
+    if (!parts.length) continue;
+    if (!parts.every((s) => doc.includes(s))) missing.push(name.trim());
+  }
+
+  if (missing.length) {
+    warnings.push({ code: 'requiredEvidenceMissing', params: { list: missing.join(', ') } });
+  }
+}
+
 function checkEarlierCareer(document, master, warnings) {
   if (!master.parsed) return;
   const companies = [];
@@ -910,6 +955,7 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkEpithets(document, hard, language);
   checkSkillRecency(document, m, hard);
   checkRoleMetrics(document, m, warnings);
+  checkRequiredEvidence(document, analysis, warnings);
 
   // 13. Year-only dates the master could not supply a month for. Printing the
   //     bare year is correct — inventing "01/" would falsify the record — so the

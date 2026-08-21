@@ -45,6 +45,7 @@
     "summaryNoAchievements": "Shrnutí neobsahuje žádné odrážky s výsledky — prvních 120 slov je prostor, který personalista skutečně čte.",
     "summaryTooManyAchievements": "Shrnutí uvádí {{count}} výsledků; strop jsou tři, jinak úvod přestane být přehledný.",
     "summaryAchievementNoRole": "{{count}} výsledek/výsledky ve shrnutí neuvádí pozici, ze které pochází, a působí tak jako nepodložené tvrzení.",
+    "requiredEvidenceMissing": "V životopisu chybí praxe, kterou tato pozice vyžaduje: {{list}}. Doplňte ji, nebo dokument vygenerujte znovu.",
     "earlierCareerNoEmployer": "Sekce Dřívější kariéra neuvádí žádného skutečného zaměstnavatele — známé jméno je v ní to nejcennější.",
     "summaryVerbatimCopy": "{{count}} úspěch(y) ve shrnutí doslova opakují odrážku z praxe. Stejný výsledek řečený jinak působí mnohem lépe.",
     "noMetricsInRecord": "Ve vašich podkladech nejsou žádná čísla u: {{list}}. Doplňte skutečné údaje a odrážky výrazně zesílí — my si je nevymýšlíme.",
