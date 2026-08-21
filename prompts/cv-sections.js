@@ -25,6 +25,8 @@ export const SECTION_NAMES = {
     projects: ['Projects'],
     education: ['Education'],
     certifications: ['Certifications'],
+    speaking: ['Speaking & Lecturing', 'Speaking and Lecturing', 'Speaking', 'Talks & Publications'],
+    publications: ['Publications'],
     earlierCareer: ['Earlier Career'],
   },
   cs: {
@@ -35,6 +37,8 @@ export const SECTION_NAMES = {
     projects: ['Projekty'],
     education: ['Vzdělání'],
     certifications: ['Certifikace', 'Certifikáty'],
+    speaking: ['Přednášky a konference', 'Přednášky', 'Vystoupení'],
+    publications: ['Publikace'],
     earlierCareer: ['Dřívější kariéra', 'Předchozí praxe'],
   },
   pl: {
@@ -45,6 +49,8 @@ export const SECTION_NAMES = {
     projects: ['Projekty'],
     education: ['Wykształcenie', 'Edukacja'],
     certifications: ['Certyfikaty', 'Certyfikacje'],
+    speaking: ['Wystąpienia i wykłady', 'Wystąpienia', 'Wykłady'],
+    publications: ['Publikacje'],
     earlierCareer: ['Wcześniejsza kariera', 'Wcześniejsze doświadczenie'],
   },
 };

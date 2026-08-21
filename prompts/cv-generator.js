@@ -118,6 +118,18 @@ Output in Markdown with this exact structure:
 
 ---
 
+### **Speaking & Lecturing**
+[Only when the blueprint's section_order includes it. Reverse-chronological, one line each, most relevant to THIS job first — a talk on the employer's own subject is evidence the candidate worked in that field publicly.]
+- [Topic or role] — [Event], [Location] [Year]
+
+---
+
+### **Publications**
+[Only when the blueprint's section_order includes it.]
+- [Title]
+
+---
+
 ### **Education**
 **[Degree/Diploma]** | [Institution] | [Year]
 
