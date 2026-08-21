@@ -1,0 +1,598 @@
+{
+  "profile": {
+    "name": "Nik Page",
+    "contact": {
+      "email": "Product.Success@Nik.Page",
+      "phone": "+420 731 647 707",
+      "website": "nik.page",
+      "linkedin": "www.linkedin.com/in/nbpage"
+    },
+    "summary": "",
+    "headline": "",
+    "location": "Prague, CZ",
+    "languages": [
+      {
+        "language": "English",
+        "proficiency": "Native or Bilingual"
+      },
+      {
+        "language": "Czech",
+        "proficiency": "Limited Working"
+      }
+    ],
+    "top_skills": [
+      "Product Strategy",
+      "Product Management",
+      "Product Discovery",
+      "Product Definition",
+      "Product Delivery",
+      "Product Specification",
+      "Innovation Consulting",
+      "Concept Innovation",
+      "Market-Fit Validation",
+      "Solution Design",
+      "Market Intelligence",
+      "Innovation Metrics & KPIs",
+      "UX Strategy",
+      "Experience Strategy",
+      "Experience Design",
+      "User-Centered Design",
+      "Human-Centered Design",
+      "User Research",
+      "Multivariate & Behavioural Testing",
+      "Rapid Prototyping",
+      "Web Prototyping",
+      "Lean UX",
+      "Developer Experience (DX)",
+      "Design Sprints",
+      "Design Thinking",
+      "UX Maturity",
+      "Gamification of User Testing",
+      "AI Implementation",
+      "AI Agents / Agentic Solutions",
+      "Automation Solutions",
+      "Retrieval-Augmented Generation (RAG)",
+      "AI Chatbots",
+      "Semantic Image & Media Search",
+      "Audio-to-Text Transcription",
+      "CRM Integration",
+      "Claude Code",
+      "Fractional Executive Leadership",
+      "Cross-Functional Team Leadership",
+      "Solution Team Management",
+      "Department Building & Scaling",
+      "Team Coaching",
+      "Executive Advisory",
+      "Account Management",
+      "Leadership",
+      "Training & Lecturing",
+      "Public Speaking",
+      "Quality Assurance Management",
+      "Test Strategy",
+      "TMMi",
+      "Banking",
+      "Fintech",
+      "Blockchain",
+      "Consulting",
+      "AI Education & Training",
+      "Process Improvement",
+      "Business Process Automation",
+      "Call Centre Operations"
+    ],
+    "certifications": [
+      "Google for Startups Facilitator / Mentor",
+      "Google Design Sprint Master"
+    ],
+    "honors_and_awards": [
+      "Google Developer Expert: Product & UX"
+    ]
+  },
+  "education": [
+    {
+      "dates": "1992 - 1994",
+      "location": "",
+      "institution": "Computing Learning Center",
+      "qualification": "Informatics, Mainframe Programming"
+    }
+  ],
+  "role_overlaps": [],
+  "work_experience": [
+    {
+      "title": "Product Strategy & UX Leader | Custom AI Solutions | Educator, Mentor, Coach",
+      "bullets": [
+        "Applied AI-enriched automation to fintech business processes, increasing speed and reducing human error.",
+        "Delivered the same process-automation work for call-centre operations.",
+        "Trained dozens of companies and hundreds of students in applied AI",
+        "Advise clients on whether AI is right for them, and on how to apply it.",
+        "Run product discovery: define who a product is for and why they should care.",
+        "Lead innovation work — brainstorming new approaches, methods and target outcomes, then planning the steps to reach them.",
+        "Verify concepts through testing to identify the solution with the best market fit.",
+        "Lead and inspire delivery teams from design through to a built product.",
+        "Identify and define the metrics used to assess whether an innovation succeeded.",
+        "Refine, build and scale validated solutions.",
+        "Provide fractional leadership that brings the competency in-house.",
+        "Deliver complete, custom tools.",
+        "Educate and coach client teams to build the capability internally."
+      ],
+      "company": "Nik Page Ltd. Experience Strategy & Design",
+      "end_date": "Present",
+      "location": "Prague, CZ",
+      "start_date": "August 2016",
+      "fractional_engagements": [
+        {
+          "title": "Head of Product & Delivery",
+          "bullets": [
+            "Deliver AI agentic and automation solutions to small businesses and charities — a segment traditionally underserved by custom development providers.",
+            "Own the full path from UX-led product definition — target audience and problem scoping — through design, specification, delivery and solution team management.",
+            "Built RAG-based semantic image and media search.",
+            "Built a RAG-based expert AI chatbot integrated with the client's CRM.",
+            "Built audio-to-text transcription with full CRM integration.",
+            "Built custom sales assistant agents."
+          ],
+          "company": "SpecialAgents",
+          "end_date": "Present",
+          "location": "Prague, CZ",
+          "start_date": "January 2026",
+          "fractional_engagements": []
+        },
+        {
+          "title": "Sr. Product & Account Manager",
+          "bullets": [
+            "Led multiple concurrent product development projects for start-ups and accounts including eBay.",
+            "Ran product discovery and solution design.",
+            "Managed multiple project teams concurrently.",
+            "Grew a major Berlin client's engagement from 2 full-time roles to 12, and billing from $20,000 to $120,000 a month, in under a year.",
+            "Brought the Prague and Berlin teams closer together — working on site in both locations, running hackathons and other joint initiatives."
+          ],
+          "company": "Salsita Software",
+          "end_date": "October 2023",
+          "location": "Prague, CZ",
+          "start_date": "November 2022",
+          "fractional_engagements": []
+        },
+        {
+          "title": "Head of Product Research & Design",
+          "bullets": [
+            "Developed market intelligence methods.",
+            "Innovated product design.",
+            "Built out product management and design processes, and the team to run them."
+          ],
+          "company": "wflow.com",
+          "end_date": "October 2022",
+          "location": "Prague, CZ",
+          "start_date": "January 2022",
+          "fractional_engagements": []
+        },
+        {
+          "title": "Experience Positioning Advisor",
+          "bullets": [
+            "Advised on experience and product design strategy.",
+            "Studied donor motivations and applied them to web, app and other channel design.",
+            "Prototyped and tested experience models."
+          ],
+          "company": "Blockchain4Humanity",
+          "end_date": "July 2020",
+          "location": "",
+          "start_date": "January 2019",
+          "fractional_engagements": []
+        },
+        {
+          "title": "Executive Strategy Advisor",
+          "bullets": [
+            "Set experience and business development strategy.",
+            "Led user-focused product management."
+          ],
+          "company": "Aerum Official",
+          "end_date": "June 2019",
+          "location": "Prague, CZ",
+          "start_date": "June 2018",
+          "fractional_engagements": []
+        },
+        {
+          "title": "Advisor: Experience Strategy",
+          "bullets": [
+            "Developed the experience strategy for the company launch.",
+            "Advised top management on brand, communications, media campaign and product design.",
+            "BLOCKS connects institutional investors with professionally selected international real estate opportunities, using blockchain and crypto technology to increase flexibility, cut costs and speed up the process."
+          ],
+          "company": "BLOCKS",
+          "end_date": "November 2018",
+          "location": "Prague, CZ",
+          "start_date": "May 2018",
+          "fractional_engagements": []
+        }
+      ]
+    },
+    {
+      "title": "Public Speaker & Promoter, Customer/User Experience: Experience Design",
+      "bullets": [
+        "Speak and chair at industry conferences on experience design, UX strategy and blockchain adoption across Europe.",
+        "Chaired the Design Thinking Summit in Berlin (2018) and Prague (2017).",
+        "Ran an experimental design sprint with 100 participants in one hour at the Design Thinking Summit, Berlin 2018.",
+        "Judged product design at Dev Challenge XIX, Lodz 2022; mentored UX at the ENS Domains Hackathon, London 2018."
+      ],
+      "company": "Public Speaking / Lecturing",
+      "end_date": "Present",
+      "location": "",
+      "start_date": "August 2013",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Visiting Lecturer",
+      "bullets": [
+        "Led a for-credit course covering strategic experience planning from product inception to sunset."
+      ],
+      "company": "Faculty of Arts, Charles University in Prague",
+      "end_date": "June 2017",
+      "location": "Prague, CZ",
+      "start_date": "February 2017",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Head of Experience Design",
+      "bullets": [
+        "Built the Experience Design team, carrying out prototyping, testing and overall user-centred design.",
+        "Created the sense of need for UX across a broad section of the company and fostered growth in UX maturity.",
+        "Promoted understanding of experience design methods and their benefits within business and product teams.",
+        "Led exploration of new approaches: API UX (Developer Experience), Lean UX in a corporate environment, gamification of user testing, and big-data analysis as a UX exploration tool."
+      ],
+      "company": "Česká spořitelna (Czech Savings Bank)",
+      "end_date": "August 2016",
+      "location": "Prague, CZ",
+      "start_date": "July 2014",
+      "fractional_engagements": []
+    },
+    {
+      "title": "UX Team Founder",
+      "bullets": [
+        "Created a need for UX services within the bank and built a small team to meet it.",
+        "Lectured internally on UX practice and principles.",
+        "Introduced tools and activities to promote user-centred and customer-experience design.",
+        "Coached and consulted with development, business and project management teams."
+      ],
+      "company": "Česká spořitelna (Czech Savings Bank)",
+      "end_date": "July 2014",
+      "location": "Prague, CZ",
+      "start_date": "October 2012",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Managing Consultant",
+      "bullets": [
+        "Launched a new testing team within a 3.5 billion Kč project.",
+        "Managed a team of testing analyst leads.",
+        "Wrote the test strategy and charter.",
+        "Managed budget and capacity planning, then handed off to an operational manager."
+      ],
+      "company": "ČSOB (Czechoslovak Commercial Bank)",
+      "end_date": "October 2011",
+      "location": "Prague, CZ",
+      "start_date": "August 2011",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Managing Consultant",
+      "bullets": [
+        "Member of a small leadership team setting up a new bank from the ground up.",
+        "Led QA analysts, developed QA strategy and process, and liaised with the client."
+      ],
+      "company": "Airbank",
+      "end_date": "March 2011",
+      "location": "Brno, CZ",
+      "start_date": "January 2011",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Manager, QA Labs",
+      "bullets": [
+        "Managed two teams: QA analysts and test automation engineers.",
+        "Reported release, process and other risks to senior management and developed mitigation plans.",
+        "Drove R&D into new testing methodologies and processes, including n-wise and progression testing.",
+        "Assessed headcount, education and infrastructure needs for the coming fiscal year and managed the current year's budget."
+      ],
+      "company": "AVG",
+      "end_date": "December 2010",
+      "location": "Brno, CZ",
+      "start_date": "March 2010",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Manager, QA and UX",
+      "bullets": [
+        "Recommended and managed process changes including issue reporting workflow and communication between support, product management and development.",
+        "Formalised the product development process with a focus on QA, transitioning to the TMMi model.",
+        "Managed the team with reporting, hiring, firing and bonus responsibility.",
+        "Developed user studies to inform new product development."
+      ],
+      "company": "ZOOM International",
+      "end_date": "December 2009",
+      "location": "Prague, CZ",
+      "start_date": "November 2008",
+      "fractional_engagements": []
+    },
+    {
+      "title": "User Researcher & UX Team Lead",
+      "bullets": [
+        "UX Team, New Product Group: led large multinational user studies, ran focus groups and one-to-one user studies, and participated in new product planning.",
+        "Introduced multivariate and other automated user behaviour testing.",
+        "Task- and traffic-managed the UX team's work.",
+        "European Initiatives Team, Web Services Group: led a diverse team of 7, managed multiple projects and task allocation.",
+        "Responsible for hiring, motivation, performance review, salary and internal client relations."
+      ],
+      "company": "Monster Worldwide",
+      "end_date": "March 2008",
+      "location": "Prague, CZ",
+      "start_date": "February 2003",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Sr. QA Engineer",
+      "bullets": [
+        "Lobbied for and developed the ownership, communications and documentation process for large international analysis, development and QA teams.",
+        "Developed standards and templates for test plans, bug reporting and change requests.",
+        "Developed and managed the test lab; wrote and implemented test plans.",
+        "Conducted and documented ambiguity reviews of technical specifications and business requirements documents."
+      ],
+      "company": "Morgan Stanley Online",
+      "end_date": "January 2001",
+      "location": "San Francisco, US",
+      "start_date": "March 2000",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Quality Assurance Consultant",
+      "bullets": [
+        "Developed a new QA reporting process for the Online Advertising team.",
+        "Wrote and implemented test plans.",
+        "Conducted and documented ambiguity reviews of business requirements and technical specifications."
+      ],
+      "company": "Wells Fargo",
+      "end_date": "June 2000",
+      "location": "San Francisco, US",
+      "start_date": "January 2000",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Consultant",
+      "bullets": [
+        "Contract QA consulting. Clients included Pacific Bell and Canon."
+      ],
+      "company": "EDP",
+      "end_date": "2000",
+      "location": "",
+      "start_date": "1997",
+      "fractional_engagements": []
+    },
+    {
+      "title": "QA Lead",
+      "bullets": [
+        "Designed the QA process.",
+        "Wrote and implemented test plans.",
+        "Managed beta test efforts.",
+        "Promoted usability and product design innovations."
+      ],
+      "company": "Prompt Software",
+      "end_date": "1997",
+      "location": "",
+      "start_date": "1995",
+      "fractional_engagements": []
+    },
+    {
+      "title": "Quality Assurance Engineer",
+      "bullets": [
+        "Tested games, piano and typing tutors, and infotainment packages.",
+        "Advocated design changes based on usability findings."
+      ],
+      "company": "Software Toolworks",
+      "end_date": "1995",
+      "location": "",
+      "start_date": "1993",
+      "fractional_engagements": []
+    }
+  ],
+  "advisory_and_community": [],
+  "speaking_and_lecturing": [
+    {
+      "role": "Judge in Product Design",
+      "year": "2024",
+      "event": "Dev Challenge",
+      "topic": "Product Design",
+      "location": "Kyiv, Ukraine"
+    },
+    {
+      "role": "Judge in Product Design",
+      "year": "2023",
+      "event": "Dev Challenge",
+      "topic": "Product Design",
+      "location": "Kyiv, Ukraine"
+    },
+    {
+      "role": "Judge in Product Design",
+      "year": "2022",
+      "event": "Dev Challenge XIX",
+      "topic": "Product Design",
+      "location": "Lodz, Poland"
+    },
+    {
+      "role": "Panellist",
+      "year": "2019",
+      "event": "Quantum Technologies and Their Use for the Armed Forces",
+      "topic": "Panel Discussion",
+      "location": "Prague"
+    },
+    {
+      "role": "Panellist",
+      "year": "2019",
+      "event": "Artificial Intelligence in Military IoT Applications",
+      "topic": "Panel Discussion",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2019",
+      "event": "Blockchain for Humanity",
+      "topic": "Designing Experience in Social Impact Startups",
+      "location": "Amsterdam"
+    },
+    {
+      "role": "Speaker",
+      "year": "2019",
+      "event": "Coalition 4 Good",
+      "topic": "UX in Crypto",
+      "location": "Geneva"
+    },
+    {
+      "role": "Speaker",
+      "year": "2018",
+      "event": "Google Launchpad",
+      "topic": "Experience Design for Startups",
+      "location": "Budapest"
+    },
+    {
+      "role": "Speaker",
+      "year": "2018",
+      "event": "Dezentrum",
+      "topic": "User Experience in dApps",
+      "location": "Zurich"
+    },
+    {
+      "role": "UX Mentor",
+      "year": "2018",
+      "event": "ENS Domains Hackathon",
+      "topic": "UX Mentoring",
+      "location": "London"
+    },
+    {
+      "role": "Conference Chair",
+      "year": "2018",
+      "event": "Design Thinking Summit",
+      "topic": "Experimental Design Sprint — 1 hour with 100 participants",
+      "location": "Berlin"
+    },
+    {
+      "role": "Speaker",
+      "year": "2018",
+      "event": "DAPP (DAPPs Adoption, Paralelní Polis)",
+      "topic": "Experience Design in Blockchain: Current Status",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2018",
+      "event": "BlockStars — The Business of Blockchain",
+      "topic": "Experience Design in Blockchain: Mass Adoption",
+      "location": "Prague"
+    },
+    {
+      "role": "Conference Chair",
+      "year": "2017",
+      "event": "Design Thinking Summit",
+      "topic": "UX Strategy: Be an Experience Provider — The ROI Benefit",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2017",
+      "event": "Google Developer Group DevFest",
+      "topic": "UX Strategy: Why & How",
+      "location": "Budapest"
+    },
+    {
+      "role": "Speaker",
+      "year": "2017",
+      "event": "Google Developer Group DevFest",
+      "topic": "The UX of VR / AR",
+      "location": "Voronezh"
+    },
+    {
+      "role": "Round Table Participant",
+      "year": "2017",
+      "event": "Czech VR Fest",
+      "topic": "Round Table Discussion",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2016",
+      "event": "Web Expo",
+      "topic": "The Business Side of Experience Strategy",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2015",
+      "event": "Web Expo",
+      "topic": "Results Driven UX Prototyping & User Testing",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2015",
+      "event": "Web Expo",
+      "topic": "API DX: The Developer Experience",
+      "location": "Prague"
+    },
+    {
+      "role": "Lecturer",
+      "year": "2015",
+      "event": "University of Economics, Prague (VŠE)",
+      "topic": "Agile & UX",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2015",
+      "event": "Customer Experience Association",
+      "topic": "Iterative Design as a Way of Building a Customer-Centric Philosophy",
+      "location": ""
+    },
+    {
+      "role": "Speaker",
+      "year": "2014",
+      "event": "UX Konference",
+      "topic": "UX Tools Review",
+      "location": ""
+    },
+    {
+      "role": "Speaker",
+      "year": "2014",
+      "event": "Web Expo",
+      "topic": "Invisible Intelligent Ubiquitous Banking",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2013",
+      "event": "UX Konference",
+      "topic": "Bringing UX into Corporate Culture",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2013",
+      "event": "UX Masterclass",
+      "topic": "Building UX Competency",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "2013",
+      "event": "WebExpo",
+      "topic": "Emergent Service Design",
+      "location": "Prague"
+    },
+    {
+      "role": "Speaker",
+      "year": "",
+      "event": "Charles University",
+      "topic": "Experience Design in Corporate Culture",
+      "location": "Prague"
+    }
+  ],
+  "publications_and_patents": [
+    "The Interface is Not the Experience",
+    "Getting to Happy",
+    "Baby Boomers: Adoption of Fintech Among the Hesitant",
+    "UX Strategy – It Is All About The Experience"
+  ]
+}
