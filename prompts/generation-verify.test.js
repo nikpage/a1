@@ -34,7 +34,7 @@ describe('rule 5 — unearned intensifier', () => {
   it('protects strong action verbs from rule 5', () => {
     expect(system).toMatch(/Strong, specific action verbs/);
     expect(system).toContain('spearheaded');
-    expect(system).toMatch(/Only flag a verb under rule 3/);
+    expect(system).toMatch(/Flag a verb only under rule 3/);
   });
 
   it('puts evaluative words out of rule 5\'s reach', () => {
@@ -73,10 +73,10 @@ describe('inputs', () => {
   });
 });
 
-describe('stock phrasing (rule 6)', () => {
+describe('stock phrasing (rule 7)', () => {
   it('hands the checker the same closed list the writer was given', () => {
     const [system] = buildGenerationVerifyPrompt({ docType: 'cover', document: 'x', master: 'y', language: 'en' });
-    expect(system.content).toMatch(/6\. STOCK PHRASE/);
+    expect(system.content).toMatch(/7\. STOCK PHRASE/);
     // Every banned phrase must reach the checker, or it cannot repair it.
     for (const phrase of bannedPhrases('en')) {
       expect(system.content, phrase).toContain(`"${phrase}"`);

@@ -267,6 +267,19 @@ confident, direct, and pitched to the target industry's culture.
 
 **Rendering.** The Summary prose is justified. The achievement bullets are standard left-aligned bullets in the same style as Work Experience bullets — never centered, never a distinct visual block.
 
+**A capability the Summary names must have an instance in the record.** The
+value proposition states what this person does, and it is the one part of the CV
+whose claims attach to no particular role — so nothing in the record contradicts
+it, every individual word is defensible, and a capability the candidate has never
+demonstrated reads as reasonable. Before a clause naming what they do is written,
+the entry that proves it must be nameable: the role, the client, the piece of
+work where it happened. Advising is advising, building a practice is building a
+practice, running research is running research; none becomes "designing and
+launching customer-facing products" because an ad asked for that. Where the
+record cannot answer a requirement, the Summary is silent on it. This is T1
+applied where it is hardest to see, and it binds the writer — the verify pass
+(rule 6) is the net beneath it, not the place the rule lives.
+
 **Openers name facts, not identities.** The Summary's first sentence states something the candidate did or built. Identity epithets — "veteran", "seasoned", "accomplished", "technology leader", "industry expert" and their equivalents — are banned in the CV and the cover letter: they assert a category instead of evidence, and under the Older Applicant override "veteran" actively re-emits the signal that override exists to manage.
 
 **Banned phrasing.** A closed list of stock phrases is barred from both documents: filler that states nothing ("results-driven", "proven track record", "passionate about", "dynamic", "synergy", "best-in-class", "seamless", "robust", "value-add", "in today's fast-paced world"), the boilerplate wrapper ("I am writing to express my interest", "I believe I would be a great fit", "as you can see from my CV", "I am excited about the opportunity", "please do not hesitate to contact me"), and the manufactured-significance verbs ("delve into", "underscore", "leverage my expertise", "spearheaded a paradigm shift", "a testament to"). These are not weak writing to be improved on request — they are the phrases that mark a document as machine-written on sight, and five of them undo a page of real evidence. The list is enforced in code (Layer 6) and repaired before delivery, because a rule the writer is merely asked to follow is a rule that is followed most of the time — and a defect in the app's own prose is fixed, never reported to the user as though it were theirs to solve. It is closed and exact rather than a judgement about tone: it grows by adding a phrase actually seen in output, never by inferring a family from one member. The chosen tone's deliberate vocabulary and ordinary strong verbs are outside it.
