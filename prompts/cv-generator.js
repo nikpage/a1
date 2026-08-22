@@ -118,6 +118,14 @@ Output in Markdown with this exact structure:
 
 ---
 
+### **Consulting Engagements**
+[Only when the blueprint's section_order includes it. One entry per client engagement the blueprint named in required_evidence — a client is NOT a bullet inside its umbrella practice: given one bullet among a handful it is the first thing cut, which is how three engagements in the employer's own field vanished from a CV written for that employer. The umbrella entry above keeps its own dates and its own bullets; these are shown as well, not moved out of it. Dates come from the record verbatim. Where the engagement carries no outcome number, quantify its SCOPE from the record — team size, how long it ran, the client's size or industry — and never invent an outcome in place of one.]
+
+#### **[Client]** | [MM/YYYY] - [MM/YYYY or Present] | [what the engagement was, in one short phrase]
+- [Achievement, or the scope the record records]
+
+---
+
 ### **Speaking & Lecturing**
 [Only when the blueprint's section_order includes it. Print EXACTLY the entries named in the blueprint's evidence_from_speaking list and no others, most relevant to this job first, one line each, each a real entry from the record.]
 - [Topic or role] — [Event], [Location] [Year]

@@ -1065,3 +1065,111 @@ describe('check 17 — the speaking roster', () => {
     expect(hard.some((h) => h.includes('evidence_from_speaking'))).toBe(false);
   });
 });
+
+// Consulting Engagements — the section that gives a nested client engagement a
+// shape of its own. Before it existed, a client could only appear as one bullet
+// inside its umbrella practice, which is how three crypto engagements vanished
+// from a CV generated for a crypto employer (PRODUCT.md, "Known broken").
+describe('Consulting Engagements section', () => {
+  const MASTER_WITH_ENGAGEMENTS = JSON.stringify({
+    profile: { name: 'Jane Roe', certifications: [] },
+    work_experience: [
+      {
+        company: 'Roe Practice',
+        title: 'Managing Consultant',
+        start_date: '01/2019',
+        end_date: 'Present',
+        bullets: ['Built and ran an independent advisory practice'],
+        fractional_engagements: [
+          {
+            company: 'Aerum',
+            title: 'Product Advisor',
+            start_date: '03/2021',
+            end_date: '11/2021',
+            bullets: ['Advised a team of 6 on custody UX across 9 months'],
+          },
+        ],
+      },
+    ],
+    education: [],
+  });
+
+  const DOC = `# Jane Roe
+**Product Advisor**
+
+---
+
+### **Summary**
+Advisory work across regulated crypto products.
+
+---
+
+### **Skills**
+- Product advisory
+
+---
+
+### **Work Experience**
+
+#### **Managing Consultant**
+**Roe Practice** | 01/2019 - Present | Prague, Czechia
+- Built and ran an independent advisory practice
+
+---
+
+### **Consulting Engagements**
+
+#### **Aerum**
+**Product Advisor** | 03/2021 - 11/2021 | Prague, Czechia
+- Advised a team of 6 on custody UX across 9 months
+
+---
+
+### **Education**
+**BA** | Charles University | 2005
+`;
+
+  const analysis = {
+    generation_framework: {
+      cv_blueprint: {
+        section_order: ['Summary', 'Skills', 'Work Experience', 'Consulting Engagements', 'Education'],
+        required_evidence: [{ evidence: 'Aerum', requirement: 'regulated crypto product work' }],
+      },
+    },
+  };
+
+  it('accepts the heading and does not treat its entries as invented roles', () => {
+    const r = validateCv(DOC, { master: MASTER_WITH_ENGAGEMENTS, analysis, language: 'en' });
+    expect(r.hard.join(' ')).not.toMatch(/Aerum/);
+    expect(r.hard.join(' ')).not.toMatch(/Consulting Engagements/);
+  });
+
+  // The registry entry is what makes the section cross-language. The blueprint
+  // is written in the record's language while the document may be generated in
+  // another (prompts/language.js), so a Czech CV answers an English
+  // section_order name through the slot, not through the literal string. Red
+  // without the `engagements` slot in prompts/cv-sections.js: the Czech heading
+  // matches nothing and the document hard-fails for omitting a section it has.
+  it('matches a Czech heading against the English section_order name', () => {
+    const czech = DOC
+      .replace('### **Consulting Engagements**', '### **Klientské zakázky**')
+      .replace('### **Summary**', '### **Shrnutí**')
+      .replace('### **Skills**', '### **Dovednosti**')
+      .replace('### **Work Experience**', '### **Pracovní zkušenosti**')
+      .replace('### **Education**', '### **Vzdělání**');
+    const r = validateCv(czech, { master: MASTER_WITH_ENGAGEMENTS, analysis, language: 'cs' });
+    expect(r.hard.join(' ')).not.toMatch(/Consulting Engagements/);
+  });
+
+  it('counts a nested engagement printed there as required evidence that reached the document', () => {
+    const r = validateCv(DOC, { master: MASTER_WITH_ENGAGEMENTS, analysis, language: 'en' });
+    expect(codes(r)).not.toContain('requiredEvidenceMissing');
+  });
+
+  it('still warns when the engagement never reaches the document at all', () => {
+    const without = DOC.replace(/### \*\*Consulting Engagements\*\*[\s\S]*?---\n\n/, '');
+    const r = validateCv(without, { master: MASTER_WITH_ENGAGEMENTS, analysis, language: 'en' });
+    expect(codes(r)).toContain('requiredEvidenceMissing');
+    expect(paramsFor(r, 'requiredEvidenceMissing').list).toContain('Aerum');
+  });
+});
