@@ -118,6 +118,18 @@ Output in Markdown with this exact structure:
 
 ---
 
+### **Speaking & Lecturing**
+[Only when the blueprint's section_order includes it. Print EXACTLY the entries named in the blueprint's evidence_from_speaking list and no others, most relevant to this job first, one line each, each a real entry from the record.]
+- [Topic or role] — [Event], [Location] [Year]
+
+---
+
+### **Publications**
+[Only when the blueprint's section_order includes it. Same rule: print the publications named in evidence_from_speaking, chosen by subject, and no others.]
+- [Title]
+
+---
+
 ### **Education**
 **[Degree/Diploma]** | [Institution] | [Year]
 
@@ -133,6 +145,8 @@ ${cv}
 
 ## The strategist's blueprint (material for the document you are composing, not a form to answer):
 ${JSON.stringify(generationBrief(analysis), null, 2)}
+
+**cv_blueprint.required_evidence is the exception to "not a form to answer".** Every item on it appears in the finished document, named — and where an item is a client engagement under an umbrella practice, that client is named in the umbrella entry's bullets.
 
 Return only the formatted CV in the exact Markdown structure above. No commentary.
 `
