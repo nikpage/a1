@@ -76,48 +76,8 @@ constraint is on how tokens are spent, not how many.
 Scale: one user. Deadline: none fixed, but Nik is job-hunting now, so sooner is
 worth more.
 
-## 6. Current focus
 
-**Now.** The cover writer produces letters that meet the bar in section 3.
-Shipped means three letters on three real job ads, each judged good by Nik, with
-those outputs captured as tests so the letter cannot regress a fourth time.
-
-**Next.** Fix the analysis. Likely two stages, to be confirmed once we look: one
-analysis of the master CV, which does not change because it is the user's record,
-and a separate one for how to build the job-specific CV and cover letter.
-
-**Known broken, as of 2026-08-21.** Found by reading real output, not by any
-test. `scripts/golden-check.mjs` now runs these as checks over frozen inputs.
-
-- The CV template has no shape for a client engagement. Work Experience entries
-  are title / employer / dates / bullets, and a nested engagement is not a role,
-  so a client can only appear as a bullet inside the umbrella practice competing
-  for a handful of slots. Every rule telling the writer to surface a client asks
-  for something the output format cannot express. This is the structural cause
-  of crypto work vanishing from a crypto application, and it is not fixed.
-- Advisory work carries no numbers, so it loses the impact zone automatically to
-  any achievement that does. Relevance never gets to compete.
-- `required_evidence` is a warning, not a gate. A writer that ignores it still
-  ships a document.
-- The speaking and publications sections exist in the registry but have not been
-  seen to render — that needs an analysis run on the current build.
-- Ten cover-letter prompt tests are red. They pin rules an earlier uncommitted
-  rewrite of `prompts/cover-letter.js` removed; the rewrite was committed as
-  found on 2026-08-20 and the conflict is unresolved.
-
-**Not yet tried, and the owner's stated next move:** many-shot. Exemplar letters
-and analyses in the prompt, rather than more rules. Blocked on having letters
-judged good enough to use as targets — the one written by hand on 2026-08-21 is
-the first candidate.
-
-**Done means.** The analysis makes sense, and CVs and cover letters both pass the
-three-job test.
-
-Nik expects each stage to take about 30 minutes, not a day. That is an
-expectation, not a cap: if a stage runs well past it, stop and report rather than
-continuing silently.
-
-## 7. Trade-off order
+## 6. Trade-off order
 
 **Quality first, then speed, then cost.**
 
