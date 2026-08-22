@@ -1,0 +1,11 @@
+import { createClient } from '@supabase/supabase-js';
+const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const { data: u } = await sb.from('users').select('user_id').eq('email','npx10111@gmail.com').single();
+const { data } = await sb.from('gen_data').select('type, created_at').eq('user_id', u.user_id).order('created_at',{ascending:false}).limit(15);
+console.log(data);
+const { data: cv } = await sb.from('cv_data').select('master_cv').eq('user_id', u.user_id).single();
+const m = typeof cv.master_cv === 'string' ? JSON.parse(cv.master_cv) : cv.master_cv;
+console.log('MASTER KEYS', Object.keys(m));
+const exp = m.work_experience || m.experience || [];
+for (const e of exp) console.log('*', e.title,'@',e.company||e.employer, e.start_date||e.dates, e.end_date, '| fe:', (e.fractional_engagements||[]).map(f=>f.company||f.client||f.name).join(', '));
+console.log('TALKS', JSON.stringify(m.speaking||m.talks||[]).length);

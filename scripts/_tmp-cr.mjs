@@ -1,0 +1,14 @@
+import { createClient } from '@supabase/supabase-js';
+const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const { data: u } = await sb.from('users').select('user_id').eq('email','npx10111@gmail.com').single();
+const { data: cv } = await sb.from('cv_data').select('master_cv').eq('user_id', u.user_id).single();
+const m = typeof cv.master_cv === 'string' ? JSON.parse(cv.master_cv) : cv.master_cv;
+console.log('=== SPEAKING (all):');
+for (const t of (m.speaking_and_lecturing||[])) console.log(' *', JSON.stringify(t));
+console.log('=== PUBLICATIONS:');
+for (const t of (m.publications_and_patents||[])) console.log(' *', JSON.stringify(t));
+console.log('=== ADVISORY:');
+for (const t of (m.advisory_and_community||[])) console.log(' *', JSON.stringify(t));
+const np = (m.work_experience||[]).find(e=>/Nik Page/.test(e.company||''));
+console.log('=== ENGAGEMENTS under Nik Page Ltd:');
+for (const f of (np.fractional_engagements||[])) console.log(' *', JSON.stringify(f));

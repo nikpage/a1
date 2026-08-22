@@ -275,6 +275,13 @@ every warning) and a cost line for every call.
 
 Run it with the repo's `.env.local` loaded: `node scripts/test-generate.mjs …`.
 
+**Run output is named `runs/<YYYY-MM-DD>_<ad>_<what>/`** — date first so it
+sorts chronologically, then the ad and what was generated
+(`2026-08-22_sudolabs_cv/`). Its console log sits beside it under the same name
+with `.log`. No other naming. A directory whose name does not say which ad it
+came from cannot be found again, and the owner should never have to open a file
+to learn what it is.
+
 **Every paid run writes its output to a file in `runs/` (gitignored), never to
 stdout alone** — a run you cannot re-read is money spent twice. `runs/` is
 scratch, not history: prune it when you are in there. Anything worth keeping is

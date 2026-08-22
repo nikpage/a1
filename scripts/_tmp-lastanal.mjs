@@ -1,0 +1,12 @@
+import { createClient } from '@supabase/supabase-js';
+const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const { data: u } = await sb.from('users').select('user_id').eq('email','npx10111@gmail.com').single();
+const { data } = await sb.from('gen_data').select('content, created_at').eq('user_id', u.user_id).eq('type','analysis').order('created_at',{ascending:false}).limit(1);
+const c = typeof data?.[0]?.content === 'string' ? JSON.parse(data[0].content) : data?.[0]?.content;
+const bp = c?.generation_framework?.cv_blueprint || {};
+console.log('analysis at', data?.[0]?.created_at);
+console.log('required_evidence:', JSON.stringify(bp.required_evidence ?? '(absent)'));
+console.log('headline:', bp.headline_draft);
+console.log('summary:', bp.summary_draft);
+console.log('skills:', JSON.stringify(bp.skills_to_highlight));
+console.log('stance:', JSON.stringify(c?.job_extraction?.stance ?? '(absent)'));

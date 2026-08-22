@@ -2,22 +2,22 @@
   "profile": {
     "name": "Nik Page",
     "contact": {
-      "email": "Product.Success@Nik.Page",
+      "email": "Me@Nik.Page",
       "phone": "+420 731 647 707",
       "website": "nik.page",
       "linkedin": "www.linkedin.com/in/nbpage"
     },
     "summary": "",
     "headline": "",
-    "location": "Prague, CZ",
+    "location": "Czech Republic",
     "languages": [
       {
         "language": "English",
-        "proficiency": "Native or Bilingual"
+        "proficiency": "Native"
       },
       {
         "language": "Czech",
-        "proficiency": "Limited Working"
+        "proficiency": "Working"
       }
     ],
     "top_skills": [
@@ -36,7 +36,7 @@
       "UX Strategy",
       "Experience Strategy",
       "Experience Design",
-      "User-Centered Design",
+      "User-Centred Design",
       "Human-Centered Design",
       "User Research",
       "Multivariate & Behavioural Testing",
@@ -81,18 +81,17 @@
     ],
     "certifications": [
       "Google for Startups Facilitator / Mentor",
-      "Google Design Sprint Master"
-    ],
-    "honors_and_awards": [
+      "Google Design Sprint Master",
       "Google Developer Expert: Product & UX"
-    ]
+    ],
+    "honors_and_awards": []
   },
   "education": [
     {
       "dates": "1992 - 1994",
       "location": "",
-      "institution": "Computing Learning Center",
-      "qualification": "Informatics, Mainframe Programming"
+      "institution": "Heald College",
+      "qualification": "BS, Informatics - Mainframe Programming"
     }
   ],
   "role_overlaps": [],
@@ -114,7 +113,7 @@
         "Deliver complete, custom tools.",
         "Educate and coach client teams to build the capability internally."
       ],
-      "company": "Nik Page Ltd. Experience Strategy & Design",
+      "company": "Nik Page Ltd.",
       "end_date": "Present",
       "location": "Prague, CZ",
       "start_date": "August 2016",
@@ -182,7 +181,7 @@
             "Set experience and business development strategy.",
             "Led user-focused product management."
           ],
-          "company": "Aerum Official",
+          "company": "Aerum Blockchain Official",
           "end_date": "June 2019",
           "location": "Prague, CZ",
           "start_date": "June 2018",
@@ -204,25 +203,11 @@
       ]
     },
     {
-      "title": "Public Speaker & Promoter, Customer/User Experience: Experience Design",
-      "bullets": [
-        "Speak and chair at industry conferences on experience design, UX strategy and blockchain adoption across Europe.",
-        "Chaired the Design Thinking Summit in Berlin (2018) and Prague (2017).",
-        "Ran an experimental design sprint with 100 participants in one hour at the Design Thinking Summit, Berlin 2018.",
-        "Judged product design at Dev Challenge XIX, Lodz 2022; mentored UX at the ENS Domains Hackathon, London 2018."
-      ],
-      "company": "Public Speaking / Lecturing",
-      "end_date": "Present",
-      "location": "",
-      "start_date": "August 2013",
-      "fractional_engagements": []
-    },
-    {
       "title": "Visiting Lecturer",
       "bullets": [
         "Led a for-credit course covering strategic experience planning from product inception to sunset."
       ],
-      "company": "Faculty of Arts, Charles University in Prague",
+      "company": "Faculty of Arts, Charles University",
       "end_date": "June 2017",
       "location": "Prague, CZ",
       "start_date": "February 2017",
@@ -236,7 +221,7 @@
         "Promoted understanding of experience design methods and their benefits within business and product teams.",
         "Led exploration of new approaches: API UX (Developer Experience), Lean UX in a corporate environment, gamification of user testing, and big-data analysis as a UX exploration tool."
       ],
-      "company": "Česká spořitelna (Czech Savings Bank)",
+      "company": "Česká spořitelna",
       "end_date": "August 2016",
       "location": "Prague, CZ",
       "start_date": "July 2014",
@@ -250,7 +235,7 @@
         "Introduced tools and activities to promote user-centred and customer-experience design.",
         "Coached and consulted with development, business and project management teams."
       ],
-      "company": "Česká spořitelna (Czech Savings Bank)",
+      "company": "Česká spořitelna",
       "end_date": "July 2014",
       "location": "Prague, CZ",
       "start_date": "October 2012",
@@ -264,7 +249,7 @@
         "Wrote the test strategy and charter.",
         "Managed budget and capacity planning, then handed off to an operational manager."
       ],
-      "company": "ČSOB (Czechoslovak Commercial Bank)",
+      "company": "ČSOB",
       "end_date": "October 2011",
       "location": "Prague, CZ",
       "start_date": "August 2011",
@@ -334,7 +319,7 @@
         "Conducted and documented ambiguity reviews of technical specifications and business requirements documents."
       ],
       "company": "Morgan Stanley Online",
-      "end_date": "January 2001",
+      "end_date": "October 2001",
       "location": "San Francisco, US",
       "start_date": "March 2000",
       "fractional_engagements": []
@@ -353,7 +338,7 @@
       "fractional_engagements": []
     },
     {
-      "title": "Consultant",
+      "title": "Contract QA Consultant",
       "bullets": [
         "Contract QA consulting. Clients included Pacific Bell and Canon."
       ],
@@ -364,7 +349,7 @@
       "fractional_engagements": []
     },
     {
-      "title": "QA Lead",
+      "title": "QA Lead / Engineer",
       "bullets": [
         "Designed the QA process.",
         "Wrote and implemented test plans.",
@@ -395,21 +380,21 @@
     {
       "role": "Judge in Product Design",
       "year": "2024",
-      "event": "Dev Challenge",
+      "event": "Dev Challenge X",
       "topic": "Product Design",
       "location": "Kyiv, Ukraine"
     },
     {
       "role": "Judge in Product Design",
       "year": "2023",
-      "event": "Dev Challenge",
+      "event": "Dev Challenge X",
       "topic": "Product Design",
       "location": "Kyiv, Ukraine"
     },
     {
       "role": "Judge in Product Design",
       "year": "2022",
-      "event": "Dev Challenge XIX",
+      "event": "Dev Challenge X",
       "topic": "Product Design",
       "location": "Lodz, Poland"
     },
@@ -444,7 +429,7 @@
     {
       "role": "Speaker",
       "year": "2018",
-      "event": "Google Launchpad",
+      "event": "Google Launchpad for Startups",
       "topic": "Experience Design for Startups",
       "location": "Budapest"
     },
@@ -456,10 +441,10 @@
       "location": "Zurich"
     },
     {
-      "role": "UX Mentor",
+      "role": "Invited UX Mentor",
       "year": "2018",
-      "event": "ENS Domains Hackathon",
-      "topic": "UX Mentoring",
+      "event": "ENS (Ethereum Name Service) Hackathon",
+      "topic": "Invited to London to mentor teams on blockchain product UX",
       "location": "London"
     },
     {
@@ -472,15 +457,15 @@
     {
       "role": "Speaker",
       "year": "2018",
-      "event": "DAPP (DAPPs Adoption, Paralelní Polis)",
+      "event": "DAPP (Paralelni Polis)",
       "topic": "Experience Design in Blockchain: Current Status",
       "location": "Prague"
     },
     {
-      "role": "Speaker",
+      "role": "Co-creator & Workshop Lead",
       "year": "2018",
-      "event": "BlockStars — The Business of Blockchain",
-      "topic": "Experience Design in Blockchain: Mass Adoption",
+      "event": "BlockStars",
+      "topic": "BlockStars — a workshop I co-created on blockchain and crypto UX",
       "location": "Prague"
     },
     {
@@ -493,14 +478,14 @@
     {
       "role": "Speaker",
       "year": "2017",
-      "event": "Google Developer Group DevFest",
+      "event": "Google Developer Group",
       "topic": "UX Strategy: Why & How",
       "location": "Budapest"
     },
     {
       "role": "Speaker",
       "year": "2017",
-      "event": "Google Developer Group DevFest",
+      "event": "Google Developer Group",
       "topic": "The UX of VR / AR",
       "location": "Voronezh"
     },
@@ -514,21 +499,21 @@
     {
       "role": "Speaker",
       "year": "2016",
-      "event": "Web Expo",
+      "event": "Web Expo Prague",
       "topic": "The Business Side of Experience Strategy",
       "location": "Prague"
     },
     {
       "role": "Speaker",
       "year": "2015",
-      "event": "Web Expo",
+      "event": "Web Expo Prague",
       "topic": "Results Driven UX Prototyping & User Testing",
       "location": "Prague"
     },
     {
       "role": "Speaker",
       "year": "2015",
-      "event": "Web Expo",
+      "event": "Web Expo Prague",
       "topic": "API DX: The Developer Experience",
       "location": "Prague"
     },
@@ -542,7 +527,7 @@
     {
       "role": "Speaker",
       "year": "2015",
-      "event": "Customer Experience Association",
+      "event": "Customer Experience Summit",
       "topic": "Iterative Design as a Way of Building a Customer-Centric Philosophy",
       "location": ""
     },
@@ -556,7 +541,7 @@
     {
       "role": "Speaker",
       "year": "2014",
-      "event": "Web Expo",
+      "event": "Web Expo Prague",
       "topic": "Invisible Intelligent Ubiquitous Banking",
       "location": "Prague"
     },
@@ -577,13 +562,13 @@
     {
       "role": "Speaker",
       "year": "2013",
-      "event": "WebExpo",
+      "event": "WebExpo Prague",
       "topic": "Emergent Service Design",
       "location": "Prague"
     },
     {
       "role": "Speaker",
-      "year": "",
+      "year": "2016",
       "event": "Charles University",
       "topic": "Experience Design in Corporate Culture",
       "location": "Prague"

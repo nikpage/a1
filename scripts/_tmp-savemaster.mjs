@@ -1,0 +1,11 @@
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import { saveMasterCv, getMasterCv } from '../utils/database.js';
+import { normaliseMaster } from '../utils/master-schema.js';
+const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const { data } = await sb.from('users').select('user_id').eq('email','npx10111@gmail.com').single();
+const stored = await getMasterCv(data.user_id);
+const incoming = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const master = normaliseMaster(incoming, stored);
+await saveMasterCv(data.user_id, master);
+console.log('saved:', master.work_experience.length, 'roles |', master.work_experience[0].fractional_engagements.length, 'engagements |', master.speaking_and_lecturing.length, 'talks |', master.publications_and_patents.length, 'publications');

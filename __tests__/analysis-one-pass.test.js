@@ -66,7 +66,7 @@ describe('the analysis prompt selects and frames', () => {
     expect(p).toMatch(/REGISTER the ad is written in/);
     // Dropping real work is a legitimate outcome now that a record, not a
     // document, is the source.
-    expect(p).toMatch(/drop_jobs/);
+    expect(p).toMatch(/earlier_career/);
     expect(p).toMatch(/Dropping real work is selection, not falsification/);
   });
 

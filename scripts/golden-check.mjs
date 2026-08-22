@@ -103,7 +103,17 @@ const money = (u) => usages.push(...(Array.isArray(u) ? u : u ? [u] : []));
 
 console.log('Analysing the frozen record against the frozen ad...');
 const analysisResult = await analyzeCvJob(JSON.stringify(master), jobText, null);
-const analysis = analysisResult.output ?? analysisResult;
+// analyzeCvJob returns `output` as a JSON STRING — the worker parses it
+// (utils/run-generation.js) and so must this harness. Handing the string
+// straight on left every analysis-driven check in Layer 6 silently blind.
+const raw = analysisResult.output ?? analysisResult;
+const analysis = typeof raw === 'string' ? JSON.parse(raw) : raw;
+// Older Applicant is computed in code from the master's dates, exactly as
+// analyse-background.mjs does it — not left to the model's two tag slots.
+const { withOlderApplicant } = await import('../prompts/scenarios.js');
+if (analysis?.analysis) {
+  analysis.analysis.scenario_tags = withOlderApplicant(analysis.analysis.scenario_tags, master);
+}
 money(analysisResult.usages ?? analysisResult.gemini_usage);
 writeFileSync(join(outDir, 'analysis.json'), JSON.stringify(analysis, null, 2));
 
@@ -112,9 +122,9 @@ for (const type of types) {
   console.log(`Generating the ${type}...`);
   const gen =
     type === 'cv'
-      ? await generateCV({ analysis, master: JSON.stringify(master), tone: 'formal', language: 'en' })
-      : await generateCoverLetter({ analysis, master: JSON.stringify(master), tone: 'formal', language: 'en' });
-  const doc = gen.output ?? gen.document ?? gen;
+      ? await generateCV({ analysis, cv: JSON.stringify(master), tone: 'formal', language: 'en' })
+      : await generateCoverLetter({ analysis, cv: JSON.stringify(master), tone: 'formal', language: 'en' });
+  const doc = gen.content ?? gen.output ?? gen.document ?? gen;
   money(gen.usages ?? gen.gemini_usage);
   const file = join(outDir, `${type}.md`);
   writeFileSync(file, typeof doc === 'string' ? doc : JSON.stringify(doc, null, 2));

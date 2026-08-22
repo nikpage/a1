@@ -24,7 +24,7 @@
 // translates — never a pre-built sentence. Section names and the bullet-length
 // band come from prompts/cv-sections.js, which holds them per language.
 
-import { standardHeadings, isSlot, bulletBand } from '../prompts/cv-sections.js';
+import { standardHeadings, isSlot, bulletBand, SECTION_NAMES } from '../prompts/cv-sections.js';
 import { bannedPhrases, identityEpithets } from '../prompts/voice.js';
 import { coverWordBand } from '../prompts/market.js';
 import { salutationName } from '../prompts/cover-evidence.js';
@@ -740,6 +740,107 @@ function checkRequiredEvidence(document, analysis, warnings) {
   }
 }
 
+// 17. The Speaking & Lecturing section prints the entries the blueprint chose.
+//     evidence_from_speaking is selected by SUBJECT against this ad — five
+//     crypto talks for a crypto employer. The writer printed five different
+//     talks instead: a design-judging credit, a startup workshop, a developer-
+//     experience talk, none of them about the employer's field. Same defect as
+//     the Earlier Career roster, same remedy: the choice was already made, and
+//     the document copies it. Matched by stem so wording and inflection cannot
+//     hide a hit; two thirds of an entry's words is a match, because the writer
+//     may legitimately shorten "BlockStars — a workshop I co-created on
+//     blockchain and crypto UX" to its event name.
+function checkSpeakingRoster(document, analysis, hard) {
+  const chosen = analysis?.generation_framework?.cv_blueprint?.evidence_from_speaking;
+  if (!Array.isArray(chosen) || !chosen.length) return;
+
+  let section = '';
+  for (const s of splitSections(document)) {
+    if (isSlot('speaking', s.heading) || isSlot('publications', s.heading)) section += ` ${s.lines.join(' ')}`;
+  }
+  if (!section.trim()) return; // check 16 already reports the missing section.
+  const text = fold(section);
+
+  const stems = (name) =>
+    String(name)
+      .split(/[^\p{L}\p{N}]+/u)
+      .map(fold)
+      .filter((w) => w.length >= 4)
+      .map((w) => (w.length > 6 ? w.slice(0, 6) : w));
+
+  const missing = [];
+  for (const item of chosen) {
+    const parts = stems(typeof item === 'string' ? item : String(item?.evidence || item?.title || ''));
+    if (parts.length < 2) continue;
+    const hits = parts.filter((w) => text.includes(w)).length;
+    if (hits / parts.length < 0.66) missing.push(String(item).trim());
+  }
+  if (missing.length) {
+    hard.push(`The blueprint's evidence_from_speaking names ${missing.join('; ')}, and the Speaking & Lecturing section does not carry them. Print the entries that list names, chosen for this ad's subject — not the record's own most recent talks.`);
+  }
+}
+
+// 11b. Every employer on the blueprint's Earlier Career roster reaches the
+//      document. HARD, not a warning: the roster is a list of literal names the
+//      writer only has to copy, so a missing one is the writer overriding a
+//      decision already made — and it is exactly how Morgan Stanley and Wells
+//      Fargo left a finance CV while three unknown recent employers took their
+//      places. Matched on the employer half of "Title, Employer", folded, so
+//      diacritics and case cannot hide a hit.
+function checkEarlierCareerRoster(document, analysis, hard) {
+  const roster = analysis?.generation_framework?.cv_blueprint?.job_selection?.earlier_career;
+  if (!Array.isArray(roster) || !roster.length) return;
+
+  // The section itself, not the whole page: printing a rostered role as a full
+  // dated Work Experience entry satisfies "the name is somewhere" while doing
+  // the opposite of what the roster asked for — it walks the career back to 1993
+  // and re-emits every age signal the window exists to close.
+  let section = '';
+  for (const s of splitSections(document)) {
+    for (const role of parseRoles(s)) {
+      if (isEarlierCareer(role.title)) section += ` ${plain(role.subtitle)} ${role.bullets.join(' ')}`;
+    }
+  }
+  const inSection = fold(section);
+  const missing = [];
+  for (const item of roster) {
+    if (typeof item !== 'string' || !item.trim()) continue;
+    const parts = item.split(',');
+    const employer = (parts.length > 1 ? parts.slice(1).join(',') : parts[0]).trim();
+    if (employer.length < 3) continue;
+    if (!inSection.includes(fold(employer))) missing.push(employer);
+  }
+  if (missing.length) {
+    hard.push(`The blueprint's Earlier Career roster names ${missing.join(', ')}, and the CV's "Earlier Career" section does not. Every rostered entry is one undated "Title, Employer" bullet in that section, in the roster's order — never a dated Work Experience entry of its own.`);
+  }
+}
+
+// 16. Every section the blueprint ordered actually reaches the document.
+//     section_order is the strategist's decision about what this ad needs to
+//     see; a writer that silently omits one — Speaking & Lecturing, chosen
+//     because five crypto talks were the record's strongest domain proof for a
+//     crypto employer — deletes the evidence and nothing else notices.
+function checkOrderedSections(document, analysis, hard) {
+  const order = analysis?.generation_framework?.cv_blueprint?.section_order;
+  if (!Array.isArray(order) || !order.length) return;
+  const sections = splitSections(document);
+  const headings = sections.map((s) => fold(s.heading));
+  // The document may be generated in a language the blueprint was not written
+  // in, so "Speaking & Lecturing" is answered by "Přednášky a konference". Match
+  // through the registry's slots first and fall back to the literal name only
+  // for a heading the registry does not know.
+  const slots = Object.keys(SECTION_NAMES.en);
+  const present = (name) => {
+    const slot = slots.find((k) => isSlot(k, name));
+    if (slot) return sections.some((s) => isSlot(slot, s.heading));
+    return headings.some((h) => h.includes(fold(name)));
+  };
+  const missing = order.filter((name) => typeof name === 'string' && name.trim() && !present(name));
+  if (missing.length) {
+    hard.push(`The blueprint's section_order asks for ${missing.join(', ')}, and the CV has no such section. Print every section it names, in that order.`);
+  }
+}
+
 function checkEarlierCareer(document, master, warnings) {
   if (!master.parsed) return;
   const companies = [];
@@ -952,6 +1053,9 @@ export function validateCv(document, { master = '', analysis = null, language = 
   checkGaps(analysis, warnings);
   checkProjects(document, analysis, warnings);
   checkEarlierCareer(document, m, warnings);
+  checkEarlierCareerRoster(document, analysis, hard);
+  checkOrderedSections(document, analysis, hard);
+  checkSpeakingRoster(document, analysis, hard);
   checkEpithets(document, hard, language);
   checkSkillRecency(document, m, hard);
   checkRoleMetrics(document, m, warnings);

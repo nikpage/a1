@@ -962,3 +962,106 @@ describe('check 17 — inflection does not get round the list', () => {
     expect(bannedPhraseHits(real, 'cs')).toEqual([]);
   });
 });
+
+// Check 11b — the Earlier Career roster is printed, not re-chosen.
+// Red on the old code: before the roster existed the writer picked the section
+// itself and dropped Morgan Stanley and Wells Fargo from a finance CV, and
+// nothing failed.
+describe('check 11b — Earlier Career roster', () => {
+  const master = JSON.stringify({
+    identity: { name: 'A' },
+    experience: [
+      { title: 'Sr. QA Engineer', company: 'Morgan Stanley Online', start_date: 'March 2000', end_date: 'October 2001' },
+      { title: 'Manager, QA Labs', company: 'AVG', start_date: 'January 2009', end_date: 'January 2010' },
+    ],
+  });
+  const analysis = {
+    generation_framework: {
+      cv_blueprint: {
+        section_order: ['Summary', 'Work Experience', 'Education'],
+        job_selection: { earlier_career: ['Sr. QA Engineer, Morgan Stanley Online', 'Manager, QA Labs, AVG'] },
+      },
+    },
+  };
+  const doc = (bullets) => `### **Work Experience**
+
+#### **Earlier Career**
+${bullets.map((b) => `- ${b}`).join('\n')}
+`;
+
+  it('hard-fails when a rostered employer never reaches the document', () => {
+    const { hard } = validateCv(doc(['Manager, QA Labs, AVG']), { master, analysis });
+    expect(hard.some((h) => h.includes('Morgan Stanley Online'))).toBe(true);
+  });
+
+  it('passes when every rostered employer is printed', () => {
+    const { hard } = validateCv(
+      doc(['Sr. QA Engineer, Morgan Stanley Online', 'Manager, QA Labs, AVG']),
+      { master, analysis },
+    );
+    expect(hard.some((h) => h.includes('Earlier Career roster'))).toBe(false);
+  });
+
+  it('says nothing when the blueprint carries no roster', () => {
+    const { hard } = validateCv(doc(['Manager, QA Labs, AVG']), {
+      master,
+      analysis: { generation_framework: { cv_blueprint: { section_order: ['Work Experience'] } } },
+    });
+    expect(hard.some((h) => h.includes('Earlier Career roster'))).toBe(false);
+  });
+});
+
+// Check 16 — a section the blueprint ordered, missing from the document.
+// Red on the old code: Speaking & Lecturing sat in section_order with five
+// crypto talks chosen for a crypto employer, and the writer printed none of it.
+describe('check 16 — ordered sections reach the document', () => {
+  const master = JSON.stringify({ identity: { name: 'A' }, experience: [] });
+  const analysis = {
+    generation_framework: {
+      cv_blueprint: { section_order: ['Summary', 'Work Experience', 'Speaking & Lecturing'] },
+    },
+  };
+
+  it('hard-fails when an ordered section never renders', () => {
+    const doc = '### **Summary**\nX\n\n### **Work Experience**\n\n#### **Role**\n**Co** | 01/2020 - 02/2021\n- Did a thing that mattered here\n';
+    const { hard } = validateCv(doc, { master, analysis });
+    expect(hard.some((h) => h.includes('Speaking & Lecturing'))).toBe(true);
+  });
+
+  it('says nothing when every ordered section is present', () => {
+    const doc = '### **Summary**\nX\n\n### **Work Experience**\n\n#### **Role**\n**Co** | 01/2020 - 02/2021\n- Did a thing that mattered here\n\n### **Speaking & Lecturing**\n- Talk — Event, Prague 2018\n';
+    const { hard } = validateCv(doc, { master, analysis });
+    expect(hard.some((h) => h.includes('section_order'))).toBe(false);
+  });
+});
+
+// Check 17 — the Speaking section prints the talks the blueprint chose.
+// Red on the old code: for a crypto employer the blueprint named five crypto
+// talks and the CV printed five unrelated ones (a design-judging credit, a
+// startup workshop), and nothing failed.
+describe('check 17 — the speaking roster', () => {
+  const master = JSON.stringify({ identity: { name: 'A' }, experience: [] });
+  const analysis = {
+    generation_framework: {
+      cv_blueprint: {
+        section_order: ['Speaking & Lecturing'],
+        evidence_from_speaking: [
+          'UX in Crypto (Coalition 4 Good, Geneva, 2019)',
+          'User Experience in dApps (Dezentrum, Zurich, 2018)',
+        ],
+      },
+    },
+  };
+
+  it('hard-fails when the record\'s own talks are printed instead', () => {
+    const doc = '### **Speaking & Lecturing**\n- Judge in Product Design — Dev Challenge X, Kyiv 2024\n- Experimental Design Sprint — Design Thinking Summit, Berlin 2018\n';
+    const { hard } = validateCv(doc, { master, analysis });
+    expect(hard.some((h) => h.includes('evidence_from_speaking'))).toBe(true);
+  });
+
+  it('passes when the chosen talks are printed', () => {
+    const doc = '### **Speaking & Lecturing**\n- UX in Crypto — Coalition 4 Good, Geneva 2019\n- User Experience in dApps — Dezentrum, Zurich 2018\n';
+    const { hard } = validateCv(doc, { master, analysis });
+    expect(hard.some((h) => h.includes('evidence_from_speaking'))).toBe(false);
+  });
+});
