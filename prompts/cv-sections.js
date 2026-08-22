@@ -23,7 +23,6 @@ export const SECTION_NAMES = {
     skills: ['Skills', 'Key Skills'],
     experience: ['Work Experience', 'Professional Experience', 'Experience'],
     projects: ['Projects'],
-    engagements: ['Consulting Engagements', 'Client Engagements', 'Contract Engagements', 'Selected Engagements'],
     education: ['Education'],
     certifications: ['Certifications'],
     speaking: ['Speaking & Lecturing', 'Speaking and Lecturing', 'Speaking', 'Talks & Publications'],
@@ -36,7 +35,6 @@ export const SECTION_NAMES = {
     skills: ['Dovednosti', 'Klíčové dovednosti', 'Znalosti a dovednosti'],
     experience: ['Pracovní zkušenosti', 'Profesní zkušenosti', 'Praxe'],
     projects: ['Projekty'],
-    engagements: ['Klientské zakázky', 'Poradenské zakázky', 'Vybrané zakázky'],
     education: ['Vzdělání'],
     certifications: ['Certifikace', 'Certifikáty'],
     speaking: ['Přednášky a konference', 'Přednášky', 'Vystoupení'],
@@ -49,7 +47,6 @@ export const SECTION_NAMES = {
     skills: ['Umiejętności', 'Kluczowe umiejętności'],
     experience: ['Doświadczenie zawodowe', 'Doświadczenie'],
     projects: ['Projekty'],
-    engagements: ['Realizacje dla klientów', 'Projekty doradcze', 'Wybrane realizacje'],
     education: ['Wykształcenie', 'Edukacja'],
     certifications: ['Certyfikaty', 'Certyfikacje'],
     speaking: ['Wystąpienia i wykłady', 'Wystąpienia', 'Wykłady'],
@@ -125,7 +122,6 @@ ${line('coreCompetencies', 'Core Competencies')}
 ${line('skills', 'Skills')}
 ${line('experience', 'Work Experience')}
 ${line('projects', 'Projects')}
-${line('engagements', 'Consulting Engagements')} (client work delivered under an umbrella practice)
 ${line('education', 'Education')}
 ${line('certifications', 'Certifications')}
 ${line('earlierCareer', 'Earlier Career')} (the undated collapsed-roles section)`;
