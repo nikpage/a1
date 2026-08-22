@@ -119,7 +119,7 @@ Output in Markdown with this exact structure:
 ---
 
 ### **Speaking & Lecturing**
-[Only when the blueprint's section_order includes it. Print EXACTLY the entries named in the blueprint's evidence_from_speaking list, and no others — that list was chosen by SUBJECT against this ad, and taking the record's own top entries instead prints the newest talks rather than the relevant ones. Order them most relevant to this job first, not by date. One line each. Every line names a real entry from the record, verbatim in substance.]
+[Only when the blueprint's section_order includes it. Print EXACTLY the entries named in the blueprint's evidence_from_speaking list and no others, most relevant to this job first, one line each, each a real entry from the record.]
 - [Topic or role] — [Event], [Location] [Year]
 
 ---
@@ -146,7 +146,7 @@ ${cv}
 ## The strategist's blueprint (material for the document you are composing, not a form to answer):
 ${JSON.stringify(generationBrief(analysis), null, 2)}
 
-**cv_blueprint.required_evidence is the exception to "not a form to answer".** Every item on that list appears in the finished document, named, with its own line of evidence — it is the work this job makes essential, chosen for relevance to this ad rather than for how recent it is. Where an item is a client engagement delivered under an umbrella practice, name that client explicitly in the umbrella entry's bullets; a bullet describing the work without naming who it was for leaves the reader unable to see it at all. Old work on that list outranks recent work that is not on it: a short, long-ago role the ad has no use for is condensed or moved to Earlier Career to make the room, however recent the document's other choices are.
+**cv_blueprint.required_evidence is the exception to "not a form to answer".** Every item on it appears in the finished document, named — and where an item is a client engagement under an umbrella practice, that client is named in the umbrella entry's bullets.
 
 Return only the formatted CV in the exact Markdown structure above. No commentary.
 `
