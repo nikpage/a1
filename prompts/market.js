@@ -6,11 +6,13 @@
 // a date of birth or a data-processing consent line: the rule is only ever
 // "carry through what the candidate supplied", never "produce one".
 
-// The cover letter's word budget is a market convention like any other (see
-// CV_RULES.md, Layer 5): the Czech motivační dopis / Polish list motywacyjny is
-// a short covering note, and a letter that runs past ~300 words there reads as
-// padding rather than thoroughness. Anglo and DACH carry the longer letter.
-const NEUTRAL_COVER = { min: 250, max: 350, target: 275 };
+// The cover letter's word budget. It USED to differ by market (CZ/PL 200-300,
+// Anglo and DACH 250-350); on 2026-08-23 Nik set ONE band for every market —
+// 150-250, default 200 (CV_RULES.md, Layer 5). A letter argues two things and
+// proves each with one instance; past 250 words it is restating or narrating
+// the CV. The per-market hook stays here so a market can reopen it, but no
+// market currently overrides `cover`.
+const NEUTRAL_COVER = { min: 150, max: 250, target: 200 };
 
 const MARKETS = {
   ANGLO: {
@@ -26,7 +28,6 @@ const MARKETS = {
   },
   CEE: {
     codes: ['CZ', 'CZECHIA', 'CZECH REPUBLIC', 'ČESKÁ REPUBLIKA', 'PL', 'POLAND', 'POLSKA'],
-    cover: { min: 200, max: 300, target: 250 },
     rules: `- A photo is optional: include one only if the master CV supplies it.
 - Include a data-processing consent line ONLY if the master CV supplies one, reproduced in the candidate's own recorded wording, as the final line of the CV.`,
   },

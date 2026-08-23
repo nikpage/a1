@@ -9,6 +9,8 @@ import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { targetJobBlock } from '../prompts/job-target.js';
+import { buildLetterPlanPrompt } from '../prompts/letter-plan.js';
+import { buildProsePassPrompt } from '../prompts/prose-pass.js';
 import { buildGenerationVerifyPrompt, buildPhraseRepairPrompt } from '../prompts/generation-verify.js';
 import { buildVoiceProfilePrompt } from '../prompts/voice-profile.js';
 import { buildVoiceRewritePrompt } from '../prompts/voice-check.js';
@@ -890,8 +892,76 @@ export function dressLetter(rawContent) {
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+
+// THE LETTER PLAN — structure before prose (prompts/letter-plan.js).
+//
+// Judgment about what to argue and in what order, so it runs on the ANALYSIS
+// model, not a lite checker. It returns SHAPE only; the writer owns every word.
+//
+// A failed plan degrades to the old behaviour rather than failing the letter:
+// letterPlanBlock() renders nothing for a null plan and the writer chooses for
+// itself, exactly as it did before this stage existed. A letter is worth more
+// than a plan.
+export async function planLetter({ analysis, tweak = '' }) {
+  const evidence = analysis?.generation_framework?.cover_evidence;
+  const pairs = Array.isArray(evidence?.requirement_evidence) ? evidence.requirement_evidence : [];
+  // Nothing to rank means nothing to decide — a standalone pass with no ad.
+  if (!pairs.length) return { plan: null, gemini_usage: null };
+  try {
+    const messages = buildLetterPlanPrompt({ analysis, tweak });
+    const data = await callGemini(GEMINI_ANALYSIS_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.3, label: 'plan cover letter' });
+    const gemini_usage = geminiUsage('plan cover letter', data, GEMINI_ANALYSIS_MODEL);
+    const plan = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+    const points = Array.isArray(plan?.points) ? plan.points : [];
+    if (!points.length) {
+      logger.error('[plan cover letter] plan carried no points, writing without it');
+      return { plan: null, gemini_usage };
+    }
+    // Two is the decision. A third point means the planner did not decide, and
+    // the writer must not inherit the indecision.
+    plan.points = points.slice(0, 2);
+    logger.info(`[plan cover letter] ${plan.points.length} point(s): ${plan.points.map((x) => x?.instance).join(' | ')}`);
+    return { plan, gemini_usage };
+  } catch (e) {
+    logger.error('letter plan failed (writing without it):', e.message);
+    return { plan: null, gemini_usage: null };
+  }
+}
+
+// THE COLD READ (prompts/prose-pass.js). The letter ALONE — no ad, no record,
+// no plan — judged the way a stranger opening the envelope judges it.
+//
+// It cannot be impressed by relevance, because it does not know the job. That
+// is the whole point: every other check in this repo reads the letter against
+// something and therefore grades the match. This one answers the only question
+// the reader actually asks — did a person write this, and would I remember them
+// tomorrow.
+//
+// It REPORTS. It never rewrites and it never blocks: a flat letter is a writing
+// or a planning problem, and papering it over with a second model's edit is the
+// defect this repo removed once already (applyVoice, see CLAUDE.md).
+export async function readLetterCold({ document }) {
+  try {
+    if (!document || !document.trim()) return { read: null, gemini_usage: null };
+    const messages = buildProsePassPrompt({ letter: document });
+    const data = await callGemini(GEMINI_VERIFY_MODEL, messages, { reasoning_effort: 'low', label: 'cold read cover letter' });
+    const gemini_usage = geminiUsage('cold read cover letter', data, GEMINI_VERIFY_MODEL);
+    const read = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || '{}'));
+    return { read, gemini_usage };
+  } catch (e) {
+    logger.error('cold read failed:', e.message);
+    return { read: null, gemini_usage: null };
+  }
+}
+
 export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
-  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile);
+  // SHAPE IS DECIDED BEFORE PROSE. A model handed an argument and asked for a
+  // letter produces the shape of a letter rather than the argument; the plan
+  // makes the order, the one instance per point, and the first and last
+  // sentence's job explicit so the writer executes a decision instead of
+  // improvising one under the pressure of sounding fluent.
+  const planned = await planLetter({ analysis, tweak });
+  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile, planned.plan);
   // See generateCV: medium effort + low temperature keep the letter tied to the
   // record instead of drifting into a better-sounding version of it.
   // The LETTER runs hotter than the CV. A CV is a record and 0.4 keeps it tied to
@@ -901,7 +971,9 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55, label: 'generate cover letter' });
 
   const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
-  const usages = [gemini_usage];
+  const usages = [];
+  if (planned.gemini_usage) usages.push(planned.gemini_usage);
+  usages.push(gemini_usage);
 
   const processedContent = dressLetter(data.choices?.[0]?.message?.content || '');
 
@@ -1007,6 +1079,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     gemini_usage,
     // Every call, in order — the cost-logging rule covers the voice passes too.
     gemini_usages: usages,
+    plan: planned.plan || null,
     voice_fixes: voiced.applied || [],
   };
 }

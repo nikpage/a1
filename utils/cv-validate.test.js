@@ -1002,6 +1002,34 @@ ${bullets.map((b) => `- ${b}`).join('\n')}
     expect(hard.some((h) => h.includes('Earlier Career roster'))).toBe(false);
   });
 
+  // 2026-08-23: the real generator emits Earlier Career as its OWN section
+  // (### Earlier Career, plain bullets), not as a #### role inside Work
+  // Experience. The check only read roles, so `section` came back empty and
+  // every rostered employer was reported missing — five hard failures on a CV
+  // that printed all five names correctly, and the wasted regeneration that
+  // followed.
+  const ownSection = (bullets) => `### **Work Experience**
+
+#### **Head of Experience Design**
+**Ceska sporitelna** | 07/2014 - 08/2016
+
+### **Earlier Career**
+${bullets.map((b) => `- ${b}`).join('\n')}
+`;
+
+  it('reads an Earlier Career section of its own, not only a role inside Work Experience', () => {
+    const { hard } = validateCv(
+      ownSection(['Sr. QA Engineer, Morgan Stanley Online', 'Manager, QA Labs, AVG']),
+      { master, analysis },
+    );
+    expect(hard.some((h) => h.includes('Earlier Career roster'))).toBe(false);
+  });
+
+  it('still catches a genuinely missing employer in that section', () => {
+    const { hard } = validateCv(ownSection(['Manager, QA Labs, AVG']), { master, analysis });
+    expect(hard.some((h) => h.includes('Morgan Stanley Online'))).toBe(true);
+  });
+
   it('says nothing when the blueprint carries no roster', () => {
     const { hard } = validateCv(doc(['Manager, QA Labs, AVG']), {
       master,

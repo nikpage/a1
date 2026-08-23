@@ -239,9 +239,9 @@ motivation for this application.
 - Close: interest restated, a clear call to action about an interview, and a
   professional sign-off.
 
-**Length and tone.** 250–350 words, one page maximum; the per-market band in
-Layer 5 sets the exact figure where a market convention is shorter. Active,
-confident, direct, and pitched to the target industry's culture.
+**Length and tone.** 150–250 words, one page maximum — one band, every
+market. Active, confident, direct, and pitched to the target industry's
+culture.
 
 ## Layer 1 — Machine parseability
 
@@ -344,7 +344,7 @@ Where the candidate's recorded voice builds to its point rather than leading wit
 
 **Check 26 — the same borrowed requirement, on the CV.** Check 24 runs on the letter alone and the CV leaks identically; the same run printed "B2B Client Relations" and "Account Management" under Skills and "B2B Account Manager & Tech Enablement Specialist" as the headline, over a record that says none of them. Severity is by SLOT, because the slot resolves the ambiguity a term list cannot: a Skills entry and a headline are bare assertions with no surrounding prose to make them innocent, so a borrowed term there is always a claim about the candidate and fails HARD, triggering the one regeneration. Prose can carry an ad word without asserting it — naming the employer's world, restating the requirement being answered — and is left to the AI verify pass, which reads the sentence rather than the word. Check 14 cannot cover this: it matches five-letter stems against the master as one flat string, so "B2B Client Relations" clears on "client" and "relations" from a 2003 role, and short terms are invisible to it entirely.
 
-**Check 25 — the same sentence printed twice.** In a 250–350 word letter an exact repeat is never intentional; it is the writer restating itself, or span surgery leaving a clause that already existed elsewhere. Only exact repeats are cut (case, spacing and punctuation folded), only the later one, and nothing under six words — a short line may be a deliberate echo, and cutting a real one costs more than leaving it. Deterministic, no second AI call.
+**Check 25 — the same sentence printed twice.** In a 150–250 word letter an exact repeat is never intentional; it is the writer restating itself, or span surgery leaving a clause that already existed elsewhere. Only exact repeats are cut (case, spacing and punctuation folded), only the later one, and nothing under six words — a short line may be a deliberate echo, and cutting a real one costs more than leaving it. Deterministic, no second AI call.
 
 ## Layer 4 — Situational overrides
 
@@ -400,7 +400,7 @@ Set per target market, applied last. Market rules key off the job ad's country w
 
 Never generate a photo, a date of birth, or a consent statement the user did not provide.
 
-**Cover letter length is a market convention too.** The letter's word budget belongs here rather than as one global number, because the norm genuinely differs: in CZ/PL the *motivační dopis* / *list motywacyjny* is a short covering note of roughly 200–300 words that stays well inside one A4, and a letter that runs past it reads as padding, not thoroughness. The Anglo and DACH markets carry the longer letter comfortably. Each market therefore sets a band and a default within it: CZ/PL 200–300, default 250; every other market 250–350, default 275; an unrecognised country takes the neutral 250–350. The band is a ceiling to cut against, never a quota to fill — the letter makes its argument and stops, and a letter that lands under its band because the argument is finished is correct.
+**Cover letter length is ONE band, 150–250 words, default 200 — every market, no exceptions** (owner decision, 2026-08-23). It used to split by market: CZ/PL 200–300 as a short *motivační dopis* / *list motywacyjny*, Anglo and DACH 250–350. That split is gone. A letter argues two things and proves each with one instance; past 250 words it is restating, padding, or narrating the CV, and the shorter ceiling is the cheapest pressure available on all three. The band still lives in Layer 5 (`prompts/market.js`, `coverWordBand`) so a future market can reopen it, but every market now returns the same numbers. It is a ceiling to cut against, never a quota to fill — a letter that lands at 160 words because the argument is finished is correct.
 
 ## Layer 6 — Output validation (must pass before delivery)
 

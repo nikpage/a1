@@ -795,8 +795,15 @@ function checkEarlierCareerRoster(document, analysis, hard) {
   // dated Work Experience entry satisfies "the name is somewhere" while doing
   // the opposite of what the roster asked for — it walks the career back to 1993
   // and re-emits every age signal the window exists to close.
+  //
+  // Earlier Career reaches the page in TWO shapes and both are correct: as a
+  // `#### Earlier Career` role inside Work Experience, and as a section of its
+  // own with plain bullets under it. Reading only the first is what reported all
+  // five rostered employers missing from a CV that printed all five (2026-08-23,
+  // Invity) and spent a regeneration on the phantom.
   let section = '';
   for (const s of splitSections(document)) {
+    if (isEarlierCareer(s.heading)) section += ` ${s.lines.map(plain).join(' ')}`;
     for (const role of parseRoles(s)) {
       if (isEarlierCareer(role.title)) section += ` ${plain(role.subtitle)} ${role.bullets.join(' ')}`;
     }
@@ -1694,7 +1701,7 @@ function cvHeadline(document) {
 //
 // Seen on a real letter: "My focus is on user adoption, structured relationship
 // building, and client success." appeared verbatim in two paragraphs. In a
-// 250-350 word letter a repeated sentence is never intentional — it is the
+// 150-250 word letter a repeated sentence is never intentional — it is the
 // writer restating its own point, or span surgery leaving a clause that already
 // existed elsewhere. Like the banned phrases and the invented domains, this is
 // the app's own writing failing, so it is REMOVED before delivery rather than

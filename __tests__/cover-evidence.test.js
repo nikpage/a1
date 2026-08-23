@@ -232,7 +232,7 @@ describe('validateCoverLetter — the letter’s slice of Layer 6', () => {
   test('over the market ceiling is a hard failure, under it is not', () => {
     const long = validateCoverLetter(letter(body(400)), { master: MASTER, analysis: analysisWith(EVIDENCE) });
     expect(long.ok).toBe(false);
-    expect(long.hard.join(' ')).toMatch(/300/);
+    expect(long.hard.join(' ')).toMatch(/250/);
 
     // Under the ceiling, with nothing else to fail: the fixture's concern and
     // requirements are contract checks now, so they are removed here to leave

@@ -151,7 +151,7 @@ describe('existing key rules survive the date insertion (guard against accidenta
     const user = buildCoverPrompt(MASTER_JSON, ANALYSIS, 'professional', '', '', 'auto', FIXED)
       .find((m) => m.role === 'user').content;
     expect(user).toContain('# The letter\'s furniture');
-    expect(user).toMatch(/250-350 words/);
+    expect(user).toMatch(/150-250 words/);
     expect(user).toContain('Open with a professional header');
     expect(user).toContain('voice_samples');
   });

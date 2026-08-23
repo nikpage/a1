@@ -79,7 +79,7 @@ describe('buildAnalysisPrompt — nested engagements are not job-hopping', () =>
       .find((m) => m.role === 'user').content;
     expect(delta).toContain('"target_cover_words"');
     expect(delta).toMatch(/generation_framework\.target_cover_words/);
-    expect(delta).toMatch(/250-350/);
+    expect(delta).toMatch(/150-250/);
 
     const standalone = buildAnalysisPrompt(MASTER_JSON, SAMPLE_JOB, true, null)
       .find((m) => m.role === 'user').content;
@@ -105,8 +105,29 @@ describe('buildCvPrompt — fractional engagements render nested', () => {
 
   test('instructs a merged parent to render as one role with engagements nested beneath, not separate top-level jobs', () => {
     const p = buildCvPrompt(MASTER_JSON, analysis, 'professional').find((m) => m.role === 'user').content;
-    expect(p).toMatch(/renders? as ONE role/);
-    expect(p).toMatch(/never as separate top-level jobs/);
+    expect(p).toMatch(/renders as ONE top-level role/);
+    expect(p).toMatch(/NEVER separate top-level jobs/);
+  });
+
+  // 2026-08-23, Invity CV: "engagements appear beneath that single role"
+  // specified no SHAPE, so six real engagements — SpecialAgents, Salsita,
+  // wflow.com, Blockchain4Humanity, Aerum, BLOCKS, each with its own title in
+  // the record — were dissolved into the umbrella's prose bullets. Ten years
+  // read as one self-employed blob and the crypto advisory was invisible on a
+  // CV written for a Bitcoin company.
+  test('a nested engagement keeps its own employer, title and dates, in a stated shape', () => {
+    const p = buildCvPrompt(MASTER_JSON, analysis, 'professional').find((m) => m.role === 'user').content;
+    expect(p).toMatch(/A nested engagement still keeps its own employer, title and dates/);
+    expect(p).toMatch(/Never dissolve an engagement into the parent's own bullets/);
+    expect(p).toMatch(/never relabel a real employer as an unnamed "client"/);
+    // The template must show the shape, not just describe it.
+    expect(p).toMatch(/#####\s+\*\*\[Engagement Title[^\]]*\]\*\*\s*·\s*\[Client Name\]/);
+  });
+
+  test('engagements are chosen by what the job asks for, and dropping is not hiding', () => {
+    const p = buildCvPrompt(MASTER_JSON, analysis, 'professional').find((m) => m.role === 'user').content;
+    expect(p).toMatch(/an engagement that answers the ad earns its sub-entry even if it is old/);
+    expect(p).toMatch(/Dropping is selection; hiding a real employer inside prose is not/);
   });
 
   test('the work_experience[] source-of-truth rule names the real nested key', () => {
@@ -124,7 +145,7 @@ describe('buildCoverPrompt — length budget enforced', () => {
   const analysisWithTarget = {
     analysis: { red_flags: ['8-month gap 2021'] },
     job_match: {},
-    generation_framework: { target_cover_words: '260' },
+    generation_framework: { target_cover_words: '180' },
   };
   const analysisNoTarget = {
     analysis: { red_flags: [] },
@@ -143,9 +164,9 @@ describe('buildCoverPrompt — length budget enforced', () => {
     expect(user.content).not.toMatch(/One clause, once, carrying a fact/);
   });
 
-  test('states the 250-350 word hard budget and that it excludes date/salutation/signature', () => {
+  test('states the 150-250 word hard budget and that it excludes date/salutation/signature', () => {
     const p = buildCoverPrompt(MASTER_JSON, analysisNoTarget, 'professional').find((m) => m.role === 'user').content;
-    expect(p).toMatch(/250-350 words/);
+    expect(p).toMatch(/150-250 words/);
     expect(p).toMatch(/does NOT include the date, salutation, or signature block/);
   });
 
@@ -154,7 +175,7 @@ describe('buildCoverPrompt — length budget enforced', () => {
     // Stated as a NUMBER, not as a field to go and look up: the letter's brief no
     // longer carries generation_framework, so a pointer to it would point at
     // nothing (prompts/analysis-brief.js, coverBrief).
-    expect(p).toContain('Aim for about 260 words');
+    expect(p).toContain('Aim for about 180 words');
     expect(p).not.toMatch(/Use `generation_framework\.target_cover_words`/);
   });
 

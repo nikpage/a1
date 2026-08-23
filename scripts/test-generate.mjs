@@ -79,6 +79,7 @@ import {
   buildOrMergeMaster,
   generateCV,
   generateCoverLetter,
+  readLetterCold,
 } from '../utils/openai.js';
 import { withOlderApplicant } from '../prompts/scenarios.js';
 import { getMasterCv, getVoiceProfile, getUserByEmail } from '../utils/database.js';
@@ -320,7 +321,14 @@ async function main() {
       totalCost += logUsages(`cover/${tone}`, r.gemini_usages);
       write(`${tone}.cover.md`, r.content);
       console.log(`\n----- COVER LETTER (${tone}) -----\n${r.content}\n`);
-      printDigest('COVER LETTER', r, { sourceKind, voiceProfile, tweak, analysis });
+
+      // THE COLD READ. The finished letter, judged by a model that has not seen
+      // the ad, the record or the plan — the only check here that grades the
+      // WRITING rather than the match. It reports; it changes nothing.
+      const cold = await readLetterCold({ document: r.content });
+      if (cold.gemini_usage) totalCost += logUsages(`cold-read/${tone}`, [cold.gemini_usage]);
+
+      printDigest('COVER LETTER', r, { sourceKind, voiceProfile, tweak, analysis, cold: cold.read });
     }
   }
 
@@ -330,7 +338,7 @@ async function main() {
 
 // The point of the whole exercise: prove what actually reached the model and
 // what the deterministic layers found, per generated document.
-function printDigest(label, result, { sourceKind, voiceProfile, tweak, analysis }) {
+function printDigest(label, result, { sourceKind, voiceProfile, tweak, analysis, cold = null }) {
   const ce = analysis.generation_framework?.cover_evidence || {};
   console.log(`  --- VERIFICATION DIGEST (${label}) ---`);
   console.log(`  source              : ${sourceKind}`);
@@ -343,6 +351,32 @@ function printDigest(label, result, { sourceKind, voiceProfile, tweak, analysis 
   console.log(`  validation.hard     : ${JSON.stringify(result.validation?.hard || [])}`);
   console.log(`  validation.warnings : ${JSON.stringify(result.validation?.warnings || [])}`);
   console.log(`  voice fallback ran  : ${result.voice_fixes && result.voice_fixes.length ? `yes (${result.voice_fixes.length} fix(es))` : 'no'}`);
+
+  // The plan the letter executed. Absent for a CV and for a standalone pass.
+  if (result.plan) {
+    console.log('  --- LETTER PLAN (what the writer was told to argue) ---');
+    console.log(`  opening claim       : ${result.plan.opening_claim || '(none)'}`);
+    console.log(`  order reason        : ${result.plan.order_reason || '(none)'}`);
+    (result.plan.points || []).forEach((pt, i) => {
+      console.log(`  point ${i + 1}             : answers "${pt?.answers || ''}"`);
+      console.log(`     instance         : ${pt?.instance || ''}`);
+      console.log(`     detail           : ${pt?.detail || ''}`);
+    });
+    console.log(`  shortfall           : ${result.plan.shortfall?.state ? `${result.plan.shortfall.what} (${result.plan.shortfall.placement || ''})` : 'none stated'}`);
+    console.log(`  close               : ${result.plan.close || '(none)'}`);
+  } else if (label === 'COVER LETTER') {
+    console.log('  letter plan         : NONE — the writer chose its own shape');
+  }
+
+  // The cold read. No ad, no record, no plan: the reader's own verdict.
+  if (cold) {
+    console.log('  --- COLD READ (letter alone, no ad, no record) ---');
+    console.log(`  verdict             : ${cold.verdict} — ${cold.why || ''}`);
+    console.log(`  portable sentences  : ${JSON.stringify(cold.portable_sentences || [], null, 2)}`);
+    console.log(`  asserted qualities  : ${JSON.stringify(cold.asserted_qualities || [], null, 2)}`);
+    console.log(`  flat stretches      : ${JSON.stringify(cold.flat_stretches || [], null, 2)}`);
+    console.log(`  remembered tomorrow : ${cold.remembered || '(NOTHING — the letter left no impression)'}`);
+  }
   for (const u of result.gemini_usages || []) {
     logUsage(u.label || 'call', u);
   }

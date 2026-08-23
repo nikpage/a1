@@ -77,7 +77,9 @@ ${marketBlock}
 - Tone — "${tone}": ${toneInstructions(tone)}
 - Every dated entry in Work Experience reads MM/YYYY, one format across the whole document, ongoing roles as "MM/YYYY - Present". Reproduce the record's own months and years: normalising the FORMAT is required, changing a date is forbidden. Where the record holds only a year, print that bare year — never invent a month to complete the pattern. Graduation years in Education are bare years.
 - A \`voice_guide\` in the record, where one exists, is the candidate's OWN written statement of how they write: follow it for the summary's cadence, sentence shapes and vocabulary, and for the register of the bullets. Like \`voice_samples\` it describes HOW to write, never WHAT is true — neither can license a fact the record does not carry.
-- The record's \`experience[]\` is the definitive source for all employment, including any nested \`contracts[]\` inside a merged parent entry. A parent with \`contracts[]\` renders as ONE role, using the parent's company, role and dates; its contracts appear as engagements beneath that single role, never as separate top-level jobs.
+- The record's \`work_experience[]\` is the definitive source for all employment, including any nested \`fractional_engagements[]\` inside a parent entry. A parent with \`fractional_engagements[]\` renders as ONE top-level role, using the parent's own company, title and dates — its engagements are NEVER separate top-level jobs, and never counted as short tenures or job-hopping.
+- **A nested engagement still keeps its own employer, title and dates.** It renders as a sub-entry beneath its parent, in the shape shown in the template below, and its bullets sit under it. Never dissolve an engagement into the parent's own bullets, never mention the client only inside a sentence, and never relabel a real employer as an unnamed "client". A decade spent delivering for named companies must not read as a decade of unexplained self-employment: the client names are among the strongest evidence the record holds, and they are exactly what this employer scans for.
+- Choose WHICH engagements to print by what this job asks for, the same way full roles are chosen — an engagement that answers the ad earns its sub-entry even if it is old, and one the ad has no use for can be dropped. Dropping is selection; hiding a real employer inside prose is not.
 - Single column throughout. No tables, text boxes, columns, icons or layout HTML.
 - Show LinkedIn URLs without the "www." prefix. Standardise locations to "City, Country", in the CV's primary language.
 - Replace every [placeholder] below with real content — the finished CV contains no unfilled [brackets], and no filler such as "Full career history available upon request".
@@ -115,6 +117,10 @@ Output in Markdown with this exact structure:
 #### **[Job Title — exactly as the record states it]**
 **[Company Name]** | [MM/YYYY] - [MM/YYYY or Present] | [City, Country]
 - [Achievement]
+
+[A parent entry that has fractional_engagements[] prints each chosen engagement beneath it in this shape, keeping the engagement's OWN title, client and dates. Omit this block entirely for a role with no engagements.]
+##### **[Engagement Title — exactly as the record states it]** · [Client Name] | [MM/YYYY] - [MM/YYYY or Present]
+- [Achievement from that engagement]
 
 ---
 

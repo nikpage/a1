@@ -5,7 +5,7 @@ the what; CLAUDE.md is the how.
 
 ## 1. Who it's for
 
-A person applying for real jobs in Europe, in English or Czech, who already has
+A person applying for real jobs in Czechia, in English or Czech, who already has
 a CV. For each application they want a professional-level CV and cover letter
 pair, matched to that specific job.
 
@@ -27,7 +27,7 @@ AI. If the user supplies writing samples, it is in their voice; if not, it is
 human-sounding and persuasive. The CV is optimised for that specific job. The
 cover letter addresses the job's needs and the user's strengths, and only if
 necessary the single biggest red flag, as a structured persuasive narrative of
-250-350 words. Everything in both documents is truthful.
+150-250 words. Everything in both documents is truthful.
 
 **The number.** Interview invitations from applications sent using the tool. The
 product is working when that rate is materially above what Nik got writing them

@@ -40,6 +40,7 @@ import { languageInstruction } from './language.js';
 import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock, rawAdBlock } from './job-target.js';
 import { salutationName, coverEvidenceBlock } from './cover-evidence.js';
+import { letterPlanBlock } from './letter-plan.js';
 import { coverLengthRule } from './market.js';
 import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
 
@@ -60,7 +61,7 @@ function adBlock(analysis) {
 // them: which asks the letter answers, in what order, and what proves each is
 // the writer's decision, made with the record, the steering and the voice all
 // in hand (CV_RULES.md, Layer 3 — the letter is composed, not executed).
-function asksBlock(analysis) {
+function asksBlock(analysis, hasPlan = false) {
   const job = analysis?.job_extraction || {};
   const asks = [
     ...(job.must_have_requirements || []),
@@ -90,9 +91,11 @@ function asksBlock(analysis) {
 # What this employer says it needs
 ${lines}
 
-That list is for CHOOSING, not for covering. Work through it before you write, ask what in the record actually answers each, and then pick the TWO OR THREE this employer plainly cares about most and that the record answers best. Those are the letter.
+${hasPlan
+  ? `That list is CONTEXT, not a menu. Which of it the letter answers is already decided in THE PLAN below, and the plan wins: do not add a point because you see it listed here.`
+  : `That list is for CHOOSING, not for covering. Work through it before you write, ask what in the record actually answers each, and then pick the TWO OR THREE this employer plainly cares about most and that the record answers best. Those are the letter.
 
-Prove each one with a specific piece of work: what the candidate did, where, and what came of it — the number, the change, the outcome, wherever the record holds one. One proved claim beats six asserted ones, and a letter that touches every item on that list proves nothing about any of them. Leave the rest out entirely.
+Prove each one with a specific piece of work: what the candidate did, where, and what came of it — the number, the change, the outcome, wherever the record holds one. One proved claim beats six asserted ones, and a letter that touches every item on that list proves nothing about any of them. Leave the rest out entirely.`}
 
 The rest of the list is not your problem. Where the record does not answer an ask, say nothing about it at all — no hedge, no adjacent skill, no borrowing the employer's own wording to cover the hole. An unanswered ask is honest; a papered-over one is a lie the interview will find.
 
@@ -117,7 +120,11 @@ function salutationRule(analysis, language) {
 - **Decline the name into the letter's own language.** English takes it as it stands ("Dear ${name}"). Czech takes the VOCATIVE and so does Polish: "Vážený pane Nováku," for Novák, "Vážená paní Nováková,", "Vážený pane Petře," for Petr, "Szanowny Panie Kowalski,". A nominative name in that slot is a grammatical error in the letter's first line. Where the gender or the declension is genuinely unclear, use the neutral form for that language rather than guessing an ending. "pane"/"paní" and "Panie"/"Pani" are part of the salutation, not titles.`;
 }
 
-export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), voiceProfile = null) {
+export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), voiceProfile = null, plan = null) {
+  // The plan (prompts/letter-plan.js) decides the letter's SHAPE — order, the one
+  // instance per point, what the first and last sentence must do. Absent, the
+  // writer chooses as it did before; present, it executes.
+  const planBlock = letterPlanBlock(plan);
   const voiceBlock = voiceProfileBlock(voiceProfile);
   const excerptBlock = voiceProfile ? voiceExcerptBlock(voiceProfile) : '';
 
@@ -174,7 +181,7 @@ Two failures follow from getting that wrong, and both are fatal on the first lin
 Never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state.
 ${steeringBlock}
 ${adBlock(analysis)}
-${asksBlock(analysis)}${coverEvidenceBlock(analysis)}${voiceOwnership}${coreBlock}
+${asksBlock(analysis, Boolean(planBlock))}${coverEvidenceBlock(analysis)}${planBlock}${voiceOwnership}${coreBlock}
 
 # The letter's furniture
 ${currentDateBlock(now)}
