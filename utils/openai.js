@@ -968,7 +968,7 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
   // one; a letter at 0.4 converges on the same four safe paragraphs for everyone,
   // which is the flatness the voice pass then has to undo. Facts are protected by
   // the verify pass that follows, not by a cold sampler.
-  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55, label: 'generate cover letter' });
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'low', temperature: 0.55, label: 'generate cover letter' });
 
   const gemini_usage = geminiUsage('generate cover letter', data, GEMINI_GENERATION_MODEL);
   const usages = [];

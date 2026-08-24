@@ -82,7 +82,13 @@ A NUMBER IS ONE OPTION AMONG FIVE, NEVER THE TARGET. Reaching for a metric becau
 
 Where BOTH points come from the same kind of work, say what the two instances have in COMMON — the lesson that recurs across them. A shared lesson stated once is worth more than two separate proofs, and it is what turns a list of clients into an argument.
 
-Decide the FIRST SENTENCE'S JOB. It carries a JUDGEMENT ABOUT THIS EMPLOYER and why that matters to this person — what they are doing that this candidate rates, or what they are getting right that others in their field get wrong. Not a claim about the candidate's capabilities, and never a thesis about the industry: an opening that explains this employer's own market back to them is marketing copy, and a reader who is told what makes companies like theirs succeed stops reading. State the job that sentence has to do — never write the sentence.
+Decide the FIRST SENTENCE'S JOB. It says WHAT THIS CANDIDATE NOTICED ABOUT THIS EMPLOYER AND WHY IT MATTERS TO THEM. It is anchored to the candidate — what caught their attention, what they care about, why this one and not another. It is NEVER a verdict on the employer's business.
+
+THE LINE BETWEEN THE TWO IS THE WHOLE GAME:
+- "Your app caught my eye because you are actually fixing X instead of talking about it, and X is the problem I care about" — correct. It reports what one person noticed and wants. They cannot dispute it and they have not been told anything about themselves.
+- "You are showing Europe that compliance does not have to make an app a maze" / "You are getting right what others in your field get wrong" — WRONG. That is a verdict on their market position, delivered to the people who work there and know it far better than the applicant. It reads as an outsider grading them, and they stop reading.
+
+Say what the candidate saw and why it matters to them. Never how the employer is doing, never what their industry gets wrong, never what their approach proves. Not a claim about the candidate's capabilities either. State the job that sentence has to do — never write the sentence.
 
 HARD CONSTRAINTS ON WHAT YOU WRITE IN "opening_claim":
 - FIFTEEN WORDS MAXIMUM. A long opening claim is an abstraction, and the writer will turn an abstraction into a thesis. Short forces you to name the actual thing.
@@ -104,12 +110,14 @@ THE SAME HARD CONSTRAINTS BIND "close" AS BIND "opening_claim": fifteen words ma
 
 A close asks for a specific human next thing, or names what this person would go and look at first. "Buy them a coffee and talk" is a real close. "Discuss how my experience can be applied to their roadmap" is not.
 
+PICK THE INSTANCE THAT SHOWS THE BELIEF, NOT THE BIGGEST LOGO. A talk, an unpaid project, an advisory engagement or a small client counts for more than a famous employer when it is the one that shows this person acting on what they care about. The record's prestige names are what the CV already carries; the letter is where the smaller, truer instance earns its place.
+
 Every instance you name must be real work already in the material below, named the way the record names it. You are choosing among facts, never adding one.`;
 
 const SHAPE = `Return VALID JSON only — no markdown fence, no commentary — in exactly this shape:
 
 {
-  "opening_claim": "the JOB the first sentence must do, as an instruction to the writer — the judgement about THIS EMPLOYER it carries, and why that matters to this person. Not the sentence itself.",
+  "opening_claim": "the JOB the first sentence must do, as an instruction to the writer — what this candidate noticed about this employer and why it matters to THEM. Anchored to the candidate, never a verdict on the employer's business. Not the sentence itself.",
   "argue_against": "the thing this employer has ruled out, the frustration they state, or the way their field usually gets this wrong — which this letter argues against. Plain words, under fifteen. Leave empty ONLY if the advert and the record between them offer nothing to push against, which is rare.",
   "order_reason": "one sentence: why the first point goes first — what this employer is most uneasy about.",
   "points": [
@@ -182,13 +190,21 @@ export function letterPlanBlock(plan) {
 
 This is already decided. You are not choosing what to argue; you are writing it.
 
-- THE FIRST SENTENCE'S JOB: ${str(plan.opening_claim) || 'carry a judgement about this employer and why it matters to this candidate'}. Write the sentence yourself — do not repeat this instruction back. It carries a judgement about THIS EMPLOYER, never a thesis about their industry and never a claim about the candidate's own qualities. It never announces the application, never names the job title back at them, and never says where the ad was seen.
+- THE FIRST SENTENCE'S JOB: ${str(plan.opening_claim) || 'carry a judgement about this employer and why it matters to this candidate'}. Write the sentence yourself — do not repeat this instruction back. It says what the candidate NOTICED and why it matters to them — never a verdict on how this employer is doing, never a thesis about their industry, never a claim about the candidate's own qualities. Do not tell these people anything about their own business: they know it, and being graded by an applicant is why a letter gets put down. It never announces the application, never names the job title back at them, and never says where the ad was seen.
 ${str(plan.order_reason) ? `- WHY THIS ORDER: ${str(plan.order_reason)}\n` : ''}- THE TWO POINTS, IN THIS ORDER:
 ${rendered}
 ${against}${lesson}${shortfall}
-- THE LAST SENTENCE'S JOB: ${str(plan.close) || 'land the argument'}. It does not thank, does not hope, and does not ask for consideration.
+- THE LAST SENTENCE'S JOB: ${str(plan.close) || 'land the argument'}. It does not thank, does not hope, and does not ask for consideration. THE LETTER ENDS ON IT: the last line of the body does this job and nothing comes after it. THERE IS NO CONCLUDING SENTENCE BETWEEN THE LAST POINT AND THIS ONE: the second point ends with what happened, and the very next sentence is the close. Do not write a sentence that sums up what the two points showed — a summary of the argument just made is the letter grading its own work, and it displaces the one line that asks for the next human step.
 
 TELL each instance — what happened, with its specifics — rather than summarising what it demonstrates. The specifics are the ones the plan named: a position pushed, a decision, a constraint, a refusal. A NUMBER IS NOT REQUIRED AND IS NOT THE TARGET — do not reach for a metric to make a point feel proved, and never state one the record does not carry. A reader who is told what happened draws the conclusion themselves and believes it; a reader handed the conclusion does not. ONE instance per point: a second example does not strengthen the first, it dilutes it.
+
+EVERY SENTENCE IN THIS LETTER HAS THE CANDIDATE IN IT — what they saw, did, chose, refused, built, or want. A sentence stating a general truth about the world has no place here, however true it is. These are the exact sentences this letter has produced and every one of them is a defect:
+- "Strict boundaries sharpen product decisions."
+- "Complex technologies only succeed when you design them around actual human habits."
+- "Treating regulatory parameters as firm boundaries sharpens design decisions rather than slowing execution down."
+- "Complex constraints are guardrails that speed up execution rather than slow it down."
+- "My work is about active, technical execution."
+They are maxims. They are what a machine writes when it wants to sound like it has a view. TEST EVERY SENTENCE: if it would still be true with this candidate deleted from it, cut it and write what they actually did instead. No exceptions, not even for the sentence that opens a paragraph.
 
 NEVER WRITE A SENTENCE WHOSE JOB IS TO SET UP THE NEXT ONE. "We didn't do X. Instead, I did Y." — where nobody proposed X — is the letter inventing an opponent so it has something to beat. Cut the setup and write Y. What the candidate actually did is interesting on its own, and if it is not, the plan picked the wrong instance.
 

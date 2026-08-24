@@ -2,7 +2,7 @@
 // scripts/minimal-cover.mjs
 //
 // THE CONTROL EXPERIMENT. Nik's own four-line prompt — master record + job ad +
-// "highlight what aligns, professional tone, 250-400 words" — run against the
+// "highlight what aligns, professional tone, 150-250 words" — run against the
 // same record, the same ad and the same model as the production pipeline, so
 // the 13k-token rule stack can be compared with the thing it is supposed to
 // beat. It writes the letter and stops: no verify pass, no validation, no
@@ -55,7 +55,7 @@ const tweak = composeTweak({ emphasise: argOf('emphasise'), playDown: argOf('pla
 const steering = tweak
   ? `\n\nMy own instructions for this letter, which outrank everything above — what I ask you to foreground leads the letter and is proved with a real fact; what I ask you to play down stays out of the opening entirely, though it may appear once, late and plainly. Never invent anything to satisfy them:\n"${tweak}"`
   : '';
-const prompt = `Write a tailored cover letter in English (250–400 words) using the job history and job description provided below.
+const prompt = `Write a tailored cover letter in English (150–250 words) using the job history and job description provided below.
 
 Highlight the key achievements and skills from my history that directly align with the core requirements, responsibilities, and qualifications listed in the job description. Maintain a professional tone.
 

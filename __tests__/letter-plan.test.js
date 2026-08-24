@@ -187,13 +187,32 @@ describe('the plan aims at what Nik\'s own letter does', () => {
     expect(p).toMatch(/This is the strongest kind and the one most often missed/);
   });
 
-  it('asks the opening for a judgement about the EMPLOYER, not a claim about the candidate', () => {
+  // Reversed 2026-08-23 after gemini-3.7-flash opened "Invity is showing the
+  // rest of Europe that strict compliance does not have to turn an app into a
+  // maze of legal disclaimers" — the applicant grading the employer's market
+  // position. The instruction had asked for exactly that ("what they are
+  // getting right that others in their field get wrong").
+  it('asks the opening for what the candidate NOTICED, never a verdict on the employer', () => {
     const p = user();
-    expect(p).toMatch(/carries a JUDGEMENT ABOUT THIS EMPLOYER/);
-    expect(p).toMatch(/Not a claim about the candidate's capabilities/);
-    expect(p).toMatch(/never a thesis about the industry/);
-    // The old instruction produced the capability thesis. It must be gone.
+    expect(p).toMatch(/WHAT THIS CANDIDATE NOTICED ABOUT THIS EMPLOYER AND WHY IT MATTERS TO THEM/);
+    expect(p).toMatch(/It is NEVER a verdict on the employer's business/);
+    expect(p).toMatch(/Not a claim about the candidate's capabilities either/);
+    // Both discredited framings must be gone.
     expect(p).not.toMatch(/It commits to a claim about this person against this job/);
+    expect(p).not.toMatch(/what they are getting right that others in their field get wrong/);
+  });
+
+  it('gives the worked contrast between noticing and grading', () => {
+    const p = user();
+    expect(p).toMatch(/THE LINE BETWEEN THE TWO IS THE WHOLE GAME/);
+    expect(p).toMatch(/They cannot dispute it and they have not been told anything about themselves/);
+    expect(p).toMatch(/an outsider grading them, and they stop reading/);
+  });
+
+  it('stops the writer block re-licensing the verdict', () => {
+    const b = letterPlanBlock(PLAN);
+    expect(b).toMatch(/never a verdict on how this employer is doing/);
+    expect(b).toMatch(/Do not tell these people anything about their own business/);
   });
 
   it('asks the letter to argue against something, and for the lesson the two instances share', () => {

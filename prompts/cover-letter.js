@@ -41,6 +41,7 @@ import { currentDateBlock, currentDateReminder } from './current-date.js';
 import { targetJobBlock, rawAdBlock } from './job-target.js';
 import { salutationName, coverEvidenceBlock } from './cover-evidence.js';
 import { letterPlanBlock } from './letter-plan.js';
+import { letterExemplarBlock } from './letter-exemplar.js';
 import { coverLengthRule } from './market.js';
 import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
 
@@ -181,7 +182,7 @@ Two failures follow from getting that wrong, and both are fatal on the first lin
 Never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state.
 ${steeringBlock}
 ${adBlock(analysis)}
-${asksBlock(analysis, Boolean(planBlock))}${coverEvidenceBlock(analysis)}${planBlock}${voiceOwnership}${coreBlock}
+${asksBlock(analysis, Boolean(planBlock))}${coverEvidenceBlock(analysis)}${planBlock}${letterExemplarBlock()}${voiceOwnership}${coreBlock}
 
 # The letter's furniture
 ${currentDateBlock(now)}
