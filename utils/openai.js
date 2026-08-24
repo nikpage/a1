@@ -1012,22 +1012,23 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     language,
   });
 
-  // Layer 6 for the letter: the banned-phrase repair, then the letter's own
-  // checks (word band, matched pairs, salutation, one objection, numbers).
-  const repair = await repairStockPhrases({ document: verified.content, docType: 'cover', language });
-  const domainRepair = await repairUnsourcedDomains({ document: repair.content, master: cv });
-  // Check 24: a requirement the record cannot answer, driven by the list the
-  // analysis already computed (ats_keywords_missing).
-  const reqRepair = await repairUnevidencedRequirements({ document: domainRepair.content, master: cv, analysis });
+  // NO PROSE REPAIR PASSES ON THE LETTER. Removed 2026-08-24 on the owner's
+  // order, after three consecutive letters off this path were read: the
+  // Sudolabs one ended with no ask and no CV line at all, because the close had
+  // been cut by span surgery downstream of the writer. repairStockPhrases /
+  // repairUnsourcedDomains / repairUnevidencedRequirements are three more
+  // models re-cutting the one writer's sentences — the applyVoice defect
+  // rebuilt under other names. The letter the writer produced is the letter
+  // that ships.
+  //
+  // The TRUTH pass above STAYS: nothing untrue ships (PRODUCT.md section 3).
+  // The removed checks still RUN as reports inside validateCoverLetter below,
+  // so a stock phrase is shown to the candidate instead of silently excised.
   usages.push(...(voiced.gemini_usages || []));
   if (verified.gemini_usage) usages.push(verified.gemini_usage);
-  if (repair.gemini_usage) usages.push(repair.gemini_usage);
-  if (domainRepair.gemini_usage) usages.push(domainRepair.gemini_usage);
-  if (reqRepair.gemini_usage) usages.push(reqRepair.gemini_usage);
 
-  // Check 25: the same sentence printed twice. Deterministic, no AI call, and
-  // last so it also catches a repeat that span surgery above created.
-  let content = stripDuplicateSentences(reqRepair.content);
+  // Check 25: the same sentence printed twice. Deterministic, no AI call.
+  let content = stripDuplicateSentences(verified.content);
   let validation = validateCoverLetter(content, { master: cv, analysis, language, tweak });
 
   // The word band is a hard failure, so an over-length letter is regenerated
@@ -1055,16 +1056,12 @@ export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core
     });
     if (reVerified.gemini_usage) usages.push(reVerified.gemini_usage);
 
-    const reRepair = await repairStockPhrases({ document: reVerified.content, docType: 'cover', language });
-    if (reRepair.gemini_usage) usages.push(reRepair.gemini_usage);
-
-    const reDomain = await repairUnsourcedDomains({ document: reRepair.content, master: cv });
-    if (reDomain.gemini_usage) usages.push(reDomain.gemini_usage);
-
-    const revalidated = validateCoverLetter(reDomain.content, { master: cv, analysis, language, tweak });
+    // Same rule as the first pass: no prose repair after the writer.
+    const retryContent = stripDuplicateSentences(reVerified.content);
+    const revalidated = validateCoverLetter(retryContent, { master: cv, analysis, language, tweak });
     // No worse than the draft it replaces, or the draft stands.
     if (revalidated.hard.length <= validation.hard.length) {
-      content = reDomain.content;
+      content = retryContent;
       validation = revalidated;
     }
     if (!validation.ok) {
