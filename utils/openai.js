@@ -955,12 +955,14 @@ export async function readLetterCold({ document }) {
 }
 
 export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
-  // SHAPE IS DECIDED BEFORE PROSE. A model handed an argument and asked for a
-  // letter produces the shape of a letter rather than the argument; the plan
-  // makes the order, the one instance per point, and the first and last
-  // sentence's job explicit so the writer executes a decision instead of
-  // improvising one under the pressure of sounding fluent.
-  const planned = await planLetter({ analysis, tweak });
+  // NO PLAN CALL. Owner order, 2026-08-24: the letter costs 2 cents or less.
+  // planLetter() ran on the analysis model and cost 2.9-3.5 cents on its own —
+  // more than the letter it planned — so the stage is off this path. What it
+  // bought (the carrying instance told as a sequence rather than a catalogue)
+  // is now stated to the writer directly in prompts/cover-letter.js, which
+  // reads the same record the plan read. planLetter() is still exported and
+  // still tested; nothing on the live path calls it.
+  const planned = { plan: null, gemini_usage: null };
   const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile, planned.plan);
   // See generateCV: medium effort + low temperature keep the letter tied to the
   // record instead of drifting into a better-sounding version of it.

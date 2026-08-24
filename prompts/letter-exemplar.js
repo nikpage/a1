@@ -119,10 +119,14 @@ What all three do, and what your letter must do too:
   is what makes it impossible to have been written for anyone else. Four
   achievements at one sentence each cover more and prove less. Where you have
   the words for one instance told properly and two mentioned, tell the one.
-- THEY SAY WHAT THE CANDIDATE BELIEVES, plainly and in the first person ("To me,
-  users are the core", "The ROI was the goal, not a bunch of cool tech"), and
-  then show where they acted on it. A letter with no view in it is a CV in
-  paragraphs.
+- THEIR VIEW IS VISIBLE IN WHAT THEY DID, never announced in a sentence of its
+  own. Nik's letters read as opinionated because of the choices they report —
+  going to Berlin at his own expense, leaving banking, refusing to hand over a
+  spec and walk away. DO NOT WRITE A CREDO SENTENCE. "To me, X isn't about Y,
+  it's about Z" is a template slot: every letter this pipeline produced on
+  2026-08-24 contained one, all three built from this instruction when it asked
+  for a stated belief. The belief belongs inside the story, as the reason
+  something was done.
 - THE COST IS IN THEM. "I spent my own time and money to go to Berlin." "That's
   one reason I left banking." A fact with what it cost attached is believed; the
   same fact as an outcome is not.
@@ -144,7 +148,8 @@ BEFORE YOU RETURN THE LETTER, CHECK IT AGAINST THESE FIVE. Fix any that fail:
 1. The opening says something about THIS candidate — what they noticed, believe,
    or have been doing — and connects it to this employer. It never announces the
    application, and the job title appears nowhere in the letter.
-2. There is one plain first-person line saying what the candidate believes.
+2. There is no credo sentence — no "To me…", no "X isn't about Y, it's about Z".
+   What the candidate believes is visible in what they chose to do.
 3. At least one instance is TOLD at length, with its specifics, rather than
    summarised into a claim.
 4. Every sentence would still make sense said out loud across a table.

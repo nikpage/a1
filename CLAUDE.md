@@ -336,6 +336,34 @@ before proposing a fix, and add an entry after running one. An entry is only
 added once the change was RUN against a real record and a real ad and the letter
 was read; reasoning about what a change should do is not an entry.
 
+## Before choosing a method, LOOK IT UP (binding — 2026-08-24)
+
+Five weeks of cover-letter work were spent on few-shot prompting — showing the
+model Nik's own letters and describing what they do. On 2026-08-24 a single web
+search found that this is a documented failure mode: few-shot style transfer
+holds a voice for a paragraph or two and then drifts back to generic model tone,
+and the 2025 work on imitating ordinary (non-famous) authors finds LLMs cannot do
+it from examples at all. The method that works on this problem is training on
+pairs (neutraliser/styler, inverse transfer data augmentation), not prompting.
+The search cost nothing and was never run.
+
+So, binding on every task that picks an APPROACH rather than an implementation:
+
+1. **Search before choosing.** If the task is "make the model write/judge/extract
+   like X", find what is known about that problem first — papers, practitioner
+   write-ups, failure modes — and say what was found, with links, before
+   proposing anything.
+2. **Name the method's known failure mode out loud.** Every approach has one. If
+   it cannot be named, it has not been looked up.
+3. **A method nobody checked is a GUESS and is labelled as one** in the message
+   that proposes it. "Industry standard" is a claim about the literature and is
+   only said with a source.
+4. **Never spend Nik's money on a run before step 1.** An experiment that a
+   five-minute search would have made unnecessary is theft, not diligence.
+5. **A guess presented as a finding is the single most expensive thing that
+   happens in this repo.** It costs days, not tokens. State what was verified,
+   how it was verified, and stop there.
+
 ## Sacred files — do not rewrite or inline
 
 ```

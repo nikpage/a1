@@ -82,6 +82,10 @@ A NUMBER IS ONE OPTION AMONG FIVE, NEVER THE TARGET. Reaching for a metric becau
 
 ONE OF THE TWO CARRIES THE LETTER, AND IT IS TOLD AT LENGTH. Name which in "carried_by" — 1 or 2. That instance gets roughly half the letter's words: what was wanted, what was tried, what was added or changed along the way, what came of it. The other point is made properly but shorter. Two instances given equal, even space is how a letter turns back into a list of achievements — which is the CV's job, and the CV is attached. Pick as the carrying one the instance with the most ACTUAL STORY in the record: stages, a change of direction, something that was got wrong first. An instance the record holds only as a one-line outcome cannot carry a letter, however impressive the outcome is.
 
+THE CARRYING INSTANCE IS A SEQUENCE, NOT A SET. This is the single difference between a letter a person wrote and the letter this pipeline keeps producing. The record holds each engagement as a LIST of capabilities — "built a RAG-based expert chatbot", "built audio-to-text transcription with CRM integration", "built custom sales assistant agents", "built RAG-based semantic media search". Written as a list it is a catalogue and it proves nothing. Written as ONE CLIENT'S NEED GROWING OVER TIME it is a story: first their email and calendar, then phone and WhatsApp, then getting the system to understand which deal mattered that day, and finally — once they saw what was being captured — changing how they worked. The same four facts, put in the order they happened, each step with a person wanting something behind it.
+
+So for the carrying point, return "stages": the record's own items for that instance, ordered as they happened, three or more, each said as what was wanted and what was done about it. You are ORDERING facts the record already holds. You are not adding one; where the record does not state the order, the order that makes sense of the work is still an ordering of real items and never an invented history. AN INSTANCE WHOSE RECORD HOLDS FEWER THAN THREE ITEMS CANNOT CARRY THE LETTER — there is nothing to sequence. Pick a different one.
+
 Where BOTH points come from the same kind of work, say what the two instances have in COMMON — the lesson that recurs across them. A shared lesson stated once is worth more than two separate proofs, and it is what turns a list of clients into an argument.
 
 Decide the FIRST SENTENCE'S JOB. It is anchored to the CANDIDATE, and there are three places it can start. Pick the one this letter's argument needs — there is no default:
@@ -134,6 +138,7 @@ const SHAPE = `Return VALID JSON only — no markdown fence, no commentary — i
     }
   ],
   "carried_by": 1,
+  "stages": ["the carrying instance's real items, in the order they happened — three or more, each as what was wanted and what was done about it. Ordering only, never a new fact."],
   "shared_lesson": "what the two instances have in common, where they have something in common — the lesson that recurs. Empty string where they genuinely do not.",
   "shortfall": { "state": true, "what": "the true level, plainly", "placement": "where in the letter it is said, and what the sentence is also doing" },
   "close": "the JOB the last sentence must do. Not the sentence itself."
@@ -141,6 +146,7 @@ const SHAPE = `Return VALID JSON only — no markdown fence, no commentary — i
 
 "points" holds EXACTLY TWO entries, in the order the letter makes them.
 "carried_by" is 1 or 2 — which of them is told at length and takes roughly half the letter.
+"stages" holds THREE OR MORE entries, all belonging to the carrying instance, in the order they happened. A carrying instance you cannot break into three stages is the wrong instance.
 "shortfall" is { "state": false } where nothing should be stated.
 EVERY FIELD YOU WRITE IS READ AND EXECUTED LITERALLY BY THE WRITER, SO THE REGISTER OF YOUR PLAN BECOMES THE REGISTER OF THE LETTER. Write all of it in plain, spoken words. If any field of your plan reads like a consulting deck or a performance review, the letter will too, and it will be indistinguishable from the letter every other applicant sent.
 
@@ -192,6 +198,15 @@ export function letterPlanBlock(plan) {
     })
     .join('\n');
 
+  // THE CARRYING INSTANCE'S STAGES. The record states each engagement as a set of
+  // capabilities; a letter that restates the set is a catalogue and reads as
+  // machine-written however well the sentences are built. Handing the writer the
+  // same items IN ORDER is what turns them into something that happened.
+  const stages = arr(plan.stages).map(str).filter(Boolean);
+  const stageBlock = stages.length >= 2
+    ? `\n- TELL THE CARRYING INSTANCE IN THIS ORDER, ONE STEP AT A TIME:\n${stages.map((x, i) => `   ${i + 1}. ${x}`).join('\n')}\n  These are stages of ONE piece of work, not a list of things built. Write them as they happened — this was wanted, so this was done, and that led to the next. NEVER collapse two of them into one sentence naming both ("I built X and Y"): a sentence that names two of these steps at once is the catalogue this ordering exists to prevent. The last step is where something changed because of what came before, and it is where the paragraph lands.\n`
+    : '';
+
   const shortfall =
     plan.shortfall && plan.shortfall.state
       ? `- STATE THE SHORTFALL ONCE: ${str(plan.shortfall.what)}. Where: ${str(plan.shortfall.placement) || 'inside a sentence that is doing something else as well'}. Plainly, never argued up, never apologised for, never a paragraph of its own.`
@@ -212,7 +227,7 @@ This is already decided. You are not choosing what to argue; you are writing it.
 - THE FIRST SENTENCE'S JOB: ${str(plan.opening_claim) || 'carry a judgement about this employer and why it matters to this candidate'}. Write the sentence yourself — do not repeat this instruction back. It says what the candidate NOTICED and why it matters to them — never a verdict on how this employer is doing, never a thesis about their industry, never a claim about the candidate's own qualities. Do not tell these people anything about their own business: they know it, and being graded by an applicant is why a letter gets put down. It never announces the application, never names the job title back at them, and never says where the ad was seen.
 ${str(plan.order_reason) ? `- WHY THIS ORDER: ${str(plan.order_reason)}\n` : ''}- THE TWO POINTS, IN THIS ORDER:
 ${rendered}
-${against}${lesson}${shortfall}
+${stageBlock}${against}${lesson}${shortfall}
 - THE LAST SENTENCE'S JOB: ${str(plan.close) || 'land the argument'}. It does not thank, does not hope, and does not ask for consideration. THE LETTER ENDS ON IT: the last line of the body does this job and nothing comes after it. THERE IS NO CONCLUDING SENTENCE BETWEEN THE LAST POINT AND THIS ONE: the second point ends with what happened, and the very next sentence is the close. Do not write a sentence that sums up what the two points showed — a summary of the argument just made is the letter grading its own work, and it displaces the one line that asks for the next human step.
 
 THE TWO POINTS ARE NOT GIVEN EQUAL SPACE. The one marked as carrying the letter is told out — the reader follows what happened, in the order it happened, with the specifics that only this project had. The other is made in a few sentences. Two instances at equal length is a list of achievements, and the list is already attached as the CV. If you are cutting to reach the word ceiling, cut the shorter point further; never flatten the carrying one into a claim.

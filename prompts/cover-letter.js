@@ -175,6 +175,16 @@ The letter has one job: the person reading it decides to call this candidate in.
 
 What the letter is ABOUT is what this candidate and this company have in common — a shared way of working, shown through things the candidate actually did. Not a narration of their CV. Walking the reader through the candidate's roles in prose is the one thing this letter must not be: the CV is attached and does that better, and a letter that duplicates it has no reason to exist.
 
+THE FIRST SENTENCE HAS THE CANDIDATE DOING SOMETHING IN IT. Not what this employer is like, not what their market rewards, not what their approach proves — those are verdicts on a business the reader knows far better than the applicant, and being graded by an applicant is why a letter gets put down. Write "I" and a real thing they did or are doing. "I've been building custom AI apps for clients that want fast ROI" is a first sentence. "You ship real LLM applications rather than wrappers" is not. Where the letter says what the candidate noticed about this employer, it is still THEIR noticing and THEIR reason for caring — never an assessment of how the employer is doing.
+
+NAME WHAT A READER RECOGNISES. Berlin, eBay, Zurich, a named bank, a university, a conference — those are the words that make a reader look up, and the record holds them. The candidate's own practice and their client-side umbrella names are not recognisable to anybody and carry nothing: never build a paragraph on "at [consultancy name], I led product definition for underserved small businesses". Name the work, the place, and the client the record actually names. The work stands on what it was, and it is named only where it is relevant to this job and true.
+
+ONE PIECE OF WORK CARRIES THIS LETTER. Give it roughly half the body and tell it properly — what was wanted, what was done, what came of it — instead of summarising what it demonstrates. Make one other point in a few sentences, and nothing else.
+
+TELL IT AS A SEQUENCE ONLY WHERE THE RECORD HOLDS ONE. Where the record carries one client's work in stages — this was wanted, so this was built, which led to that — tell it in that order, one step at a time, and land on the step where something changed because of what came before. WHERE IT DOES NOT, DO NOT MANUFACTURE ONE. A list of capabilities under an engagement is a set, not a history: putting them in an order and writing "first… then… finally" invents a chronology and a chain of cause that never happened, which is fabrication however true each item is. With no real sequence in the record, take ONE item and tell that one properly. Never name two pieces of work in one sentence ("I built X and Y") — that sentence is the catalogue.
+
+USE THE RECORD'S OWN WORDS FOR THE DETAIL THAT PERSUADES. Where the record phrases something plainly or awkwardly, keep that phrasing — do not smooth it into a business abstraction. The specific, slightly awkward wording is what a person wrote and what a reader believes.
+
 Two failures follow from getting that wrong, and both are fatal on the first line:
 - **Do not lecture the reader about their own industry.** An opening thesis about what makes companies of this kind succeed or fail, or an explanation of the employer's own market back to them, is marketing copy, not a letter. The reader knows their business.
 - **Do not write aphorisms.** A short declarative line dropped in to sound weighty — "Friction kills adoption.", "Specification is an execution problem." — is a slogan, and slogans are what a machine writes when it has nothing to say. Every sentence carries a fact, an argument, or a question. Going short is about rhythm, never about scoring a point.
@@ -189,7 +199,7 @@ ${currentDateBlock(now)}
 ${coverLengthRule(analysis)}
 - ${languageInstruction(language)}
 ${salutationRule(analysis, language)}
-- Open with a professional header, styled to match the CV: the candidate's name, then their contact details from the record's own \`identity\` / \`contact\` data, one per line, then the date on its own line. Then the salutation.
+- Open with the candidate's name on its own line, then the date on its own line, then the salutation. THE CONTACT DETAILS APPEAR EXACTLY ONCE IN THIS LETTER, in the signature block at the end — never in the header as well. A letter carrying the same phone number and email twice is a letter assembled by a machine.
 - End with a signature block in exactly this form, using the record's own \`identity\` / \`contact\` data. The sign-off is written in the LETTER'S OWN LANGUAGE — "Sincerely," in English, "S pozdravem," in Czech, "Z poważaniem," in Polish; an English sign-off under a Czech letter is the plainest possible sign that a machine filled in a template:
 Sincerely,
 
