@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../lib/logger.js';
+import { masterToProse } from './master-prose.js';
 import { costUsdFor } from './pricing.js';
 import crypto from 'crypto';
 
@@ -78,7 +79,14 @@ export async function getMasterCv(user_id) {
   return data?.[0]?.master_cv || null;
 }
 
-// The factual SOURCE every generation writes from: the MASTER CV, serialised.
+// The factual SOURCE every generation writes from: the MASTER CV, rendered as
+// readable text by masterToProse() rather than as JSON. The writer used to be
+// handed the candidate's raw CV text; when the master became the single source
+// it started receiving JSON.stringify(master) — field names, braces, arrays of
+// bullet strings — and the letters read as achievements tightened into
+// sentences. The rendering loses nothing (utils/master-prose.js, pinned by
+// __tests__/master-prose.test.js), so the downstream checks that trace numbers
+// and dates against this same string are unaffected.
 // Falls back to the raw CV text only for users whose master hasn't been built
 // (older accounts / a failed build). Returns null when the user has no CV at
 // all. One definition, so every generation path reads the same source.
@@ -96,7 +104,8 @@ export async function getGenerationSource(user_id) {
   } catch (masterErr) {
     logger.error('Master CV fetch error:', masterErr.message);
   }
-  return master ? JSON.stringify(master) : (cvRecord?.cv_data || null);
+  const prose = master ? masterToProse(master) : '';
+  return prose || (master ? JSON.stringify(master) : null) || cvRecord?.cv_data || null;
 }
 
 // Persist the per-user MASTER CV (service-role write). Stored as JSONB.
