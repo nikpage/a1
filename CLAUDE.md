@@ -34,6 +34,24 @@ Read `DB.md` for the full Supabase schema — tables, columns, RPCs, and the SQL
 | Logging | Leveled logger in `lib/logger.js` (info/debug silenced in production) |
 | Secrets | `.env` / `.env.local` in the repo root (gitignored; never commit them) |
 
+## Gemini settings — FROZEN (owner command required)
+
+**NEVER change any Gemini setting without Nik's direct, explicit command in this
+exact session.** Frozen: every model constant in `utils/openai.js`, temperature
+and any other generation parameter, `PRICING`, key handling, the endpoint, and
+which model any task runs on.
+
+- Not to "test", not to "experiment", not to "fix", not to "unblock", not as
+  part of any other change. No bake-offs, no sample runs, no swaps "just to
+  compare" — every one of those spends Nik's money and is theft unless he
+  ordered it.
+- If a change appears to require touching a Gemini setting: STOP, say so in one
+  line, and wait.
+- When he does command a change, I make ONLY the change he named, tell him
+  exactly what I am changing before I change it, and touch nothing adjacent.
+- This rule outranks every other instruction in this file, including the ones
+  that say to run models to judge quality. Those runs happen only on his order.
+
 ## AI layer
 
 - `utils/openai.js` (misleading name — calls **Gemini**, not OpenAI) via the Gemini OpenAI-compatible endpoint. Model is chosen per task by the constants at the top of the file, allocated by task nature: **lite** for extract/classify/check-against-a-schema-or-source (verifiable; lite ≈ flagship at a fraction of the cost) — `GEMINI_EXTRACTION_MODEL` (job-ad parsing), `GEMINI_MASTER_MODEL` (master build/merge, once per user, backstopped by verify), `GEMINI_VERIFY_MODEL` (the master verify checker); **flash** for strategy + prose that can't be fully verified — `GEMINI_ANALYSIS_MODEL` (the strategic brain) and `GEMINI_GENERATION_MODEL` (CV/cover prose). Putting the per-use heavy calls on flash also keeps them off the overloaded flash-lite pool. Raise a lite constant for more quality; never hardcode a model string elsewhere (`GEMINI_GENERATION_MODEL` is EXPORTED so tests can count writing calls without a second copy of the string). **Model choices are made by RUNNING them, not by reasoning about them** — `scripts/test-generate.mjs` against a real record and a real ad, at least two samples per model, and the result recorded in `COVER_LETTER_LOG.md`. Measured 2026-08-15: writing on `gemini-3.6-flash` beats `3.5-flash` at a THIRD of the cost ($0.021 vs $0.063 a write); the checkers on `gemini-3.5-flash-lite` beat `2.5-flash-lite` decisively (7 specific corrections on a CV where 2.5 returned 18 blanket "invented claim" verdicts that duplicated bullets and stripped their markers). `gemini-3.5-pro` and `gemini-3.6-pro` do not exist on the API. Key rotation via `utils/key-manager.js` over `GEMINI_API_KEYS`.

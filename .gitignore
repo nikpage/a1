@@ -42,3 +42,4 @@ scripts/out/
 # Local Netlify folder
 .netlify
 runs/
+.claude/gemini-unlock
