@@ -385,7 +385,18 @@ function printDigest(label, result, { sourceKind, voiceProfile, tweak, analysis,
 // EXPERIMENTS ARE SPEND. Every call this script makes lands in `transactions`
 // tagged context='script:test-generate' and counts against the daily budget —
 // which is what stops a model bake-off from quietly running up a bill.
-enterAiContext({ context: 'script:test-generate' });
+// The ledger row must say WHICH ad and WHAT was generated — 'script:test-generate'
+// twelve times over tells the owner nothing about what the money bought.
+const _adTag = (() => {
+  const i = process.argv.indexOf('--job');
+  const f = i === -1 ? '' : (process.argv[i + 1] || '');
+  return f ? path.basename(f).replace(/\.[^.]+$/, '').toLowerCase() : (process.argv.includes('--job-text') ? 'inline-ad' : 'no-ad');
+})();
+const _typeTag = (() => {
+  const i = process.argv.indexOf('--type');
+  return i === -1 ? 'both' : (process.argv[i + 1] || 'both');
+})();
+enterAiContext({ context: `test-generate · ${_adTag} · ${_typeTag}` });
 
 main().catch((err) => {
   console.error('\n✗ Error:', err.response?.data || err.message || err);

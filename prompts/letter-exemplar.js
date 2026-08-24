@@ -88,6 +88,23 @@ ${EXEMPLAR_BELIEF}
 ${EXEMPLAR_STORY}
 """
 
+WHAT NONE OF THEM DOES, AND THIS IS THE ONE THING THAT KILLS EVERY LETTER:
+
+None of them tries to get as much of the record into the letter as it will
+hold. That instinct — cover the career, name the big employers, work in the
+metrics, fit four achievements into a paragraph because they are all true and
+all relevant — is what you will want to do, and it is the failure. It produces
+a CV in sentences. The candidate already sent the CV.
+
+Count what the third letter LEAVES OUT: twenty years of roles, every employer
+but two, every number but two. It spends its whole length on one small client
+in Southern Bohemia and one account, and it is better for it. The letter is not
+a summary of the record. It is one or two things from the record, told properly,
+and everything else deliberately unsaid.
+
+So before you write: pick what you are leaving out, and leave it out. If a
+sentence exists to make sure something on the record gets a mention, delete it.
+
 What all three do, and what your letter must do too:
 
 - THE OPENING IS ANCHORED TO THE CANDIDATE, wherever it starts. One starts on
