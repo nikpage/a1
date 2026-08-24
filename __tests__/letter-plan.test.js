@@ -99,6 +99,38 @@ describe('letterPlanBlock — what the writer executes', () => {
     expect(block).toMatch(/THE TWO POINTS, IN THIS ORDER/);
   });
 
+  // Added 2026-08-24. The pipeline gave both points equal space and the letter
+  // read as a list of achievements; Nik's own letters spend half the body on
+  // one project told in stages. carried_by names which one, and the writer is
+  // told to tell that one out and keep the other short.
+  it('marks exactly one point as carrying the letter and the other as shorter', () => {
+    const first = letterPlanBlock({ ...PLAN, carried_by: 1 });
+    const firstLines = first.split('\n');
+    const carriesAt = firstLines.findIndex((l) => l.includes('THIS ONE CARRIES THE LETTER'));
+    const shorterAt = firstLines.findIndex((l) => l.includes('SHORTER:'));
+    expect(carriesAt).toBeGreaterThan(-1);
+    expect(shorterAt).toBeGreaterThan(carriesAt);
+    expect(firstLines.filter((l) => l.includes('THIS ONE CARRIES THE LETTER'))).toHaveLength(1);
+
+    // carried_by: 2 flips which one is told out.
+    const secondLines = letterPlanBlock({ ...PLAN, carried_by: 2 }).split('\n');
+    expect(secondLines.findIndex((l) => l.includes('SHORTER:')))
+      .toBeLessThan(secondLines.findIndex((l) => l.includes('THIS ONE CARRIES THE LETTER')));
+
+    // A plan that omitted the field still gets one carrying instance, not two
+    // equal summaries.
+    const { carried_by, ...noField } = { ...PLAN, carried_by: 1 };
+    const defaulted = letterPlanBlock(noField).split('\n');
+    expect(defaulted.findIndex((l) => l.includes('THIS ONE CARRIES THE LETTER')))
+      .toBeLessThan(defaulted.findIndex((l) => l.includes('SHORTER:')));
+  });
+
+  it('tells the writer not to give the two points equal space', () => {
+    const b = letterPlanBlock(PLAN);
+    expect(b).toMatch(/THE TWO POINTS ARE NOT GIVEN EQUAL SPACE/);
+    expect(b).toMatch(/cut the shorter point further; never flatten the carrying one/);
+  });
+
   it('states a planned shortfall once, and states SILENCE when none is planned', () => {
     expect(letterPlanBlock(PLAN)).toMatch(/STATE THE SHORTFALL ONCE: no crypto experience/);
     const silent = letterPlanBlock({ ...PLAN, shortfall: { state: false } });
@@ -192,10 +224,17 @@ describe('the plan aims at what Nik\'s own letter does', () => {
   // maze of legal disclaimers" — the applicant grading the employer's market
   // position. The instruction had asked for exactly that ("what they are
   // getting right that others in their field get wrong").
-  it('asks the opening for what the candidate NOTICED, never a verdict on the employer', () => {
+  // Widened 2026-08-24: the single "what they noticed about this employer"
+  // anchor was itself a mould. Two of Nik's own letters open on what he
+  // believes and on what he has been building. All three anchors are now
+  // offered with no default; the ban on grading the employer is unchanged.
+  it('offers three candidate-anchored openings, never a verdict on the employer', () => {
     const p = user();
-    expect(p).toMatch(/WHAT THIS CANDIDATE NOTICED ABOUT THIS EMPLOYER AND WHY IT MATTERS TO THEM/);
-    expect(p).toMatch(/It is NEVER a verdict on the employer's business/);
+    expect(p).toMatch(/what this candidate NOTICED about this employer/);
+    expect(p).toMatch(/what this candidate BELIEVES about the work, and what acting on it cost them/);
+    expect(p).toMatch(/what this candidate HAS BEEN DOING/);
+    expect(p).toMatch(/Pick the one this letter's argument needs — there is no default/);
+    expect(p).toMatch(/NEVER a verdict on the employer's business/);
     expect(p).toMatch(/Not a claim about the candidate's capabilities either/);
     // Both discredited framings must be gone.
     expect(p).not.toMatch(/It commits to a claim about this person against this job/);

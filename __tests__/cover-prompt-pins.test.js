@@ -88,10 +88,13 @@ describe('PIN 1 — the letter is written from the ad in the employer\'s own wor
 describe('PIN 2 — the writing prompt stays minimal', () => {
   // The stack that lost on 2026-08-15 was 51,721 characters, ~33,000 of them
   // byte-identical for every user and every job. The minimal prompt measures
-  // around 6k with an ad attached. 15,000 is well clear of normal growth and
-  // far below any restored stack, so this fails on the regression, not on an
-  // ordinary edit.
-  const CEILING = 15000;
+  // around 6k with an ad attached. Raised from 15,000 to 20,000 on 2026-08-24
+  // when the register exemplar went from one hand-written letter to three
+  // (~2.9k): three shapes stop the pipeline copying one as a mould, and the
+  // letters themselves are the cheapest instruction in this prompt. 20,000 is
+  // still far below any restored stack, so this fails on the regression, not
+  // on an ordinary edit.
+  const CEILING = 20000;
 
   test('a full prompt with an ad stays under the ceiling', () => {
     const text = promptText(ANALYSIS);

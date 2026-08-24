@@ -80,9 +80,15 @@ For each, name the SINGLE piece of evidence that will be told — one, not three
 
 A NUMBER IS ONE OPTION AMONG FIVE, NEVER THE TARGET. Reaching for a metric because metrics feel like proof is how a letter ends up reading like a performance review; the best letter written for this candidate by hand contains no number at all. If the evidence you picked has no such detail in the record, pick different evidence — do not plan to invent one.
 
+ONE OF THE TWO CARRIES THE LETTER, AND IT IS TOLD AT LENGTH. Name which in "carried_by" — 1 or 2. That instance gets roughly half the letter's words: what was wanted, what was tried, what was added or changed along the way, what came of it. The other point is made properly but shorter. Two instances given equal, even space is how a letter turns back into a list of achievements — which is the CV's job, and the CV is attached. Pick as the carrying one the instance with the most ACTUAL STORY in the record: stages, a change of direction, something that was got wrong first. An instance the record holds only as a one-line outcome cannot carry a letter, however impressive the outcome is.
+
 Where BOTH points come from the same kind of work, say what the two instances have in COMMON — the lesson that recurs across them. A shared lesson stated once is worth more than two separate proofs, and it is what turns a list of clients into an argument.
 
-Decide the FIRST SENTENCE'S JOB. It says WHAT THIS CANDIDATE NOTICED ABOUT THIS EMPLOYER AND WHY IT MATTERS TO THEM. It is anchored to the candidate — what caught their attention, what they care about, why this one and not another. It is NEVER a verdict on the employer's business.
+Decide the FIRST SENTENCE'S JOB. It is anchored to the CANDIDATE, and there are three places it can start. Pick the one this letter's argument needs — there is no default:
+  - what this candidate NOTICED about this employer and why it matters to them;
+  - what this candidate BELIEVES about the work, and what acting on it cost them;
+  - what this candidate HAS BEEN DOING — the work itself, stated plainly, which the letter then tells.
+Whichever you pick, it is NEVER a verdict on the employer's business, never an announcement of the application, and never the job title.
 
 THE LINE BETWEEN THE TWO IS THE WHOLE GAME:
 - "Your app caught my eye because you are actually fixing X instead of talking about it, and X is the problem I care about" — correct. It reports what one person noticed and wants. They cannot dispute it and they have not been told anything about themselves.
@@ -94,7 +100,7 @@ HARD CONSTRAINTS ON WHAT YOU WRITE IN "opening_claim":
 - FIFTEEN WORDS MAXIMUM. A long opening claim is an abstraction, and the writer will turn an abstraction into a thesis. Short forces you to name the actual thing.
 - Plain words a person says out loud. No "strategic", "disciplined approach", "viable path", "positioning", "leverage", "ecosystem", "landscape". If it reads like a consulting deck, it is wrong.
 - It must NOT contain the job title, the words "apply", "application", "role", "position", or "reaching out". A first sentence built on any of those announces the application, which is the one thing it may never do.
-- Name what THEY do, in your own words, and the judgement about it. "They are actually fixing X instead of talking about it" is the shape. "To validate their strategic decision to pursue X" is not.
+- Where the opening starts on the employer, name what THEY do, in your own words, and the judgement about it. "They are actually fixing X instead of talking about it" is the shape. "To validate their strategic decision to pursue X" is not. Where it starts on the candidate's belief or their own work, it is what that person would say first across a table: "That's one reason I left banking", "I've been building custom AI apps for clients that want fast ROI".
 
 ARGUE AGAINST SOMETHING REAL, OR AGAINST NOTHING AT ALL. Where the advert rules something out, states a frustration, or describes how its field usually gets this wrong, name that in "argue_against" — the contrast is what makes the letter impossible to paste into another application.
 
@@ -127,12 +133,14 @@ const SHAPE = `Return VALID JSON only — no markdown fence, no commentary — i
       "detail": "the concrete thing inside that instance which does the persuading — the position pushed, the decision, the constraint, the refusal, or a number the record states"
     }
   ],
+  "carried_by": 1,
   "shared_lesson": "what the two instances have in common, where they have something in common — the lesson that recurs. Empty string where they genuinely do not.",
   "shortfall": { "state": true, "what": "the true level, plainly", "placement": "where in the letter it is said, and what the sentence is also doing" },
   "close": "the JOB the last sentence must do. Not the sentence itself."
 }
 
 "points" holds EXACTLY TWO entries, in the order the letter makes them.
+"carried_by" is 1 or 2 — which of them is told at length and takes roughly half the letter.
 "shortfall" is { "state": false } where nothing should be stated.
 EVERY FIELD YOU WRITE IS READ AND EXECUTED LITERALLY BY THE WRITER, SO THE REGISTER OF YOUR PLAN BECOMES THE REGISTER OF THE LETTER. Write all of it in plain, spoken words. If any field of your plan reads like a consulting deck or a performance review, the letter will too, and it will be indistinguishable from the letter every other applicant sent.
 
@@ -163,12 +171,23 @@ export function letterPlanBlock(plan) {
   const points = arr(plan.points).filter((p) => str(p?.instance) || str(p?.answers));
   if (points.length < 1) return '';
 
+  // Which point is TOLD at length. Defaults to the first: a plan that omitted
+  // the field still gets a letter with one instance carrying it, never two
+  // equal summaries.
+  const carried = Number(plan.carried_by) === 2 && points.length > 1 ? 2 : 1;
+
   const rendered = points
     .slice(0, 2)
     .map((p, i) => {
+      const carries = i + 1 === carried;
       const bits = [`${i + 1}. ANSWERS: ${str(p.answers) || '(their ask)'}`];
       if (str(p.instance)) bits.push(`   TELL THIS ONE INSTANCE: ${str(p.instance)}`);
       if (str(p.detail)) bits.push(`   THE DETAIL THAT PERSUADES: ${str(p.detail)}`);
+      bits.push(
+        carries
+          ? '   THIS ONE CARRIES THE LETTER: tell it at length — roughly half the body. What was wanted, what was tried, what changed along the way, what came of it. Stages, not a summary.'
+          : '   SHORTER: made properly, in a few sentences, not told out in stages.'
+      );
       return bits.join('\n');
     })
     .join('\n');
@@ -195,6 +214,8 @@ ${str(plan.order_reason) ? `- WHY THIS ORDER: ${str(plan.order_reason)}\n` : ''}
 ${rendered}
 ${against}${lesson}${shortfall}
 - THE LAST SENTENCE'S JOB: ${str(plan.close) || 'land the argument'}. It does not thank, does not hope, and does not ask for consideration. THE LETTER ENDS ON IT: the last line of the body does this job and nothing comes after it. THERE IS NO CONCLUDING SENTENCE BETWEEN THE LAST POINT AND THIS ONE: the second point ends with what happened, and the very next sentence is the close. Do not write a sentence that sums up what the two points showed — a summary of the argument just made is the letter grading its own work, and it displaces the one line that asks for the next human step.
+
+THE TWO POINTS ARE NOT GIVEN EQUAL SPACE. The one marked as carrying the letter is told out — the reader follows what happened, in the order it happened, with the specifics that only this project had. The other is made in a few sentences. Two instances at equal length is a list of achievements, and the list is already attached as the CV. If you are cutting to reach the word ceiling, cut the shorter point further; never flatten the carrying one into a claim.
 
 TELL each instance — what happened, with its specifics — rather than summarising what it demonstrates. The specifics are the ones the plan named: a position pushed, a decision, a constraint, a refusal. A NUMBER IS NOT REQUIRED AND IS NOT THE TARGET — do not reach for a metric to make a point feel proved, and never state one the record does not carry. A reader who is told what happened draws the conclusion themselves and believes it; a reader handed the conclusion does not. ONE instance per point: a second example does not strengthen the first, it dilutes it.
 
