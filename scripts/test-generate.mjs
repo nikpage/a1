@@ -309,7 +309,7 @@ async function main() {
     console.log(`\n═══ TONE: ${toneCased.toUpperCase()} ═══`);
 
     if (opts.type === 'cv' || opts.type === 'both') {
-      const r = await generateCV({ cv: generationSource, analysis, tone: toneCased, tweak, core, language: opts.language });
+      const r = await generateCV({ cv: generationSource, master, analysis, tone: toneCased, tweak, core, language: opts.language });
       totalCost += logUsages(`cv/${tone}`, r.gemini_usages);
       write(`${tone}.cv.md`, r.content);
       console.log(`\n----- CV (${tone}) -----\n${r.content}\n`);

@@ -25,6 +25,7 @@
 // band come from prompts/cv-sections.js, which holds them per language.
 
 import { standardHeadings, isSlot, bulletBand, SECTION_NAMES } from '../prompts/cv-sections.js';
+import { bulletCeiling } from '../prompts/cv-skeleton.js';
 import { bannedPhrases, identityEpithets } from '../prompts/voice.js';
 import { coverWordBand } from '../prompts/market.js';
 import { salutationName } from '../prompts/cover-evidence.js';
@@ -86,6 +87,19 @@ function parseRoles(section) {
   const roles = [];
   let current = null;
   for (const line of section.lines) {
+    // A nested client engagement (CV_RULES.md Layer 1, "Heading depth"). It is
+    // its OWN entry: it carries a real employer, title and dates, and its
+    // heading puts them on one line as "Title · Company | dates". Until
+    // 2026-08-25 nothing matched it, so its bullets were counted under the
+    // parent — a practice with six clients reported 21 bullets against a
+    // ceiling of 5 and could never pass.
+    const h5 = line.match(/^#####\s+(.+?)\s*$/);
+    if (h5) {
+      const [title, rest] = plain(h5[1]).split('·');
+      current = { title: (title || '').trim(), subtitle: (rest || '').trim(), bullets: [], engagement: true };
+      roles.push(current);
+      continue;
+    }
     const h = line.match(/^####\s+(.+?)\s*$/);
     if (h) {
       current = { title: plain(h[1]), subtitle: '', bullets: [] };
@@ -156,6 +170,12 @@ function checkNumbersTrace(document, master, hard) {
   const body = sections.map((s) => s.lines.join('\n')).join('\n');
   const seen = new Set();
   for (const line of body.split('\n')) {
+    // "and 24 others" is the app's own count of what it left out, not a claim
+    // about the candidate — the record holds 28 talks and the section prints
+    // four, and a selection of four reads as a thin record unless the remainder
+    // is stated. The number is arithmetic over the master, so it can never
+    // appear in it.
+    if (/^\s*[-•]?\s*and \d+ others?\s*$/i.test(line)) continue;
     // Dates get their own check; skip them here.
     const stripped = line.replace(/\b(0[1-9]|1[0-2])\/((19|20)\d{2})\b/g, ' ');
     for (const n of digitRuns(stripped)) {
@@ -375,18 +395,29 @@ function checkStructure(document, analysis, hard) {
   // Heading depth: the document uses exactly two heading levels — ### for a
   // section and #### for a role. Anything else is a sub-heading invented inside
   // a role (client engagements, project groupings). The DOCX exporter does not
-  // parse those, so they print literally as "## Client Engagement: ..." in the
-  // delivered file, and they break the single flat structure an ATS expects.
+  // parse those, so they print as a section break in the delivered DOCX and
+  // break the flat structure an ATS expects. The ONE exception is the nested
+  // client engagement inside Work Experience, which the exporter renders as an
+  // indented sub-role — see utils/exportDocxFormatted.js.
   // The name block above the first section legitimately uses "# Name"; the rule
   // applies from the first ### section onwards, which is where roles live.
   let inSections = false;
+  let section = '';
   for (const line of doc.split('\n')) {
-    const h = line.match(/^\s*(#{1,6})\s+\S/);
+    const h = line.match(/^\s*(#{1,6})\s+(\S.*)$/);
     if (!h) continue;
-    if (h[1].length === 3) inSections = true;
-    if (inSections && h[1].length !== 3 && h[1].length !== 4) {
-      hard.push(`Heading "${line.trim().slice(0, 60)}" uses ${h[1].length} hash marks — only ### (section) and #### (role) are allowed. Client engagements and projects are bullets, not sub-headings.`);
+    const depth = h[1].length;
+    if (depth === 3) {
+      inSections = true;
+      section = h[2].replace(/\*/g, '').trim();
     }
+    if (!inSections || depth === 3 || depth === 4) continue;
+    // A nested client engagement is the one permitted third level, and only
+    // inside Work Experience (CV_RULES.md Layer 1, "Heading depth"): its
+    // employer, title and dates are real, and flattening it into the parent's
+    // bullets loses the client names an employer scans for.
+    if (depth === 5 && isSlot('experience', section)) continue;
+    hard.push(`Heading "${line.trim().slice(0, 60)}" uses ${depth} hash marks — only ### (section), #### (role) and ##### (a nested client engagement inside Work Experience) are allowed. Project groupings and skills categories are bullets, not sub-headings.`);
   }
 
   // Section names: a heading passes if it is one of the standard names in ANY
@@ -507,6 +538,19 @@ function masterRoleNames(master) {
   return names;
 }
 
+// A bullet carries a quantity when it states one — as digits OR as a written
+// number. "Managed four concurrent projects for eBay while maintaining a
+// pipeline for three more" is a quantified bullet; counting digits alone called
+// it a fallback and hard-failed a CV over two sentences that did exactly what
+// the rule asks. Written forms only go as far as a CV plausibly spells out;
+// past that a real CV uses digits.
+const NUMBER_WORDS = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|twenty|thirty|forty|fifty|hundred|thousand|million|billion|half|double|triple|fivefold|tenfold)\b/i;
+
+function carriesQuantity(text) {
+  const t = String(text || '');
+  return /\d/.test(t) || NUMBER_WORDS.test(t);
+}
+
 // 6. Bullet ceilings and the bullet word band (HARD); the metric-fallback share
 //    stays reported, since it depends on what the master holds. Both of the
 //    hard ones are counts with nothing to weigh: a role printing six bullets
@@ -520,9 +564,13 @@ function checkBullets(document, master, language, warnings, hard) {
   const exp = sections.find((s) => parseRoles(s).length > 0);
   if (!exp) return;
   const roles = parseRoles(exp);
-  roles.forEach((role, i) => {
+  let topIndex = -1;
+  roles.forEach((role) => {
     if (isEarlierCareer(role.title)) return;
-    const ceiling = i < 2 ? 5 : 3;
+    if (!role.engagement) topIndex += 1;
+    // Position is counted over TOP-LEVEL roles; a nested engagement inherits its
+    // parent's ceiling rather than pushing later roles down the list.
+    const ceiling = bulletCeiling(topIndex);
     if (role.bullets.length > ceiling) {
       hard.push(`Role "${role.title}" prints ${role.bullets.length} bullets; the ceiling for its position is ${ceiling}. Cut it to ${ceiling} by dropping the bullets least relevant to this application — the ceiling is not a quota and the remaining bullets are not to be padded or merged to compensate.`);
     }
@@ -543,7 +591,7 @@ function checkBullets(document, master, language, warnings, hard) {
     // The record HOLDS numbers for this role and the writer did not use them.
     // That is the app leaving the strongest evidence on the table and then
     // reporting it to the candidate, who already supplied the figures.
-    const noMetric = role.bullets.filter((b) => !/\d/.test(b)).length;
+    const noMetric = role.bullets.filter((b) => !carriesQuantity(b)).length;
     if (noMetric > role.bullets.length / 3) {
       hard.push(`Under "${role.title}", ${noMetric} of ${role.bullets.length} bullets carry no number, but the record holds figures for this role. Rewrite them around the figures the record actually states — invent none, and use no figure the record does not hold.`);
     }

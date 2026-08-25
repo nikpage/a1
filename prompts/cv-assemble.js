@@ -70,6 +70,32 @@ function speakingLine(entry) {
   return [head, tail].filter(Boolean).join(' — ');
 }
 
+// The blueprint's evidence_from_speaking roster, split into the two sections it
+// spans. An entry is a publication when the record lists it as one; everything
+// else is a talk. Each roster item is already written as the record spells it,
+// so a talk is printed through the record's own entry where one matches and
+// verbatim where it does not.
+function splitRoster(master, roster) {
+  const wanted = list(roster).map((r) => String(r).trim()).filter(Boolean);
+  const talks = list(master?.speaking_and_lecturing);
+  const papers = list(master?.publications_and_patents).map((p) => String(p));
+  const speaking = [];
+  const publications = [];
+
+  for (const want of wanted) {
+    const low = want.toLowerCase();
+    const paper = papers.find((p) => low.includes(p.toLowerCase()) || p.toLowerCase().includes(low));
+    if (paper) { publications.push(paper); continue; }
+    const talk = talks.find((t) => {
+      const topic = String(t?.topic || '').toLowerCase();
+      const event = String(t?.event || '').toLowerCase();
+      return (topic && low.includes(topic)) || (event && low.includes(event));
+    });
+    speaking.push(talk ? speakingLine(talk) : want);
+  }
+  return { speaking, publications };
+}
+
 /**
  * Assemble the finished CV.
  *
@@ -80,7 +106,7 @@ function speakingLine(entry) {
  * `olderApplicant` strips graduation years from EVERY education entry — all or
  * none, never selectively (Layer 6 check 10 is a hard block on a stray year).
  */
-export function assembleCv(master, content = {}, skeleton, { language = 'auto', olderApplicant = false } = {}) {
+export function assembleCv(master, content = {}, skeleton, { language = 'auto', olderApplicant = false, roster = [] } = {}) {
   const h = headings(language);
   const p = (master?.profile && typeof master.profile === 'object') ? master.profile : {};
   const doc = [];
@@ -99,17 +125,20 @@ export function assembleCv(master, content = {}, skeleton, { language = 'auto', 
   const work = renderWorkExperience(skeleton, content.bullets || {});
   if (work) doc.push(`### **${h.experience}**`, '', work, '', '---', '');
 
-  // The reader is always told how much the record holds beyond what fits: five
-  // entries chosen out of twenty-eight read as a thin record unless the
-  // remainder is stated.
-  const speaking = list(content.speaking).map((s) => (typeof s === 'string' ? s : speakingLine(s)));
+  // Speaking and Publications are the ANALYSIS's pick, not the writer's: it
+  // chooses by the SUBJECT that answers this ad, and the writer given a free
+  // choice reached for the record's most recent talks instead. Layer 6 fails a
+  // document that drops a rostered entry, so printing the roster is the only
+  // way it can pass — and the same reasoning as the Earlier Career roster.
+  const { speaking, publications } = splitRoster(master, roster);
   if (speaking.length) {
+    // The reader is always told how much the record holds beyond what fits:
+    // four entries out of twenty-eight read as a thin record unless the
+    // remainder is stated.
     const others = list(master?.speaking_and_lecturing).length - speaking.length;
     const lines = others > 0 ? [...speaking, `and ${others} others`] : speaking;
     doc.push(`### **${h.speaking}**`, ...lines.map((s) => `- ${s}`), '', '---', '');
   }
-
-  const publications = list(content.publications);
   if (publications.length) doc.push(`### **${h.publications}**`, ...publications.map((s) => `- ${s}`), '', '---', '');
 
   // EVERY education entry, under one heading. The script this came from printed

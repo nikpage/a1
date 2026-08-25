@@ -50,9 +50,19 @@ describe('assembleCv', () => {
     }
   });
 
-  it('states how much of the speaking record was left out', () => {
-    const cv = assembleCv(master, contentFor(skeleton), skeleton, { language: 'en' });
+  it('prints the analysis roster and states how much was left out', () => {
+    // Speaking is the analysis's pick, by subject — the writer given a free
+    // choice reached for the record's most recent talks instead.
+    const pick = master.speaking_and_lecturing[3];
+    const roster = [`${pick.topic} — ${pick.event}`];
+    const cv = assembleCv(master, contentFor(skeleton), skeleton, { language: 'en', roster });
+    expect(cv).toContain(pick.topic);
     expect(cv).toContain(`and ${master.speaking_and_lecturing.length - 1} others`);
+  });
+
+  it('prints no Speaking section when the analysis picked nothing', () => {
+    const cv = assembleCv(master, contentFor(skeleton), skeleton, { language: 'en', roster: [] });
+    expect(cv).not.toContain('Speaking');
   });
 
   it('prints every education entry under one heading', () => {
@@ -84,10 +94,11 @@ describe('assembleCv', () => {
     expect(cv).not.toContain('### **Highlights**');
   });
 
-  it('omits a section the model returned nothing for', () => {
-    const cv = assembleCv(master, contentFor(skeleton, { publications: [], speaking: [] }), skeleton, { language: 'en' });
+  it('omits a section there is nothing for', () => {
+    const cv = assembleCv(master, contentFor(skeleton, { recognition: [] }), skeleton, { language: 'en', roster: [] });
     expect(cv).not.toContain('Publications');
     expect(cv).not.toContain('Speaking');
+    expect(cv).not.toContain('Recognition');
   });
 
   it('prints a slot heading even when the model sent no bullets for it', () => {
@@ -97,5 +108,33 @@ describe('assembleCv', () => {
     const cv = assembleCv(master, content, skeleton, { language: 'en' });
     expect(cv).toContain(slot.company);
     expect(entryKey(slot.company, slot.dates)).toBe(slot.key);
+  });
+});
+
+// ── the bullet ceiling, enforced rather than requested ───────────────────────
+//
+// Red on the old code: the renderer printed whatever the writer returned, and
+// on 2026-08-25 it returned 14 bullets for a role whose ceiling is 5.
+describe('the bullet ceiling', () => {
+  const skeleton = buildSkeleton(master, { now: NOW });
+
+  it('drops the surplus past the ceiling instead of shipping it', () => {
+    const bullets = {};
+    for (const s of skeletonSlots(skeleton)) {
+      bullets[s.key] = Array.from({ length: 14 }, (_, i) => `bullet number ${i + 1}`);
+    }
+    const cv = assembleCv(master, contentFor(skeleton, { bullets }), skeleton, { language: 'en' });
+    const work = cv.slice(cv.indexOf('### **Work Experience**'));
+    // The first two roles keep five, the rest three — Layer 6 check 6.
+    const blocks = work.split(/^#### /m).slice(1);
+    blocks.slice(0, 2).forEach((b) => {
+      const own = b.split(/^##### /m)[0];
+      expect(own.split('\n').filter((l) => l.startsWith('- ')).length).toBeLessThanOrEqual(5);
+    });
+    expect(work).not.toContain('bullet number 6\n');
+  });
+
+  it('tells the writer each slot ceiling, so the drop is a backstop not a surprise', () => {
+    for (const s of skeletonSlots(skeleton)) expect(s.max).toBeGreaterThan(0);
   });
 });

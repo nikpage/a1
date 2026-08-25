@@ -30,6 +30,7 @@ tagline: { size: 24, color: '5b9bd5', italics: true },
 contact: { size: 20, color: '404040' },
 sectionHeader: { size: 26, bold: true, color: '1f4e79' },
 jobTitle: { size: 24, bold: true, color: '2d2d2d' },
+  engagementTitle: { size: 22, bold: true, color: '3d3d3d' },
 company: { size: 22, bold: true, color: '5b5b5b' },
 dates: { size: 20, color: '7f7f7f', italics: true },
 bodyText: { size: 22, color: '2d2d2d' },
@@ -217,6 +218,24 @@ if (/^#\s+/.test(raw)) {
     h++;
   }
   i = h - 1;
+  continue;
+}
+
+// A nested client engagement (CV_RULES.md Layer 1, "Heading depth"). Matched
+// BEFORE the plain "###" branch below: "##### x" does not start with "#### "
+// but DOES start with "###", so without this it was read as a new SECTION —
+// every engagement printed as a section header with a rule across the page, and
+// the bullets under it stopped being read as job bullets.
+if (raw.startsWith('##### ') && /experience/i.test(currentSectionTitle)) {
+  const cleaned = raw.replace(/<[^>]+>/g, '').replace(/^#####\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '').trim();
+  inJobBlock = true;
+  docParagraphs.push(new Paragraph({
+    children: [new TextRun({ text: cleaned, ...styles.engagementTitle })],
+    indent: { left: 240 },
+    spacing: { before: 140, after: 60 },
+    keepLines: true,
+    keepNext: true,
+  }));
   continue;
 }
 

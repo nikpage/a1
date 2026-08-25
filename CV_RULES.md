@@ -247,6 +247,8 @@ culture.
 
 **Headers.** Standard names only, taken from the section-name registry for the CV's output language (en/cs/pl today). Each slot has one canonical name plus accepted market variants; a heading standard in any registered language is valid. Projects renders only when the Under-qualified or Career Pivot override is active, and only from evidenced master entries. No creative section names.
 
+**Heading depth.** Exactly three levels, and no others: the section (`###`), the role (`####`), and a nested engagement inside Work Experience (`#####`). The third level exists because a standing practice's client engagements are real employers with their own titles and dates, and flattening them into the parent's bullets loses the client names — the strongest evidence a consulting record holds and the exact words an employer scans for. It is permitted in Work Experience only; everywhere else, a heading below the section level is a sub-grouping invented inside a section (skills categories, project labels) and is forbidden. Any level the CV emits must render correctly in the exported DOCX: a heading the exporter does not recognise is worse than no heading, because it prints as a section break in the file the candidate actually sends.
+
 **Layout.** Single column. No text boxes, tables, graphics, icons, headers/footers carrying content, or columns.
 
 **Titles.** Print the official title exactly. If it is non-standard, the industry-standard equivalent may be used in the skills/summary prose, never bolted onto the title line.

@@ -254,7 +254,7 @@ export function buildCvSlotsPrompt(cv, analysis, tone, tweak = '', core = '', la
     ? `\n# The candidate's own instructions for this CV (HIGHEST PRIORITY — they outrank everything below)\n"${tweak.trim()}"\n- **Demoted content is not the lead**, however well it answers the ad: use other real evidence, or leave that requirement unanswered.\n- **Demoted content is not deleted** — its slot still prints, condensed.\n- **Emphasised content leads and is proved** with the specific facts the record holds.\n- **Steering never adds a fact.**\n`
     : '';
 
-  const slotLines = slots.map((s) => `  "${s.key}"   (${s.title})`).join('\n');
+  const slotLines = slots.map((s) => `  "${s.key}"   (${s.title}) — at most ${s.max} bullets`).join('\n');
 
   const systemMessage = {
     role: 'system',
@@ -288,8 +288,6 @@ ${marketConventions(analysis)}
   "highlights": "three to five sentences of prose",
   "skills": ["short ATS term", "..."],
   "bullets": { "<slot key>": ["bullet", "..."] },
-  "speaking": ["Topic — Event, Location Year", "..."],
-  "publications": ["Title", "..."],
   "recognition": ["Certification or award", "..."]
 }
 
@@ -299,8 +297,7 @@ Rules for each field:
 - "headline" opens on what this person does, never on an adjective about them.
 - "highlights" opens on something concrete they have done — never on "high-agency", "proven track record", "extensive experience" or their like. It works from what THIS job most needs and names the specific work that proves each. It is PROSE, not bullets: it is not a summary of the CV below it and does not walk through the roles in order.
 - "skills": one to three words each, the words the job description itself uses, only where the record evidences them. Never a sentence, never a parenthetical, never a grouped phrase.
-- "bullets": the keys are EXACTLY the slot keys listed below, and no others. Each bullet leads with the result, then the action, and uses only figures the record states. Give an entry the number of bullets this job justifies — one for an entry the job has no use for, more for the ones that answer it. Every key must be present.
-- "speaking" and "publications": choose ONLY the entries whose SUBJECT answers this job, most relevant first. Not the whole list, not the most recent. Return an empty array if the record holds nothing on point.
+- "bullets": the keys are EXACTLY the slot keys listed below, and no others. Each bullet leads with the result, then the action, and uses the figures the record states: where the record holds a number, a percentage or an amount for that role, the bullet that reports that work CARRIES it. A bullet that describes a result the record quantifies, without the quantity, is the weakest sentence on the page. Invent none, and use no figure the record does not hold. Give an entry the number of bullets this job justifies — one for an entry the job has no use for, more for the ones that answer it — up to the ceiling stated beside each key. The ceiling is a LIMIT, not a quota: never pad an entry to reach it. Order each entry's bullets strongest-first for THIS job, because anything past the ceiling is dropped. Every key must be present.
 - "recognition": certifications and awards from the record.
 
 The slot keys, in document order — return a bullets array for every one of them:

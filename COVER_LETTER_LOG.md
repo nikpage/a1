@@ -513,3 +513,35 @@ is fragile. Tests: `prompts/letter-assemble.test.js` (9, all green) pin that
 both instances print whole, that his text is never smoothed, that a generated
 opening only appears when `opening` is "custom", and that contact details appear
 exactly once.
+
+---
+
+## 2026-08-25 (later) — the assembler wired into the app, and what the validator did not know
+
+`generateCV` now assembles the CV in code when a structured master exists. Four
+paid runs against the Sudolabs ad, all read. Every remaining hard failure after
+the wiring was a check that had never seen a nested client engagement, because
+until today the writer always flattened them:
+
+- **The DOCX exporter turned each engagement into a section break.** It matched
+  `#### ` for a role and then anything else starting with `###` as a section —
+  `##### x` is not `#### ` but is `###`. On screen the CV was right; in the file
+  the candidate sends, every client became a section header with a rule across
+  the page and the bullets under it stopped being job bullets.
+- **The bullet ceiling counted six engagements' bullets as the parent's** — 21
+  against a ceiling of 5, which no document could pass.
+- **`and 24 others` failed the number trace.** It is arithmetic over the master,
+  so the master can never contain it.
+- **"Managed four concurrent projects" counted as a bullet with no metric.** The
+  check tested for digits.
+
+*The pattern:* a structure that was always requested and never delivered leaves
+every downstream check untested against it. Guaranteeing the structure in code
+is what finally ran those paths.
+
+Also moved from the writer to code, on the same reasoning as the skeleton: the
+Earlier Career roster and the Speaking/Publications selection. Both are the
+analysis's picks, both were being re-decided by the writer, and both had Layer 6
+checks failing the result.
+
+**Untested here:** any of this on the letter.

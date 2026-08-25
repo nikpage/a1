@@ -69,7 +69,7 @@ function endTime(role, now) {
  * The window is measured from the current year, not from the most recent role,
  * so a candidate between jobs does not silently gain a longer window.
  */
-export function buildSkeleton(master, { now = new Date(), windowYears = 15 } = {}) {
+export function buildSkeleton(master, { now = new Date(), windowYears = 15, roster = null } = {}) {
   const roles = Array.isArray(master?.work_experience) ? master.work_experience : [];
   // Measured as a DATE, not a year: a bare year cutoff let a role that ended in
   // March 2011 sit in a "fifteen year" window that was really sixteen years deep.
@@ -93,13 +93,58 @@ export function buildSkeleton(master, { now = new Date(), windowYears = 15 } = {
     // A parent whose own span reaches into the window keeps its engagements
     // whatever their dates: they are evidence under a role that is still current.
     if (endTime(role, now) >= cutoff) recent.push(entry);
-    // Earlier Career is employers only. What he did there is fifteen years old
-    // and the titles are QA roles that pull the reader's eye away from the work
-    // this job is about — the names are the part that still carries weight.
-    else earlier.push({ company: entry.company, location: entry.location });
+    // Earlier Career carries "Title, Employer" per CV_RULES.md Layer 1 — the
+    // title is what tells the reader which of a decade's roles is worth the
+    // line, and the roster below chooses which ones appear at all.
+    else earlier.push({ title: entry.title, company: entry.company, location: entry.location });
   }
 
-  return { recent, earlier, cutoff };
+  return { recent, earlier: rosterOrder(earlier, roster), cutoff };
+}
+
+/**
+ * The Earlier Career section, in the ANALYSIS's order and no longer than six.
+ *
+ * CV_RULES.md Layer 1: which roles appear is decided by the analysis, not by
+ * the writer and not by recency — the section exists so a recognisable employer
+ * survives the window, and printing the ten most recent lost Morgan Stanley and
+ * Wells Fargo on a finance application. Each roster item is the string
+ * "Title, Employer"; it is matched back to the real role rather than trusted as
+ * text, so a roster entry naming a role the record does not hold is dropped.
+ *
+ * With no roster — an older analysis, a standalone run — the first six stand,
+ * which is the cap either way.
+ */
+const MAX_EARLIER = 6;
+
+function rosterOrder(earlier, roster) {
+  const wanted = (Array.isArray(roster) ? roster : []).map((r) => String(r || '').toLowerCase());
+  if (!wanted.length) return earlier.slice(0, MAX_EARLIER);
+
+  const ordered = [];
+  for (const want of wanted) {
+    const hit = earlier.find((e) => !ordered.includes(e) && want.includes(e.company.toLowerCase()));
+    if (hit) ordered.push(hit);
+    if (ordered.length === MAX_EARLIER) break;
+  }
+  return ordered;
+}
+
+// One Earlier Career bullet: "Title, Employer" plus " — Location" where the
+// master records one (CV_RULES.md Layer 1, "Earlier Career form"). No dates, no
+// achievements — a bullet describing the work is a Work Experience entry
+// smuggled past the recency window.
+export function earlierLine(entry) {
+  const head = [entry?.title, entry?.company].map((v) => String(v || '').trim()).filter(Boolean).join(', ');
+  const loc = String(entry?.location || '').trim();
+  return loc ? `${head} — ${loc}` : head;
+}
+
+// The bullet ceiling for a top-level role by its position, mirroring Layer 6
+// check 6 exactly: the first two roles carry up to five, everything after up to
+// three. It is a CEILING, not a quota — a thin entry prints fewer.
+export function bulletCeiling(index) {
+  return index < 2 ? 5 : 3;
 }
 
 // A stable key for one entry, used to marry the writer's bullets back to the
@@ -115,12 +160,12 @@ export function entryKey(company, dates) {
  */
 export function skeletonSlots(skeleton) {
   const slots = [];
-  for (const r of skeleton?.recent || []) {
-    slots.push({ key: entryKey(r.company, r.dates), title: r.title, company: r.company, dates: r.dates });
+  (skeleton?.recent || []).forEach((r, i) => {
+    slots.push({ key: entryKey(r.company, r.dates), title: r.title, company: r.company, dates: r.dates, max: bulletCeiling(i) });
     for (const e of r.engagements) {
-      slots.push({ key: entryKey(e.company, e.dates), title: e.title, company: e.company, dates: e.dates });
+      slots.push({ key: entryKey(e.company, e.dates), title: e.title, company: e.company, dates: e.dates, max: bulletCeiling(i) });
     }
-  }
+  });
   return slots;
 }
 
@@ -142,21 +187,26 @@ export function renderWorkExperience(skeleton, bullets = {}) {
   const out = [];
   const lines = (key) => (Array.isArray(bullets[key]) ? bullets[key] : []).map((b) => String(b).trim()).filter(Boolean);
 
-  for (const r of skeleton.recent) {
+  skeleton.recent.forEach((r, i) => {
+    const ceiling = bulletCeiling(i);
     out.push(`#### **${r.title}**`);
     out.push(`**${r.company}** | ${r.dates}${r.location ? ` | ${r.location}` : ''}`);
-    for (const b of lines(entryKey(r.company, r.dates))) out.push(`- ${b}`);
+    // The ceiling is stated in the prompt AND enforced here: a writer told a
+    // limit is a writer that can exceed it, and on 2026-08-25 one wrote 14
+    // bullets against a ceiling of 5. The surplus is dropped from the END —
+    // the writer was asked for them most-relevant-first.
+    for (const b of lines(entryKey(r.company, r.dates)).slice(0, ceiling)) out.push(`- ${b}`);
     out.push('');
     for (const e of r.engagements) {
       out.push(`##### **${e.title}** · ${e.company} | ${e.dates}`);
-      for (const b of lines(entryKey(e.company, e.dates))) out.push(`- ${b}`);
+      for (const b of lines(entryKey(e.company, e.dates)).slice(0, ceiling)) out.push(`- ${b}`);
       out.push('');
     }
-  }
+  });
 
   if (skeleton.earlier.length) {
     out.push('#### **Earlier Career**');
-    for (const e of skeleton.earlier) out.push(`- ${e.company}${e.location ? `, ${e.location}` : ''}`);
+    for (const e of skeleton.earlier) out.push(`- ${earlierLine(e)}`);
     out.push('');
   }
 
@@ -195,7 +245,7 @@ export function skeletonBlock(skeleton) {
 
   if (skeleton.earlier.length) {
     lines.push('#### **Earlier Career**');
-    for (const e of skeleton.earlier) lines.push(`- ${e.company}${e.location ? `, ${e.location}` : ''}`);
+    for (const e of skeleton.earlier) lines.push(`- ${earlierLine(e)}`);
     lines.push('');
   }
 

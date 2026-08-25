@@ -1093,3 +1093,133 @@ describe('check 17 — the speaking roster', () => {
     expect(hard.some((h) => h.includes('evidence_from_speaking'))).toBe(false);
   });
 });
+
+// ── the nested client engagement, and the count of what was left out ─────────
+//
+// Both were hard failures until 2026-08-25. The engagement heading because the
+// check allowed only ### and ####; the count because "and 24 others" carries a
+// number the master can never contain — it is arithmetic OVER the master.
+describe('Layer 1 heading depth — the nested client engagement', () => {
+  const withEngagement = `# Jane Roe
+
+### **Summary**
+Ran delivery for Acme Ltd.
+
+---
+
+### **Work Experience**
+
+#### **Head of Delivery**
+**Acme Ltd** | 03/2019 - 08/2022
+- Cut release cycle from 42 days to 9 days across 4 product teams
+
+##### **Consulting Lead** · Acme Ltd | 03/2019 - 08/2022
+- Ran a delivery org of 25 engineers
+`;
+
+  it('accepts a ##### engagement inside Work Experience', () => {
+    const r = validateCv(withEngagement, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toMatch(/hash marks/);
+  });
+
+  it('still rejects a ##### sub-heading in any other section', () => {
+    const inSkills = withEngagement.replace('### **Summary**', '### **Skills**\n\n##### **Cloud**\n- AWS\n\n### **Summary**');
+    const r = validateCv(inSkills, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toMatch(/hash marks/);
+  });
+
+  it('still rejects a ###### heading inside Work Experience', () => {
+    const deeper = withEngagement.replace('##### **Consulting Lead**', '###### **Consulting Lead**');
+    const r = validateCv(deeper, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toMatch(/hash marks/);
+  });
+});
+
+describe('the count of what was left out', () => {
+  const base = `# Jane Roe
+
+### **Summary**
+Ran delivery for Acme Ltd.
+
+---
+
+### **Speaking & Lecturing**
+- Delivery at scale — DevConf, Prague 2021
+- and 24 others
+`;
+
+  it('does not fail the "and N others" line for carrying an untraceable number', () => {
+    const r = validateCv(base, { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toMatch(/Number "24"/);
+  });
+
+  it('still fails a real untraceable number in the same section', () => {
+    const r = validateCv(base.replace('and 24 others', 'Keynoted to 7300 people'), { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toMatch(/Number "7300"/);
+  });
+});
+
+// A nested engagement is its OWN entry for the bullet ceiling. Red on the old
+// code: nothing matched "##### ", so a practice's six client engagements piled
+// their bullets onto the parent — 21 against a ceiling of 5, unpassable.
+describe('bullet ceilings across nested engagements', () => {
+  const cv = (parentBullets, engagementBullets) => `# Jane Roe
+
+### **Summary**
+Ran delivery for Acme Ltd.
+
+---
+
+### **Work Experience**
+
+#### **Head of Delivery**
+**Acme Ltd** | 03/2019 - 08/2022
+${parentBullets.map((b) => `- ${b}`).join('\n')}
+
+##### **Consulting Lead** · Acme Ltd | 03/2019 - 08/2022
+${engagementBullets.map((b) => `- ${b}`).join('\n')}
+`;
+
+  const five = ['Ran a delivery org of 25 engineers', 'Led the platform team', 'Owned the roadmap', 'Set the hiring bar', 'Chaired the review board'];
+
+  it('counts the engagement separately from its parent', () => {
+    const r = validateCv(cv(five, five), { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toMatch(/prints \d+ bullets/);
+  });
+
+  it('still fails the engagement when IT exceeds the ceiling', () => {
+    const r = validateCv(cv(five, [...five, 'Wrote the runbook']), { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toMatch(/prints 6 bullets/);
+  });
+});
+
+// A written number is a number. Red on the old code: "Managed four concurrent
+// projects" counted as a bullet with no metric and hard-failed the CV.
+describe('the metric fallback counts written numbers', () => {
+  const roleWith = (bullets) => `# Jane Roe
+
+### **Work Experience**
+
+#### **Head of Delivery**
+**Acme Ltd** | 03/2019 - 08/2022
+${bullets.map((b) => `- ${b}`).join('\n')}
+`;
+
+  it('accepts a bullet that states its quantity in words', () => {
+    const r = validateCv(roleWith([
+      'Cut release cycle from 42 days to 9 days across 4 product teams',
+      'Managed four concurrent product programmes for the platform group',
+      'Ran a delivery org of 25 engineers',
+    ]), { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).not.toMatch(/carry no number/);
+  });
+
+  it('still fails bullets that state no quantity at all', () => {
+    const r = validateCv(roleWith([
+      'Cut release cycle from 42 days to 9 days across 4 product teams',
+      'Led solution design across client accounts to align architecture',
+      'Improved ways of working across the group',
+    ]), { master: MASTER, analysis: ANALYSIS });
+    expect(r.hard.join(' ')).toMatch(/carry no number/);
+  });
+});

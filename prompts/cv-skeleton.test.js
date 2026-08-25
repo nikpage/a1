@@ -44,16 +44,28 @@ describe('buildSkeleton over the real record', () => {
   });
 
   it('collapses everything older into Earlier Career', () => {
-    const names = skel.earlier.map((r) => r.company);
-    expect(names).toContain('AVG');
-    expect(names).toContain('Monster Worldwide');
-    expect(names).toContain('Software Toolworks');
-    expect(names).toContain('Airbank');
     expect(skel.recent.map((r) => r.company)).not.toContain('AVG');
+    expect(skel.earlier.length).toBeGreaterThan(0);
   });
 
-  it('reduces Earlier Career to employer and location — no dates, no titles', () => {
-    for (const e of skel.earlier) expect(Object.keys(e).sort()).toEqual(['company', 'location']);
+  it('caps Earlier Career at six, because the section is a name list not a history', () => {
+    // CV_RULES.md Layer 1: a longer list drags the reader backwards through the
+    // career the recency window exists to close.
+    expect(skel.earlier.length).toBeLessThanOrEqual(6);
+  });
+
+  it('prints the analysis roster, in its order, not the most recent six', () => {
+    // The roster is how Morgan Stanley and Wells Fargo survive a finance
+    // application; recency alone printed three unknown employers instead.
+    const withRoster = buildSkeleton(master, {
+      now: NOW,
+      roster: ['Systems Engineer, Morgan Stanley Online', 'QA Manager, Wells Fargo'],
+    });
+    expect(withRoster.earlier.map((e) => e.company)).toEqual(['Morgan Stanley Online', 'Wells Fargo']);
+  });
+
+  it('carries title, employer and location — no dates', () => {
+    for (const e of skel.earlier) expect(Object.keys(e).sort()).toEqual(['company', 'location', 'title']);
   });
 
   it('keeps the client engagements nested under the practice, never promoted', () => {
@@ -89,11 +101,13 @@ describe('skeletonBlock', () => {
     expect(block).toContain('##### **Sr. Product & Account Manager** · Salsita Software | 11/2022 - 10/2023');
   });
 
-  it('prints Earlier Career as undated names', () => {
+  it('prints Earlier Career as undated "Title, Employer" lines', () => {
     expect(block).toContain('#### **Earlier Career**');
-    expect(block).toMatch(/^- AVG/m);
-    expect(block).not.toContain('Manager, QA Labs');
     const earlier = block.slice(block.indexOf('#### **Earlier Career**'));
+    // Every bullet names a title AND an employer, and none carries a date.
+    const bullets = earlier.split('\n').filter((l) => l.startsWith('- '));
+    expect(bullets.length).toBeGreaterThan(0);
+    for (const b of bullets) expect(b).toMatch(/^- .+, .+/);
     expect(earlier).not.toMatch(/\d{2}\/\d{4}/);
   });
 
