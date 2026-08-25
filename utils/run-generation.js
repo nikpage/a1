@@ -149,7 +149,7 @@ export async function runGeneration({
         } catch (e) {
           logger.error('voice profile load failed (writing without it):', e.message);
         }
-        coverRes = await generateCoverLetter({ cv: source, analysis, tone, tweak, core, language, voiceProfile });
+        coverRes = await generateCoverLetter({ cv: source, master, analysis, tone, tweak, core, language, voiceProfile });
         cover = coverRes.content;
       }
     } catch (err) {

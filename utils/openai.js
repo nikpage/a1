@@ -9,6 +9,8 @@ import { buildCvPrompt, buildCvSlotsPrompt, buildHeadlinePrompt } from '../promp
 import { buildSkeleton, skeletonSlots } from '../prompts/cv-skeleton.js';
 import { assembleCv } from '../prompts/cv-assemble.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
+import { buildLetterPickPrompt } from '../prompts/letter-pick.js';
+import { assembleCover } from '../prompts/letter-assemble.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { targetJobBlock } from '../prompts/job-target.js';
 import { buildLetterPlanPrompt } from '../prompts/letter-plan.js';
@@ -789,7 +791,11 @@ function isOlderApplicant(analysis) {
 // with no source, an unevidenced claim — because the shape can no longer be wrong.
 async function generateCvAssembled({ cv, master, analysis, tone, tweak, core, language }) {
   const now = new Date();
-  const skeleton = buildSkeleton(master, { now });
+  // The Earlier Career roster is the analysis's pick, not the writer's and not
+  // recency's (CV_RULES.md Layer 1) — Layer 6 check 11 fails a document that
+  // drops a rostered employer.
+  const roster = analysis?.generation_framework?.cv_blueprint?.job_selection?.earlier_career;
+  const skeleton = buildSkeleton(master, { now, roster });
   const slots = skeletonSlots(skeleton);
   const olderApplicant = isOlderApplicant(analysis);
 
@@ -811,7 +817,8 @@ async function generateCvAssembled({ cv, master, analysis, tone, tweak, core, la
   // On 'auto' the writer resolves the language from the record, so the headings
   // code puts around its content must follow the SAME resolution — it declares it.
   const resolved = language === 'auto' ? (content.language || 'en') : language;
-  const assemble = (c) => assembleCv(master, c, skeleton, { language: resolved, olderApplicant });
+  const speakingRoster = analysis?.generation_framework?.cv_blueprint?.evidence_from_speaking;
+  const assemble = (c) => assembleCv(master, c, skeleton, { language: resolved, olderApplicant, roster: speakingRoster });
 
   // Safety net over the prose the model did write. The headings, employers and
   // dates around it came from the record, so they are not the checker's problem.
@@ -1099,7 +1106,96 @@ export async function readLetterCold({ document }) {
   }
 }
 
-export async function generateCoverLetter({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// THE ASSEMBLED COVER LETTER.
+//
+// The model no longer writes the letter. It picks which of the candidate's own
+// paragraphs answer this ad (prompts/letter-pick.js over prompts/letter-library.js)
+// and prompts/letter-assemble.js writes the document. Owner decision,
+// 2026-08-25, after five weeks of trying to make a model write at his standard;
+// the runs are in COVER_LETTER_LOG.md.
+//
+// What still runs, and what deliberately does not:
+//   - The TRUTH pass runs on the OPENING ONLY, and only when the model wrote
+//     one. His paragraphs are his own true words; a checker cutting spans out of
+//     them would damage the exact prose that makes the letter good.
+//   - validateCoverLetter REPORTS and never gates. Its word band is 150-250 and
+//     his own hand-written Sudolabs letter is 380 words — gating on it would
+//     reject the document this path exists to reproduce. There is nothing to
+//     regenerate anyway: the body is fixed prose, so a retry would return the
+//     same paragraphs.
+async function generateCoverAssembled({ cv, master, analysis, tweak, language }) {
+  const messages = buildLetterPickPrompt({ analysis, master: cv, tweak });
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55, label: 'pick cover letter' });
+  const gemini_usage = geminiUsage('pick cover letter', data, GEMINI_GENERATION_MODEL);
+  const usages = [gemini_usage];
+
+  let picked = null;
+  try {
+    picked = JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || ''));
+  } catch (e) {
+    logger.error('[pick cover] JSON did not parse:', e.message);
+  }
+
+  // Nothing usable came back. The candidate spent a free write and must receive
+  // a letter, so fall back to the writing path rather than returning nothing.
+  if (!picked || !Array.isArray(picked.instances) || !picked.instances.length) {
+    logger.error('[pick cover] no instances chosen; falling back to the writing prompt');
+    const fallback = await generateCoverDocument({ cv, analysis, tone: 'Formal', tweak, core: '', language, voiceProfile: null });
+    return { ...fallback, gemini_usages: [...usages, ...(fallback.gemini_usages || [])] };
+  }
+
+  // The library is written in English, so 'auto' resolves there — unlike the CV,
+  // whose language follows the record.
+  const resolved = language === 'auto' ? 'en' : language;
+
+  // The one paragraph a model wrote is the one paragraph that can be untrue.
+  if (picked.opening === 'custom' && String(picked.opening_text || '').trim()) {
+    const verified = await verifyGeneratedDoc({
+      document: String(picked.opening_text).trim(),
+      master: cv,
+      docType: 'cover',
+      language: resolved,
+    });
+    if (verified.gemini_usage) usages.push(verified.gemini_usage);
+    // A correction that deletes the whole opening leaves its sentence
+    // terminator behind (applyGenerationCorrections keeps one so it cannot weld
+    // two sentences together). On a one-paragraph document that debris is the
+    // entire paragraph, and a letter must never open on a lone full stop — drop
+    // it and let the letter open on the first instance instead.
+    const opening = /[\p{L}\p{N}]/u.test(verified.content) ? verified.content : '';
+    picked = { ...picked, opening_text: opening };
+  }
+
+  const content = assembleCover(master, picked, { language: resolved });
+  const validation = validateCoverLetter(content, { master: cv, analysis, language: resolved, tweak });
+  if (!validation.ok) logger.info(`[validate cover] reported, not gated: ${validation.hard.join(' | ')}`);
+
+  return {
+    content,
+    usage: data.usage,
+    gemini_usage,
+    // Hard failures ride out as warnings: this path does not regenerate, and the
+    // candidate should see what the checks said rather than have it swallowed.
+    validation: { ...validation, ok: true, warnings: [...(validation.warnings || []), ...(validation.hard || [])] },
+    gemini_usages: usages,
+  };
+}
+
+/**
+ * The cover letter.
+ *
+ * With a structured master the letter is ASSEMBLED from the candidate's own
+ * paragraphs (generateCoverAssembled). Without one — an older account, a failed
+ * master build — the model writes it as before.
+ */
+export async function generateCoverLetter({ cv, master = null, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
+  const record = structuredMaster(master);
+  if (record) return generateCoverAssembled({ cv, master: record, analysis, tweak, language });
+  return generateCoverDocument({ cv, analysis, tone, tweak, core, language, voiceProfile });
+}
+
+async function generateCoverDocument({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
   // NO PLAN CALL. Owner order, 2026-08-24: the letter costs 2 cents or less.
   // planLetter() ran on the analysis model and cost 2.9-3.5 cents on its own —
   // more than the letter it planned — so the stage is off this path. What it
