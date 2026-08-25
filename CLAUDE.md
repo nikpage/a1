@@ -6,6 +6,43 @@ NEVER use the `AskUserQuestion` tool / multiple-choice question box. Not once, e
 If you need to ask the user something, ask it in plain text in the chat and let
 them answer in plain text. The question-box artifact is forbidden in this repo.
 
+## The six rules (binding — 2026-08-25)
+
+Set after reading this repo's own history with Nik. What it shows: 915 commits,
+~190 of them in August, and the CV he holds today is worse than the one from the
+21st. Wins get reverted within a day; rules and deletions survive forever. On 24
+August a session built a tool that wrote into his stored master, put 25 invented
+lines in it, ran the letter pipeline against them and scored the result "human";
+a later session the same day deleted all 25 as fabrication. Four and a half
+hours, two commits, and his record came out smaller than it went in.
+
+Every rule in this file that lived only in prose has been broken, including in
+the session that wrote these. The one rule that has held is the Gemini freeze,
+because it has a hook. So three of the six below are hooks. They work whether or
+not the session cooperates, and that is the point.
+
+1. **Nik's stored record is READ-ONLY to every session.** No script, no helper,
+   no direct Supabase write touches `cv_data.master_cv` or `voice_profile`. He
+   edits it in the app. Reads are unrestricted. Hook: `.claude/hooks/record-lock.sh`,
+   unlocked by `touch .claude/record-unlock` — his command, never assumed.
+2. **The frozen baseline is what "good" means.** A CV and a cover letter Nik
+   would actually send, committed as files with their date. Nothing else counts
+   as a definition of good, and a session never nominates one — he does.
+3. **A prompt change ships only with a run against that baseline, read by Nik.**
+   Side by side, in the chat, both documents. Not the session's judgement that
+   it improved; his. A change nobody read is not a change that helped.
+4. **A commit touching `prompts/` also updates `COVER_LETTER_LOG.md`.** The log's
+   own rule was already this, and it died nine days after it was written because
+   nothing enforced it. Hook: `.claude/hooks/commit-guard.sh`.
+5. **Things survive by default.** A commit that deletes a tracked file, or strips
+   more than ten lines out of the prompts, the rules or the docs, is blocked
+   until Nik approves that specific deletion in that session. Same hook;
+   `touch .claude/delete-unlock`. Every rule and exemplar here was written after
+   something went wrong, and a session that cannot see why it exists is the wrong
+   judge of whether it should go.
+6. **One change per run.** Judge it, then make the next one. 190 commits in a
+   month with almost no output read is how the quality went backwards.
+
 @PRODUCT.md
 
 ## What this is
