@@ -13,7 +13,7 @@
 
 import { Redis } from '@upstash/redis';
 import { logger } from '../lib/logger.js';
-import { getGenerationSource, saveGeneratedDoc, getVoiceProfile } from './database.js';
+import { getGenerationSource, getMasterCv, saveGeneratedDoc, getVoiceProfile } from './database.js';
 import { runWithAiContext } from './ai-meter.js';
 import { getUserById, decrementGenerations } from './generation-utils.js';
 import { generateCV, generateCoverLetter } from './openai.js';
@@ -115,6 +115,18 @@ export async function runGeneration({
     }
     if (!source) throw new GenerationError('CV not found for user', 404);
 
+    // The STRUCTURED master, alongside the prose. generateCV assembles the CV in
+    // code from this (prompts/cv-skeleton.js + cv-assemble.js); the prose stays
+    // the writer's factual source, as it is for every other prompt. A user whose
+    // master build failed has none, and generation falls back to the document
+    // prompt — so this is read, never required.
+    let master = null;
+    try {
+      master = await getMasterCv(user_id);
+    } catch (e) {
+      logger.error('master load failed (generating from the prose record):', e.message);
+    }
+
     let cvRes = null;
     let coverRes = null;
     let cv = null;
@@ -122,7 +134,7 @@ export async function runGeneration({
 
     try {
       if (type === 'cv' || type === 'both') {
-        cvRes = await generateCV({ cv: source, analysis, tone, tweak, core, language });
+        cvRes = await generateCV({ cv: source, master, analysis, tone, tweak, core, language });
         cv = cvRes.content;
       }
 

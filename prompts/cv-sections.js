@@ -18,13 +18,13 @@
 
 export const SECTION_NAMES = {
   en: {
-    summary: ['Summary', 'Professional Summary'],
+    summary: ['Summary', 'Professional Summary', 'Highlights'],
     coreCompetencies: ['Core Competencies'],
     skills: ['Skills', 'Key Skills'],
     experience: ['Work Experience', 'Professional Experience', 'Experience'],
     projects: ['Projects'],
     education: ['Education'],
-    certifications: ['Certifications'],
+    certifications: ['Certifications', 'Recognition'],
     speaking: ['Speaking & Lecturing', 'Speaking and Lecturing', 'Speaking', 'Talks & Publications'],
     publications: ['Publications'],
     earlierCareer: ['Earlier Career'],

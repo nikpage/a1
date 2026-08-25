@@ -385,3 +385,131 @@ long (127 words) and the bullet band is missed in places now that neither is
 stated to the writer; if that repeats across runs, the fix is a furniture line
 about length, not the return of Layer 2. An English-language CV only; a Czech
 generation is untested against the new prompt.
+
+---
+
+## 2026-08-25 — Lessons from the CV assembler, and what transfers to the letter
+
+Eleven paid runs against the Sudolabs ad and three against Invity / Seznam /
+FaceUp, all read. The work was on the CV, not the letter, so nothing here is a
+letter result — it is the method, and where the method does and does not carry
+across. `scripts/assemble-cv.mjs`, `prompts/cv-skeleton.js`, run log in
+`runs/2026-08-25_*`.
+
+**1. A structure stated in a prompt is a structure that gets ignored, three
+ways.** The production prompt states nesting, MM/YYYY dates and the recency
+window in plain English. The app dissolved all six client engagements into the
+parent's bullets. Writing the exact structure out verbatim in the prompt as a
+skeleton did not change it. Writing it verbatim in a four-line minimal prompt
+made it worse — no markdown headings at all, long-form dates, roles printed back
+to 1993. Only assembling the document in code fixed it: the model returns
+`{ "<employer> | <dates>": ["bullet", …] }` and the renderer writes the markdown.
+Dissolving an engagement stopped being a rule to disobey; there is no slot for it.
+
+*Transfer to the letter, with the limit stated:* this applies to the letter's
+FURNITURE — date, salutation, signature block, and the paragraph the record
+supplies — not to its argument. A letter chopped into code-assembled slots is
+the stub-chopping defect this file already records from `applyVoice()`: a
+five-word orphan paragraph, two owners for one document. The argument stays one
+model writing one continuous letter. **Do not assemble the body.**
+
+**2. Instructing a model out of its default shape does not work; removing the
+affordance does.** The Summary bullets walked the roles one per employer in
+career order. Three separate instructions failed: "not by career order, not one
+per employer" (failed), "one bullet per need, the unit is the need never the
+role" (failed), "do not label a bullet with its role" (obeyed the label, kept
+the walk). Deleting the bullets and asking for prose fixed it in one run.
+
+*Transfer:* when the letter does something structural we do not want — answering
+the ad's bullets in the ad's order, one paragraph per requirement — do not add a
+line telling it not to. Remove whatever makes the shape available.
+
+**3. Verify the change is IN the prompt before judging the output.** Two runs
+were reported here as "the writer ignored the skeleton". The skeleton was empty
+in both: `getGenerationSource()` returns the master as PROSE, and the parse that
+built the skeleton returned null. Roughly $0.30 of runs judged a change that was
+never in the prompt. One `console.log` of the built prompt would have caught it.
+
+**4. The validation retry is the most expensive call in the run and it did not
+work.** Full pipeline, one CV: analysis $0.0540, write $0.0361, verify $0.0030,
+repair $0.0009, **retry write $0.0533**, verify $0.0026. The retry cost more than
+the first write — 10,921 thinking tokens against 5,958 — and shipped a document
+still carrying three hard failures. A third of the run bought nothing. The same
+retry exists on the letter path and has never been measured there.
+
+**5. One call at $0.015 versus six at $0.15.** The assembler needs no analysis
+pass because the structure comes from the record and the selection judgement is
+inside the one writing call. Whether the letter needs its analysis pass is a
+separate question with a separate answer — the letter's evidence pairs and the
+raw ad text are doing work the CV's blueprint was not.
+
+**6. Track defects per round in a file, not in the chat.** Seven rounds in, the
+owner could not tell which defects were new, which were regressions and which had
+been there since round one. A table of defect × round found that the typo, the
+untargeted Speaking roster and the misfiled lectureship were all present in
+round one and had simply not been noticed — and that the skills list got WORSE
+at round seven while looking fine. `runs/2026-08-25_sudolabs_cv-minimal-TRACKER.md`.
+
+**7. Tell the reader the size of what was left out.** The Speaking section prints
+five entries chosen by subject and ends with "and 24 others". A selection of five
+from twenty-eight reads as a thin record unless the remainder is stated.
+
+**Not tested here:** any of this on a letter. Items 1 and 5 are explicitly
+*claims about the CV* until someone runs the letter and reads it.
+
+---
+
+## 2026-08-25 (later) — the letter became a template, on Nik's decision
+
+**The decision, in his words:** "a template is hardcoded text plus a bit
+[that] pretends it's custom. I tried for weeks to get you to write one well.
+But you simply refused." Five weeks of levers — the rule stack, the minimal
+prompt, the plan pass, three hand-written exemplars shown as register targets —
+produced accurate, well-evidenced letters that still read as a machine's. So
+the model stops writing the letter.
+
+**What it is now.** `prompts/letter-library.js` holds his own paragraphs,
+copied verbatim off his three hand-written letters: five INSTANCES (the realty
+AI assistant, eBay Berlin, the Salsita/eBay turnaround, the Česká spořitelna UX
+practice, the Dezentrum/Blockchain4Humanity advocacy), two OPENINGS, three
+DAY-TO-DAY lines, three CLOSES, and his Czech language line. Two edits were made
+and they are the only two: a typo ("intruduce"), and one pronoun in the crypto
+block so it stands without the Invity-specific sentence that preceded it.
+`prompts/letter-assemble.js` writes the document in code — date, salutation,
+opening, TWO instances, day-to-day line, close, signature block, contact details
+exactly once. `scripts/assemble-cover.mjs` makes ONE Gemini call that returns
+only ids plus, where none of his openings fits, an opening it writes itself.
+
+**Read off the three letters before building it** — the shared skeleton is
+stance, instance A told with its mechanism, instance B ALSO told out, then how
+he works day to day plus the ask and the CV line. The production prompt says
+"one piece of work carries the letter… make one other point in a few sentences",
+and that split is what made ours read as a good paragraph stapled to filler. All
+three of his tell both instances out.
+
+**Runs (three, all read):**
+
+| ad | opening | instances picked | result |
+|---|---|---|---|
+| Invity (v1) | model wrote one | crypto-ux, cs-ux-practice | Opening was résumé prose — "I've spent years leading product strategy and user experience across fintech and blockchain projects". The one generated paragraph was the worst one in the letter. Signature block came out empty: contact lives at `profile.contact`, not `profile.phone`. |
+| Invity (v2) | model wrote one | same | With his own Invity opener shown as the register for a custom opening and the career-summary sentence banned by name, the opening landed. Not a fair test — the exemplar shown IS the Invity letter. |
+| Sudolabs | **his own** (`ai-work-now`) | ai-realty-assistant, ebay-berlin-trust | Reconstructed his hand-written Sudolabs letter almost exactly: same opening, same two instances, same order, 380 words. Nothing generated at all. |
+
+**The finding.** On an ad his library covers, the model picks correctly and
+writes nothing — the letter is 100% his prose and reads like it, because it is.
+The failure mode moved: it is no longer bad writing, it is COVERAGE. An ad his
+paragraphs do not answer gets the closest ones plus a generated opening, and
+that opening is measurably the weakest text in the document.
+
+**What this costs.** One call, ~19-23k chars of prompt, no analysis pass, no
+verify pass, no validation retry. Against the production path's six calls.
+
+**Open:** the library holds five instances, all from three letters. It grows
+when HE writes another paragraph — a generated one is the thing this replaced.
+Nothing is wired into the app yet: this is `scripts/assemble-cover.mjs` only.
+The `crypto-ux` block opens on "I've pushed that", which needs a preceding
+paragraph to give "that" an antecedent; it resolved on both Invity runs but it
+is fragile. Tests: `prompts/letter-assemble.test.js` (9, all green) pin that
+both instances print whole, that his text is never smoothed, that a generated
+opening only appears when `opening` is "custom", and that contact details appear
+exactly once.

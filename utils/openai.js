@@ -5,7 +5,9 @@ import { KeyManager } from './key-manager.js';
 import { buildAnalysisPrompt } from '../prompts/analysis.js';
 import { buildCareerProfilePrompt } from '../prompts/career-profile.js';
 import { timelineBlock } from './master-timeline.js';
-import { buildCvPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
+import { buildCvPrompt, buildCvSlotsPrompt, buildHeadlinePrompt } from '../prompts/cv-generator.js';
+import { buildSkeleton, skeletonSlots } from '../prompts/cv-skeleton.js';
+import { assembleCv } from '../prompts/cv-assemble.js';
 import { buildCoverPrompt } from '../prompts/cover-letter.js';
 import { buildJobExtractionPrompt } from '../prompts/job-extraction.js';
 import { targetJobBlock } from '../prompts/job-target.js';
@@ -732,7 +734,150 @@ export function dressCv(rawContent) {
     .trim();
 }
 
-export async function generateCV({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
+// The model's JSON, out of whatever wrapping it arrived in. A writing model
+// fences its JSON about as often as not; anything outside the outermost braces
+// is packaging, never content.
+function parseSlotJson(raw) {
+  const text = String(raw || '');
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(text.slice(start, end + 1));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// The record as an object, or null. getGenerationSource() hands generation the
+// master as PROSE, so a caller that wants the skeleton must pass the structured
+// master itself — a parse of the prose returns null, which is exactly how two
+// runs on 2026-08-25 judged a skeleton that was never in the prompt.
+function structuredMaster(master) {
+  if (master && typeof master === 'object' && Array.isArray(master.work_experience)) return master;
+  return null;
+}
+
+// A slot answer that wrote something. An empty bullets map is well-formed JSON
+// and assembles into a CV of headings with nothing beneath them.
+function hasBullets(content) {
+  const map = content?.bullets;
+  if (!map || typeof map !== 'object') return false;
+  return Object.values(map).some((v) => Array.isArray(v) && v.some((b) => String(b || '').trim()));
+}
+
+const OLDER_APPLICANT = 'older applicant';
+function isOlderApplicant(analysis) {
+  const tags = analysis?.analysis?.scenario_tags;
+  const listed = Array.isArray(tags) ? tags : tags ? [tags] : [];
+  return listed.some((t) => String(t).trim().toLowerCase() === OLDER_APPLICANT);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE ASSEMBLED CV.
+//
+// The model is never shown a document shape. It answers a list of slots built
+// from the record — which entries exist, in what order, under which parent, with
+// which dates — and the markdown is written by prompts/cv-assemble.js. Three
+// rounds on 2026-08-25 proved the alternative: stated as rules, written out
+// verbatim in the prompt, and written out verbatim in a minimal prompt, the
+// writer dissolved every client engagement into its parent's bullets each time.
+//
+// Layers 1-5 are therefore structure that code guarantees rather than asks for.
+// Layer 6 still runs unchanged: what it now catches is the CONTENT — a number
+// with no source, an unevidenced claim — because the shape can no longer be wrong.
+async function generateCvAssembled({ cv, master, analysis, tone, tweak, core, language }) {
+  const now = new Date();
+  const skeleton = buildSkeleton(master, { now });
+  const slots = skeletonSlots(skeleton);
+  const olderApplicant = isOlderApplicant(analysis);
+
+  const messages = buildCvSlotsPrompt(cv, analysis, tone, tweak, core, language, now, slots);
+  const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55, label: 'generate CV' });
+  const gemini_usage = geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL);
+  const usages = [gemini_usage];
+
+  const content = parseSlotJson(data.choices?.[0]?.message?.content);
+  if (!content) {
+    // Unparseable JSON is not a CV. Rather than spend a second call on the same
+    // ask, fall back to the document path, which needs no JSON at all — the user
+    // paid a token and must receive a document.
+    logger.error('[generate cv] slot JSON did not parse; falling back to the document prompt');
+    const fallback = await generateCvDocument({ cv, analysis, tone, tweak, core, language });
+    return { ...fallback, gemini_usages: [...usages, ...(fallback.gemini_usages || [])] };
+  }
+
+  // On 'auto' the writer resolves the language from the record, so the headings
+  // code puts around its content must follow the SAME resolution — it declares it.
+  const resolved = language === 'auto' ? (content.language || 'en') : language;
+  const assemble = (c) => assembleCv(master, c, skeleton, { language: resolved, olderApplicant });
+
+  // Safety net over the prose the model did write. The headings, employers and
+  // dates around it came from the record, so they are not the checker's problem.
+  let verified = await verifyGeneratedDoc({ document: assemble(content), master: cv, docType: 'cv', language: resolved });
+  if (verified.gemini_usage) usages.push(verified.gemini_usage);
+
+  const repair = await repairStockPhrases({ document: verified.content, docType: 'cv', language: resolved });
+  if (repair.gemini_usage) usages.push(repair.gemini_usage);
+  verified = { ...verified, content: repair.content };
+
+  let validation = validateCv(verified.content, { master: cv, analysis, language: resolved });
+  if (!validation.ok) {
+    logger.info(`[validate cv] hard failures, regenerating once: ${validation.hard.join(' | ')}`);
+    const retryMessages = [...messages, { role: 'user', content: validationFeedback(validation.hard) }];
+    const retry = await callGemini(GEMINI_GENERATION_MODEL, retryMessages, { reasoning_effort: 'medium', temperature: 0.55, label: 'generate CV (validation retry)' });
+    usages.push(geminiUsage('generate CV (validation retry)', retry, GEMINI_GENERATION_MODEL));
+
+    const retryContent = parseSlotJson(retry.choices?.[0]?.message?.content);
+    // A retry that returned nothing usable leaves the draft standing; it is a
+    // real document with known failures, which beats no document at all.
+    //
+    // "Usable" means it actually wrote bullets. Well-formed JSON carrying an
+    // empty bullets map assembles into headings with nothing under them, and an
+    // empty document trips FEWER hard checks than a full one — so without this
+    // guard the emptier document wins the comparison and ships.
+    if (retryContent && hasBullets(retryContent)) {
+      const reVerified = await verifyGeneratedDoc({ document: assemble(retryContent), master: cv, docType: 'cv', language: resolved });
+      if (reVerified.gemini_usage) usages.push(reVerified.gemini_usage);
+      const reRepair = await repairStockPhrases({ document: reVerified.content, docType: 'cv', language: resolved });
+      if (reRepair.gemini_usage) usages.push(reRepair.gemini_usage);
+
+      const revalidated = validateCv(reRepair.content, { master: cv, analysis, language: resolved });
+      if (revalidated.hard.length <= validation.hard.length) {
+        verified = { ...reVerified, content: reRepair.content };
+        validation = revalidated;
+      }
+    }
+    if (!validation.ok) logger.error(`[validate cv] hard failures survived the retry: ${validation.hard.join(' | ')}`);
+  }
+
+  return {
+    content: verified.content,
+    usage: data.usage,
+    gemini_usage,
+    validation,
+    gemini_usages: usages,
+  };
+}
+
+/**
+ * The CV.
+ *
+ * With a structured master the document is ASSEMBLED IN CODE
+ * (generateCvAssembled): the model returns content per slot and
+ * prompts/cv-assemble.js writes the markdown. Without one — an older account, a
+ * failed master build — the model is asked for the whole document as before.
+ * Both paths run the same verify → repair → validate → one-retry chain.
+ */
+export async function generateCV({ cv, master = null, analysis, tone, tweak = '', core = '', language = 'auto' }) {
+  const record = structuredMaster(master);
+  if (record) return generateCvAssembled({ cv, master: record, analysis, tone, tweak, core, language });
+  return generateCvDocument({ cv, analysis, tone, tweak, core, language });
+}
+
+async function generateCvDocument({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
+
   const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language);
   // medium effort: 'low' is exactly where a writing model drops the constraints
   // that keep it honest (don't upgrade the verb, don't invent a number); the
