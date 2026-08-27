@@ -43,3 +43,4 @@ scripts/out/
 .netlify
 runs/
 .claude/gemini-unlock
+.claude/build-ok
