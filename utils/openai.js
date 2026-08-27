@@ -41,6 +41,19 @@ const GEMINI_ANALYSIS_MODEL    = 'gemini-3.5-flash';      // strategic brain tha
 // string drifting out of step with this one.
 export const GEMINI_GENERATION_MODEL = 'gemini-3.6-flash'; // CV/cover prose — writing quality + voice are visible
 
+// RETRIEVAL. Not a writing model — it turns a piece of the record, or one of an
+// ad's requirements, into a vector so the two can be matched. Owner-authorised
+// 2026-08-27 (.claude/gemini-unlock). $0.15/1M input, verified at
+// ai.google.dev/gemini-api/docs/pricing; no output tokens, so no output rate.
+export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
+
+// The model returns 3072 dimensions and supports Matryoshka truncation to the
+// officially recommended 768 — which is what cv_chunks stores. A truncated
+// Matryoshka vector must be RE-NORMALISED before cosine comparison; skipping
+// that quietly degrades every similarity score, so normalise() below is not
+// optional tidying.
+export const EMBEDDING_DIMENSIONS = 768;
+
 function geminiUsage(label, data, modelHint) {
   const usage          = data.usage || {};
   const servedModel    = data.model || modelHint;
@@ -143,6 +156,97 @@ export async function callGemini(model, messages, { label, ...options } = {}) {
     throw rateLimitErr;
   }
   throw lastError || new Error('Gemini request failed');
+}
+
+// The embeddings endpoint. A SECOND URL, and it lives here for the same reason
+// the first one does: utils/openai.js is the only door to Gemini, guarded by
+// __tests__/ai-spend-containment.test.js. A retrieval helper that fetched this
+// itself would spend money the ledger never sees.
+const GEMINI_EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/embeddings';
+
+// Unit-length, so cosine similarity is a dot product and a Matryoshka-truncated
+// vector compares correctly against the others.
+function normalise(vec) {
+  const norm = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+  return norm > 0 ? vec.map((v) => v / norm) : vec;
+}
+
+/**
+ * Embed a batch of strings for retrieval.
+ *
+ * Same three guarantees as callGemini: no call without an AI cost context, the
+ * spend is metered the moment Gemini responds, and keys rotate on 429.
+ *
+ * @param {string[]} inputs - texts to embed (chunks, or an ad's requirements)
+ * @param {object}   opts   - { label } for the cost ledger
+ * @returns {Promise<{vectors: number[][], gemini_usage: object}>}
+ */
+export async function embedTexts(inputs, { label = 'embed' } = {}) {
+  const texts = (Array.isArray(inputs) ? inputs : []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter(Boolean);
+  // Nothing to embed is not a failure and must not spend: an empty record and an
+  // ad with no extracted requirements both land here.
+  if (!texts.length) return { vectors: [], gemini_usage: null };
+
+  // No context, no call — identical contract to callGemini.
+  assertAttributed(GEMINI_EMBEDDING_MODEL);
+
+  const maxAttempts = Math.max(keyManager.keys.filter((k) => k !== null).length, 6);
+  let lastError;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await axios.post(
+        GEMINI_EMBED_URL,
+        { model: GEMINI_EMBEDDING_MODEL, input: texts, dimensions: EMBEDDING_DIMENSIONS },
+        {
+          headers: {
+            Authorization: `Bearer ${keyManager.getNextKey()}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // METER FIRST, RETURN SECOND — see callGemini.
+      const gemini_usage = geminiUsage(label, response.data, GEMINI_EMBEDDING_MODEL);
+      await meterGeminiCall(gemini_usage);
+
+      // Returned in request order, but `index` is authoritative: a reordered
+      // response would silently attach every chunk's text to another chunk's
+      // vector, and no downstream check could see it.
+      const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+      const vectors = texts.map((_, i) => {
+        const row = rows.find((r) => r?.index === i) || rows[i];
+        const vec = Array.isArray(row?.embedding) ? row.embedding : null;
+        return vec ? normalise(vec) : null;
+      });
+
+      return { vectors, gemini_usage };
+    } catch (error) {
+      lastError = error;
+      const status = error.response?.status;
+
+      if (status === 429) {
+        logger.warn(`[embedTexts] Key rate-limited (429), trying next key (${attempt + 1}/${maxAttempts})`);
+        continue;
+      }
+
+      const isTransient = TRANSIENT_STATUSES.has(status) || !error.response;
+      const detail = geminiErrorMessage(error);
+      if (isTransient && attempt < maxAttempts - 1) {
+        const backoff = Math.min(10000, 500 * 2 ** attempt) + Math.floor(Math.random() * 250);
+        logger.warn(`[embedTexts] transient ${status || error.code || 'network'}: "${detail}" — retry ${attempt + 1}/${maxAttempts} in ${backoff}ms`);
+        await sleep(backoff);
+        continue;
+      }
+
+      logger.error(`[embedTexts] failed (status ${status || error.code || 'network'}): ${detail}`);
+      const surfaced = new Error(`Gemini ${status || ''} ${detail}`.trim());
+      surfaced.status = status;
+      throw surfaced;
+    }
+  }
+
+  throw lastError || new Error('Gemini embedding request failed');
 }
 
 export async function analyzeJobOnly(jobText) {

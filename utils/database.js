@@ -644,3 +644,84 @@ export async function saveGeneratedDoc({
   if (error) throw error;
   return data;
 }
+
+// ─── RETRIEVAL INDEX (cv_chunks) ──────────────────────────────────────────────
+//
+// The candidate's record, cut into searchable pieces (utils/cv-chunks.js) with
+// an embedding each, so a job ad's requirements can be matched against the parts
+// of the record that answer them instead of the writer being handed the whole
+// master for every job.
+//
+// Service-role only, like every other write path. `user_id` always comes from
+// the verified session, never from a request body — these rows are a person's
+// full career record.
+
+/**
+ * Replace a user's chunks with a freshly built set.
+ *
+ * A REPLACE, not a merge: chunk ids are derived from content, so a role the user
+ * deleted or reworded would otherwise leave its old chunk behind and keep being
+ * retrieved as evidence for a record that no longer says it. Stale evidence is
+ * the one failure this index must not have.
+ */
+export async function saveCvChunks(user_id, chunks) {
+  const rows = (Array.isArray(chunks) ? chunks : [])
+    .filter((c) => c && c.id && c.text && Array.isArray(c.embedding))
+    .map((c) => ({
+      user_id,
+      chunk_id: c.id,
+      kind: c.kind || '',
+      source: c.source || '',
+      header: c.header || '',
+      text: c.text,
+      embedding: c.embedding,
+      updated_at: new Date().toISOString()
+    }));
+
+  const db = getAdminSupabase();
+
+  const { error: delError } = await db.from('cv_chunks').delete().eq('user_id', user_id);
+  if (delError) throw delError;
+
+  if (!rows.length) return [];
+
+  const { data, error } = await db.from('cv_chunks').insert(rows).select('chunk_id');
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * The nearest chunks to one query vector, via the match_cv_chunks RPC.
+ *
+ * Returns [] rather than throwing when the index is empty or the migration has
+ * not been applied: retrieval is an IMPROVEMENT on handing over the whole
+ * master, and a missing index must degrade to that, never fail a paid run.
+ */
+export async function matchCvChunks(user_id, embedding, limit = 5) {
+  if (!Array.isArray(embedding) || !embedding.length) return [];
+
+  const { data, error } = await getAdminSupabase().rpc('match_cv_chunks', {
+    p_user_id: user_id,
+    p_embedding: embedding,
+    p_limit: limit
+  });
+
+  if (error) {
+    logger.error('matchCvChunks: retrieval failed, falling back to the full record:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/** How many chunks a user has indexed — the cheap check for "is retrieval live". */
+export async function countCvChunks(user_id) {
+  const { count, error } = await getAdminSupabase()
+    .from('cv_chunks')
+    .select('chunk_id', { count: 'exact', head: true })
+    .eq('user_id', user_id);
+  if (error) {
+    logger.error('countCvChunks:', error.message);
+    return 0;
+  }
+  return count || 0;
+}

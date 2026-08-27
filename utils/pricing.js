@@ -25,6 +25,10 @@ export const PRICING = {
   'gemini-3.5-flash-lite':   { input: 0.30,  cachedInput: 0.03,  output: 2.50  },
   'gemini-3.6-flash':        { input: 0.75,  cachedInput: 0.075, output: 3.75  }, // through 2026-12-31; doubles 2027-01-01
   'gemini-3.7-flash':        { input: 0.75,  cachedInput: 0.075, output: 3.75  }, // through 2026-12-31; doubles 2027-01-01
+  // Retrieval. Embeddings bill input only — there are no output tokens to
+  // charge for, so output: 0 is the real rate here, not a missing one.
+  // Verified 2026-08-27 at ai.google.dev/gemini-api/docs/pricing.
+  'gemini-embedding-001':    { input: 0.15,  cachedInput: 0,     output: 0     },
 };
 
 export function rateFor(model) {
