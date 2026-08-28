@@ -18,6 +18,7 @@
 
 import { rawAdBlock, targetJobBlock } from './job-target.js';
 import { libraryIndex } from './letter-library.js';
+import { retrievedEvidenceBlock } from './retrieved-evidence.js';
 
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
 
@@ -25,7 +26,13 @@ const str = (v) => (typeof v === 'string' ? v.trim() : '');
 // is the fallback for analyses saved before job_text existed.
 const adFor = (analysis, job) => str(job) || rawAdBlock(analysis) || targetJobBlock(analysis);
 
-export function buildLetterPickPrompt({ analysis = null, job = '', master = '', tweak = '' } = {}) {
+export function buildLetterPickPrompt({ analysis = null, job = '', master = '', tweak = '', retrieved = null } = {}) {
+  // What the record actually offers against each of this ad's asks, found by
+  // searching it. The picker's whole job is matching the ad to real work, so
+  // handing it that match is the most direct help available — and where the
+  // library has no paragraph for an ask, this is what the custom opening is
+  // written from.
+  const evidence = retrievedEvidenceBlock(retrieved?.groups);
   // Steering reaches the PICKER, which is where it belongs now: emphasise and
   // play-down are statements about which of his stories should carry the letter,
   // and a picker can act on that far more directly than a writer ever did.
@@ -67,7 +74,7 @@ How to choose:
 - "contact_name": only a real person's name printed in the ad. Never a job title, never an email address, never a guess.
 ${steering}
 ${libraryIndex()}
-
+${evidence}
 His record — the only source of fact for a custom opening:
 
 ${master}

@@ -17,6 +17,7 @@ import { getGenerationSource, getMasterCv, saveGeneratedDoc, getVoiceProfile } f
 import { runWithAiContext } from './ai-meter.js';
 import { getUserById, decrementGenerations } from './generation-utils.js';
 import { generateCV, generateCoverLetter } from './openai.js';
+import { adRequirements, retrieveForRequirements } from './cv-retrieval.js';
 import { GENERATION_LANGUAGES } from '../prompts/language.js';
 
 // The lock outlives a full run now that generation is a background job. 30s was
@@ -127,6 +128,27 @@ export async function runGeneration({
       logger.error('master load failed (generating from the prose record):', e.message);
     }
 
+    // RETRIEVAL: the parts of this record that answer THIS ad.
+    //
+    // Done once here, not inside each generator, because user_id lives at this
+    // level and both documents want the same evidence. One embedding call for
+    // all of the ad's requirements, then a vector search each — fractions of a
+    // cent against a run that costs cents.
+    //
+    // Every failure path returns empty and the generators fall back to the
+    // whole master, which is exactly what they did before this existed. There
+    // is no branch here that can lose a paid generation.
+    let retrieved = null;
+    try {
+      const asks = adRequirements(analysis);
+      if (asks.length) {
+        const res = await retrieveForRequirements(user_id, asks);
+        if (res.groups.length) retrieved = res;
+      }
+    } catch (e) {
+      logger.error('retrieval failed (generating from the full record):', e.message);
+    }
+
     let cvRes = null;
     let coverRes = null;
     let cv = null;
@@ -134,7 +156,7 @@ export async function runGeneration({
 
     try {
       if (type === 'cv' || type === 'both') {
-        cvRes = await generateCV({ cv: source, master, analysis, tone, tweak, core, language });
+        cvRes = await generateCV({ cv: source, master, analysis, tone, tweak, core, language, retrieved });
         cv = cvRes.content;
       }
 
@@ -149,7 +171,7 @@ export async function runGeneration({
         } catch (e) {
           logger.error('voice profile load failed (writing without it):', e.message);
         }
-        coverRes = await generateCoverLetter({ cv: source, master, analysis, tone, tweak, core, language, voiceProfile });
+        coverRes = await generateCoverLetter({ cv: source, master, analysis, tone, tweak, core, language, voiceProfile, retrieved });
         cover = coverRes.content;
       }
     } catch (err) {

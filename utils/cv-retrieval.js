@@ -36,6 +36,33 @@ const str = (v) => (typeof v === 'string' ? v.trim() : '');
 const arr = (v) => (Array.isArray(v) ? v : []);
 
 /**
+ * The ad's asks, as retrieval queries.
+ *
+ * The same fields prompts/cover-letter.js lists to the writer — the extraction
+ * the analysis worker already wrote, so this costs no AI call. Deduplicated,
+ * because an ad that states a requirement twice would otherwise spend two
+ * searches retrieving the same evidence.
+ */
+export function adRequirements(analysis) {
+  const job = analysis?.job_extraction || {};
+  const all = [
+    ...arr(job.must_have_requirements),
+    ...arr(job.required_skills),
+    ...arr(job.responsibilities),
+    ...arr(job.nice_to_have),
+    ...arr(job.desired_skills)
+  ].map(str).filter(Boolean);
+
+  const seen = new Set();
+  return all.filter((a) => {
+    const k = a.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/**
  * Build (or rebuild) a user's retrieval index from their master CV.
  *
  * Called after the master is built or edited — the two moments the record
@@ -132,30 +159,4 @@ export async function retrieveForRequirements(user_id, requirements, opts = {}) 
 
   const chunks = [...bestById.values()].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
   return { groups, chunks, gemini_usage };
-}
-
-/**
- * The retrieved evidence, rendered for a prompt.
- *
- * Grouped BY REQUIREMENT, because that is the pairing the writer needs and the
- * thing the whole-master dump could never express: this is what they asked for,
- * and this is the real work that answers it. Provenance (`source`) rides along
- * so a claim can be traced back.
- */
-export function retrievedEvidenceBlock(groups) {
-  const list = arr(groups).filter((g) => str(g?.requirement) && arr(g?.chunks).length);
-  if (!list.length) return '';
-
-  const lines = list.map((g) => {
-    const evidence = g.chunks.map((c) => `    - ${str(c.text)}`).join('\n');
-    return `- THEY ASK: ${str(g.requirement)}\n  THE RECORD ANSWERS:\n${evidence}`;
-  });
-
-  return `
-# What this employer asked for, and the real work in this candidate's record that answers it
-
-These are pulled from the candidate's own record by matching it against this ad. They are VERBATIM record — facts, not phrasing to reuse. An ask that appears here with nothing under it, or that is missing entirely, is one the record does not answer: say nothing about it at all.
-
-${lines.join('\n')}
-`;
 }

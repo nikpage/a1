@@ -17,8 +17,8 @@ vi.mock('../utils/database.js', () => ({
   matchCvChunks: (...a) => matchCvChunks(...a)
 }));
 
-const { indexMaster, retrieveForRequirements, retrievedEvidenceBlock } =
-  await import('../utils/cv-retrieval.js');
+const { indexMaster, retrieveForRequirements } = await import('../utils/cv-retrieval.js');
+const { retrievedEvidenceBlock } = await import('../prompts/retrieved-evidence.js');
 
 const master = {
   work_experience: [

@@ -31,6 +31,7 @@ import { marketConventions } from './market.js';
 import { sectionNameBlock } from './cv-sections.js';
 import { generationBrief } from './analysis-brief.js';
 import { buildSkeleton, skeletonBlock } from './cv-skeleton.js';
+import { retrievedEvidenceBlock } from './retrieved-evidence.js';
 
 // The record reaches this prompt as text — JSON for a real master, raw CV text
 // where the master build failed. Only the structured form can carry a skeleton;
@@ -45,7 +46,14 @@ function parseRecord(cv) {
   }
 }
 
-export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date()) {
+export function buildCvPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), retrieved = null) {
+  // The ad's asks paired with the parts of THIS record that answer them, found
+  // by searching the record with the ad (utils/cv-retrieval.js). It is an
+  // addition here, not a replacement: the CV is a coverage document and still
+  // reads the whole record below. What retrieval adds is which pieces of it
+  // this particular job makes essential — the judgement `required_evidence`
+  // was making blind.
+  const retrievedBlock = retrievedEvidenceBlock(retrieved?.groups);
   // Work Experience is STRUCTURED IN CODE (prompts/cv-skeleton.js) — see the
   // note there for the seven rounds of prompting that could not hold nesting,
   // MM/YYYY or the recency window by instruction alone.
@@ -86,7 +94,7 @@ ${bannedPhraseLine(language)}
 - **Red flags are handled, not advertised.** Where the blueprint names a concern, neutralise it by framing and selection — never draw the reader's eye to a gap or a weakness. That work belongs in the cover letter.
 
 ${cvInvariants()}
-${tweakBlock}${coreBlock}
+${tweakBlock}${coreBlock}${retrievedBlock}
 ${currentDateBlock(now)}
 ${jobBlock}
 ${marketBlock}
@@ -238,7 +246,11 @@ Return only the headline line.`
 // What reaches the writer is the record, the ad, the invariants, the
 // candidate's steering and durable value, the output language and the market's
 // conventions. Layers 1-5 are structure, and structure is now code's job.
-export function buildCvSlotsPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), slots = []) {
+export function buildCvSlotsPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), slots = [], retrieved = null) {
+  // Same evidence the document path gets. This is the assembler's writing call —
+  // it fills the slots the skeleton leaves — so which pieces of the record this
+  // job makes essential matters here just as much.
+  const retrievedBlock = retrievedEvidenceBlock(retrieved?.groups);
   const record = parseRecord(cv);
   const recordText = typeof cv === 'string' ? cv : JSON.stringify(record ?? cv, null, 2);
 
@@ -273,7 +285,7 @@ ${bannedPhraseLine(language)}
 - **Red flags are handled, not advertised.** Neutralise a concern by framing and selection; never draw the reader's eye to it.
 
 ${cvInvariants()}
-${tweakBlock}${coreBlock}
+${tweakBlock}${coreBlock}${retrievedBlock}
 - ${languageInstruction(language)}
 - Tone — "${tone}": ${toneInstructions(tone)}
 - A \`voice_guide\` in the record, where one exists, is the candidate's OWN statement of how they write: follow it for cadence, sentence shapes and vocabulary. Like \`voice_samples\` it describes HOW to write, never WHAT is true.

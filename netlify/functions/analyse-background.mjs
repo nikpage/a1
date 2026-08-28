@@ -17,6 +17,7 @@ import * as Sentry from '@sentry/node';
 import { analyzeCvJob, buildOrMergeMaster } from '../../utils/openai.js';
 import { withOlderApplicant } from '../../prompts/scenarios.js';
 import { saveGeneratedDoc, getMasterCv, saveMasterCv, supabase } from '../../utils/database.js';
+import { indexMaster } from '../../utils/cv-retrieval.js';
 import { resolveCareerProfile } from '../../utils/career-profile.js';
 import { runWithAiContext } from '../../utils/ai-meter.js';
 import { verifyToken } from '../../lib/auth.js';
@@ -157,6 +158,19 @@ export const handler = async (event) => {
         // The build and its verify pass were already recorded by the meter, at
         // the moment each responded — including a build that then failed to
         // parse, which this hand-rolled loop never saw.
+
+        // INDEX IT FOR RETRIEVAL. The record has just changed, and this is the
+        // one moment it does. Best-effort by design: an index that fails to
+        // build costs this run its per-requirement evidence and nothing else —
+        // generation falls back to the whole master, which is what every run
+        // did before retrieval existed. It must never sink a paid analysis.
+        try {
+          const indexed = await indexMaster(user_id, master);
+          if (indexed.gemini_usage) masterUsages.push(indexed.gemini_usage);
+        } catch (e) {
+          logger.error('[analyse-bg] retrieval index failed, generation will use the full record:', e.message);
+          Sentry.captureException(e);
+        }
       } catch (e) {
         // A master-build failure must not sink the analysis — fall back to raw text.
         // But it must NOT pass silently either: the user was charged for the build,

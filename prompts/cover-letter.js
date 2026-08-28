@@ -44,6 +44,7 @@ import { letterPlanBlock } from './letter-plan.js';
 import { letterExemplarBlock } from './letter-exemplar.js';
 import { coverLengthRule } from './market.js';
 import { voiceProfileBlock, voiceExcerptBlock } from './voice-profile.js';
+import { retrievedEvidenceBlock } from './retrieved-evidence.js';
 
 // The ad, in the employer's own words where the record kept them. The
 // extraction is the fallback for analyses saved before job_text existed and for
@@ -121,7 +122,26 @@ function salutationRule(analysis, language) {
 - **Decline the name into the letter's own language.** English takes it as it stands ("Dear ${name}"). Czech takes the VOCATIVE and so does Polish: "Vážený pane Nováku," for Novák, "Vážená paní Nováková,", "Vážený pane Petře," for Petr, "Szanowny Panie Kowalski,". A nominative name in that slot is a grammatical error in the letter's first line. Where the gender or the declension is genuinely unclear, use the neutral form for that language rather than guessing an ending. "pane"/"paní" and "Panie"/"Pani" are part of the salutation, not titles.`;
 }
 
-export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), voiceProfile = null, plan = null) {
+export function buildCoverPrompt(cv, analysis, tone, tweak = '', core = '', language = 'auto', now = new Date(), voiceProfile = null, plan = null, retrieved = null) {
+  // RETRIEVED EVIDENCE — the ad's asks PAIRED with the parts of this record that
+  // answer them, found by searching the record with the ad (utils/cv-retrieval.js).
+  //
+  // It REPLACES the bare asks list when it is present. asksBlock() could only
+  // say what the employer wanted; the writer then had to find the answer inside
+  // a 10,000-character record that was identical for every job. That search is
+  // the thing this candidate's letters kept getting wrong — reaching for the
+  // most recent work rather than the work that answers the ask — and it is a
+  // retrieval problem, not a writing one.
+  //
+  // Retrieval SELECTS from the record; it adds nothing. The record still follows
+  // in full below as the source of fact, so every downstream truth check reads
+  // exactly what it always did.
+  const retrievedGroups = retrievedEvidenceBlock(retrieved?.groups);
+  const evidenceBlock = retrievedGroups
+    ? `${retrievedGroups}
+That list is for CHOOSING, not for covering. Pick the TWO OR THREE this employer plainly cares about most and that the record answers best; those are the letter. Prove each with one specific piece of work — what was done, where, and what came of it. One proved claim beats six asserted ones, and a letter that touches every item proves nothing about any of them. Leave the rest out entirely: an unanswered ask is honest, a papered-over one is a lie the interview will find.
+`
+    : '';
   // The plan (prompts/letter-plan.js) decides the letter's SHAPE — order, the one
   // instance per point, what the first and last sentence must do. Absent, the
   // writer chooses as it did before; present, it executes.
@@ -192,7 +212,7 @@ Two failures follow from getting that wrong, and both are fatal on the first lin
 Never invent, never inflate, never claim a duration, a number, a skill or a role the record does not state.
 ${steeringBlock}
 ${adBlock(analysis)}
-${asksBlock(analysis, Boolean(planBlock))}${coverEvidenceBlock(analysis)}${planBlock}${letterExemplarBlock()}${voiceOwnership}${coreBlock}
+${evidenceBlock || asksBlock(analysis, Boolean(planBlock))}${coverEvidenceBlock(analysis)}${planBlock}${letterExemplarBlock()}${voiceOwnership}${coreBlock}
 
 # The letter's furniture
 ${currentDateBlock(now)}

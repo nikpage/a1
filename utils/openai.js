@@ -893,7 +893,7 @@ function isOlderApplicant(analysis) {
 // Layers 1-5 are therefore structure that code guarantees rather than asks for.
 // Layer 6 still runs unchanged: what it now catches is the CONTENT — a number
 // with no source, an unevidenced claim — because the shape can no longer be wrong.
-async function generateCvAssembled({ cv, master, analysis, tone, tweak, core, language }) {
+async function generateCvAssembled({ cv, master, analysis, tone, tweak, core, language, retrieved = null }) {
   const now = new Date();
   // The Earlier Career roster is the analysis's pick, not the writer's and not
   // recency's (CV_RULES.md Layer 1) — Layer 6 check 11 fails a document that
@@ -903,7 +903,7 @@ async function generateCvAssembled({ cv, master, analysis, tone, tweak, core, la
   const slots = skeletonSlots(skeleton);
   const olderApplicant = isOlderApplicant(analysis);
 
-  const messages = buildCvSlotsPrompt(cv, analysis, tone, tweak, core, language, now, slots);
+  const messages = buildCvSlotsPrompt(cv, analysis, tone, tweak, core, language, now, slots, retrieved);
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55, label: 'generate CV' });
   const gemini_usage = geminiUsage('generate CV', data, GEMINI_GENERATION_MODEL);
   const usages = [gemini_usage];
@@ -981,15 +981,15 @@ async function generateCvAssembled({ cv, master, analysis, tone, tweak, core, la
  * failed master build — the model is asked for the whole document as before.
  * Both paths run the same verify → repair → validate → one-retry chain.
  */
-export async function generateCV({ cv, master = null, analysis, tone, tweak = '', core = '', language = 'auto' }) {
+export async function generateCV({ cv, master = null, analysis, tone, tweak = '', core = '', language = 'auto', retrieved = null }) {
   const record = structuredMaster(master);
-  if (record) return generateCvAssembled({ cv, master: record, analysis, tone, tweak, core, language });
-  return generateCvDocument({ cv, analysis, tone, tweak, core, language });
+  if (record) return generateCvAssembled({ cv, master: record, analysis, tone, tweak, core, language, retrieved });
+  return generateCvDocument({ cv, analysis, tone, tweak, core, language, retrieved });
 }
 
-async function generateCvDocument({ cv, analysis, tone, tweak = '', core = '', language = 'auto' }) {
+async function generateCvDocument({ cv, analysis, tone, tweak = '', core = '', language = 'auto', retrieved = null }) {
 
-  const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language);
+  const messages = buildCvPrompt(cv, analysis, tone, tweak, core, language, new Date(), retrieved);
   // medium effort: 'low' is exactly where a writing model drops the constraints
   // that keep it honest (don't upgrade the verb, don't invent a number); the
   // low temperature holds it to the record's own wording rather than a
@@ -1228,8 +1228,8 @@ export async function readLetterCold({ document }) {
 //     reject the document this path exists to reproduce. There is nothing to
 //     regenerate anyway: the body is fixed prose, so a retry would return the
 //     same paragraphs.
-async function generateCoverAssembled({ cv, master, analysis, tweak, language }) {
-  const messages = buildLetterPickPrompt({ analysis, master: cv, tweak });
+async function generateCoverAssembled({ cv, master, analysis, tweak, language, retrieved = null }) {
+  const messages = buildLetterPickPrompt({ analysis, master: cv, tweak, retrieved });
   const data = await callGemini(GEMINI_GENERATION_MODEL, messages, { reasoning_effort: 'medium', temperature: 0.55, label: 'pick cover letter' });
   const gemini_usage = geminiUsage('pick cover letter', data, GEMINI_GENERATION_MODEL);
   const usages = [gemini_usage];
@@ -1245,7 +1245,7 @@ async function generateCoverAssembled({ cv, master, analysis, tweak, language })
   // a letter, so fall back to the writing path rather than returning nothing.
   if (!picked || !Array.isArray(picked.instances) || !picked.instances.length) {
     logger.error('[pick cover] no instances chosen; falling back to the writing prompt');
-    const fallback = await generateCoverDocument({ cv, analysis, tone: 'Formal', tweak, core: '', language, voiceProfile: null });
+    const fallback = await generateCoverDocument({ cv, analysis, tone: 'Formal', tweak, core: '', language, voiceProfile: null, retrieved });
     return { ...fallback, gemini_usages: [...usages, ...(fallback.gemini_usages || [])] };
   }
 
@@ -1293,13 +1293,13 @@ async function generateCoverAssembled({ cv, master, analysis, tweak, language })
  * paragraphs (generateCoverAssembled). Without one — an older account, a failed
  * master build — the model writes it as before.
  */
-export async function generateCoverLetter({ cv, master = null, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
+export async function generateCoverLetter({ cv, master = null, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null, retrieved = null }) {
   const record = structuredMaster(master);
-  if (record) return generateCoverAssembled({ cv, master: record, analysis, tweak, language });
-  return generateCoverDocument({ cv, analysis, tone, tweak, core, language, voiceProfile });
+  if (record) return generateCoverAssembled({ cv, master: record, analysis, tweak, language, retrieved });
+  return generateCoverDocument({ cv, analysis, tone, tweak, core, language, voiceProfile, retrieved });
 }
 
-async function generateCoverDocument({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null }) {
+async function generateCoverDocument({ cv, analysis, tone, tweak = '', core = '', language = 'auto', voiceProfile = null, retrieved = null }) {
   // NO PLAN CALL. Owner order, 2026-08-24: the letter costs 2 cents or less.
   // planLetter() ran on the analysis model and cost 2.9-3.5 cents on its own —
   // more than the letter it planned — so the stage is off this path. What it
@@ -1308,7 +1308,7 @@ async function generateCoverDocument({ cv, analysis, tone, tweak = '', core = ''
   // reads the same record the plan read. planLetter() is still exported and
   // still tested; nothing on the live path calls it.
   const planned = { plan: null, gemini_usage: null };
-  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile, planned.plan);
+  const messages = buildCoverPrompt(cv, analysis, tone, tweak, core, language, new Date(), voiceProfile, planned.plan, retrieved);
   // See generateCV: medium effort + low temperature keep the letter tied to the
   // record instead of drifting into a better-sounding version of it.
   // The LETTER runs hotter than the CV. A CV is a record and 0.4 keeps it tied to
